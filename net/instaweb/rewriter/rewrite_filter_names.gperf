@@ -74,6 +74,7 @@ struct FilterMap {
 "inline_import_to_link",             RewriteOptions::kInlineImportToLink
 "inline_javascript",                 RewriteOptions::kInlineJavascript
 "inline_preview_images",             RewriteOptions::kDelayImages
+"insert_amp_link",                   RewriteOptions::kInsertAmpLink
 "insert_dns_prefetch",               RewriteOptions::kInsertDnsPrefetch
 "insert_ga",                         RewriteOptions::kInsertGA
 "insert_img_dimensions",             RewriteOptions::kInsertImageDimensions

@@ -63,6 +63,7 @@ const char RewriteOptions::kAllowOptionsToBeSetByCookies[] =
     "AllowOptionsToBeSetByCookies";
 const char RewriteOptions::kAlwaysMobilize[] = "AlwaysMobilize";
 const char RewriteOptions::kAlwaysRewriteCss[] = "AlwaysRewriteCss";
+const char RewriteOptions::kAmpLinkPattern[] = "AmpLinkPattern";
 const char RewriteOptions::kAnalyticsID[] = "AnalyticsID";
 const char RewriteOptions::kAvoidRenamingIntrospectiveJavascript[] =
     "AvoidRenamingIntrospectiveJavascript";
@@ -668,22 +669,23 @@ const RewriteOptions::Filter kOptimizeForBandwidthFilterSet[] = {
 // Note: all Core filters are Test filters as well.  For maintainability,
 // this is managed in the c++ switch statement.
 const RewriteOptions::Filter kTestFilterSet[] = {
-  RewriteOptions::kConvertJpegToWebp,
-  RewriteOptions::kDebug,
-  RewriteOptions::kDeferIframe,
-  RewriteOptions::kDeferJavascript,
-  RewriteOptions::kDelayImages,  // AKA inline_preview_images
-  RewriteOptions::kIncludeJsSourceMaps,
-  RewriteOptions::kInsertGA,
-  RewriteOptions::kInsertImageDimensions,
-  RewriteOptions::kLazyloadImages,
-  RewriteOptions::kLeftTrimUrls,
-  RewriteOptions::kMakeGoogleAnalyticsAsync,
-  RewriteOptions::kPrioritizeCriticalCss,
-  RewriteOptions::kResizeToRenderedImageDimensions,
-  RewriteOptions::kResponsiveImages,
-  RewriteOptions::kRewriteDomains,
-  RewriteOptions::kSpriteImages,
+    RewriteOptions::kConvertJpegToWebp,
+    RewriteOptions::kDebug,
+    RewriteOptions::kDeferIframe,
+    RewriteOptions::kDeferJavascript,
+    RewriteOptions::kDelayImages,  // AKA inline_preview_images
+    RewriteOptions::kIncludeJsSourceMaps,
+    RewriteOptions::kInsertAmpLink,
+    RewriteOptions::kInsertGA,
+    RewriteOptions::kInsertImageDimensions,
+    RewriteOptions::kLazyloadImages,
+    RewriteOptions::kLeftTrimUrls,
+    RewriteOptions::kMakeGoogleAnalyticsAsync,
+    RewriteOptions::kPrioritizeCriticalCss,
+    RewriteOptions::kResizeToRenderedImageDimensions,
+    RewriteOptions::kResponsiveImages,
+    RewriteOptions::kRewriteDomains,
+    RewriteOptions::kSpriteImages,
 };
 
 // Note: These filters should not be included even if the level is "All".
@@ -818,6 +820,7 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
          "Inline Javascript"},
         {RewriteOptions::kInPlaceOptimizeForBrowser, "io",
          "In-place optimize for browser"},
+        {RewriteOptions::kInsertAmpLink, "ial", "Insert AMP link"},
         {RewriteOptions::kInsertDnsPrefetch, "idp", "Insert DNS Prefetch"},
         {RewriteOptions::kInsertGA, "ig", "Insert Google Analytics"},
         {RewriteOptions::kInsertImageDimensions, "id",
@@ -2128,6 +2131,9 @@ void RewriteOptions::AddProperties() {
   AddRequestProperty(
       false, &RewriteOptions::override_ie_document_mode_,
       "oidm", true);
+  AddBaseProperty("", &RewriteOptions::amp_link_pattern_, "alp",
+                  kAmpLinkPattern, kDirectoryScope, nullptr,
+                  true);  // Not applicable for mod_pagespeed.
 
   // Note: defer_javascript and defer_iframe were previously not
   // trusted on mobile user-agents, but have now matured to the point

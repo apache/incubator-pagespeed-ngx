@@ -156,6 +156,7 @@ class RewriteOptions {
     kInlineImportToLink,
     kInlineJavascript,
     kInPlaceOptimizeForBrowser,
+    kInsertAmpLink,
     kInsertDnsPrefetch,
     kInsertGA,
     kInsertImageDimensions,
@@ -224,6 +225,7 @@ class RewriteOptions {
   static const char kAllowVaryOn[];
   static const char kAlwaysMobilize[];
   static const char kAlwaysRewriteCss[];
+  static const char kAmpLinkPattern[];
   static const char kAnalyticsID[];
   static const char kAvoidRenamingIntrospectiveJavascript[];
   static const char kAwaitPcacheLookup[];
@@ -2692,6 +2694,13 @@ class RewriteOptions {
     return responsive_image_densities_.value();
   }
 
+  const GoogleString& amp_link_pattern() const {
+    return amp_link_pattern_.value();
+  }
+  void set_amp_link_pattern(const GoogleString& id) {
+    set_option(id, &amp_link_pattern_);
+  }
+
   bool mob_always() const { return mob_always_.value(); }
   void set_mob_always(bool x) { set_option(x, &mob_always_); }
   bool mob_iframe() const { return mob_iframe_.value(); }
@@ -4191,6 +4200,12 @@ class RewriteOptions {
 
   // Comma separated list of densities to use for responsive images.
   Option<ResponsiveDensities> responsive_image_densities_;
+
+  // The pattern to use for generating the canonical AMP page link from
+  // the existing URL.
+  // TODO(sjnickerson): Make this Option<AmpLinkPattern> so that parsing and
+  // validation can happen up front.
+  Option<GoogleString> amp_link_pattern_;
 
   // If set, how to fragment the http cache.  Otherwise the server's hostname,
   // from the Host header, is used.

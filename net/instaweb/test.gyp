@@ -161,6 +161,7 @@
         'rewriter/image_test_base.cc',
         'rewriter/image_url_encoder_test.cc',
         'rewriter/in_place_rewrite_context_test.cc',
+        'rewriter/insert_amp_link_filter_test.cc',
         'rewriter/insert_dns_prefetch_filter_test.cc',
         'rewriter/insert_ga_filter_test.cc',
         'rewriter/javascript_code_block_test.cc',

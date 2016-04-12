@@ -918,6 +918,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kAllowVaryOn,
     RewriteOptions::kAlwaysMobilize,
     RewriteOptions::kAlwaysRewriteCss,
+    RewriteOptions::kAmpLinkPattern,
     RewriteOptions::kAnalyticsID,
     RewriteOptions::kAvoidRenamingIntrospectiveJavascript,
     RewriteOptions::kAwaitPcacheLookup,
