@@ -252,19 +252,24 @@ class InsertGAFilterTest : public RewriteTestBase {
   }
 
   void SetUpContentExperiment(bool use_analytics_js) {
+    SetUpContentExperiment(use_analytics_js, "456");
+  }
+
+  void SetUpContentExperiment(bool use_analytics_js,
+                              const GoogleString& variant_id) {
     NullMessageHandler handler;
     RewriteOptions* options = rewrite_driver()->options()->Clone();
     options->set_use_analytics_js(use_analytics_js);
     options->set_running_experiment(true);
-    ASSERT_TRUE(options->AddExperimentSpec(
+    ASSERT_TRUE(options->AddExperimentSpec(StringPrintf(
         "id=2;percent=10;slot=4;options="
         "ContentExperimentID=123,"
-        "ContentExperimentVariantID=456", &handler));
+        "ContentExperimentVariantID=%s", variant_id.c_str()), &handler));
     ASSERT_TRUE(options->AddExperimentSpec(
         "id=7;percent=10;level=CoreFilters;slot=4;options="
         "ContentExperimentID=123,"
         "ContentExperimentVariantID=789", &handler));
-    options->SetExperimentState(2);  // Expecting cxid=123, cxvid=456.
+    options->SetExperimentState(2);  // Expecting cxid=123, cxvid=variant_id.
 
     // Setting up experiments automatically enables AddInstrumentation.
     // Turn it off so our output is easier to understand.
@@ -376,7 +381,25 @@ TEST_F(InsertGAFilterTest, ExperimentGaJsCx) {
              "\"></script>").c_str(),
       "",
       StrCat(StringPrintf(kContentExperimentsSetChosenVariationSnippet,
-                          "456", "123"),
+                          456, "123"),
+             StringPrintf(kGAJsSnippet, kGaId, "test.com",
+                          kGASpeedTracking)).c_str());
+  ValidateExpected("ga.js cx experiment", kHtmlInput, output);
+}
+
+TEST_F(InsertGAFilterTest, ExperimentGaJsCxString) {
+  // Show that an attempt to insert a ga.js snippet with a string variant ID
+  // results in a warning message.
+  const GoogleString& kVariantText("StringVariant");
+  SetUpContentExperiment(false, kVariantText);
+  GoogleString output = StringPrintf(
+      kHtmlOutputFormat,
+      StrCat("<script src=\"",
+             kContentExperimentsJsClientUrl,
+             "\"></script>").c_str(),
+      "",
+      StrCat(StringPrintf(kContentExperimentsNonNumericVariantComment,
+                          kVariantText.c_str()),
              StringPrintf(kGAJsSnippet, kGaId, "test.com",
                           kGASpeedTracking)).c_str());
   ValidateExpected("ga.js cx experiment", kHtmlInput, output);
@@ -408,6 +431,21 @@ TEST_F(InsertGAFilterTest, ExperimentAnalyticsJsCx) {
           kAnalyticsJsIncreaseSiteSpeedTracking,
           StringPrintf(kContentExperimentsSetExpAndVariantSnippet,
                        "123", "456").c_str()).c_str());
+  ValidateExpected("analytics.js cx experiment", kHtmlInput, output);
+}
+
+TEST_F(InsertGAFilterTest, ExperimentAnalyticsJsCxString) {
+  // Show that we can insert an anlytics.js snippet that includes content
+  // experiment tracking where the variant is a string.
+  const GoogleString& kVariantText("StringVariant");
+  SetUpContentExperiment(true, kVariantText);
+  GoogleString output =  StringPrintf(
+      kHtmlOutputFormat, "", "", StringPrintf(
+          kAnalyticsJsSnippet,
+          kGaId,
+          kAnalyticsJsIncreaseSiteSpeedTracking,
+          StringPrintf(kContentExperimentsSetExpAndVariantSnippet,
+                       "123", kVariantText.c_str()).c_str()).c_str());
   ValidateExpected("analytics.js cx experiment", kHtmlInput, output);
 }
 
@@ -529,7 +567,7 @@ TEST_F(InsertGAFilterTest, SynchronousGAContentExperiment) {
                        "\"></script><script>",
                        StringPrintf(
                            kContentExperimentsSetChosenVariationSnippet,
-                           "456", "123")).c_str(),
+                           456, "123")).c_str(),
                    kGaId);
   ValidateExpected("extend sync ga.js for content experiment", input, output);
 }
@@ -568,7 +606,7 @@ TEST_F(InsertGAFilterTest, AsynchronousGAContentExperiment) {
                        "\"></script><script>",
                        StringPrintf(
                            kContentExperimentsSetChosenVariationSnippet,
-                           "456", "123")).c_str(),
+                           456, "123")).c_str(),
                    kGaId);
   ValidateExpected("extend async ga.js for content experiment", input, output);
 }
@@ -764,7 +802,7 @@ TEST_F(InsertGAFilterTest, ExistingGaJsContentExperimentNoCloseAnything) {
              "\"></script>"
              "<script>",
              StringPrintf(kContentExperimentsSetChosenVariationSnippet,
-                          "456", "123"),
+                          456, "123"),
              StringPrintf(kGAJsSnippet, kGaId, "test.com",
                           kGASpeedTracking)).c_str());
 
@@ -786,7 +824,7 @@ TEST_F(InsertGAFilterTest, AsynchronousGAContentExperimentFlush) {
                        "\"></script><script>",
                        StringPrintf(
                            kContentExperimentsSetChosenVariationSnippet,
-                           "456", "123")).c_str(),
+                           456, "123")).c_str(),
                    kGaId);
 
   SetupWriter();

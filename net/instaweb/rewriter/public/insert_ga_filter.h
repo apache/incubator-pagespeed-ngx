@@ -43,6 +43,7 @@ extern const char kAnalyticsJsSnippet[];
 extern const char kAnalyticsJsIncreaseSiteSpeedTracking[];
 extern const char kAnalyticsJsIncreaseSiteSpeedTrackingMinimal[];
 extern const char kContentExperimentsJsClientUrl[];
+extern const char kContentExperimentsNonNumericVariantComment[];
 extern const char kContentExperimentsSetChosenVariationSnippet[];
 extern const char kContentExperimentsSetExpAndVariantSnippet[];
 extern const char kGASpeedTracking[];
@@ -114,9 +115,9 @@ class InsertGAFilter : public CommonFilter {
   // snippet depends in part on whether we've already seen a ga.js library load.
   AnalyticsStatus FindSnippetInScript(const GoogleString& s);
 
-  // Determine the snippet of JS we need to log a content experiment to
-  // analytics.js.
-  GoogleString AnalyticsJsExperimentSnippet();
+  // Determine the snippet of JS we need to log a content experiment.
+  GoogleString AnalyticsJsExperimentSnippet() const;
+  GoogleString GaJsExperimentSnippet() const;
 
   // Note: logs a warning if we're running with analytics.js and have asked it
   // to log to a custom variable (which isn't possible).

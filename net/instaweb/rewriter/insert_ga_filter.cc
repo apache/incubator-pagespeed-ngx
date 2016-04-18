@@ -141,7 +141,15 @@ extern const char kContentExperimentsJsClientUrl[] =
 // before ga.js loads you need to call this.  The first argument is the
 // variant id, the second is the experiment id.
 extern const char kContentExperimentsSetChosenVariationSnippet[] =
-    "cxApi.setChosenVariation('%s', '%s');";
+    "cxApi.setChosenVariation(%d, '%s');";
+
+// When using content experiments with ga.js, the variant ID must be numeric.
+// If the user requests a non-numeric variant with ga.js, we inject this
+// comment. The string is bracketed with newlines because otherwise it's
+// invisible in a wall of JavaScript.
+extern const char kContentExperimentsNonNumericVariantComment[] =
+    "\n/* mod_pagespeed cannot inject experiment variant '%s' "
+    "because it's not a number */\n";
 
 // When using content experiments with analytics.js, after ga('create', ..._)
 // and before ga('[...].send', 'pageview'), we need to insert:
@@ -246,11 +254,28 @@ InsertGAFilter::AnalyticsStatus InsertGAFilter::FindSnippetInScript(
   return kUnusableSnippetFound;
 }
 
-GoogleString InsertGAFilter::AnalyticsJsExperimentSnippet() {
+GoogleString InsertGAFilter::AnalyticsJsExperimentSnippet() const {
   return StringPrintf(
       kContentExperimentsSetExpAndVariantSnippet,
       driver()->options()->content_experiment_id().c_str(),
       driver()->options()->content_experiment_variant_id().c_str());
+}
+
+GoogleString InsertGAFilter::GaJsExperimentSnippet() const {
+  // ga.js requires a numeric variant id. Attempt to convert the string
+  // variant ID to int and use that.
+  const char* variant_id =
+      driver()->options()->content_experiment_variant_id().c_str();
+  int numeric_variant_id;
+  if (StringToInt(variant_id, &numeric_variant_id)) {
+    return StringPrintf(
+        kContentExperimentsSetChosenVariationSnippet, numeric_variant_id,
+        driver()->options()->content_experiment_id().c_str());
+  } else {
+    // Variant ID was non-numeric, so inject a warning.
+    return StringPrintf(kContentExperimentsNonNumericVariantComment,
+                        variant_id);
+  }
 }
 
 // * If we've already inserted any GA snippet or if we found a GA snippet in the
@@ -294,11 +319,7 @@ void InsertGAFilter::EndDocument() {
         driver()->AddAttribute(
             cxapi, HtmlName::kSrc, kContentExperimentsJsClientUrl);
         InsertNodeAtBodyEnd(cxapi);
-
-        experiment_snippet = StringPrintf(
-            kContentExperimentsSetChosenVariationSnippet,
-            driver()->options()->content_experiment_variant_id().c_str(),
-            driver()->options()->content_experiment_id().c_str());
+        experiment_snippet = GaJsExperimentSnippet();
       } else {
         experiment_snippet = StringPrintf(
             kGAExperimentSnippet,
@@ -515,15 +536,11 @@ void InsertGAFilter::RewriteInlineScript(HtmlCharactersNode* characters) {
 void InsertGAFilter::HandleEndScript(HtmlElement* script) {
   if (!postponed_script_body_.empty()) {
     DCHECK(script == script_element_);
-    GoogleString snippet_text = StringPrintf(
-        kContentExperimentsSetChosenVariationSnippet,
-        driver()->options()->content_experiment_variant_id().c_str(),
-        driver()->options()->content_experiment_id().c_str());
-
     driver()->InsertScriptAfterCurrent(
         kContentExperimentsJsClientUrl, true /* external */);
     driver()->InsertScriptAfterCurrent(
-        StrCat(snippet_text, postponed_script_body_), false /* inline */);
+        StrCat(GaJsExperimentSnippet(), postponed_script_body_),
+        false /* inline */);
     added_experiment_snippet_ = true;
     postponed_script_body_.clear();
   }
