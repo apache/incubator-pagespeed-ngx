@@ -24,7 +24,6 @@
 #include <string>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "testing/base/public/googletest.h"
 #include "testing/base/public/gunit.h"
 #include "webutil/css/parser.h"

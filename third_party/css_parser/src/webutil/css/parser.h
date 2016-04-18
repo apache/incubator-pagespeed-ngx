@@ -24,7 +24,6 @@
 #include "base/scoped_ptr.h"
 #include <string>
 #include <vector>
-#include "base/scoped_ptr.h"
 #include "strings/stringpiece.h"
 #include "testing/production_stub/public/gunit_prod.h"
 #include "util/utf8/public/unicodetext.h"
