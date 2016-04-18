@@ -101,6 +101,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/pedantic_filter.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
+#include "net/instaweb/rewriter/public/push_preload_filter.h"
 #include "net/instaweb/rewriter/public/redirect_on_size_limit_filter.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -1352,6 +1353,9 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kCollapseWhitespace)) {
     // Remove excess whitespace in HTML.
     AddOwnedPostRenderFilter(new CollapseWhitespaceFilter(this));
+  }
+  if (options()->NeedsDependenciesCohort()) {
+    AppendOwnedPreRenderFilter(new PushPreloadFilter(this));
   }
 
   if (DebugMode()) {
