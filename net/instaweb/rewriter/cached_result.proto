@@ -20,6 +20,7 @@
 syntax = "proto2";
 
 import "net/instaweb/spriter/public/image_spriter.proto";
+import "net/instaweb/rewriter/dependencies.proto";
 import "net/instaweb/rewriter/input_info.proto";
 
 package net_instaweb;
@@ -39,7 +40,7 @@ message AssociatedImageInfo {
 // is a sequence of input URLs and a filter id. The input array
 // tells us which inputs are used to construct this output; it must be
 // interpreted using the URL-sequence that was used to form the key.
-// Next free tag: 26
+// Next free tag: 27
 message CachedResult {
   // Tags 1-7 are for internal use by output_resource.
 
@@ -141,6 +142,9 @@ message CachedResult {
 
   // Type of the optimized image. This is actually net_instaweb::ImageType.
   optional int32 optimized_image_type = 25;
+
+  // Used by CollectDependenciesFilter
+  optional Dependency collected_dependency = 26;
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general

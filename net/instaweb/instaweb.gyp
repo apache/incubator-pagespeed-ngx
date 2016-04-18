@@ -1149,6 +1149,7 @@
         'rewriter/cached_result.proto',
       ],
       'dependencies': [
+        'instaweb_dependencies_pb',
         'instaweb_input_info_pb',
         'instaweb_spriter_pb',
       ],
@@ -1557,6 +1558,7 @@
         'rewriter/base_tag_filter.cc',
         'rewriter/cache_extender.cc',
         'rewriter/cacheable_resource_base.cc',
+        'rewriter/collect_dependencies_filter.cc',
         'rewriter/collect_flush_early_content_filter.cc',
         'rewriter/common_filter.cc',
         'rewriter/critical_css_beacon_filter.cc',

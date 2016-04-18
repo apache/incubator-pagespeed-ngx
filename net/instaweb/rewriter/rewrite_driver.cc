@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
+#include "net/instaweb/rewriter/public/collect_dependencies_filter.h"
 #include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
@@ -1234,6 +1235,10 @@ void RewriteDriver::AddPreRenderFilters() {
   if (flush_subresources_enabled) {
       AppendOwnedPreRenderFilter(new
                                  CollectFlushEarlyContentFilter(this));
+  }
+
+  if (options()->NeedsDependenciesCohort()) {
+    AppendOwnedPreRenderFilter(new CollectDependenciesFilter(this));
   }
 }
 

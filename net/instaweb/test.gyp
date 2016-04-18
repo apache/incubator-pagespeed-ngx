@@ -104,6 +104,7 @@
         'rewriter/beacon_critical_images_finder_test.cc',
         'rewriter/cache_extender_test.cc',
         'rewriter/cacheable_resource_base_test.cc',
+        'rewriter/collect_dependencies_filter_test.cc',
         'rewriter/collect_flush_early_content_filter_test.cc',
         'rewriter/common_filter_test.cc',
         'rewriter/critical_css_beacon_filter_test.cc',
