@@ -136,7 +136,7 @@
     ModPagespeedFileCacheInodeLimit        500000
 
     # Bound the number of images that can be rewritten at any one time; this
-    # avoids overloading the CPU.  Set this to 0 to remove the bound.
+    # avoids overloading the CPU.  Set this to -1 to remove the bound.
     #
     # ModPagespeedImageMaxRewritesAtOnce      8
 
