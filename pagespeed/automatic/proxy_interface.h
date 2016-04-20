@@ -48,12 +48,12 @@ class TimedVariable;
 // TODO(sligocki): Rename as per style-guide.
 class ProxyInterface : public UrlAsyncFetcher {
  public:
-  ProxyInterface(const StringPiece& hostname, int port,
+  ProxyInterface(StringPiece stats_prefix, StringPiece hostname, int port,
                  ServerContext* server_context, Statistics* stats);
   virtual ~ProxyInterface();
 
   // Initializes statistics variables associated with this class.
-  static void InitStats(Statistics* statistics);
+  static void InitStats(StringPiece stats_prefix, Statistics* statistics);
 
   // All requests use this interface. We decide internally whether the
   // request is a pagespeed resource, HTML page to be rewritten or another

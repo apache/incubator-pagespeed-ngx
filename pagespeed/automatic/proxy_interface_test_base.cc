@@ -217,9 +217,9 @@ void ProxyInterfaceTestBase::SetUp() {
   ThreadSynchronizer* sync = server_context()->thread_synchronizer();
   sync->EnableForPrefix(ProxyFetch::kCollectorFinish);
   sync->AllowSloppyTermination(ProxyFetch::kCollectorFinish);
-  ProxyInterface::InitStats(statistics());
-  proxy_interface_.reset(
-      new ProxyInterface("localhost", 80, server_context(), statistics()));
+  ProxyInterface::InitStats("test-", statistics());
+  proxy_interface_.reset(new ProxyInterface(
+      "test-", "localhost", 80, server_context(), statistics()));
   server_context()->set_critical_images_finder(
       mock_critical_images_finder_);
 }

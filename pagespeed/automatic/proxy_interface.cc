@@ -75,38 +75,43 @@ struct ProxyInterface::RequestData {
   MessageHandler* handler;
 };
 
-ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
+ProxyInterface::ProxyInterface(StringPiece stats_prefix,
+                               StringPiece hostname, int port,
                                ServerContext* server_context,
                                Statistics* stats)
     : server_context_(server_context),
       hostname_(hostname.as_string()),
       port_(port),
-      all_requests_(stats->GetTimedVariable(kTotalRequestCount)),
-      pagespeed_requests_(stats->GetTimedVariable(kPagespeedRequestCount)),
-      rejected_requests_(stats->GetTimedVariable(kRejectedRequestCount)),
-      requests_without_domain_config_(
-          stats->GetTimedVariable(kNoDomainConfigRequestCount)),
-      resource_requests_without_domain_config_(
-          stats->GetTimedVariable(kNoDomainConfigResourceRequestCount)) {
+      all_requests_(stats->GetTimedVariable(
+          StrCat(stats_prefix, kTotalRequestCount))),
+      pagespeed_requests_(stats->GetTimedVariable(
+          StrCat(stats_prefix, kPagespeedRequestCount))),
+      rejected_requests_(stats->GetTimedVariable(
+          StrCat(stats_prefix, kRejectedRequestCount))),
+      requests_without_domain_config_(stats->GetTimedVariable(
+          StrCat(stats_prefix, kNoDomainConfigRequestCount))),
+      resource_requests_without_domain_config_(stats->GetTimedVariable(
+          StrCat(stats_prefix,  kNoDomainConfigResourceRequestCount))) {
   proxy_fetch_factory_.reset(new ProxyFetchFactory(server_context));
 }
 
 ProxyInterface::~ProxyInterface() {
 }
 
-void ProxyInterface::InitStats(Statistics* statistics) {
-  statistics->AddTimedVariable(kTotalRequestCount,
+void ProxyInterface::InitStats(StringPiece stats_prefix,
+                               Statistics* statistics) {
+  statistics->AddTimedVariable(StrCat(stats_prefix, kTotalRequestCount),
                                ServerContext::kStatisticsGroup);
-  statistics->AddTimedVariable(kPagespeedRequestCount,
+  statistics->AddTimedVariable(StrCat(stats_prefix, kPagespeedRequestCount),
                                ServerContext::kStatisticsGroup);
-  statistics->AddTimedVariable(kRejectedRequestCount,
+  statistics->AddTimedVariable(StrCat(stats_prefix, kRejectedRequestCount),
                                ServerContext::kStatisticsGroup);
-  statistics->AddTimedVariable(kRejectedRequestCount,
-                               ServerContext::kStatisticsGroup);
-  statistics->AddTimedVariable(kNoDomainConfigRequestCount,
-                               ServerContext::kStatisticsGroup);
-  statistics->AddTimedVariable(kNoDomainConfigResourceRequestCount,
-                               ServerContext::kStatisticsGroup);
+  statistics->AddTimedVariable(
+      StrCat(stats_prefix, kNoDomainConfigRequestCount),
+      ServerContext::kStatisticsGroup);
+  statistics->AddTimedVariable(
+      StrCat(stats_prefix, kNoDomainConfigResourceRequestCount),
+      ServerContext::kStatisticsGroup);
   FlushEarlyFlow::InitStats(statistics);
 }
 
