@@ -228,7 +228,7 @@ void OutputResource::LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
 GoogleString OutputResource::decoded_base() const {
   GoogleUrl gurl(url());
   GoogleString decoded_url;
-  if (server_context()->url_namer()->Decode(gurl, rewrite_options(), NULL,
+  if (server_context()->url_namer()->Decode(gurl, rewrite_options(),
                                             &decoded_url)) {
     gurl.Reset(decoded_url);
   }

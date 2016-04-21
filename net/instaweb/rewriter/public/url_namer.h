@@ -56,9 +56,7 @@ class UrlNamer {
                               const OutputResource& output_resource,
                               EncodeOption encode_option) const;
 
-  // Given the request_url, generate the original url.  If the URL naming
-  // syntax supports an "owner" domain, and 'owner_domain' is non-null, then
-  // this method writes the owner domain into that pointer.
+  // Given the request_url, generate the original url.
   //
   // Returns 'false' if request_url was not encoded via this namer.
   //
@@ -66,7 +64,6 @@ class UrlNamer {
   // Note: rewrite_options may be NULL.
   virtual bool Decode(const GoogleUrl& request_url,
                       const RewriteOptions* rewrite_options,
-                      GoogleUrl* owner_domain,
                       GoogleString* decoded) const;
 
   // Determines whether the provided request URL is authorized given the

@@ -101,14 +101,13 @@ ProxyFetch* ProxyFetchFactory::CreateNewProxyFetch(
   // from a non-transparently proxied domain.
   UrlNamer* namer = server_context_->url_namer();
   GoogleString decoded_resource;
-  GoogleUrl gurl(url_in), request_origin;
+  GoogleUrl gurl(url_in);
   DCHECK(!server_context_->IsPagespeedResource(gurl))
       << "expect ResourceFetch called for pagespeed resources, not ProxyFetch";
 
   bool cross_domain = false;
   if (gurl.IsWebValid()) {
-    if (namer->Decode(gurl, driver->options(), &request_origin,
-                      &decoded_resource)) {
+    if (namer->Decode(gurl, driver->options(), &decoded_resource)) {
       const RewriteOptions* options = driver->options();
       if (namer->IsAuthorized(gurl, *options)) {
         // The URL is proxied, but is not rewritten as a pagespeed resource,

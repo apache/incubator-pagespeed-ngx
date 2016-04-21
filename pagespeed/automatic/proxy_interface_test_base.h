@@ -58,10 +58,9 @@ class ProxyUrlNamer : public UrlNamer {
   ProxyUrlNamer() : authorized_(true) {}
 
   // Given the request_url, generate the original url.
-  virtual bool Decode(const GoogleUrl& gurl,
-                      const RewriteOptions* rewrite_options,
-                      GoogleUrl* domain,
-                      GoogleString* decoded) const;
+  bool Decode(const GoogleUrl& gurl,
+              const RewriteOptions* rewrite_options,
+              GoogleString* decoded) const override;
 
   virtual bool IsAuthorized(const GoogleUrl& gurl,
                             const RewriteOptions& options) const {

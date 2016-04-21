@@ -125,7 +125,6 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
 const char ProxyUrlNamer::kProxyHost[] = "proxy_host.com";
 bool ProxyUrlNamer::Decode(const GoogleUrl& gurl,
                            const RewriteOptions* rewrite_options,
-                           GoogleUrl* domain,
                            GoogleString* decoded) const {
   if (gurl.Host() != kProxyHost) {
     return false;
@@ -134,9 +133,6 @@ bool ProxyUrlNamer::Decode(const GoogleUrl& gurl,
   SplitStringPieceToVector(gurl.PathAndLeaf(), "/", &path_vector, false);
   if (path_vector.size() < 3) {
     return false;
-  }
-  if (domain != NULL) {
-    domain->Reset(StrCat("http://", path_vector[1]));
   }
 
   // [0] is "" because PathAndLeaf returns a string with a leading slash
