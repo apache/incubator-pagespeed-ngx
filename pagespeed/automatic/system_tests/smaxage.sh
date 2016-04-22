@@ -42,34 +42,33 @@ function check_ipro_s_maxage() {
       echo "FAILed input: $OUT"
       fail
     elif [ "$received_body_length" = "$unoptimized_content_length" ]; then
-      echo "Saw unoptimized content"
-      if [ "$cache_control_line" = "$expected_unoptimized_cache_control" ]; then
-        echo "Saw expected cache control, [$expected_unoptimized_cache_control]"
-      else
+      # Unoptimized response.
+      # This block may run multiple times and should be silent on success.
+      if [ "$cache_control_line" != "$expected_unoptimized_cache_control" ]; then
         echo "Got bad cache control, [$cache_control_line], expecting"
         echo "[$expected_unoptimized_cache_control]"
         echo "FAILed input: $OUT"
         fail
       fi
 
-      if echo "$OUT" | grep "^Content-Length: "; then
-        check_from "$OUT" grep "^Content-Length: $unoptimized_content_length$"
+      if echo "$OUT" | grep -q "^Content-Length: "; then
+        check_from -q "$OUT" grep -q "^Content-Length: $unoptimized_content_length$"
       else
-        check_from "$OUT" grep "^Transfer-Encoding: chunked$"
+        check_from -q "$OUT" grep -q "^Transfer-Encoding: chunked$"
       fi
     else
+      # Optimized response.
       if ! $expect_optimization; then
         echo "Got unexpected optimization"
         echo "FAILed input: $OUT"
         fail
       fi
 
-      echo "Expecting optimized content"
       check_from "$OUT" grep "$expected_optimized_cache_control"
       check_from "$OUT" grep \
         "^X-Original-Content-Length: $unoptimized_content_length$"
 
-      # Now we've verified that the optimized version has the right headers.  #
+      # Now we've verified that the optimized version has the right headers.
       # We may not have seen the unoptimized version, if we were running with a
       # warm cache, but if we did see it, it had the right headers as well.
       break

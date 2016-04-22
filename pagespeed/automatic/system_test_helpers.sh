@@ -466,10 +466,20 @@ function check() {
 # Like check, but the first argument is text to pipe into the command given in
 # the remaining arguments.
 function check_from() {
+  local quiet=0
+  if [ "$1" = "-q" ]; then
+    quiet=1
+    shift
+  fi
   local text="$1"
+  local msg="$text"
   shift
-  echo "     check_from" "$@"
-  echo "$text" | "$@" || handle_failure "$text"
+  if [ "$quiet" -ne 0 ];then
+    msg="(check_from -q $@): $text"
+  else
+    echo "     check_from" "$@"
+  fi
+  echo "$text" | "$@" || handle_failure "$msg"
 }
 
 # Same as check(), but expects command to fail.
