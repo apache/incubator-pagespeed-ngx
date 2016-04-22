@@ -31,6 +31,7 @@
 : ${NATIVE_FETCHER:?"Set NATIVE_FETCHER to off or on"}
 : ${PRIMARY_PORT:?"Set PRIMARY_PORT"}
 : ${SECONDARY_PORT:?"Set SECONDARY_PORT"}
+: ${CONTROLLER_PORT:?"Set CONTROLLER_PORT"}
 : ${RCPORT1:?"Set RCPORT1"}
 : ${RCPORT2:?"Set RCPORT2"}
 : ${RCPORT2:?"Set RCPORT3"}
@@ -200,6 +201,7 @@ cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@SERVER_ROOT@@#'"$SERVER_ROOT"'#' \
   | sed 's#@@PRIMARY_PORT@@#'"$PRIMARY_PORT"'#' \
   | sed 's#@@SECONDARY_PORT@@#'"$SECONDARY_PORT"'#' \
+  | sed 's#@@CONTROLLER_PORT@@#'"$CONTROLLER_PORT"'#' \
   | sed 's#@@NATIVE_FETCHER@@#'"$NATIVE_FETCHER"'#' \
   | sed 's#@@RESOLVER@@#'"$RESOLVER"'#' \
   | sed 's#@@RCPORT1@@#'"$RCPORT1"'#' \
