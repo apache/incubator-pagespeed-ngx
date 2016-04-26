@@ -1611,6 +1611,7 @@
         'rewriter/js_replacer.cc',
         'rewriter/lazyload_images_filter.cc',
         'rewriter/local_storage_cache_filter.cc',
+        'rewriter/measurement_proxy_url_namer.cc',
         'rewriter/make_show_ads_async_filter.cc',
         'rewriter/meta_tag_filter.cc',
         'rewriter/mobilize_rewrite_filter.cc',
