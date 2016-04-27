@@ -3323,6 +3323,19 @@ TEST_F(RewriteOptionsTest, MergeAllowVaryOnOptions) {
   VerifyMergingAllowVaryOn("", "", "Auto");
 }
 
+TEST_F(RewriteOptionsTest, MergeAllowDisallow) {
+  RewriteOptions one(&thread_system_), two(&thread_system_);
+  one.Disallow("*");
+  EXPECT_FALSE(one.IsAllowed("foobar"));
+  EXPECT_FALSE(one.IsAllowed("bar"));
+  two.Allow("foo*");
+  EXPECT_TRUE(two.IsAllowed("foobar"));
+  EXPECT_TRUE(two.IsAllowed("bar"));
+  MergeOptions(one, two);
+  EXPECT_TRUE(options_.IsAllowed("foobar"));
+  EXPECT_FALSE(options_.IsAllowed("bar"));
+}
+
 TEST_F(RewriteOptionsTest, ImageQualitiesOverride) {
   options_.set_image_recompress_quality(1);
 
