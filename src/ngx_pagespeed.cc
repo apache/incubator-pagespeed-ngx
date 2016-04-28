@@ -708,6 +708,13 @@ char* ps_main_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
+// We want NGX_CONF_MULTI for some very old versions:
+//   https://github.com/pagespeed/ngx_pagespeed/commit/66f1b9aa
+// but it's gone in recent revisions, so provide a compat #define if needed
+#ifndef NGX_CONF_MULTI
+#define NGX_CONF_MULTI 0
+#endif
+
 // TODO(jud): Verify that all the offsets should be NGX_HTTP_SRV_CONF_OFFSET and
 // not NGX_HTTP_LOC_CONF_OFFSET or NGX_HTTP_MAIN_CONF_OFFSET.
 ngx_command_t ps_commands[] = {
