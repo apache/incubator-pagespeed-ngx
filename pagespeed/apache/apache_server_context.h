@@ -48,6 +48,9 @@ class Variable;
 // that require a phased initialization.
 class ApacheServerContext : public SystemServerContext {
  public:
+  // Prefix for ProxyInterface stats (active in proxy_all_requests_mode() only).
+  static const char kProxyInterfaceStatsPrefix[];
+
   ApacheServerContext(ApacheRewriteDriverFactory* factory,
                       server_rec* server,
                       const StringPiece& version);
@@ -58,6 +61,7 @@ class ApacheServerContext : public SystemServerContext {
 
   ApacheRewriteDriverFactory* apache_factory() { return apache_factory_; }
   ApacheConfig* global_config();
+  const ApacheConfig* global_config() const;
   bool InitPath(const GoogleString& path);
 
   // These return configuration objects that hold settings from
@@ -106,10 +110,13 @@ class ApacheServerContext : public SystemServerContext {
 
   void InitProxyFetchFactory();
 
-  // We do not proxy external HTML from mod_pagespeed in Apache using the
-  // ProxyFetch flow.  Currently we must rely on a separate module to
-  // let mod_pagespeed behave as an origin fetcher.
-  virtual bool ProxiesHtml() const { return false; }
+  // We only proxy external HTML from mod_pagespeed in Apache using the
+  // ProxyFetch flow if proxy_all_requests_mode() is on in config.  In the usual
+  // case, we handle HTML as an Apache filter, letting something like mod_proxy
+  // (or one of our own test modes like slurp) do the fetching.
+  virtual bool ProxiesHtml() const {
+    return global_config()->proxy_all_requests_mode();
+  }
 
   ApacheRequestContext* NewApacheRequestContext(request_rec* request);
 
@@ -139,6 +146,8 @@ class ApacheServerContext : public SystemServerContext {
   virtual GoogleString FormatOption(StringPiece option_name, StringPiece args);
 
  private:
+  void ChildInit(SystemRewriteDriverFactory* factory) override;
+
   void ReportNotFoundHelper(MessageType message_type,
                             StringPiece url,
                             request_rec* request,

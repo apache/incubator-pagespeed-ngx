@@ -38,6 +38,7 @@ class ApacheServerContext;
 class MessageHandler;
 class ProcessContext;
 class ServerContext;
+class SchedulerThread;
 class SharedCircularBuffer;
 class SlowWorker;
 class Timer;
@@ -90,6 +91,11 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   static void Initialize();
   static void Terminate();
 
+  // Called by any ApacheServerContext whose configuration requires use of
+  // a scheduler thread. This will actually start one, so should only be
+  // called from child processes.
+  void SetNeedSchedulerThread();
+
   // Needed by mod_instaweb.cc:ParseDirective().
   virtual void set_message_buffer_size(int x) {
     SystemRewriteDriverFactory::set_message_buffer_size(x);
@@ -123,6 +129,7 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   apr_pool_t* pool_;
   server_rec* server_rec_;
   scoped_ptr<SlowWorker> slow_worker_;
+  SchedulerThread* scheduler_thread_;  // cleaned up with defer_cleanup
 
   // TODO(jmarantz): These options could be consolidated in a protobuf or
   // some other struct, which would keep them distinct from the rest of the

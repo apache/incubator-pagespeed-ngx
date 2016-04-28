@@ -42,7 +42,9 @@
 #include "pagespeed/apache/header_util.h"
 #include "pagespeed/apache/instaweb_context.h"
 #include "pagespeed/apache/mod_instaweb.h"
+#include "pagespeed/apache/simple_buffered_apache_fetch.h"
 #include "pagespeed/automatic/proxy_fetch.h"
+#include "pagespeed/automatic/proxy_interface.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -515,6 +517,42 @@ bool InstawebHandler::HandleAsProxy() {
   return false;  // declined
 }
 
+void InstawebHandler::HandleAsProxyForAll() {
+  static const char kLoopHeader[] = "X-PageSpeed-Loop";
+  static const char kLoopValue[] = "MPS";
+
+  // Note: we can't use MakeFetch here as we want ProxyInterface to create the
+  // RewriteDriver.
+  std::unique_ptr<RequestHeaders> request_headers(new RequestHeaders());
+  ApacheRequestToRequestHeaders(*request_, request_headers.get());
+
+  // Do loop detection.
+  if (request_headers->HasValue(kLoopHeader, kLoopValue)) {
+    write_handler_response("Loop detected on fetch in ProxyAllRequests mode; "
+                           "you may need to authorize more domains. ",
+                           request_);
+    return;
+  }
+  request_headers->Add(kLoopHeader, kLoopValue);
+
+  SimpleBufferedApacheFetch fetch(request_context_,
+                                  request_headers.release(),
+                                  server_context_->thread_system(),
+                                  request_,
+                                  server_context_->message_handler());
+
+  ProxyInterface proxy_interface(
+      ApacheServerContext::kProxyInterfaceStatsPrefix,
+      apache_request_context_->local_ip(),
+      apache_request_context_->local_port(),
+      server_context_,
+      server_context_->statistics());
+  proxy_interface.Fetch(original_url_, server_context_->message_handler(),
+                        &fetch);
+
+  fetch.Wait();
+}
+
 // Determines whether the url can be handled as a mod_pagespeed or in-place
 // optimized resource, and handles it, returning true.  Success status is
 // written to the status code in the response headers.
@@ -865,6 +903,13 @@ apr_status_t InstawebHandler::instaweb_handler(request_rec* request) {
   GoogleUrl gurl;
   if (url == NULL || !gurl.Reset(url)) {
     return DECLINED;  // URL not valid, let someone other module handle.
+  }
+
+  if (global_config->proxy_all_requests_mode() && gurl.IsWebValid()) {
+    InstawebHandler instaweb_handler(request);
+    // TODO(morlovich): Still export stats and the like?
+    instaweb_handler.HandleAsProxyForAll();
+    return APACHE_OK;
   }
 
   if (request_handler_str == kStatisticsHandler &&

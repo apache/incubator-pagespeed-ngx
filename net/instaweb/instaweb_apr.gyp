@@ -49,6 +49,7 @@
         '<(DEPTH)/pagespeed/apache/apache_fetch.cc',
         '<(DEPTH)/pagespeed/apache/apache_thread_system.cc',
         '<(DEPTH)/pagespeed/apache/apr_timer.cc',
+        '<(DEPTH)/pagespeed/apache/simple_buffered_apache_fetch.cc',
       ],
       'export_dependent_settings': [
         '<(instaweb_root)/instaweb.gyp:instaweb_util',

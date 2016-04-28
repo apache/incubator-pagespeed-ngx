@@ -105,6 +105,10 @@ class InstawebHandler {
   // occur, and another handler should take over the request.
   bool HandleAsProxy();
 
+  // Tries to acts as a full-featured proxy, handling both HTML and
+  // resources.
+  void HandleAsProxyForAll();
+
   // Attempts to handle this as an in-place resource. Returns false if
   // the in-place handling didn't occur, and another handler should take
   // over the request.

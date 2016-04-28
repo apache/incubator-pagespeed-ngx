@@ -21,6 +21,7 @@
 #include "pagespeed/apache/apache_request_context.h"
 #include "pagespeed/apache/apache_rewrite_driver_factory.h"
 #include "pagespeed/automatic/proxy_fetch.h"
+#include "pagespeed/automatic/proxy_interface.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -29,6 +30,9 @@
 #include "pagespeed/kernel/http/http_names.h"
 
 namespace net_instaweb {
+
+const char ApacheServerContext::kProxyInterfaceStatsPrefix[] =
+    "proxy-all-mode-";
 
 ApacheServerContext::ApacheServerContext(
     ApacheRewriteDriverFactory* factory,
@@ -56,6 +60,7 @@ ApacheServerContext::~ApacheServerContext() {
 }
 
 void ApacheServerContext::InitStats(Statistics* statistics) {
+  ProxyInterface::InitStats(kProxyInterfaceStatsPrefix, statistics);
   SystemServerContext::InitStats(statistics);
 }
 
@@ -71,6 +76,10 @@ bool ApacheServerContext::InitPath(const GoogleString& path) {
 }
 
 ApacheConfig* ApacheServerContext::global_config() {
+  return ApacheConfig::DynamicCast(global_options());
+}
+
+const ApacheConfig* ApacheServerContext::global_config() const {
   return ApacheConfig::DynamicCast(global_options());
 }
 
@@ -145,6 +154,13 @@ void ApacheServerContext::ReportNotFoundHelper(MessageType message_type,
 GoogleString ApacheServerContext::FormatOption(StringPiece option_name,
                                                StringPiece args) {
   return StrCat("ModPagespeed", option_name, " ", args);
+}
+
+void ApacheServerContext::ChildInit(SystemRewriteDriverFactory* f) {
+  if (global_config()->proxy_all_requests_mode()) {
+    apache_factory_->SetNeedSchedulerThread();
+  }
+  SystemServerContext::ChildInit(f);
 }
 
 }  // namespace net_instaweb

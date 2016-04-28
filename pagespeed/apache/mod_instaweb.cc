@@ -371,8 +371,11 @@ class ScopedTimer {
 InstawebContext* build_context_for_request(request_rec* request) {
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
-  // Escape ASAP if we're in unplugged mode.
-  if (server_context->global_config()->unplugged()) {
+  // Escape ASAP if we're in unplugged mode, or if in proxy_all_requests_mode,
+  // which does HTML rewriting in ProxyInterface rather than via an Apache
+  // filter.
+  if (server_context->global_config()->unplugged() ||
+      server_context->global_config()->proxy_all_requests_mode()) {
     return NULL;
   }
 

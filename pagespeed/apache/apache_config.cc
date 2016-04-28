@@ -27,6 +27,7 @@ namespace {
 const char kModPagespeedStatisticsHandlerPath[] = "/mod_pagespeed_statistics";
 const char kProxyAuth[] = "ProxyAuth";
 const char kForceBuffering[] = "ForceBuffering";
+const char kProxyAllRequests[] = "ExperimentalProxyAllRequests";
 
 }  // namespace
 
@@ -86,6 +87,13 @@ void ApacheConfig::AddProperties() {
       kForceBuffering,
       "Force buffering of non-html fetch responses rather than streaming",
       true /* safe_to_print */);
+
+  AddApacheProperty(
+      false, &ApacheConfig::proxy_all_requests_mode_, "aparx",
+      kProxyAllRequests,
+      "Experimental mode where mod_pagespeed acts entirely as a proxy, and "
+      "doesn't attempt to work with any local serving. ",
+      false /* safe_to_print*/);
 
   MergeSubclassProperties(apache_properties_);
 

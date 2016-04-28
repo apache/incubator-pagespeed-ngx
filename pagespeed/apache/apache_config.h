@@ -57,6 +57,10 @@ class ApacheConfig : public SystemRewriteOptions {
   bool force_buffering() const { return force_buffering_.value(); }
   void set_force_buffering(bool x) { set_option(x, &force_buffering_); }
 
+  bool proxy_all_requests_mode() const {
+    return proxy_all_requests_mode_.value();
+  }
+
   // Returns a suitably down cast version of 'instance' if it is an instance
   // of this class, NULL if not.
   static const ApacheConfig* DynamicCast(const RewriteOptions* instance);
@@ -85,6 +89,7 @@ class ApacheConfig : public SystemRewriteOptions {
 
   Option<bool> fetch_from_mod_spdy_;
   Option<bool> force_buffering_;
+  Option<bool> proxy_all_requests_mode_;
   Option<GoogleString> proxy_auth_;  // CookieName[=Value][:RedirectUrl]
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);

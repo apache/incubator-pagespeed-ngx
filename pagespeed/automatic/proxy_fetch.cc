@@ -1170,9 +1170,12 @@ void ProxyFetch::Finish(bool success) {
     }
   }
 
+  // We want to de-register before calling HandleDone since the latter may
+  // cleanup the factory.
+  factory_->RegisterFinishedFetch(this);
+
   SharedAsyncFetch::HandleDone(success);
   done_called_ = true;
-  factory_->RegisterFinishedFetch(this);
 
   // In ProxyInterfaceTest.HeadersSetupRace, raise a signal that
   // indicates the test functionality is complete.  In other contexts

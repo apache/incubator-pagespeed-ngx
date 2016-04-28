@@ -40,6 +40,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/sharedmem/shared_circular_buffer.h"
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
+#include "pagespeed/kernel/thread/scheduler_thread.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
 
 namespace net_instaweb {
@@ -56,6 +57,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
           server->server_hostname,
           server->port),
       server_rec_(server),
+      scheduler_thread_(nullptr),
       version_(version.data(), version.size()),
       apache_message_handler_(new ApacheMessageHandler(
           server_rec_, version_, timer(), thread_system()->NewMutex())),
@@ -112,6 +114,14 @@ void ApacheRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
       dynamic_cast<ApacheServerContext*>(server_context);
   CHECK(apache_server_context != NULL);
   apache_server_context->InitProxyFetchFactory();
+}
+
+void ApacheRewriteDriverFactory::SetNeedSchedulerThread() {
+  if (scheduler_thread_ == nullptr) {
+    scheduler_thread_ = new SchedulerThread(thread_system(), scheduler());
+    defer_cleanup(scheduler_thread_->MakeDeleter());
+    scheduler_thread_->Start();
+  }
 }
 
 bool ApacheRewriteDriverFactory::IsServerThreaded() {
