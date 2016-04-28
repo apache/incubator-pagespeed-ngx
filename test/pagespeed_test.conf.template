@@ -79,6 +79,8 @@ http {
   pagespeed StatisticsLogging on;
   pagespeed LogDir "@@TEST_TMP@@/logdir";
 
+  pagespeed CentralControllerPort @@CONTROLLER_PORT@@;
+
   server {
     # Sets up a logical home-page server on
     # max-cacheable-content-length.example.com.  This server is only used to
