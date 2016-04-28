@@ -35,6 +35,8 @@ const char kFetchHttps[] = "FetchHttps";
 
 }  // namespace
 
+const char SystemRewriteOptions::kCentralControllerPort[] =
+    "CentralControllerPort";
 const char SystemRewriteOptions::kStaticAssetCDN[] = "StaticAssetCDN";
 
 RewriteOptions::Properties* SystemRewriteOptions::system_properties_ = NULL;
@@ -204,6 +206,10 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kSlurpFlushLimit,
                     "Set the maximum byte size for the slurped content to hold "
                     "before a flush", false);
+  AddSystemProperty(0, &SystemRewriteOptions::controller_port_, "ccp",
+                    SystemRewriteOptions::kCentralControllerPort,
+                    kProcessScopeStrict,
+                    "TCP port for central controller processes", false);
   AddSystemProperty(false, &SystemRewriteOptions::disable_loopback_routing_,
                     "adlr",
                     "DangerPermitFetchFromUnknownHosts",

@@ -48,6 +48,7 @@ APACHE_HTTPS_DOMAIN   = localhost
 APACHE_PORT           = 80
 APACHE_SECONDARY_PORT = 8084
 APACHE_TERTIARY_PORT  = 8085
+CONTROLLER_PORT       = 8086
 RCPORT1               = 9091
 RCPORT2               = 9092
 RCPORT3               = 9093
@@ -379,6 +380,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@APACHE_MODULES@@!$(APACHE_MODULES)!g" \
 	    -e "s!@@APACHE_SECONDARY_PORT@@!$(APACHE_SECONDARY_PORT)!g" \
 	    -e "s!@@APACHE_TERTIARY_PORT@@!$(APACHE_TERTIARY_PORT)!g" \
+	    -e "s!@@CONTROLLER_PORT@@!$(CONTROLLER_PORT)!g" \
 	    -e "s!@@PAGESPEED-TEST-HOST@@!$(PAGESPEED_TEST_HOST)!g" \
 	    -e "s!@@MOD_PAGESPEED_CACHE@@!$(MOD_PAGESPEED_CACHE)!g" \
 	    -e "s!@@MOD_PAGESPEED_LOG@@!$(MOD_PAGESPEED_LOG)!g" \

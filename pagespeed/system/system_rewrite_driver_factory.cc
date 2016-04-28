@@ -268,14 +268,23 @@ void SystemRewriteDriverFactory::PrepareControllerProcess() {
   SetupMessageHandlers();
 }
 
-void SystemRewriteDriverFactory::StartController() {
-  // In the forked process, this call starts a new event loop and never returns.
-  ControllerManager::ForkControllerProcess(
-      this, system_thread_system_, message_handler());
+void SystemRewriteDriverFactory::StartController(
+    const SystemRewriteOptions& options) {
+  if (options.controller_port() != 0) {
+    // In the forked process, this call starts a new event loop and never
+    // returns.
+    ControllerManager::ForkControllerProcess(this, system_thread_system_,
+                                             message_handler());
+  }
 }
 
 void SystemRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
+
+  // These options are for StartController. Theoretically we can just grab
+  // any-old one. However, if InheritVHostConfig is off, only one will contain
+  // kProcessScope options.
+  SystemRewriteOptions* options = nullptr;
 
   // Let SystemCaches know about the various paths we have in configuration
   // first, as well as the memcached instances.
@@ -284,11 +293,18 @@ void SystemRewriteDriverFactory::RootInit() {
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
     SystemServerContext* server_context = *p;
     caches_->RegisterConfig(server_context->global_system_rewrite_options());
+    if (options == nullptr &&
+        server_context->global_system_rewrite_options()->controller_port() !=
+            0) {
+      options = server_context->global_system_rewrite_options();
+    }
   }
 
   caches_->RootInit();
 
-  StartController();
+  if (options != nullptr) {
+    StartController(*options);
+  }
 }
 
 void SystemRewriteDriverFactory::ChildInit() {

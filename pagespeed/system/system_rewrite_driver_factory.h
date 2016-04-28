@@ -263,7 +263,7 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // sense or running the Controller in its own process doesn't make sense, this
   // is a hook where you can start the controller in whatever way makes sense
   // for your platform.
-  virtual void StartController();
+  virtual void StartController(const SystemRewriteOptions& options);
 
   // Set the name of this process, for debugging visibility.
   virtual void NameProcess(const char* name);

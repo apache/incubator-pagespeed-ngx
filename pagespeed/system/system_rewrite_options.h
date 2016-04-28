@@ -39,6 +39,8 @@ class MessageHandler;
 class SystemRewriteOptions : public RewriteOptions {
  public:
   typedef std::set<StaticAssetEnum::StaticAsset> StaticAssetSet;
+
+  static const char kCentralControllerPort[];
   static const char kStaticAssetCDN[];
 
   static void Initialize();
@@ -178,6 +180,12 @@ class SystemRewriteOptions : public RewriteOptions {
   }
   void set_fetcher_proxy(const GoogleString& x) {
     set_option(x, &fetcher_proxy_);
+  }
+  int controller_port() const {
+    return controller_port_.value();
+  }
+  void set_controller_port(int x) {
+    return set_option(x, &controller_port_);
   }
 
   // Cache flushing configuration.
@@ -433,6 +441,7 @@ class SystemRewriteOptions : public RewriteOptions {
   // cleartext.  We'll decompress as we read the content if needed.
   Option<bool> fetch_with_gzip_;
 
+  Option<int> controller_port_;
   Option<int> memcached_threads_;
   Option<int> memcached_timeout_us_;
 

@@ -140,4 +140,23 @@ TEST_F(SystemRewriteOptionsTest, StaticAssetCdn) {
   EXPECT_TRUE(assets4.find(StaticAssetEnum::MOBILIZE_JS) != assets4.end());
 }
 
+TEST_F(SystemRewriteOptionsTest, CentralController) {
+  EXPECT_EQ(0, options_.controller_port());
+
+  GoogleString msg;
+  RewriteOptions::OptionSettingResult result =
+      options_.ParseAndSetOptionFromName1(
+          SystemRewriteOptions::kCentralControllerPort, "1234", &msg,
+          &handler_);
+  EXPECT_EQ(result, RewriteOptions::kOptionOk);
+  EXPECT_EQ(1234, options_.controller_port());
+  EXPECT_EQ("", msg);
+
+  result = options_.ParseAndSetOptionFromName1(
+      SystemRewriteOptions::kCentralControllerPort, "1a", &msg, &handler_);
+  EXPECT_EQ(result, RewriteOptions::kOptionValueInvalid);
+  EXPECT_EQ(1234, options_.controller_port());
+  EXPECT_NE("", msg);
+}
+
 }  // namespace net_instaweb
