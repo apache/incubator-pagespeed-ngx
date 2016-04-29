@@ -127,30 +127,31 @@ class SimpleBufferedApacheFetchTest : public RewriteTestBase {
     fetch_.reset();
   }
 
-  void RunInThread(std::function<void()> fn) {
-    (new DelegateThread(server_context()->thread_system(), fn))->Start();
-  }
-
-  request_rec request_;
-  RequestHeaders* request_headers_;
-  RequestContextPtr request_ctx_;
-  std::unique_ptr<SimpleBufferedApacheFetch> fetch_;
-
- private:
-  class DelegateThread : public ThreadSystem::Thread {
+  class ThreadRunner : public ThreadSystem::Thread {
    public:
-    DelegateThread(ThreadSystem* ts, std::function<void()> fn)
-        : Thread(ts, "run_function", ThreadSystem::kDetached),
-          fn_(fn) {}
+    ThreadRunner(RewriteTestBase* fixture, std::function<void()> fn)
+        : Thread(fixture->server_context()->thread_system(), "run_function",
+                 ThreadSystem::kJoinable),
+          fn_(fn) {
+      Start();
+    }
+
+    ~ThreadRunner() {
+      Join();
+    }
 
     void Run() override {
       fn_();
-      delete this;
     }
 
    private:
     std::function<void()> fn_;
   };
+
+  request_rec request_;
+  RequestHeaders* request_headers_;
+  RequestContextPtr request_ctx_;
+  std::unique_ptr<SimpleBufferedApacheFetch> fetch_;
 };
 
 TEST_F(SimpleBufferedApacheFetchTest, WaitIpro) {
@@ -160,14 +161,16 @@ TEST_F(SimpleBufferedApacheFetchTest, WaitIpro) {
 TEST_F(SimpleBufferedApacheFetchTest, WaitIpro2) {
   GoogleString key = http_cache()->CompositeKey(kJsUrl, kCacheFragment);
   delay_cache()->DelayKey(key);
-  RunInThread([this, key] { delay_cache()->ReleaseKey(key); });
+  ThreadRunner t(this, [this, key] {
+    delay_cache()->ReleaseKey(key);
+  });
   WaitIproTest();
 }
 
 TEST_F(SimpleBufferedApacheFetchTest, Success) {
   InitFetch(HttpStatus::kOK);
 
-  RunInThread([this] {
+  ThreadRunner t(this, [this] {
     EXPECT_TRUE(fetch_->Write("hello ", message_handler()));
     EXPECT_TRUE(fetch_->Write("world", message_handler()));
     EXPECT_TRUE(fetch_->Flush(message_handler()));
@@ -192,7 +195,7 @@ TEST_F(SimpleBufferedApacheFetchTest, Success) {
 TEST_F(SimpleBufferedApacheFetchTest, NotFound404) {
   InitFetch(HttpStatus::kNotFound);
 
-  RunInThread([this] {
+  ThreadRunner t(this, [this] {
     EXPECT_TRUE(fetch_->Write("Couldn't find it.", message_handler()));
     fetch_->Done(true);
   });
