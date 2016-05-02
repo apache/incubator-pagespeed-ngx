@@ -136,7 +136,7 @@ class SimpleBufferedApacheFetchTest : public RewriteTestBase {
       Start();
     }
 
-    ~ThreadRunner() {
+    ~ThreadRunner() override {
       Join();
     }
 
