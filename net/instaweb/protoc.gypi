@@ -14,12 +14,26 @@
 
 {
   'type': '<(library)',
+  'variables': {
+    # TODO(cheesy): Just remove this variable, since it's basically global and
+    # we depend directly on protoc anyway.
+    'protoc_executable%': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+  },
   'rules': [
     {
       'rule_name': 'genproto',
       'extension': 'proto',
+      # Re-inject outputs of this rule as generated sources.
+      'process_outputs_as_sources': 1,
+      'variables': {
+        'protoc_args': [
+          '--proto_path=<(protoc_out_dir)/',
+          '--cpp_out=<(protoc_out_dir)',
+        ],
+      },
       'inputs': [
         '<(protoc_executable)',
+        '<(DEPTH)/build/fix_proto_and_invoke_protoc',
       ],
       'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
       'outputs': [
@@ -28,9 +42,11 @@
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).proto',
       ],
       'action': [
-        'bash',
-        '-c',
-        'cat <(instaweb_root)/<(instaweb_protoc_subdir)/<(RULE_INPUT_NAME) | sed \'s!"third_party/pagespeed!"pagespeed!\' | sed \'s!// \[opensource\] !!\' > <(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).proto && <(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX) --proto_path=<(protoc_out_dir)/ <(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).proto --cpp_out=<(protoc_out_dir)',
+        '<(DEPTH)/build/fix_proto_and_invoke_protoc',
+        '<(instaweb_root)/<(instaweb_protoc_subdir)/<(RULE_INPUT_NAME)',  # Input proto.
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).proto',  # Output proto.
+        '<(protoc_executable)',
+        '<@(protoc_args)',
       ],
     },
   ],

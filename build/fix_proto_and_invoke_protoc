@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+set -u
+
+if [ $# -lt 3 ];then
+  echo "Usage: $(basename $0) <proto_in> <proto_out> <protoc_path>"\
+       "[<protoc_opts> ...]" >&2
+  exit 1
+fi
+
+proto_in=$1
+proto_out=$2
+protoc=$3
+shift 3
+
+sed -e 's!"third_party/pagespeed/!"pagespeed/!; s!// \[opensource\] !!' \
+  < "$proto_in" > "$proto_out"
+
+exec "$protoc" "$@" "$proto_out"
