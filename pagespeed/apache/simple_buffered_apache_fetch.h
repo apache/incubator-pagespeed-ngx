@@ -18,10 +18,12 @@
 #ifndef PAGESPEED_SIMPLE_BUFFERED_APACHE_FETCH_H_
 #define PAGESPEED_SIMPLE_BUFFERED_APACHE_FETCH_H_
 
+#include <memory>
+#include <queue>
+#include <utility>
+
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/apache/apache_writer.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/condvar.h"
@@ -29,9 +31,9 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
-#include "pagespeed/kernel/thread/scheduler.h"
 
 struct request_rec;
 
@@ -41,8 +43,6 @@ namespace net_instaweb {
 // block based on a condition variable. Unlike ApacheFetch this always
 // buffers and implements no policy, nor does it try to use Apache thread
 // for any rewriting --- a scheduler thread should be used along with this.
-// TODO(morlovich) Urk. The buffering here is for single-shot, which is silly:
-// there is no reason not to stream.
 class SimpleBufferedApacheFetch : public AsyncFetch {
  public:
   // Takes ownership of request_headers. req is expected to survive at least
@@ -69,6 +69,18 @@ class SimpleBufferedApacheFetch : public AsyncFetch {
       LOCKS_EXCLUDED(mutex_);
 
  private:
+  enum Op {
+    kOpHeadersComplete,
+    kOpWrite,
+    kOpFlush,
+    kOpDone
+  };
+
+  typedef std::pair<Op, GoogleString> OpInfo;
+
+  // Blocks until there is an operation in the queue, and move it to *out.
+  void WaitForOp(OpInfo* out) LOCKS_EXCLUDED(mutex_);
+
   void SendOutHeaders();
 
   std::unique_ptr<ApacheWriter> apache_writer_;
@@ -76,9 +88,9 @@ class SimpleBufferedApacheFetch : public AsyncFetch {
 
   std::unique_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
   std::unique_ptr<ThreadSystem::Condvar> notify_;
-  bool done_ GUARDED_BY(mutex_);
+  std::queue<OpInfo> queue_;
+
   bool wait_called_ GUARDED_BY(mutex_);
-  GoogleString output_bytes_ GUARDED_BY(mutex_);
 
   DISALLOW_COPY_AND_ASSIGN(SimpleBufferedApacheFetch);
 };

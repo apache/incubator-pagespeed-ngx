@@ -21,11 +21,7 @@
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/thread_system.h"
-#include "pagespeed/kernel/base/timer.h"
-#include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/thread/scheduler_sequence.h"
 
 namespace net_instaweb {
 
@@ -40,7 +36,6 @@ SimpleBufferedApacheFetch::SimpleBufferedApacheFetch(
       message_handler_(handler),
       mutex_(thread_system->NewMutex()),
       notify_(mutex_->NewCondvar()),
-      done_(false),
       wait_called_(false) {
   // We are proxying content, and the caching in the http configuration
   // should not apply; we want to use the caching from the proxy.
@@ -54,23 +49,51 @@ SimpleBufferedApacheFetch::~SimpleBufferedApacheFetch() {
 
 // Called on the apache request thread.  Blocks until the request is retired.
 void SimpleBufferedApacheFetch::Wait() {
-  ScopedMutex lock(mutex_.get());
-  CHECK(!wait_called_);
-  wait_called_ = true;
+  {
+    ScopedMutex lock(mutex_.get());
+    CHECK(!wait_called_);
+    wait_called_ = true;
+  }
 
-  while (!done_) {
+  while (true) {
+    OpInfo op;
+    WaitForOp(&op);
+    switch (op.first) {
+      case kOpHeadersComplete:
+        SendOutHeaders();
+        break;
+      case kOpWrite:
+        if (!op.second.empty()) {
+          apache_writer_->Write(op.second, message_handler_);
+        }
+        break;
+      case kOpFlush:
+        apache_writer_->Flush(message_handler_);
+        break;
+      case kOpDone:
+        return;
+      default:
+        LOG(DFATAL) << "Weird opcode in SimpleBufferedApacheFetch queue:"
+                    << op.first;
+    }
+  }
+}
+
+void SimpleBufferedApacheFetch::WaitForOp(OpInfo* out) {
+  ScopedMutex lock(mutex_.get());
+  while (queue_.empty()) {
     notify_->Wait();
   }
-  SendOutHeaders();
-  if (!output_bytes_.empty()) {
-    apache_writer_->Write(output_bytes_, message_handler_);
-  }
+
+  *out = std::move(queue_.front());
+  queue_.pop();
 }
 
 // Called by other threads.
 void SimpleBufferedApacheFetch::HandleHeadersComplete() {
-  // Do nothing on this thread right now.  When done waiting we'll deal with
-  // headers on the request thread.
+  ScopedMutex lock(mutex_.get());
+  queue_.emplace(kOpHeadersComplete, GoogleString());
+  notify_->Signal();
 }
 
 // Called on the request thread.
@@ -83,26 +106,28 @@ void SimpleBufferedApacheFetch::SendOutHeaders() {
 
 // Called by other threads.
 void SimpleBufferedApacheFetch::HandleDone(bool success) {
-  {
-    ScopedMutex lock(mutex_.get());
-    done_ = true;
-
-    // TODO(morlovich): ApacheFetch at least warns when success = false,
-    // and headers were successful.  Right now we can do better, but only
-    // because we don't stream.
-    notify_->Signal();
-  }
+  // TODO(morlovich): ApacheFetch at least warns when success = false,
+  // and headers were successful.
+  ScopedMutex lock(mutex_.get());
+  queue_.emplace(kOpDone, GoogleString());
+  notify_->Signal();
 }
 
 bool SimpleBufferedApacheFetch::HandleWrite(const StringPiece& sp,
                                             MessageHandler* handler) {
   ScopedMutex lock(mutex_.get());
-  sp.AppendToString(&output_bytes_);
+  if (queue_.empty() || queue_.back().first != kOpWrite) {
+    queue_.emplace(kOpWrite, GoogleString());
+  }
+  sp.AppendToString(&queue_.back().second);
+  notify_->Signal();
   return true;
 }
 
 bool SimpleBufferedApacheFetch::HandleFlush(MessageHandler* handler) {
-  // Don't pass flushes through.... For now.
+  ScopedMutex lock(mutex_.get());
+  queue_.emplace(kOpFlush, GoogleString());
+  notify_->Signal();
   return true;
 }
 

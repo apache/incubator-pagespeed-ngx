@@ -21,16 +21,16 @@
 #include <memory>
 
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/apache/apache_httpd_includes.h"
 #include "pagespeed/apache/header_util.h"
 #include "pagespeed/apache/mock_apache.h"
-#include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/thread.h"
-#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/delay_cache.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
@@ -186,7 +186,10 @@ TEST_F(SimpleBufferedApacheFetchTest, Success) {
       "ap_remove_output_filter(MOD_EXPIRES) "
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_set_content_type(text/plain) "
-      "ap_rwrite(hello world.)",  // writes combined into one call.
+      "ap_rwrite(hello world) "  // writes combined, but not across flush
+      "ap_rflush() "
+      "ap_rwrite(.) "
+      "ap_rflush()",
       MockApache::ActionsSinceLastCall());
 
   EXPECT_EQ(kExpectedHeaders, HeadersOutToString(&request_));

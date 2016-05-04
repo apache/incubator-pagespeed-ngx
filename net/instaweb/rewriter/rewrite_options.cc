@@ -1536,8 +1536,8 @@ void RewriteOptions::AddProperties() {
       "Whether to respect the X-Forwarded-Proto header.", true);
   AddBaseProperty(
       false, &RewriteOptions::flush_html_, "fh", kFlushHtml,
-      kDirectoryScope,
-      NULL, true);  // TODO(jmarantz): implement for mod_pagespeed.
+      kServerScope,
+      "Enable auto-flush heuristics for HTML in full proxy mode", true);
   AddBaseProperty(
       false, &RewriteOptions::css_preserve_urls_, "cpu",
       kCssPreserveURLs,
