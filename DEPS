@@ -79,11 +79,8 @@ vars = {
   #
   # TODO(jmarantz): create an easy way to choose this option from the
   # 'gclient' command, without having to edit the gyp & DEPS files.
-  #
-  # BoringSSL commit picked on Feb 17, 2016
-  # https://chromium.googlesource.com/chromium/src.git/+/6d49157929abdefb155daf2751dc03fd9eb4240c
   "boringssl_src": "https://boringssl.googlesource.com/boringssl.git",
-  "boringssl_git_revision": "@6d49157929abdefb155daf2751dc03fd9eb4240c",
+  "boringssl_git_revision": "@chromium-stable",
 
   "domain_registry_provider_src":
      "https://github.com/pagespeed/domain-registry-provider.git",
