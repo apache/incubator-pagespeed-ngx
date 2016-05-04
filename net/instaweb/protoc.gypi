@@ -15,9 +15,11 @@
 {
   'type': '<(library)',
   'variables': {
-    # TODO(cheesy): Just remove this variable, since it's basically global and
-    # we depend directly on protoc anyway.
+    'has_services%': 0,
+    # TODO(cheesy): Just remove these variables, since they are basically
+    # global, plus we depend directly on protoc anyway.
     'protoc_executable%': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+    'protoc_out_dir%': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
   },
   'rules': [
     {
@@ -41,6 +43,23 @@
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).pb.cc',
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).proto',
       ],
+      'conditions': [
+        ['has_services != 0', {
+          'variables': {
+            'protoc_args': [
+              '--plugin=protoc-gen-grpc=<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)grpc_cpp_plugin<(EXECUTABLE_SUFFIX)',
+              '--grpc_out=<(protoc_out_dir)',
+            ],
+          },
+          'inputs': [
+            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)grpc_cpp_plugin<(EXECUTABLE_SUFFIX)',
+          ],
+          'outputs': [
+            '<(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).grpc.pb.h',
+            '<(protoc_out_dir)/<(instaweb_protoc_subdir)/<(RULE_INPUT_ROOT).grpc.pb.cc',
+          ],
+        }],
+      ],
       'action': [
         '<(DEPTH)/build/fix_proto_and_invoke_protoc',
         '<(instaweb_root)/<(instaweb_protoc_subdir)/<(RULE_INPUT_NAME)',  # Input proto.
@@ -53,6 +72,14 @@
   'dependencies': [
     '<(DEPTH)/pagespeed/kernel.gyp:proto_util',
     '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
+  ],
+  'conditions': [
+    ['has_services != 0', {
+      'dependencies': [
+        '<(DEPTH)/third_party/grpc/grpc.gyp:grpc_cpp',  # For grpc headers.
+        '<(DEPTH)/third_party/grpc/grpc.gyp:grpc_cpp_plugin#host',
+      ],
+    }],
   ],
   'include_dirs': [
     '<(protoc_out_dir)',

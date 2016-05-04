@@ -102,6 +102,24 @@ $core_sources
 $gpr_sources
       ],
     },
+    {
+      'target_name': 'grpc_cpp_plugin',
+      'type': 'executable',
+      'toolsets': [ 'host' ],
+      'cflags_cc': [
+        '-Wall',
+        '-pthread',
+        '-zdefs',
+        '-Wno-error=deprecated-declarations'
+      ],
+      'sources': [
+        'src/src/compiler/cpp_generator.cc',
+        'src/src/compiler/cpp_plugin.cc',
+      ],
+      'dependencies': [
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc_lib',
+      ],
+    },
   ]
 }
 EOF

@@ -14,12 +14,26 @@
 
 {
   'variables': {
+    'instaweb_root': '..',
     # Setting chromium_code to 1 turns on extra warnings. Also, if the compiler
     # is whitelisted in our common.gypi, those warnings will get treated as
     # errors.
     'chromium_code': 1,
   },
   'targets': [
+    {
+      'target_name': 'controller_proto',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/controller',
+        'has_services': 1,
+      },
+      'sources': [
+        'controller/controller.proto',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
+      ],
+    },
     {
       'target_name': 'pagespeed_controller',
       # xcode build names libraries just based on the target_name, so
@@ -41,7 +55,9 @@
         '<(DEPTH)',
       ],
       'dependencies': [
+        ':controller_proto',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/grpc/grpc.gyp:grpc_cpp',
       ],
       'export_dependent_settings': [
         '<(DEPTH)/base/base.gyp:base',
