@@ -74,6 +74,7 @@
         '<(DEPTH)/pagespeed/automatic/proxy_interface_test_base.cc',
         # TODO(jefftk): get this test to build.
         # '<(DEPTH)/pagespeed/automatic/rewriter_speed_test.cc',
+        'config/measurement_proxy_rewrite_options_manager_test.cc',
         'config/rewrite_options_manager_test.cc',
         'http/async_fetch_test.cc',
         'http/cache_url_async_fetcher_test.cc',

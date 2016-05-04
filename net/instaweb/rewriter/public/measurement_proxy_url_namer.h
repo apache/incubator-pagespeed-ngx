@@ -52,6 +52,12 @@ class MeasurementProxyUrlNamer : public UrlNamer {
                                 StringPiece* password,
                                 GoogleString* res_url);
 
+  bool IsAuthorized(const GoogleUrl& request_url,
+                    const RewriteOptions& options) const override {
+    // We want to fetch everything.
+    return true;
+  }
+
  private:
   GoogleString top_origin_;
   GoogleString password_;

@@ -1323,6 +1323,7 @@
       ],
       'sources': [
         'config/rewrite_options_manager.cc',
+        'config/measurement_proxy_rewrite_options_manager.cc',
         'rewriter/beacon_critical_images_finder.cc',
         'rewriter/critical_images_finder.cc',
         'rewriter/device_properties.cc',
