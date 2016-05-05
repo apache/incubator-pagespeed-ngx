@@ -1816,6 +1816,15 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeed off
 </VirtualHost>
 
+# For testing measurement proxy things.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName mpr.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
+  ModPagespeedExperimentalProxyAllRequests on
+  ModPagespeedExperimentalMeasurementProxy "http://mpr.example.com" secret
+</VirtualHost>
+
 # For testing with a custom origin header.  In this VirtualHost,
 # /mod_pagespeed_test is included in our DocumentRoot and thus does
 # not need to be in any resource URL paths.  This helps us verify that

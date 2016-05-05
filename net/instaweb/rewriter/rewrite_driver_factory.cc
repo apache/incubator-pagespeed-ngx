@@ -501,8 +501,12 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
 
   server_context->set_central_controller(
       CreateCentralController(server_context->lock_manager()));
-  server_context->set_url_namer(url_namer());
-  server_context->SetRewriteOptionsManager(NewRewriteOptionsManager());
+  if (server_context->url_namer() == nullptr) {
+    server_context->set_url_namer(url_namer());
+  }
+  if (server_context->rewrite_options_manager() == nullptr) {
+    server_context->SetRewriteOptionsManager(NewRewriteOptionsManager());
+  }
   server_context->set_user_agent_matcher(user_agent_matcher());
   server_context->set_file_system(file_system());
   server_context->set_filename_prefix(filename_prefix_);

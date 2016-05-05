@@ -17,6 +17,8 @@
 #ifndef PAGESPEED_APACHE_APACHE_SERVER_CONTEXT_H_
 #define PAGESPEED_APACHE_APACHE_SERVER_CONTEXT_H_
 
+#include <memory>
+
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "pagespeed/apache/apache_config.h"
@@ -34,6 +36,7 @@ namespace net_instaweb {
 
 class ApacheRewriteDriverFactory;
 class ApacheRequestContext;
+class MeasurementProxyUrlNamer;
 class ProxyFetchFactory;
 class RewriteDriverPool;
 class RewriteDriver;
@@ -161,6 +164,9 @@ class ApacheServerContext : public SystemServerContext {
   // be stored in these.
   scoped_ptr<ApacheConfig> spdy_config_overlay_;
   scoped_ptr<ApacheConfig> non_spdy_config_overlay_;
+
+  // May be NULL. Only constructed in measurement proxy mode.
+  std::unique_ptr<MeasurementProxyUrlNamer> measurement_url_namer_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
 

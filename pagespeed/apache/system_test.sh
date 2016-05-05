@@ -1022,6 +1022,22 @@ start_test Fetch gzipped, make sure that we have cache compressed at gzip 9.
 URL="$PRIMARY_SERVER/mod_pagespeed_test/invalid.css"
 fetch_until -gzip $URL "wc -c" 27
 
+
+if [ "$SECONDARY_HOSTNAME" != "" ]; then
+  start_test Measurement proxy mode
+  # Wrong password --- 403
+  OUT=$($CURL --silent --include --proxy $SECONDARY_HOSTNAME\
+      http://mpr.example.com/h/_/sicrit/www.modpagespeed.com/)
+  check_from "$OUT" fgrep -q "403 "
+
+  # Right one...
+  OUT=$($CURL --silent --include --proxy $SECONDARY_HOSTNAME\
+      http://mpr.example.com/h/b/secret/www.gstatic.com/psa/static/57ea3579bb97c7b4ca6658061d5c765b-mobilize.js)
+  # Note that this also checks that it got minified --- the original has
+  # spaces around the equal sign.
+  check_from "$OUT" fgrep -q "goog.constructNamespace_="
+fi
+
 # Cleanup
 rm -rf $OUTDIR
 

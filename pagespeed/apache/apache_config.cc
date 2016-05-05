@@ -28,6 +28,7 @@ const char kModPagespeedStatisticsHandlerPath[] = "/mod_pagespeed_statistics";
 const char kProxyAuth[] = "ProxyAuth";
 const char kForceBuffering[] = "ForceBuffering";
 const char kProxyAllRequests[] = "ExperimentalProxyAllRequests";
+const char kMeasurementProxy[] = "ExperimentalMeasurementProxy";
 
 }  // namespace
 
@@ -132,6 +133,37 @@ ApacheConfig* ApacheConfig::DynamicCast(RewriteOptions* instance) {
   ApacheConfig* config = dynamic_cast<ApacheConfig*>(instance);
   DCHECK(config != NULL);
   return config;
+}
+
+void ApacheConfig::Merge(const RewriteOptions& src) {
+  SystemRewriteOptions::Merge(src);
+  const ApacheConfig* asrc = DynamicCast(&src);
+  CHECK(asrc != NULL);
+
+  // Can't use Merge() since we don't have names here.
+  measurement_proxy_root_.MergeHelper(&asrc->measurement_proxy_root_);
+  measurement_proxy_password_.MergeHelper(&asrc->measurement_proxy_password_);
+}
+
+RewriteOptions::OptionSettingResult ApacheConfig::ParseAndSetOptionFromName2(
+    StringPiece name, StringPiece arg1, StringPiece arg2,
+    GoogleString* msg, MessageHandler* handler) {
+  OptionSettingResult result = SystemRewriteOptions::ParseAndSetOptionFromName2(
+      name, arg1, arg2, msg, handler);
+  if (result == RewriteOptions::kOptionNameUnknown) {
+    if (name == kMeasurementProxy) {
+      arg1.CopyToString(&measurement_proxy_root_.mutable_value());
+      arg2.CopyToString(&measurement_proxy_password_.mutable_value());
+      result = RewriteOptions::kOptionOk;
+    }
+  }
+  return result;
+}
+
+GoogleString ApacheConfig::SubclassSignatureLockHeld() {
+  return StrCat(SystemRewriteOptions::SubclassSignatureLockHeld(),
+                "_MPR:", measurement_proxy_root_.value(),
+                "_MPP:", measurement_proxy_password_.value());
 }
 
 bool ApacheConfig::GetProxyAuth(StringPiece* name, StringPiece* value,

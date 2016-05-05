@@ -28,6 +28,8 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/http_names.h"
+#include "net/instaweb/config/measurement_proxy_rewrite_options_manager.h"
+#include "net/instaweb/rewriter/public/measurement_proxy_url_namer.h"
 
 namespace net_instaweb {
 
@@ -159,6 +161,16 @@ GoogleString ApacheServerContext::FormatOption(StringPiece option_name,
 void ApacheServerContext::ChildInit(SystemRewriteDriverFactory* f) {
   if (global_config()->proxy_all_requests_mode()) {
     apache_factory_->SetNeedSchedulerThread();
+    if (global_config()->measurement_proxy_mode()) {
+      measurement_url_namer_.reset(new MeasurementProxyUrlNamer(
+          global_config()->measurement_proxy_root(),
+          global_config()->measurement_proxy_password()));
+      set_url_namer(measurement_url_namer_.get());
+      SetRewriteOptionsManager(new MeasurementProxyRewriteOptionsManager(
+          this,
+          global_config()->measurement_proxy_root(),
+          global_config()->measurement_proxy_password()));
+    }
   }
   SystemServerContext::ChildInit(f);
 }

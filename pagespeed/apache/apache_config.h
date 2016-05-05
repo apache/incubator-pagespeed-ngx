@@ -61,10 +61,31 @@ class ApacheConfig : public SystemRewriteOptions {
     return proxy_all_requests_mode_.value();
   }
 
+  bool measurement_proxy_mode() const {
+    return !measurement_proxy_root().empty() &&
+           !measurement_proxy_password().empty();
+  }
+
+  const GoogleString& measurement_proxy_root() const {
+    return measurement_proxy_root_.value();
+  }
+
+  const GoogleString& measurement_proxy_password() const {
+    return measurement_proxy_password_.value();
+  }
+
   // Returns a suitably down cast version of 'instance' if it is an instance
   // of this class, NULL if not.
   static const ApacheConfig* DynamicCast(const RewriteOptions* instance);
   static ApacheConfig* DynamicCast(RewriteOptions* instance);
+
+  void Merge(const RewriteOptions& src) override;
+
+  OptionSettingResult ParseAndSetOptionFromName2(
+      StringPiece name, StringPiece arg1, StringPiece arg2,
+      GoogleString* msg, MessageHandler* handler) override;
+
+  GoogleString SubclassSignatureLockHeld() override;
 
  private:
   // Keeps the properties added by this subclass.  These are merged into
@@ -91,6 +112,8 @@ class ApacheConfig : public SystemRewriteOptions {
   Option<bool> force_buffering_;
   Option<bool> proxy_all_requests_mode_;
   Option<GoogleString> proxy_auth_;  // CookieName[=Value][:RedirectUrl]
+  Option<GoogleString> measurement_proxy_root_;
+  Option<GoogleString> measurement_proxy_password_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);
 };
