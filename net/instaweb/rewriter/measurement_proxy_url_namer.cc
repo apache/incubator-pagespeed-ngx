@@ -27,12 +27,7 @@
 namespace net_instaweb {
 
 
-MeasurementProxyUrlNamer::MeasurementProxyUrlNamer(
-    const GoogleString& top_origin, const GoogleString& password)
-    : top_origin_(top_origin), password_(password) {
-  if (StringPiece(top_origin_).ends_with("/")) {
-    top_origin_.resize(top_origin.size() - 1);
-  }
+MeasurementProxyUrlNamer::MeasurementProxyUrlNamer() {
 }
 
 MeasurementProxyUrlNamer::~MeasurementProxyUrlNamer() {
@@ -63,8 +58,6 @@ bool MeasurementProxyUrlNamer::DecodePathDetails(
     StringPiece* config_domain,
     StringPiece* password,
     GoogleString* res_url) {
-  // TODO(morlovich): Should this enforce the top_origin_? The password?
-
   StringPiece request_path = request_url.PathSansLeaf();
   StringPieceVector path_vector;
   SplitStringPieceToVector(request_path, "/", &path_vector, false);

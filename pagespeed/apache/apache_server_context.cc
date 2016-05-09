@@ -162,9 +162,7 @@ void ApacheServerContext::ChildInit(SystemRewriteDriverFactory* f) {
   if (global_config()->proxy_all_requests_mode()) {
     apache_factory_->SetNeedSchedulerThread();
     if (global_config()->measurement_proxy_mode()) {
-      measurement_url_namer_.reset(new MeasurementProxyUrlNamer(
-          global_config()->measurement_proxy_root(),
-          global_config()->measurement_proxy_password()));
+      measurement_url_namer_.reset(new MeasurementProxyUrlNamer());
       set_url_namer(measurement_url_namer_.get());
       SetRewriteOptionsManager(new MeasurementProxyRewriteOptionsManager(
           this,
