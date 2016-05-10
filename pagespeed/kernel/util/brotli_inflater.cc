@@ -101,16 +101,16 @@ bool BrotliInflater::DecompressHelper(StringPiece in, MessageHandler* handler,
         // streamed.
         handler->Message(kWarning, "BROTLI_RESULT_NEEDS_MORE_INPUT");
         return false;
-      case BROTLI_RESULT_ERROR:
-        // Decompressing failed.
-        handler->Message(kError, "BROTLI_RESULT_ERROR");
-        return false;
       case BROTLI_RESULT_NEEDS_MORE_OUTPUT:
         // Need to flush the output buffer to the writer.
         break;
       case BROTLI_RESULT_SUCCESS:
         // Decompression succeeded, write out the last chunk if needed.
         break;
+      case BROTLI_RESULT_ERROR:
+        // TODO(eustas): use brotli API to convert error code to string.
+        handler->Message(kError, "BROTLI_RESULT_ERROR");
+        return false;
     }
     StringPiece chunk(output, sizeof(output) - available_out);
     if (!chunk.empty() && !writer->Write(chunk, handler)) {
