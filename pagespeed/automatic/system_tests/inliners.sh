@@ -10,7 +10,7 @@ if [ -z ${DISABLE_FONT_API_TESTS:-} ]; then
   WGETRC_OLD=$WGETRC
   export WGETRC=$TESTTMP/wgetrc-chrome
   cat > $WGETRC <<EOF
-user_agent =Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/40.0.2214.45 Safari/537.36
+user_agent =Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.36 Safari/537.36
 EOF
 
   fetch_until $URL 'grep -c @font-face' 7
