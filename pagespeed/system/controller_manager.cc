@@ -28,6 +28,7 @@
 
 namespace net_instaweb {
 
+int ControllerManager::controller_write_fd_ = -1;
 
 ControllerManager::ProcessDeathWatcherThread::ProcessDeathWatcherThread(
     ThreadSystem* thread_system,
@@ -82,6 +83,13 @@ void ControllerManager::RunController(SystemRewriteDriverFactory* factory,
   }
 }
 
+void ControllerManager::DetachFromControllerProcess() {
+  if (controller_write_fd_ != -1) {
+    close(controller_write_fd_);
+    controller_write_fd_ = -1;
+  }
+}
+
 void ControllerManager::Daemonize(MessageHandler* handler) {
   // Make a new session (process group).
   if (setsid() < 0) {
@@ -114,8 +122,7 @@ void ControllerManager::ForkControllerProcess(
   // Whenever we fork off a controller we save the fd for a pipe to it.  Then if
   // we fork off another controller we can write a byte to the pipe to tell the
   // old controller to clean up and exit.
-  static int controller_write_fd = -1;
-  if (controller_write_fd != -1) {
+  if (controller_write_fd_ != -1) {
     // We already forked off a controller earlier.  Tell it to quit by writing a
     // byte.  If there's no one still with the pipe open we'll get SIGPIPE and
     // die horribly, but as long as the babysitter hasn't died that won't
@@ -124,7 +131,7 @@ void ControllerManager::ForkControllerProcess(
         kInfo, "Writing a byte to a pipe to tell the old controller to exit.");
     ssize_t status;
     do {
-      status = write(controller_write_fd, "Q", 1);
+      status = write(controller_write_fd_, "Q", 1);
     } while (status == -1 && (errno == EAGAIN ||
                               errno == EINTR));
     if (status == -1) {
@@ -150,7 +157,7 @@ void ControllerManager::ForkControllerProcess(
     close(file_descriptors[0]);
 
     // Save the writing end of the pipe.
-    controller_write_fd = file_descriptors[1];
+    controller_write_fd_ = file_descriptors[1];
 
     return;
   }

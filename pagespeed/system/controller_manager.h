@@ -50,6 +50,10 @@ class ControllerManager {
                                     ThreadSystem* thread_system,
                                     MessageHandler* handler);
 
+  // Relinquishes the reference from us to the controller process. This may be
+  // needed if our current process is going to go on and do something unrelated.
+  static void DetachFromControllerProcess();
+
  private:
   // Controller will be hooked up here.  This method is called in a single
   // centralized "controller" process, and if that process dies it will be
@@ -80,6 +84,8 @@ class ControllerManager {
 
     DISALLOW_COPY_AND_ASSIGN(ProcessDeathWatcherThread);
   };
+
+  static int controller_write_fd_;
 
   DISALLOW_COPY_AND_ASSIGN(ControllerManager);
 };

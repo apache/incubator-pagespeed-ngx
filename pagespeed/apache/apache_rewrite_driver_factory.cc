@@ -42,6 +42,7 @@
 #include "pagespeed/kernel/thread/pthread_shared_mem.h"
 #include "pagespeed/kernel/thread/scheduler_thread.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
+#include "pagespeed/system/controller_manager.h"
 
 namespace net_instaweb {
 
@@ -88,6 +89,27 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
 
   // We still have registered a pool deleter here, right?  This seems risky...
   STLDeleteElements(&uninitialized_server_contexts_);
+
+  // Apache startup is pretty weird, in that it initializes twice:
+  // first to check configuration, then for real. In between the two runs,
+  // it cleans us up very thoroughly, including unloading our module, so if we
+  // are here at the end of run 1, we are about to forget all about the
+  // controller process hanging around, while the FD to it will be kept around
+  // (including accross daemonization), keeping it alive.
+  //
+  // So here we drop the FD, to get the controller to exit, letting us start
+  // it again (and we want it to exit on regular exit, too).
+  //
+  // This call is a no-op if nothing was started.
+  //
+  // This is done in Apache-specific code rather than System* because
+  // nginx has other challenges: it can create multiple
+  // SystemRewriteDriverFactory's at once when reloading config, and
+  // ~SystemRewriteDriverFactory for the old one happens too late to be useful,
+  // so there we are better off just using global state to keep track of
+  // the controller (as there are no pesky dlunload's making us forget all of
+  // it!).
+  ControllerManager::DetachFromControllerProcess();
 }
 
 Timer* ApacheRewriteDriverFactory::DefaultTimer() {
