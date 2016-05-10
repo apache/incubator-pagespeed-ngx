@@ -43,6 +43,9 @@
 //    events it handles.
 //
 // When the last reference is dropped, this class will delete itself.
+//
+// TODO(jmarantz): consider sharing the cache-invalidation infrastructure
+// with ApacheFetch, using a common base class.
 
 #ifndef NGX_BASE_FETCH_H_
 #define NGX_BASE_FETCH_H_
