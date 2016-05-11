@@ -1589,10 +1589,12 @@ void ps_release_base_fetch(ps_request_ctx_t* ctx) {
 }
 
 // TODO(chaizhenhua): merge into NgxBaseFetch ctor
-void ps_create_base_fetch(ps_request_ctx_t* ctx,
-                               RequestContextPtr request_context,
-                               RequestHeaders* request_headers,
-                               NgxBaseFetchType type) {
+void ps_create_base_fetch(StringPiece url,
+                          ps_request_ctx_t* ctx,
+                          RequestContextPtr request_context,
+                          RequestHeaders* request_headers,
+                          NgxBaseFetchType type,
+                          const RewriteOptions* options) {
   CHECK(ctx->base_fetch == NULL) << "Pre-existing base fetch!";
 
   ngx_http_request_t* r = ctx->r;
@@ -1602,9 +1604,9 @@ void ps_create_base_fetch(ps_request_ctx_t* ctx,
   // it, and call Done() on the associated parent (Proxy or Resource) fetch. If
   // we fail before creating the associated fetch then we need to call Done() on
   // the BaseFetch ourselves.
-  ctx->base_fetch = new NgxBaseFetch(r, cfg_s->server_context,
-                                     request_context,
-                                     ctx->preserve_caching_headers, type);
+  ctx->base_fetch = new NgxBaseFetch(url, r, cfg_s->server_context, request_context,
+                                     ctx->preserve_caching_headers, type,
+                                     options);
   ctx->base_fetch->SetRequestHeadersTakingOwnership(request_headers);
 }
 
@@ -1869,16 +1871,17 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   if (pagespeed_resource) {
     // TODO(jefftk): Set using_spdy appropriately.  See
     // ProxyInterface::ProxyRequestCallback
-    ps_create_base_fetch(ctx, request_context, request_headers.release(),
-                         kPageSpeedResource);
+    ps_create_base_fetch(url.Spec(), ctx, request_context,
+                         request_headers.release(), kPageSpeedResource,
+                         options);
     ResourceFetch::Start(
         url,
         custom_options.release() /* null if there aren't custom options */,
         false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
     return ps_async_wait_response(r);
   } else if (is_an_admin_handler) {
-    ps_create_base_fetch(ctx, request_context, request_headers.release(),
-                         kAdminPage);
+    ps_create_base_fetch(url.Spec(), ctx, request_context,
+                         request_headers.release(), kAdminPage, options);
     QueryParams query_params;
     query_params.ParseFromUrl(url);
 
@@ -1926,8 +1929,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
 
     if (options->domain_lawyer()->MapOriginUrl(
             url, &mapped_url, &host_header, &is_proxy) && is_proxy) {
-      ps_create_base_fetch(ctx, request_context, request_headers.release(),
-                          kPageSpeedProxy);
+      ps_create_base_fetch(url.Spec(), ctx, request_context,
+                           request_headers.release(), kPageSpeedProxy, options);
 
       RewriteDriver* driver;
       if (custom_options.get() == NULL) {
@@ -1951,8 +1954,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   }
 
   if (html_rewrite) {
-    ps_create_base_fetch(ctx, request_context, request_headers.release(),
-                         kHtmlTransform);
+    ps_create_base_fetch(url.Spec(), ctx, request_context,
+                         request_headers.release(), kHtmlTransform, options);
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;
 
@@ -1996,8 +1999,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   if (options->in_place_rewriting_enabled() &&
       options->enabled() &&
       options->IsAllowed(url.Spec())) {
-    ps_create_base_fetch(ctx, request_context, request_headers.release(),
-                         kIproLookup);
+    ps_create_base_fetch(url.Spec(), ctx, request_context, request_headers.release(),
+                         kIproLookup, options);
 
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;

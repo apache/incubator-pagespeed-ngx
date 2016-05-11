@@ -26,6 +26,8 @@
 
 #include "ngx_pagespeed.h"
 
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -41,14 +43,18 @@ const char kDone = 'D';
 NgxEventConnection* NgxBaseFetch::event_connection = NULL;
 int NgxBaseFetch::active_base_fetches = 0;
 
-NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r,
+NgxBaseFetch::NgxBaseFetch(StringPiece url,
+                           ngx_http_request_t* r,
                            NgxServerContext* server_context,
                            const RequestContextPtr& request_ctx,
                            PreserveCachingHeaders preserve_caching_headers,
-                           NgxBaseFetchType base_fetch_type)
+                           NgxBaseFetchType base_fetch_type,
+                           const RewriteOptions* options)
     : AsyncFetch(request_ctx),
+      url_(url.data(), url.size()),
       request_(r),
       server_context_(server_context),
+      options_(options),
       done_called_(false),
       last_buf_sent_(false),
       references_(2),
@@ -339,6 +345,11 @@ void NgxBaseFetch::HandleDone(bool success) {
   Unlock();
   RequestCollection(kDone);
   DecrefAndDeleteIfUnreferenced();
+}
+
+bool NgxBaseFetch::IsCachedResultValid(const ResponseHeaders& headers) {
+  return OptionsAwareHTTPCacheCallback::IsCacheValid(
+      url_, *options_, request_context(), headers);
 }
 
 }  // namespace net_instaweb

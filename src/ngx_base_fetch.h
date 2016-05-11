@@ -43,6 +43,9 @@
 //    events it handles.
 //
 // When the last reference is dropped, this class will delete itself.
+//
+// TODO(jmarantz): consider sharing the cache-invalidation infrastructure
+// with ApacheFetch, using a common base class.
 
 #ifndef NGX_BASE_FETCH_H_
 #define NGX_BASE_FETCH_H_
@@ -59,6 +62,7 @@ extern "C" {
 #include "ngx_server_context.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/http/headers.h"
 
@@ -74,10 +78,12 @@ enum NgxBaseFetchType {
 
 class NgxBaseFetch : public AsyncFetch {
  public:
-  NgxBaseFetch(ngx_http_request_t* r, NgxServerContext* server_context,
+  NgxBaseFetch(StringPiece url, ngx_http_request_t* r,
+               NgxServerContext* server_context,
                const RequestContextPtr& request_ctx,
                PreserveCachingHeaders preserve_caching_headers,
-               NgxBaseFetchType base_fetch_type);
+               NgxBaseFetchType base_fetch_type,
+               const RewriteOptions* options);
   virtual ~NgxBaseFetch();
 
   // Statically initializes event_connection, require for PSOL and nginx to
@@ -125,6 +131,8 @@ class NgxBaseFetch : public AsyncFetch {
   ngx_http_request_t* request() { return request_; }
   NgxBaseFetchType base_fetch_type() { return base_fetch_type_; }
 
+  bool IsCachedResultValid(const ResponseHeaders& headers) override;
+
  private:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
   virtual bool HandleFlush(MessageHandler* handler);
@@ -152,13 +160,15 @@ class NgxBaseFetch : public AsyncFetch {
   int DecrefAndDeleteIfUnreferenced();
 
   static NgxEventConnection* event_connection;
-  
+
   // Live count of NgxBaseFetch instances that are currently in use.
   static int active_base_fetches;
 
+  GoogleString url_;
   ngx_http_request_t* request_;
   GoogleString buffer_;
   NgxServerContext* server_context_;
+  const RewriteOptions* options_;
   bool done_called_;
   bool last_buf_sent_;
   // How many active references there are to this fetch. Starts at two,

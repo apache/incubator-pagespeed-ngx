@@ -46,7 +46,23 @@ POSITION_AUX="${POSITION_AUX:-unset}"
 PRIMARY_HOSTNAME="localhost:$PRIMARY_PORT"
 SECONDARY_HOSTNAME="localhost:$SECONDARY_PORT"
 
-SERVER_ROOT="$MOD_PAGESPEED_DIR/src/install/"
+this_dir="$( cd $(dirname "$0") && pwd)"
+echo this_dir=$this_dir
+TEST_TMP="$this_dir/tmp"
+rm -rf "$TEST_TMP"
+mkdir -p "$TEST_TMP"
+echo TEST_TMP=$TEST_TMP
+
+APACHE_DOC_SRC="$MOD_PAGESPEED_DIR/src/install/"
+SERVER_ROOT="$TEST_TMP/root"
+echo SERVER_ROOT=$SERVER_ROOT
+rm -rf "$SERVER_ROOT"
+mkdir -p "$SERVER_ROOT"
+export APACHE_DOC_ROOT="$SERVER_ROOT"
+
+mkdir -p "$APACHE_DOC_ROOT"
+make -f "$APACHE_DOC_SRC/Makefile.tests" setup_doc_root \
+  INSTALL_DATA_DIR="$APACHE_DOC_SRC"
 
 # We need check and check_not before we source SYSTEM_TEST_FILE that provides
 # them.
@@ -136,8 +152,6 @@ function fire_ab_load() {
   sleep 2
  }
 
-this_dir="$( cd $(dirname "$0") && pwd)"
-
 # stop nginx/valgrind
 killall -s KILL nginx
 # TODO(oschaaf): Fix waiting for valgrind on 32 bits systems.
@@ -145,8 +159,6 @@ killall -s KILL memcheck-amd64-
 while pgrep nginx > /dev/null; do sleep 1; done
 while pgrep memcheck > /dev/null; do sleep 1; done
 
-TEST_TMP="$this_dir/tmp"
-rm -r "$TEST_TMP"
 check_simple mkdir -p "$TEST_TMP"
 PROXY_CACHE="$TEST_TMP/proxycache"
 TMP_PROXY_CACHE="$TEST_TMP/tmpproxycache"
@@ -646,14 +658,14 @@ check touch "$SECONDARY_CACHE/cache.flush"
 check touch "$IPRO_CACHE/cache.flush"
 sleep 1
 
-CACHE_TESTING_DIR="$SERVER_ROOT/mod_pagespeed_test/cache_flush/"
+CACHE_TESTING_DIR="$SERVER_ROOT/cache_flush/"
 CACHE_TESTING_TMPDIR="$CACHE_TESTING_DIR/$$"
 mkdir "$CACHE_TESTING_TMPDIR"
 cp "$CACHE_TESTING_DIR/cache_flush_test.html" "$CACHE_TESTING_TMPDIR/"
 CSS_FILE="$CACHE_TESTING_TMPDIR/update.css"
 echo ".class myclass { color: $COLOR0; }" > "$CSS_FILE"
 
-URL_PATH="mod_pagespeed_test/cache_flush/$$/cache_flush_test.html"
+URL_PATH="cache_flush/$$/cache_flush_test.html"
 
 URL="$SECONDARY_HOSTNAME/$URL_PATH"
 CACHE_A="--header=Host:cache_a.example.com"
