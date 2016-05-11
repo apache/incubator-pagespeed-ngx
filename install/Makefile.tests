@@ -37,6 +37,7 @@ SHELL=/bin/bash
 # Make conf, log, and cache file locations accessible to apache/system_test.sh
 export APACHE_DEBUG_PAGESPEED_CONF
 export APACHE_LOG
+export APACHE_DOC_ROOT
 export MOD_PAGESPEED_CACHE
 
 apache_vm_system_tests :
