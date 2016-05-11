@@ -48,6 +48,7 @@ PRIMARY_HOSTNAME="localhost:$PRIMARY_PORT"
 SECONDARY_HOSTNAME="localhost:$SECONDARY_PORT"
 
 SERVER_ROOT="$MOD_PAGESPEED_DIR/src/install/"
+export APACHE_DOC_ROOT="$SERVER_ROOT"
 
 # We need check and check_not before we source SYSTEM_TEST_FILE that provides
 # them.
