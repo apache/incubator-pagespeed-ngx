@@ -12,16 +12,17 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * Author: jefftk@google.com (Jeff Kaufman)
  */
 
-// Author: jefftk@google.com (Jeff Kaufman)
+#include "ngx_pagespeed.h"  // Must come first, see comments in CollectHeaders.
+
 #include <unistd.h> //for usleep
 
 #include "ngx_base_fetch.h"
 #include "ngx_event_connection.h"
 #include "ngx_list_iterator.h"
-
-#include "ngx_pagespeed.h"
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -255,6 +256,13 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
 }
 
 ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
+  // nginx defines _FILE_OFFSET_BITS to 64, which changes the size of off_t.
+  // If a standard header is accidentally included before the nginx header,
+  // on a 32-bit system off_t will be 4 bytes and we don't assign all the
+  // bits of content_length_n. Sanity check that did not happen.
+  // This could use static_assert, but this file is not built with --std=c++11.
+  bool sanity_check_off_t[sizeof(off_t) == 8 ? 1 : -1] __attribute__ ((unused));
+
   const ResponseHeaders* pagespeed_headers = response_headers();
 
   if (content_length_known()) {
