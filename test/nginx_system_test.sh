@@ -156,8 +156,14 @@ function fire_ab_load() {
 killall -s KILL nginx
 # TODO(oschaaf): Fix waiting for valgrind on 32 bits systems.
 killall -s KILL memcheck-amd64-
-while pgrep nginx > /dev/null; do sleep 1; done
-while pgrep memcheck > /dev/null; do sleep 1; done
+SECONDS=0
+while pgrep -x nginx >/dev/null || pgrep -q memcheck >/dev/null;do
+  if [ $SECONDS -gt 20 ]; then
+    echo "Old processes won't die" >&2
+    exit 1
+  fi
+  sleep 1
+done
 
 check_simple mkdir -p "$TEST_TMP"
 PROXY_CACHE="$TEST_TMP/proxycache"
@@ -1317,7 +1323,7 @@ if $USE_VALGRIND; then
     check_not [ -s "$TEST_TMP/valgrind.log" ]
 else
     check_simple "$NGINX_EXECUTABLE" -s quit -c "$PAGESPEED_CONF"
-    while pgrep nginx > /dev/null; do sleep 1; done
+    while pgrep -x nginx > /dev/null; do sleep 1; done
 fi
 
 if [ "$AB_PID" != "0" ]; then
