@@ -53,7 +53,8 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
 
   # To fetch from the secondary test root, we must set
   # http_proxy=${SECONDARY_HOSTNAME} during fetches.
-  SECONDARY_TEST_ROOT=http://secondary.example.com/mod_pagespeed_test
+  SECONDARY_ROOT="http://secondary.example.com"
+  SECONDARY_TEST_ROOT="$SECONDARY_ROOT/mod_pagespeed_test"
 else
   # Force the variable to be set albeit blank so tests don't fail.
   : ${SECONDARY_HOSTNAME:=}
@@ -356,8 +357,8 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   echo http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT $URL
   http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT $URL
   check [ $(grep -o "<script" $WGET_OUTPUT|wc -l) = 3 ]
-  check [ $(grep -c "pagespeed.addInstrumentationInit('/$BEACON_HANDLER', 'beforeunload', '', 'http://secondary.example.com/mod_pagespeed_test/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
-  check [ $(grep -c "pagespeed.addInstrumentationInit('/$BEACON_HANDLER', 'load', '', 'http://secondary.example.com/mod_pagespeed_test/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
+  check [ $(grep -c "pagespeed.addInstrumentationInit('/$BEACON_HANDLER', 'beforeunload', '', '$SECONDARY_TEST_ROOT/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
+  check [ $(grep -c "pagespeed.addInstrumentationInit('/$BEACON_HANDLER', 'load', '', '$SECONDARY_TEST_ROOT/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
 
   if [ "$NO_VHOST_MERGE" = "on" ]; then
     start_test When ModPagespeedMaxHtmlParseBytes is not set, we do not insert \
@@ -390,7 +391,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   $SUDO touch ${MOD_PAGESPEED_CACHE}_ipro_for_browser/cache.flush
   sleep 1
 
-  CACHE_TESTING_DIR="$APACHE_DOC_ROOT/mod_pagespeed_test/cache_flush/"
+  CACHE_TESTING_DIR="$APACHE_DOC_ROOT/cache_flush"
   CACHE_TESTING_TMPDIR="$CACHE_TESTING_DIR/$$"
   echo $SUDO mkdir "$CACHE_TESTING_TMPDIR"
   $SUDO mkdir "$CACHE_TESTING_TMPDIR"
@@ -399,7 +400,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   $SUDO cp "$CACHE_TESTING_DIR/cache_flush_test.html" "$CACHE_TESTING_TMPDIR/"
   CSS_FILE="$CACHE_TESTING_TMPDIR/update.css"
   URL_PATH=cache_flush/$$/cache_flush_test.html
-  URL=$TEST_ROOT/$URL_PATH
+  URL="$PRIMARY_SERVER/$URL_PATH"
   TMP_CSS_FILE=$TESTTMP/update.css
 
   # First, write color 0 into the css file and make sure it gets inlined into
@@ -412,7 +413,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
 
   # Also do the same experiment using a different VirtualHost.  It points
   # to the same htdocs, but uses a separate cache directory.
-  SECONDARY_URL=$SECONDARY_TEST_ROOT/$URL_PATH
+  SECONDARY_URL="$SECONDARY_ROOT/$URL_PATH"
   http_proxy=$SECONDARY_HOSTNAME fetch_until $SECONDARY_URL "grep -c $COLOR0" 1
 
   # Track how many flushes were noticed by Apache processes up till
@@ -915,7 +916,7 @@ check_from "$OUT" fgrep -q "$CONTENTS"
 
 function scrape_secondary_stat {
   http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
-    http://secondary.example.com/mod_pagespeed_statistics/ | \
+    "$SECONDARY_ROOT/mod_pagespeed_statistics/" | \
     scrape_pipe_stat "$1"
 }
 

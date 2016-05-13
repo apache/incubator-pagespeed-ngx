@@ -47,6 +47,8 @@ mkdir -p $OUTDIR
 # NO_VHOST_MERGE to "on".
 NO_VHOST_MERGE="${NO_VHOST_MERGE:-off}"
 
+SUDO=${SUDO:-}
+
 start_test Check for correct default pagespeed header format.
 # This will be X-Page-Speed in nginx and X-ModPagespeed in apache.  Accept both.
 OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
@@ -2143,6 +2145,7 @@ function cache_purge_test() {
       echo $CURL --request PURGE --proxy $SECONDARY_HOSTNAME "$PURGE_URL"
       check $CURL --request PURGE --proxy $SECONDARY_HOSTNAME "$PURGE_URL"
     fi
+    echo ""
     if [ $statistics_enabled -eq "0" ]; then
       # Without statistics, we have no mechanism to transmit state-changes
       # from one Apache child process to another, and so each process must
@@ -2167,13 +2170,30 @@ function cache_purge_test() {
   yellow_css=$(grep yellow.css $FETCH_UNTIL_OUTFILE | cut -d\" -f6)
   blue_css=$(grep blue.css $FETCH_UNTIL_OUTFILE | cut -d\" -f6)
 
+  purple_path="styles/$$"
+  purple_url="$PURGE_ROOT/$purple_path/purple.css"
+  purple_dir="$APACHE_DOC_ROOT/purge/$purple_path"
+  ls -ld $APACHE_DOC_ROOT $APACHE_DOC_ROOT/purge
+  echo $SUDO mkdir -p "$purple_dir"
+  $SUDO mkdir -p "$purple_dir"
+  purple_file="$purple_dir/purple.css"
+
   for method in $CACHE_PURGE_METHODS; do
     echo Individual URL Cache Purging with $method
     check_from "$(read_metadata_cache $yellow_css)" fgrep -q cache_ok:true
     check_from "$(read_metadata_cache $blue_css)" fgrep -q cache_ok:true
+    echo 'body { background: MediumPurple; }' > "/tmp/purple.$$"
+    $SUDO mv "/tmp/purple.$$" "$purple_file"
+    http_proxy=$SECONDARY_HOSTNAME fetch_until "$purple_url" 'fgrep -c 9370db' 1
+    echo 'body { background: black; }' > "/tmp/purple.$$"
+    $SUDO mv "/tmp/purple.$$" "$purple_file"
+
     cache_purge $method "*"
+
     check_from "$(read_metadata_cache $yellow_css)" fgrep -q cache_ok:false
     check_from "$(read_metadata_cache $blue_css)" fgrep -q cache_ok:false
+    http_proxy=$SECONDARY_HOSTNAME fetch_until "$purple_url" 'fgrep -c #000' 1
+    cache_purge "$method" "$purple_path/purple.css"
 
     sleep 1
     STATS=$OUTDIR/purge.stats
@@ -2205,6 +2225,7 @@ function cache_purge_test() {
     http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $PURGE_STATS_URL > $STATS.3
     check_stat $STATS.2 $STATS.3 num_resource_fetch_successes 1
   done
+  $SUDO rm -rf "$purple_dir"
 }
 
 if [ "$CACHE_FLUSH_TEST" = "on" ]; then

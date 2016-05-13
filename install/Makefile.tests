@@ -455,3 +455,19 @@ apache_debug_unplugged_test : apache_install_conf apache_debug_restart
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_stop
 	@echo PASS
+
+# Target used to populate the docroot for a webserver, including the
+# read-only mod_pagespeed_example, mod_pagespeed_test, and do_not_modify,
+# plus the read/write areas for cache purging and flush tests.  The
+# read-only directories are symlinked in for speed, and the read/write
+# directories are deep-copied, but they are small.
+setup_doc_root :
+	mkdir -p $(APACHE_DOC_ROOT)
+	cd $(APACHE_DOC_ROOT); \
+	  rm -f mod_pagespeed_example mod_pagespeed_test do_not_modify; \
+	  rm -rf cache_flush purge; \
+	  ln -s "$(PWD)/mod_pagespeed_example"; \
+	  ln -s "$(PWD)/mod_pagespeed_test"; \
+	  ln -s "$(PWD)/do_not_modify"; \
+	  cp -r "$(PWD)/mod_pagespeed_test/cache_flush" .; \
+	  cp -r "$(PWD)/mod_pagespeed_test/purge" . \
