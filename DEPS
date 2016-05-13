@@ -221,7 +221,10 @@ deps = {
   "src/tools/clang":
     Var("chromium_trunk") + "src/tools/clang/@" + Var("chromium_revision_num"),
 
-  "src/tools/gyp": From(Var("chromium_deps_root")),
+  # This is the same commit as the version from svn included from chromium_deps,
+  # but the svn is down, so we take it from chromium-git.
+  "src/tools/gyp":
+    Var("chromium_git") + "/external/gyp@" + "0fb31294ae844bbf83eba05876b7a241b66f1e99",
 
   "src/third_party/modp_b64":
     Var("chromium_trunk") + "src/third_party/modp_b64/@" +
