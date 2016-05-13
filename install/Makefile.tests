@@ -463,11 +463,10 @@ apache_debug_unplugged_test : apache_install_conf apache_debug_restart
 # directories are deep-copied, but they are small.
 setup_doc_root :
 	mkdir -p $(APACHE_DOC_ROOT)
-	cd $(APACHE_DOC_ROOT); \
-	  rm -f mod_pagespeed_example mod_pagespeed_test do_not_modify; \
-	  rm -rf cache_flush purge; \
-	  ln -s "$(PWD)/mod_pagespeed_example"; \
-	  ln -s "$(PWD)/mod_pagespeed_test"; \
-	  ln -s "$(PWD)/do_not_modify"; \
-	  cp -r "$(PWD)/mod_pagespeed_test/cache_flush" .; \
-	  cp -r "$(PWD)/mod_pagespeed_test/purge" . \
+	ln -Tsf "$(PWD)/mod_pagespeed_example" $(APACHE_DOC_ROOT)/mod_pagespeed_example
+	ln -Tsf "$(PWD)/mod_pagespeed_test" $(APACHE_DOC_ROOT)/mod_pagespeed_test
+	ln -Tsf "$(PWD)/do_not_modify" $(APACHE_DOC_ROOT)/do_not_modify
+	rm -rf "$(APACHE_DOC_ROOT)/cache_flush" 
+	cp -r "$(PWD)/mod_pagespeed_test/cache_flush" $(APACHE_DOC_ROOT)
+	rm -rf "$(APACHE_DOC_ROOT)/purge" 
+	cp -r "$(PWD)/mod_pagespeed_test/purge" $(APACHE_DOC_ROOT)
