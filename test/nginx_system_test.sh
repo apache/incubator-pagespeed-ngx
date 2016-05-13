@@ -157,7 +157,7 @@ killall -s KILL nginx
 # TODO(oschaaf): Fix waiting for valgrind on 32 bits systems.
 killall -s KILL memcheck-amd64-
 SECONDS=0
-while pgrep -x nginx >/dev/null || pgrep -q memcheck >/dev/null;do
+while pgrep -x nginx >/dev/null || pgrep memcheck >/dev/null;do
   if [ $SECONDS -gt 20 ]; then
     echo "Old processes won't die" >&2
     exit 1
