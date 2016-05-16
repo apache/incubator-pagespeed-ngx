@@ -22,17 +22,12 @@ fi
 VERSION="$1"
 TARBALL="$2"
 
-# Absoluteify $TARBALL if it does not start with /
-if [ -n "$TARBALL" -a "${TARBALL#/}" = "$TARBALL" ]; then
-  TARBALL="$PWD/$TARBALL"
-fi
-
 if [ ! -f "$TARBALL" ]; then
   echo "$TARBALL should be a file"
   exit 1
 fi
 
-die() {
+function die() {
   echo "verify_nginx_release.sh: $@"
   cd
   rm -rf "$WORKDIR"
@@ -48,6 +43,7 @@ git clone https://github.com/pagespeed/mod_pagespeed.git src/
 cd src/
 git checkout $VERSION
 
+
 cd $WORKDIR
 git clone https://github.com/pagespeed/ngx_pagespeed.git
 cd ngx_pagespeed
@@ -56,12 +52,6 @@ tar -xzf "$TARBALL"
 
 cd $WORKDIR
 git clone https://github.com/FRiCKLE/ngx_cache_purge.git
-
-# If ldconfig is not found, add /sbin to the path. ldconfig is required
-# for openresty with luajit.
-if ! type -t ldconfig >/dev/null && [ -e /sbin/ldconfig ]; then
-  PATH=$PATH:/sbin
-fi
 
 wget https://openresty.org/download/openresty-1.9.7.3.tar.gz
 tar xzvf openresty-*.tar.gz
@@ -81,18 +71,17 @@ for is_debug in debug release; do
   mv nginx-1.9.12 nginx
   cd nginx/
 
-  nginx_root="$WORKDIR/$is_debug/"
-
+  cd $WORKDIR
+  wget http://nginx.org/download/nginx-1.9.12.tar.gz
+  tar -xzf nginx-1.9.12.tar.gz
+  mv nginx-1.9.12 nginx
+  cd nginx/
   extra_args=""
-  if [ "$is_debug" = "debug" ]; then
-    extra_args+=" --with-debug"
+  if [ "$is_debug" == "debug" ]; then
+    extra_args="--with-debug"
   fi
 
-  if [ -x /usr/lib/gcc-mozilla/bin/gcc ]; then
-    PATH=/usr/lib/gcc-mozilla/bin:$PATH
-    extra_args+=" --with-cc=/usr/lib/gcc-mozilla/bin/gcc --with-ld-opt=-static-libstdc++"
-  fi
-
+  nginx_root="$WORKDIR/$is_debug/"
   ./configure \
     --prefix="$nginx_root" \
     --add-module="$WORKDIR/ngx_pagespeed" \
