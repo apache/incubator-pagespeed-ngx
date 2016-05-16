@@ -63,7 +63,7 @@ export APACHE_DOC_ROOT="$SERVER_ROOT"
 
 mkdir -p "$APACHE_DOC_ROOT"
 make -f "$APACHE_DOC_SRC/Makefile.tests" setup_doc_root \
-  "INSTALL_DATA_DIR=$APACHE_DOC_SRC"
+  INSTALL_DATA_DIR="$APACHE_DOC_SRC"
 
 # We need check and check_not before we source SYSTEM_TEST_FILE that provides
 # them.
