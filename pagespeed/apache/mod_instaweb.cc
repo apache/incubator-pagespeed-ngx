@@ -1804,7 +1804,7 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION2(kModPagespeedGlobalAdminDomains,
         "<Allow|Disallow> domain_wildcard"),
 
-  APACHE_CONFIG_DIR_OPTION2(
+  APACHE_CONFIG_OPTION2(
         "ModPagespeedExperimentalMeasurementProxy",
         "https://root.domain password (Experimental)"),
 
