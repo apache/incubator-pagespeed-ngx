@@ -38,12 +38,10 @@ class RewriteOptions;
 // before fetching via us (as this doesn't implement Encode() itself).
 class MeasurementProxyUrlNamer : public UrlNamer {
  public:
-  MeasurementProxyUrlNamer();
+  MeasurementProxyUrlNamer(const GoogleString& top_origin,
+                           const GoogleString& password);
   ~MeasurementProxyUrlNamer() override;
 
-  // Note: this doesn't deal with the authenication or verification
-  // of origin or password, the MeasurementProxyRewriteOptionsManager is
-  // expected to do that.
   bool Decode(const GoogleUrl& request_url,
               const RewriteOptions* rewrite_options,
               GoogleString* decoded) const override;
@@ -61,6 +59,9 @@ class MeasurementProxyUrlNamer : public UrlNamer {
   }
 
  private:
+  GoogleString top_origin_;
+  GoogleString password_;
+
   DISALLOW_COPY_AND_ASSIGN(MeasurementProxyUrlNamer);
 };
 

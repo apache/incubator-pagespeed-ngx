@@ -33,6 +33,7 @@ namespace net_instaweb {
 
 class MeasurementProxyUrlNamerTest : public RewriteTestBase {
  protected:
+  MeasurementProxyUrlNamerTest() : namer_("http://www.example.com/", "pwd") {}
   MeasurementProxyUrlNamer namer_;
 };
 
