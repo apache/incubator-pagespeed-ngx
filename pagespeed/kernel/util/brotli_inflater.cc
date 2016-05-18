@@ -108,8 +108,12 @@ bool BrotliInflater::DecompressHelper(StringPiece in, MessageHandler* handler,
         // Decompression succeeded, write out the last chunk if needed.
         break;
       case BROTLI_RESULT_ERROR:
-        // TODO(eustas): use brotli API to convert error code to string.
+#ifdef BROTLI_ERROR_CODES_LIST
+        handler->Message(kError, "%s",
+            BrotliErrorString(BrotliGetErrorCode(brotli_state_.get())));
+#else
         handler->Message(kError, "BROTLI_RESULT_ERROR");
+#endif
         return false;
     }
     StringPiece chunk(output, sizeof(output) - available_out);

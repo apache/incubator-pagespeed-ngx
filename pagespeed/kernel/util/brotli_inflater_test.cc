@@ -82,7 +82,7 @@ TEST(BrotliInflater, TestCorruptInputBrotliDecompress) {
   StringPiece compressed(kHelloBrotliCorrupt, sizeof(kHelloBrotliCorrupt));
   EXPECT_FALSE(
       BrotliInflater::Decompress(compressed, &handler, &decompress_writer));
-  EXPECT_STREQ("Error: BROTLI_RESULT_ERROR", handler.messages()[0]);
+  EXPECT_TRUE(HasPrefixString(handler.messages()[0], "Error: BROTLI_"));
 }
 
 TEST(BrotliInflater, TestTruncatedInputBrotliDecompress) {
