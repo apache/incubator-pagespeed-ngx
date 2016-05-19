@@ -2772,6 +2772,10 @@ class RewriteOptions {
   // not true, this function will DCHECK.
   virtual void Merge(const RewriteOptions& src);
 
+  // Merge the process scope options (including strict ones) from src into
+  // this.
+  void MergeOnlyProcessScopeOptions(const RewriteOptions& src);
+
   // Registers a wildcard pattern for to be allowed, potentially overriding
   // previous Disallow wildcards.
   void Allow(StringPiece wildcard_pattern) {

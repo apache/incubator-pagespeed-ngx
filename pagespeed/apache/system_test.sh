@@ -1037,6 +1037,17 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Note that this also checks that it got minified --- the original has
   # spaces around the equal sign.
   check_from "$OUT" fgrep -q "goog.constructNamespace_="
+
+  start_test Process-scope configuration handling.
+  # Must be the same value in top-level and both vhosts
+  OUT=$($CURL --silent $HOSTNAME/?PageSpeedFilters=+debug)
+  check_from "$OUT" fgrep -q "IproMaxResponseBytes (imrb) 1048576003"
+
+  OUT=$($CURL --silent --proxy $SECONDARY_HOSTNAME http://ps1.example.com)
+  check_from "$OUT" fgrep -q "IproMaxResponseBytes (imrb) 1048576003"
+
+  OUT=$($CURL --silent --proxy $SECONDARY_HOSTNAME http://ps2.example.com)
+  check_from "$OUT" fgrep -q "IproMaxResponseBytes (imrb) 1048576003"
 fi
 
 # Cleanup

@@ -3885,6 +3885,28 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   }
 }
 
+void RewriteOptions::MergeOnlyProcessScopeOptions(const RewriteOptions& src) {
+  DCHECK(!frozen_);
+#ifndef NDEBUG  // MergeOK is only around in CHECK-enabled builds.
+  CHECK(src.MergeOK());
+#endif
+
+  DCHECK_EQ(all_options_.size(), src.all_options_.size());
+  DCHECK_EQ(initialized_options_, src.initialized_options_);
+  DCHECK_EQ(initialized_options_, all_options_.size());
+
+  size_t options_to_merge = std::min(all_options_.size(),
+                                     src.all_options_.size());
+  for (size_t i = 0; i < options_to_merge; ++i) {
+    OptionScope scope = all_options_[i]->scope();
+    if (scope == kProcessScope || scope == kProcessScopeStrict) {
+      all_options_[i]->Merge(src.all_options_[i]);
+    }
+  }
+
+  Modify();
+}
+
 RewriteOptions* RewriteOptions::Clone() const {
   RewriteOptions* options = NewOptions();
   options->Merge(*this);

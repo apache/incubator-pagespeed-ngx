@@ -662,6 +662,20 @@ TEST_F(RewriteOptionsTest, MergeDistributed) {
   EXPECT_FALSE(options_.Distributable(RewriteOptions::kCssFilterId));
 }
 
+TEST_F(RewriteOptionsTest, MergeOnlyProcessScopeOptions) {
+  RewriteOptions dest(&thread_system_), src(&thread_system_);
+  dest.set_image_max_rewrites_at_once(2);
+  dest.set_max_url_segment_size(1);
+  src.set_image_max_rewrites_at_once(5);
+  src.set_max_url_segment_size(4);
+
+  dest.MergeOnlyProcessScopeOptions(src);
+  // Pulled in set_image_max_rewrites_at_once, which is process scope,
+  // but not the other option.
+  EXPECT_EQ(5, dest.image_max_rewrites_at_once());
+  EXPECT_EQ(1, dest.max_url_segment_size());
+}
+
 TEST_F(RewriteOptionsTest, Allow) {
   options_.Allow("*.css");
   EXPECT_TRUE(options_.IsAllowed("abcd.css"));

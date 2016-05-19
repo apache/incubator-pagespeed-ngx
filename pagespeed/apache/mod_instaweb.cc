@@ -328,9 +328,9 @@ class ApacheProcessContext {
     return factory_.get();
   }
 
-  // Checks cmd to see if it's used in a vhost or conditional context, and
-  // if so, if that's an error or warning condition.
-  const char* CheckCommandForVhost(const cmd_parms* cmd);
+  // Checks cmd to see if it's process scope, and if so if it's used in an
+  // incorrect context, returning an error message if so.
+  const char* CheckProcessScope(const cmd_parms* cmd, bool* is_process_scope);
 
   scoped_ptr<ApacheRewriteDriverFactory> factory_;
   // Process-scoped static variable cleanups, mainly for valgrind.
@@ -988,6 +988,18 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       CHECK(server_context != NULL);
       server_contexts.push_back(server_context);
     }
+
+    // We also want propagate all the per-process options to each vhost. The
+    // normal merge in merge_server_config isn't enough since that merges the
+    // non-per process things from a dummy ServerContext corresponding to the
+    // top-level config, not ApacheRewriteDriverFactory::default_options where
+    // the process scope options go.
+    //
+    // We do this here rather than merge_server_config since we want to touch
+    // the ServerContext corresponding to the top-level/non-<VirtualHost>
+    // block, too.
+    server_context->global_config()->MergeOnlyProcessScopeOptions(
+        *factory->default_options());
   }
 
   GoogleString error_message;
@@ -1322,17 +1334,14 @@ static char* CheckGlobalOption(const cmd_parms* cmd,
   return NULL;
 }
 
-const char* ApacheProcessContext::CheckCommandForVhost(const cmd_parms* cmd) {
-  // Only do the vhost_command_handling_map_ lookup if it's going
-  // to be used by CheckGlobalOption.
-  //
-  // TODO(jmarantz): Add a scope argument ParseAndSetOptionFromName[123] and
-  // let it do the error-checking & reporting.
+const char* ApacheProcessContext::CheckProcessScope(
+    const cmd_parms* cmd, bool* is_process_scope) {
+  VhostCommandHandlingMap::const_iterator p =
+      vhost_command_handling_map_.find(cmd->cmd);
+  *is_process_scope = (p != vhost_command_handling_map_.end());
   const char* ret = NULL;
   if (cmd->server->is_virtual || (cmd->directive->data != NULL)) {
-    VhostCommandHandlingMap::const_iterator p =
-        vhost_command_handling_map_.find(cmd->cmd);
-    if (p != vhost_command_handling_map_.end()) {
+    if (*is_process_scope) {
       ret = CheckGlobalOption(cmd, p->second, factory_->message_handler());
     }
   }
@@ -1407,20 +1416,36 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   if (directive.starts_with(prefix)) {
     StringPiece option = directive.substr(prefix.size());
     GoogleString msg;
+
+    bool use_global_config = false;
+    // See if it's a global option, and perhaps not in place.
+    ret = apache_process_context.CheckProcessScope(cmd, &use_global_config);
+    if (ret != NULL) {
+      return ret;
+    }
+    // Options that are per-process are always parsed into
+    // ApacheRewriteDriverFactory::default_options(), and then propagated
+    // in the post-config hook (pagespeed_post_config).
+    if (use_global_config) {
+      config = ApacheConfig::DynamicCast(factory->default_options());
+    }
+
     // See whether generic RewriteOptions name handling can figure this one out.
     RewriteOptions::OptionSettingResult result =
         config->ParseAndSetOptionFromName1(option, arg, &msg, handler);
     if (result == RewriteOptions::kOptionNameUnknown) {
       // RewriteOptions didn't know; try the driver factory.
+      // TODO(morlovich): It may be cleaner to not have process-scope options
+      // in RewriteOptions at all, but rather something RewriteDriverFactory
+      // specific, as long as we can provide a painless way of integrating it
+      // in the server and parsing it (areas where the current manual approach
+      // fails).
       result = factory->ParseAndSetOption1(
           option, arg,
           !cmd->server->is_virtual,  // is_process_scope
           &msg, handler);
     }
     if (StandardParsingHandled(cmd, result, msg, &ret)) {
-      if (ret == NULL) {
-        ret = apache_process_context.CheckCommandForVhost(cmd);
-      }
       return ret;
     }
   }
@@ -1903,6 +1928,7 @@ void* merge_server_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
           new_non_spdy_overlay.release());
     }
   }
+
   return new_conf;
 }
 

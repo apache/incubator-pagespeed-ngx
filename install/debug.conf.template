@@ -1825,6 +1825,24 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeedExperimentalMeasurementProxy "http://mpr.example.com" secret
 </VirtualHost>
 
+# For testing how we handle process-scope options.
+ModPagespeedIproMaxResponseBytes 1048576001
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName ps1.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
+  ModPagespeedIproMaxResponseBytes 1048576002
+  ModPagespeedEnableFilters debug
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName ps2.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
+  ModPagespeedIproMaxResponseBytes 1048576003
+  ModPagespeedEnableFilters debug
+</VirtualHost>
+
 # For testing with a custom origin header.  In this VirtualHost,
 # /mod_pagespeed_test is included in our DocumentRoot and thus does
 # not need to be in any resource URL paths.  This helps us verify that
