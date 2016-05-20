@@ -90,7 +90,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
     InitStats(statistics);
   }
 
-  void set_main_conf(NgxRewriteOptions* main_conf) {  main_conf_ = main_conf; }
+  void SetMainConf(NgxRewriteOptions* main_conf);
 
   void set_resolver(ngx_resolver_t* resolver) {
     resolver_ = resolver;
@@ -132,10 +132,6 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
 
  private:
   Timer* timer_;
-
-  // main_conf will have only options set in the main block.  It may be NULL,
-  // and we do not take ownership.
-  NgxRewriteOptions* main_conf_;
 
   bool threads_started_;
   NgxMessageHandler* ngx_message_handler_;
