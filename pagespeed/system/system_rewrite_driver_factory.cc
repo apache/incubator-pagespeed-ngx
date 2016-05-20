@@ -281,11 +281,6 @@ void SystemRewriteDriverFactory::StartController(
 void SystemRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
 
-  // These options are for StartController. Theoretically we can just grab
-  // any-old one. However, if InheritVHostConfig is off, only one will contain
-  // kProcessScope options.
-  SystemRewriteOptions* options = nullptr;
-
   // Let SystemCaches know about the various paths we have in configuration
   // first, as well as the memcached instances.
   for (SystemServerContextSet::iterator
@@ -293,17 +288,15 @@ void SystemRewriteDriverFactory::RootInit() {
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
     SystemServerContext* server_context = *p;
     caches_->RegisterConfig(server_context->global_system_rewrite_options());
-    if (options == nullptr &&
-        server_context->global_system_rewrite_options()->controller_port() !=
-            0) {
-      options = server_context->global_system_rewrite_options();
-    }
   }
 
   caches_->RootInit();
 
-  if (options != nullptr) {
-    StartController(*options);
+  // These options are for StartController, so we only need process scope conf.
+  SystemRewriteOptions* process_options =
+      SystemRewriteOptions::DynamicCast(default_options());
+  if (process_options != nullptr) {
+    StartController(*process_options);
   }
 }
 
