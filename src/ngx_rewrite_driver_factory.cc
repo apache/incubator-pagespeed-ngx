@@ -69,7 +69,6 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
     SystemThreadSystem* system_thread_system, StringPiece hostname, int port)
     : SystemRewriteDriverFactory(process_context, system_thread_system,
         NULL /* default shared memory runtime */, hostname, port),
-      main_conf_(NULL),
       threads_started_(false),
       ngx_message_handler_(
           new NgxMessageHandler(timer(), thread_system()->NewMutex())),
@@ -206,6 +205,12 @@ void NgxRewriteDriverFactory::StartThreads() {
   CHECK(ok) << "Unable to start scheduler thread";
   defer_cleanup(thread->MakeDeleter());
   threads_started_ = true;
+}
+
+void NgxRewriteDriverFactory::SetMainConf(NgxRewriteOptions* main_options) {
+  // Propagate process-scope options from the copy we had during nginx option
+  // parsing to our own.
+  default_options()->MergeOnlyProcessScopeOptions(*main_options);
 }
 
 void NgxRewriteDriverFactory::LoggingInit(

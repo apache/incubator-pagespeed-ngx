@@ -1120,7 +1120,7 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
-  cfg_m->driver_factory->set_main_conf(parent_cfg_s->options);
+  cfg_m->driver_factory->SetMainConf(parent_cfg_s->options);
   cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext(
       "dummy_hostname", dummy_port);
 
