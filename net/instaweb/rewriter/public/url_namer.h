@@ -42,6 +42,15 @@ class UrlNamer {
     kUnsharded
   };
 
+  // This encodes whether we do some sort of mapping of resources to a
+  // separate proxy domain
+  enum class ProxyExtent {
+    kNone,
+    kInputOnly,  // We see requests on this domain, but don't produce it
+                 // ourselves.
+    kFull,       // All resources are moved.
+  };
+
   UrlNamer();
   virtual ~UrlNamer();
 
@@ -79,7 +88,7 @@ class UrlNamer {
 
   // Determines whether the naming policy incorporates proxying resources
   // using a central proxy domain.
-  virtual bool ProxyMode() const { return false; }
+  virtual ProxyExtent ProxyMode() const { return ProxyExtent::kNone; }
 
   // Determines whether the specified URL has been mapped to that central
   // proxy domain.

@@ -55,7 +55,7 @@ class RewrittenContentScanningFilterTest : public RewriteTestBase {
     server_context()->page_property_cache()->Read(page);
     url_namer_.reset(new TestUrlNamer);
     server_context()->set_url_namer(url_namer_.get());
-    url_namer_->SetProxyMode(true);
+    url_namer_->SetProxyMode(UrlNamer::ProxyExtent::kFull);
   }
 
   StringPiece GetNumRewrittenResources() {

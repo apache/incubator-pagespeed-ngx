@@ -2970,7 +2970,8 @@ bool RewriteContext::PrepareFetch(
         break;
       }
 
-      if (!FindServerContext()->url_namer()->ProxyMode() &&
+      if (FindServerContext()->url_namer()->ProxyMode()
+            == UrlNamer::ProxyExtent::kNone &&
           !driver->MatchesBaseUrl(*url)) {
         // Reject absolute url references unless we're proxying.
         is_valid = false;

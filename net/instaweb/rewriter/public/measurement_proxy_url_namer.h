@@ -58,6 +58,9 @@ class MeasurementProxyUrlNamer : public UrlNamer {
     return true;
   }
 
+  ProxyExtent ProxyMode() const override { return ProxyExtent::kInputOnly; }
+  bool IsProxyEncoded(const GoogleUrl& url) const override;
+
  private:
   GoogleString top_origin_;
   GoogleString password_;

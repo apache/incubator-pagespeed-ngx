@@ -33,7 +33,7 @@ namespace net_instaweb {
 
 class MeasurementProxyUrlNamerTest : public RewriteTestBase {
  protected:
-  MeasurementProxyUrlNamerTest() : namer_("http://www.example.com/", "pwd") {}
+  MeasurementProxyUrlNamerTest() : namer_("https://www.example.com/", "pwd") {}
   MeasurementProxyUrlNamer namer_;
 };
 
@@ -180,6 +180,24 @@ TEST_F(MeasurementProxyUrlNamerTest, Encode) {
   EXPECT_EQ(
       "https://cdn.modpagespeed.com/foo.css.pagespeed.ce.0.css",
       namer_.Encode(options(), *cross_domain_ssl.get(), UrlNamer::kSharded));
+}
+
+TEST_F(MeasurementProxyUrlNamerTest, IsProxyEncoded) {
+  GoogleUrl good_url(
+    "https://www.example.com/h/c1/pwd/modpagespeed.com/a/b/c.d?e");
+  EXPECT_TRUE(namer_.IsProxyEncoded(good_url));
+
+  GoogleUrl almost_good_url1(
+    "https://www.example.com/h/c1/notpwd/modpagespeed.com/a/b/c.d?e");
+  EXPECT_FALSE(namer_.IsProxyEncoded(almost_good_url1));
+
+  GoogleUrl almost_good_url2(
+    "http://www.example.com/h/c1/pwd/modpagespeed.com/a/b/c.d?e");
+  EXPECT_FALSE(namer_.IsProxyEncoded(almost_good_url2));
+
+  GoogleUrl bad_url(
+    "https://www.example.com/sadly/wrong");
+  EXPECT_FALSE(namer_.IsProxyEncoded(bad_url));
 }
 
 }  // namespace net_instaweb

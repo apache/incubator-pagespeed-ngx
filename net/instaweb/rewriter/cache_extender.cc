@@ -149,7 +149,7 @@ bool CacheExtender::ShouldRewriteResource(
     return false;
   }
 
-  if (url_namer->ProxyMode()) {
+  if (url_namer->ProxyMode() == UrlNamer::ProxyExtent::kFull) {
     return !url_namer->IsProxyEncoded(origin_gurl);
   }
   const DomainLawyer* lawyer = driver()->options()->domain_lawyer();

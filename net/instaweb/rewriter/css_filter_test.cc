@@ -120,7 +120,9 @@ class CssFilterTest : public CssRewriteTestBase {
     server_context()->ComputeSignature(options());
 
     // By default TestUrlNamer doesn't proxy but we might need it for this test.
-    TestUrlNamer::SetProxyMode(enable_proxy_mode);
+    TestUrlNamer::SetProxyMode(
+        enable_proxy_mode ?
+            UrlNamer::ProxyExtent::kFull : UrlNamer::ProxyExtent::kNone);
 
     SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, css_input, 100);
 

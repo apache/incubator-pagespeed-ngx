@@ -115,4 +115,16 @@ bool MeasurementProxyUrlNamer::DecodePathDetails(
   return true;
 }
 
+bool MeasurementProxyUrlNamer::IsProxyEncoded(const GoogleUrl& url) const {
+  StringPiece config, config_domain, password;
+  GoogleString decoded;
+  if (DecodePathDetails(url, &config, &config_domain, &password, &decoded)) {
+    // Looks like the right syntax, but check to see if it's actually on our
+    // host and not elsewhere.
+    return (password == password_ && url.Origin() == top_origin_);
+  } else {
+    return false;
+  }
+}
+
 }  // namespace net_instaweb

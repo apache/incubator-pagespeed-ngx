@@ -814,7 +814,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
                                   kHtmlCacheTimeSec * 2);
     TestUrlNamer url_namer;
     server_context()->set_url_namer(&url_namer);
-    url_namer.SetProxyMode(true);
+    url_namer.SetProxyMode(UrlNamer::ProxyExtent::kFull);
 
     GoogleString text;
     RequestHeaders request_headers;

@@ -1546,7 +1546,8 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   // also need to ensure that the URL decodes correctly as otherwise we end
   // up with an invalid decoded base URL, which ultimately leads to inability
   // to rewrite the URL.
-  if (url_namer->ProxyMode()) {
+  UrlNamer::ProxyExtent proxy_mode = url_namer->ProxyMode();
+  if (proxy_mode != UrlNamer::ProxyExtent::kNone) {
     if (!url_namer->IsProxyEncoded(gurl)) {
       message_handler()->Message(kInfo,
                                  "Decoding of resource name %s failed because "
@@ -3190,9 +3191,10 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
                                         bool* proxy_mode) const {
   bool result = false;
   const UrlNamer* url_namer = server_context_->url_namer();
-  bool proxying = url_namer->ProxyMode();
+  bool proxying_on_output =
+      (url_namer->ProxyMode() == UrlNamer::ProxyExtent::kFull);
 
-  if (proxying) {
+  if (proxying_on_output) {
     result = true;
   } else if (input_base.AllExceptLeaf() != output_base.AllExceptLeaf()) {
     result = true;
@@ -3202,7 +3204,7 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
   }
 
   if (proxy_mode != NULL) {
-    *proxy_mode = proxying;
+    *proxy_mode = proxying_on_output;
   }
 
   return result;

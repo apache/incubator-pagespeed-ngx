@@ -54,13 +54,13 @@ class TestUrlNamer : public UrlNamer {
 
   // Determines whether the naming policy incorporates proxying resources
   // using a central proxy domain.
-  virtual bool ProxyMode() const { return proxy_mode_; }
+  ProxyExtent ProxyMode() const override { return proxy_mode_; }
 
   // Determines whether the specified URL has been mapped to our proxy domain.
   virtual bool IsProxyEncoded(const GoogleUrl& url) const;
 
   // Set whether a test needs the URL namer to act in proxy mode.
-  static void SetProxyMode(bool value) { proxy_mode_ = value; }
+  static void SetProxyMode(ProxyExtent value) { proxy_mode_ = value; }
 
   // If a test needs normal encoding, even when TestUrlNamer is wired in,
   // they can set this on and Encode() will redirect to UrlNamer::Encode().
@@ -75,7 +75,7 @@ class TestUrlNamer : public UrlNamer {
   bool IsPathEncoded(const GoogleUrl& url) const;
 
   static bool use_normal_encoding_;
-  static bool proxy_mode_;
+  static ProxyExtent proxy_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(TestUrlNamer);
 };

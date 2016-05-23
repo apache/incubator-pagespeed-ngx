@@ -355,7 +355,7 @@ TEST_F(RewriteDriverTestUrlNamer, TestEncodedUrls) {
                          "ADDCXPWGGP1VTHJIYU13IIFQYSYMGKIMSFIEBM+HCAACVNGO8CX"
                          "XO%81%9F%F1m/", &encoded_url);
   // By default TestUrlNamer doesn't proxy but we need it to for this test.
-  TestUrlNamer::SetProxyMode(true);
+  TestUrlNamer::SetProxyMode(UrlNamer::ProxyExtent::kFull);
   EXPECT_FALSE(CanDecodeUrl(encoded_url));
 }
 
@@ -365,7 +365,7 @@ TEST_F(RewriteDriverTestUrlNamer, TestDecodeUrls) {
       "http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg"));
   rewrite_driver()->AddFilters();
   StringVector urls;
-  TestUrlNamer::SetProxyMode(true);
+  TestUrlNamer::SetProxyMode(UrlNamer::ProxyExtent::kFull);
   EXPECT_TRUE(rewrite_driver()->DecodeUrl(gurl_good, &urls));
   EXPECT_EQ(1, urls.size());
   EXPECT_EQ("http://example.com/Puzzle.jpg", urls[0]);
@@ -393,7 +393,7 @@ TEST_F(RewriteDriverTestUrlNamer, TestDecodeUrls) {
 
   // ProxyMode off
   urls.clear();
-  TestUrlNamer::SetProxyMode(false);
+  TestUrlNamer::SetProxyMode(UrlNamer::ProxyExtent::kNone);
   SetUseTestUrlNamer(false);
   gurl_good.Reset(Encode(
       "http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg"));

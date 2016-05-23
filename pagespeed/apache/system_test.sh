@@ -1026,7 +1026,7 @@ fetch_until -gzip $URL "wc -c" 27
 
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Measurement proxy mode
-  # Wrong password --- 403
+  # Wrong password --- 403.
   OUT=$($CURL --silent --include --proxy $SECONDARY_HOSTNAME\
       http://mpr.example.com/h/_/sicrit/www.modpagespeed.com/)
   check_from "$OUT" fgrep -q "403 "
@@ -1048,6 +1048,11 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   OUT=$($CURL --silent --proxy $SECONDARY_HOSTNAME http://ps2.example.com)
   check_from "$OUT" fgrep -q "IproMaxResponseBytes (imrb) 1048576003"
+
+  # Combined + minified CSS.
+  OUT=$($CURL --silent --include --proxy $SECONDARY_HOSTNAME\
+      http://mpr.example.com/h/b/secret/www.gstatic.com/psa/static/A.0e5d6484d7bf84edf94c17a8d6a6c6de-mobilize.css+0f58e3ef023072001e64bba88abaeeeb-mobilize.css,Mcc.JzQiGpc0_X.css.pagespeed.cf.0slDU6deBr.css)
+  check_from "$OUT" fgrep -q "psmob-map-button"
 fi
 
 # Cleanup
