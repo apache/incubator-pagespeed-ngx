@@ -115,6 +115,8 @@ class UserAgentMatcherTestBase : public testing::Test {
   static const char kOperaMobi9[];
   static const char kOperaMobilMobileUserAgent[];
   static const char kOperaWithFirefoxUserAgent[];
+  static const char kPagespeedInsightsDesktopUserAgent[];
+  static const char kPagespeedInsightsMobileUserAgent[];
   static const char kPanasonicMobileUserAgent[];
   static const char kPGUserAgent[];
   static const char kPHILIPSUserAgent[];

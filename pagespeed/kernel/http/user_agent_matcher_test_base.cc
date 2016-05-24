@@ -48,6 +48,13 @@ const char UserAgentMatcherTestBase::kAndroidHCUserAgent[] =
 const char UserAgentMatcherTestBase::kAndroidICSUserAgent[] =
     "Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; Galaxy Nexus Build/ICL27) "
     "AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30";
+const char UserAgentMatcherTestBase::kPagespeedInsightsMobileUserAgent[] =
+    "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) "
+    "AppleWebKit/537.36 (KHTML, like Gecko; Google Page Speed Insights) "
+    "Chrome/27.0.1453 Mobile Safari/537.36";
+const char UserAgentMatcherTestBase::kPagespeedInsightsDesktopUserAgent[] =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko; "
+    "Google Page Speed Insights) Chrome/27.0.1453 Safari/537.36";
 const char UserAgentMatcherTestBase::kAndroidNexusSUserAgent[] =
     "Mozilla/5.0 (Linux; U; Android 2.3.3; en-gb; Nexus S Build/GRI20)"
     "AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1";

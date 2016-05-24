@@ -163,7 +163,8 @@ bool DeviceProperties::SupportsWebpInPlace() const {
 // by only checking the "accept" header.
 bool DeviceProperties::SupportsWebpRewrittenUrls() const {
   if (supports_webp_rewritten_urls_ == kNotSet) {
-    if ((accepts_webp_ == kTrue) || ua_matcher_->LegacyWebp(user_agent_)) {
+    if ((accepts_webp_ == kTrue) || ua_matcher_->LegacyWebp(user_agent_) ||
+        ua_matcher_->InsightsWebp(user_agent_)) {
       supports_webp_rewritten_urls_ = kTrue;
     } else {
       supports_webp_rewritten_urls_ = kFalse;
@@ -174,8 +175,9 @@ bool DeviceProperties::SupportsWebpRewrittenUrls() const {
 
 bool DeviceProperties::SupportsWebpLosslessAlpha() const {
   if (supports_webp_lossless_alpha_ == kNotSet) {
-    if ((accepts_webp_ == kTrue) &&
-        ua_matcher_->SupportsWebpLosslessAlpha(user_agent_)) {
+    if (((accepts_webp_ == kTrue) &&
+         ua_matcher_->SupportsWebpLosslessAlpha(user_agent_)) ||
+        ua_matcher_->InsightsWebp(user_agent_)) {
       supports_webp_lossless_alpha_ = kTrue;
     } else {
       supports_webp_lossless_alpha_ = kFalse;

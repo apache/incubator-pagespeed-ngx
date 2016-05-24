@@ -136,6 +136,14 @@ const char* kLegacyWebpWhitelist[] = {
   "*Android *",
 };
 
+//  Pagespeed Insights uses a webkit-based browser that can render webp, but
+//  doesn't send the Accept:image/webp. Whitelist the PSI browser for
+//  demonstration purposes. We have to keep this in a separate list from the
+//  kLegacyWebpWhiteList because the PSI UA has the string "Chrome/" in it, and
+//  that causes it to hit the kLegacyWebpBlacklist.
+const char* kPagespeedInsightsWebpWhiteList[] = {
+  "*Google Page Speed Insights*",
+};
 
 // Based on https://code.google.com/p/modpagespeed/issues/detail?id=978,
 // Desktop IE11 will start masquerading as Chrome soon, and according to
@@ -416,6 +424,12 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kLegacyWebpBlacklist); i < n; ++i) {
     legacy_webp_.Disallow(kLegacyWebpBlacklist[i]);
   }
+
+  // We handle insights separately, as the browser doesn't advertise that it can
+  // render webp.
+  for (int i = 0, n = arraysize(kPagespeedInsightsWebpWhiteList); i < n; ++i) {
+    pagespeed_insights_.Allow(kPagespeedInsightsWebpWhiteList[i]);
+  }
   for (int i = 0, n = arraysize(kWebpLosslessAlphaWhitelist); i < n; ++i) {
     supports_webp_lossless_alpha_.Allow(kWebpLosslessAlphaWhitelist[i]);
   }
@@ -557,6 +571,10 @@ bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent,
 
 bool UserAgentMatcher::LegacyWebp(const StringPiece& user_agent) const {
   return legacy_webp_.Match(user_agent, false);
+}
+
+bool UserAgentMatcher::InsightsWebp(const StringPiece& user_agent) const {
+  return pagespeed_insights_.Match(user_agent, false);
 }
 
 bool UserAgentMatcher::SupportsWebpLosslessAlpha(
