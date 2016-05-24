@@ -173,6 +173,7 @@ TEST_F(WebpScanlineOptimizerTest, ConvertToAndReadLossyWebp) {
                                  webp_image.c_str(), webp_image.length(),
                                  kMinPSNR,
                                  true,  // ignore_transparent_rgb
+                                 false,  // do not expand colors
                                  &message_handler_);
   }
 }
@@ -213,6 +214,7 @@ TEST_F(WebpScanlineOptimizerTest, CompareToWebpGolds) {
                                  png_image.length(), IMAGE_WEBP,
                                  webp_image.c_str(), webp_image.length(), 55,
                                  true,  // ignore_transparent_rgb
+                                 false,  // do not expand colors
                                  &message_handler_);
   }
 }

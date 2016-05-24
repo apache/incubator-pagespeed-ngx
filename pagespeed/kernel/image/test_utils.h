@@ -34,9 +34,9 @@ namespace pagespeed {
 
 namespace image_compression {
 
-using net_instaweb::MessageHandler;
-
 class ScanlineReaderInterface;
+
+using net_instaweb::MessageHandler;
 
   const char kTestRootDir[] = "/pagespeed/kernel/image/testdata/";
 
@@ -204,6 +204,7 @@ void DecodeAndCompareImagesByPSNR(
     size_t buffer_length2,
     double min_psnr,
     bool ignore_transparent_rgb,
+    bool expand_colors,
     MessageHandler* message_handler);
 
 // Check whether the readers decode to exactly the same pixels.
@@ -222,6 +223,29 @@ void CompareImageRegions(const uint8_t* image1, PixelFormat format1,
                          const uint8_t* image2, PixelFormat format2,
                          int bytes_per_row2, int col2, int row2,
                          int num_cols, int num_rows, MessageHandler* handler);
+
+// Compare pixels from 2 images. The images must have the same pixel format
+// and dimensions. Transparent pixels can be ignored, and you can ask the images
+// to match bit-by-bit or within the PSNR tolerance.
+void ComparePixelsByPSNR(const uint8_t* image1, const uint8_t* image2,
+                         PixelFormat format, int num_rows, int num_cols,
+                         double min_psnr, bool ignore_transparent_rgb,
+                         MessageHandler* handler);
+
+// Check whether the images have the same content in the specified regions.
+// This method is similar to CompareImageRegions with more choices:
+//  - compare the images by PSNR or bit-by-bit matching (when min_psnr is set to
+//    kMaxPSNR)
+//  - including or excluding transparent pixels into comparison
+//  - requiring both images have the same pixel format, or expanding them to
+//    the same before comparison.
+void CompareImageRegionsByPSNR(const uint8_t* image1, PixelFormat format1,
+                               int bytes_per_row1, int col1, int row1,
+                               const uint8_t* image2, PixelFormat format2,
+                               int bytes_per_row2, int col2, int row2,
+                               int num_cols, int num_rows, double min_psnr,
+                               bool ignore_transparent_rgb,
+                               bool expand_colors, MessageHandler* handler);
 
 // Return a synthesized image, each channel with the following pattern:
 //   1st row: seed_value, seed_value + delta_x, seed_value + 2 * delta_x, ...

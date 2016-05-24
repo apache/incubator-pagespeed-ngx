@@ -114,6 +114,7 @@ void DecodeAndCompareImages(
   DecodeAndCompareImagesByPSNR(image_format1, image_buffer1, buffer_length1,
                                image_format2, image_buffer2, buffer_length2,
                                kMaxPSNR, ignore_transparent_rgb,
+                               false /* do not expand colors */,
                                message_handler);
 }
 
@@ -126,6 +127,7 @@ void DecodeAndCompareImagesByPSNR(
     size_t buffer_length2,
     double min_psnr,
     bool ignore_transparent_rgb,
+    bool expand_colors,
     MessageHandler* message_handler) {
   uint8_t* pixels1 = NULL;
   uint8_t* pixels2 = NULL;
@@ -141,40 +143,19 @@ void DecodeAndCompareImagesByPSNR(
                         reinterpret_cast<void**>(&pixels2),
                         &pixel_format2, &width2, &height2, &stride2,
                         message_handler));
-  int num_channels = GetNumChannelsFromPixelFormat(pixel_format1,
-                                                   message_handler);
 
   // Verify that the pixel format and sizes are the same.
-  EXPECT_EQ(pixel_format1, pixel_format2);
-  EXPECT_EQ(width1, width2);
-  EXPECT_EQ(height1, height2);
-  EXPECT_EQ(stride1, stride2);
-
-  if (min_psnr >= kMaxPSNR) {
-    // Verify that all of the pixels are exactly the same.
-    for (size_t y = 0; y < height1; ++y) {
-      for (size_t x = 0; x < width1; ++x) {
-        int ch = 0;
-        if (ignore_transparent_rgb && pixel_format1 == RGBA_8888
-            && pixels1[y * stride1 + (x * num_channels + 3) == 0]) {
-          // Skip checking RGB when alpha is 0, still test alpha itself.
-          ch = 3;  // Index of alpha channel in RGBA_8888.
-        }
-        for (; ch < num_channels; ++ch) {
-          int index = y * stride1 + (x * num_channels + ch);
-          EXPECT_EQ(pixels1[index], pixels2[index])
-              << "  y: " << y
-              << "  x: " << x
-              << "  ch: " << ch
-              << "  index: " << index;
-        }
-      }
-    }
-  } else {
-    double psnr = ComputePSNR(pixels1, pixels2, width1, height1, num_channels,
-                  stride1);
-    EXPECT_LE(min_psnr, psnr);
+  ASSERT_EQ(width1, width2);
+  ASSERT_EQ(height1, height2);
+  if (!expand_colors) {
+    ASSERT_EQ(pixel_format1, pixel_format2);
+    ASSERT_EQ(stride1, stride2);
   }
+
+  CompareImageRegionsByPSNR(pixels1, pixel_format1, stride1, 0, 0,
+                            pixels2, pixel_format2, stride2, 0, 0,
+                            width1, height1, min_psnr, ignore_transparent_rgb,
+                            expand_colors, message_handler);
 
   free(pixels1);
   free(pixels2);
@@ -204,11 +185,53 @@ void CompareImageReaders(ScanlineReaderInterface* reader1,
   EXPECT_FALSE(reader2->HasMoreScanLines());
 }
 
-void CompareImageRegions(const uint8_t* image1, PixelFormat format1,
-                         int bytes_per_row1, int col1, int row1,
-                         const uint8_t* image2, PixelFormat format2,
-                         int bytes_per_row2, int col2, int row2,
-                         int num_cols, int num_rows, MessageHandler* handler) {
+void ComparePixelsByPSNR(const uint8_t* image1, const uint8_t* image2,
+                         PixelFormat format, int num_rows, int num_cols,
+                         double min_psnr, bool ignore_transparent_rgb,
+                         MessageHandler* handler) {
+  int num_channels = GetNumChannelsFromPixelFormat(format, handler);
+  int bytes_per_line = num_channels * num_cols;
+  int bytes_per_image = bytes_per_line * num_rows;
+  if (min_psnr >= kMaxPSNR) {
+    // Verify that all of the pixels are exactly the same.
+    if (!ignore_transparent_rgb || format != RGBA_8888) {
+      EXPECT_EQ(0, memcmp(image1, image2, bytes_per_image));
+    } else {
+      // To ignore transparent pixels, we have to check the pixels one by one.
+      for (int row = 0; row < num_rows; ++row) {
+        for (int col = 0; col < num_cols; ++col) {
+          int ch = 0;
+          if (image1[row * bytes_per_line + col * 4 + 3] == 0) {
+            // Skip checking RGB when alpha is 0, still test alpha itself.
+            ch = 3;  // Index of alpha channel in RGBA_8888.
+          }
+
+          for (; ch < 4; ++ch) {
+            int index = row * bytes_per_line + col * 4 + ch;
+            EXPECT_EQ(image1[index], image2[index])
+                << "  row: " << row
+                << "  col: " << col
+                << "  ch: " << ch
+                << "  index: " << index;
+          }
+        }
+      }
+    }
+  } else {
+    double psnr =
+        ComputePSNR(image1, image2, num_cols, num_rows, num_channels,
+                    bytes_per_line);
+    EXPECT_LE(min_psnr, psnr);
+  }
+}
+
+void CompareImageRegionsByPSNR(const uint8_t* image1, PixelFormat format1,
+                               int bytes_per_row1, int col1, int row1,
+                               const uint8_t* image2, PixelFormat format2,
+                               int bytes_per_row2, int col2, int row2,
+                               int num_cols, int num_rows, double min_psnr,
+                               bool ignore_transparent_rgb,
+                               bool expand_colors, MessageHandler* handler) {
   ASSERT_TRUE(format1 != UNSUPPORTED && format2 != UNSUPPORTED);
   const int num_channels1 =
     GetNumChannelsFromPixelFormat(format1, handler);
@@ -226,35 +249,51 @@ void CompareImageRegions(const uint8_t* image1, PixelFormat format1,
   }
   int bytes_per_line = num_cols * num_channels;
 
-  net_instaweb::scoped_array<uint8_t> line1(new uint8_t[bytes_per_line]);
-  net_instaweb::scoped_array<uint8_t> line2(new uint8_t[bytes_per_line]);
-  ASSERT_TRUE(line1 != NULL && line2 != NULL);
+  int bytes_per_image = bytes_per_line * num_rows;
+  net_instaweb::scoped_array<uint8_t>
+      image_buffer1(new uint8_t[bytes_per_image]);
+  net_instaweb::scoped_array<uint8_t>
+      image_buffer2(new uint8_t[bytes_per_image]);
+  ASSERT_TRUE(image_buffer1 != NULL && image_buffer2 != NULL);
 
-  image1 += row1 * bytes_per_row1;
-  image2 += row2 * bytes_per_row2;
+  memset(image_buffer1.get(), 0, bytes_per_image);
+  memset(image_buffer2.get(), 0, bytes_per_image);
+
+  bool should_expand_colors = (format1 != format2 && expand_colors);
   for (int row = 0; row < num_rows; ++row) {
-    ASSERT_TRUE(ExpandPixelFormat(num_cols, format1, col1, image1, format, 0,
-                                  line1.get(), handler));
-    ASSERT_TRUE(ExpandPixelFormat(num_cols, format2, col2, image2, format, 0,
-                                  line2.get(), handler));
-    if (format != RGBA_8888) {
-      EXPECT_EQ(0, memcmp(line1.get(), line2.get(), bytes_per_line));
-    } else {
-      uint8_t* pixel1 = line1.get();
-      uint8_t* pixel2 = line2.get();
-      for (int col = 0; col < num_cols; ++col) {
-        if (pixel1[kIndexAlpha] != kAlphaTransparent ||
-            pixel2[kIndexAlpha] != kAlphaTransparent) {
-          EXPECT_EQ(0, memcmp(pixel1, pixel2, num_channels));
-        }
-        pixel1 += num_channels;
-        pixel2 += num_channels;
-      }
-    }
+    const uint8_t* src1 = image1 + (row + row1) * bytes_per_row1;
+    uint8_t* dest1 = image_buffer1.get() + row * bytes_per_line;
+    const uint8_t* src2 = image2 + (row + row2) * bytes_per_row2;
+    uint8_t* dest2 = image_buffer2.get() + row * bytes_per_line;
 
-    image1 += bytes_per_row1;
-    image2 += bytes_per_row2;
+    if (should_expand_colors) {
+      // Expand and copy colors.
+      ASSERT_TRUE(ExpandPixelFormat(num_cols, format1, col1, src1, format, 0,
+                                    dest1, handler));
+      ASSERT_TRUE(ExpandPixelFormat(num_cols, format2, col2, src2, format, 0,
+                                    dest2, handler));
+    } else {
+      memcpy(dest1, src1 + col1 * num_channels1, bytes_per_line);
+      memcpy(dest2, src2 + col2 * num_channels2, bytes_per_line);
+    }
   }
+
+  ComparePixelsByPSNR(image_buffer1.get(), image_buffer2.get(),
+                      format, num_rows, num_cols, min_psnr,
+                      ignore_transparent_rgb, handler);
+}
+
+void CompareImageRegions(const uint8_t* image1, PixelFormat format1,
+                         int bytes_per_row1, int col1, int row1,
+                         const uint8_t* image2, PixelFormat format2,
+                         int bytes_per_row2, int col2, int row2,
+                         int num_cols, int num_rows, MessageHandler* handler) {
+  CompareImageRegionsByPSNR(image1, format1, bytes_per_row1, col1, row1,
+                            image2, format2, bytes_per_row2, col2, row2,
+                            num_cols, num_rows, kMaxPSNR,
+                            false,  // ignore_transparent_rgb
+                            true,  // Expand colors
+                            handler);
 }
 
 void SynthesizeImage(int width, int height, int bytes_per_line,
