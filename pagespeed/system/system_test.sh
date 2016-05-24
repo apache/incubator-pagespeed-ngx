@@ -376,21 +376,30 @@ fetch_until -save $TEST_ROOT/ssi/ssi.shtml?PageSpeedFilters=combine_css \
     'fgrep -c .pagespeed.' 1
 check [ $(grep -ce $combine_css_filename $FETCH_FILE) = 1 ];
 
-# Test our handling of headers when a FLUSH event occurs.
-# Skip if PHP is not installed to cater for admins who don't want it installed.
-# Always fetch the first file so we can check if PHP is enabled.
-start_test PHP is enabled.
-FILE=php_withoutflush.php
-URL=$TEST_ROOT/$FILE
-FETCHED=$WGET_DIR/$FILE
-$WGET_DUMP $URL > $FETCHED
-if grep -q '<?php' $FETCHED; then
-  echo "*** Skipped because PHP is not installed. If you'd like to enable this"
+# Test our handling of headers when a FLUSH event occurs, using PHP.
+# Tests that require PHP can be disabled by setting DISABLE_PHP_TESTS to
+# non-empty, to cater to admins who don't want PHP installed.
+if [ -z "${DISABLE_PHP_TESTS:-}" ]; then
+  # Fetch the first file so we can check if PHP is enabled.
+  start_test PHP is enabled.
+  FILE=php_withoutflush.php
+  URL=$TEST_ROOT/$FILE
+  FETCHED=$WGET_DIR/$FILE
+  # wget returns non-zero on 4XX and 5XX, both of which can occur with a
+  # mis-configured PHP setup. We need to mask that because of set -e.
+  $WGET_DUMP $URL > $FETCHED || true
+  if ! grep -q '^HTTP/1.1 200' $FETCHED || grep -q '<?php' $FETCHED; then
+    echo "*** PHP is not installed/working. If you'd like to enable this"
   echo "*** test please run: sudo apt-get install php5-common php5"
   echo
   echo "If php is already installed, run it with:"
   echo "    php-cgi -b 127.0.0.1:9000"
-else
+    echo
+    echo "To disable php tests, set DISABLE_PHP_TESTS to non-empty"
+    exit 1
+  fi
+
+  # Now we know PHP is working, proceed with the actual testing.
   start_test Headers are not destroyed by a flush event.
   check [ $(grep -c '^X-\(Mod-Pagespeed\|Page-Speed\):' $FETCHED) = 1 ]
   check [ $(grep -c '^X-My-PHP-Header: without_flush' $FETCHED) = 1 ]
