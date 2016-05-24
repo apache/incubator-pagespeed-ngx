@@ -16,14 +16,11 @@
 
 // Author: Huibao Lin
 
-#include <vector>
-
 #include "base/logging.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
-#include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/image/image_converter.h"
@@ -292,13 +289,6 @@ class AnimatedWebpTest : public testing::Test {
         << " for '" << filename << "'";
   }
 
-  bool PicturesEqual(const GoogleString& compare,
-                     const GoogleString& input_file_name,
-                     const GoogleString& output_file_name) {
-    // TODO(vchudnov): Fill this in.
-    return true;
-  }
-
   void CheckGifVsWebP(const char* filename, WebpConfiguration* webp_config,
                       bool check_pixels) {
     GoogleString input_path = net_instaweb::StrCat(net_instaweb::GTestSrcDir(),
@@ -311,19 +301,10 @@ class AnimatedWebpTest : public testing::Test {
     GoogleString output_image;
     ConvertGifToWebp(filename, input_image, webp_config, &output_image);
 
-    GoogleString output_path =
-        net_instaweb::StrCat(net_instaweb::GTestTempDir(),
-                             kTestRootDir,
-                             filename, ".webp");
-
-    net_instaweb::StdioFileSystem file_system;
-    file_system.WriteFile(output_path.c_str(), output_image, &message_handler_);
-    DVLOG(1) << "Wrote image: " << output_path;
-
     if (check_pixels) {
-      // TODO(vchudnov): Employ a pixel-by-pixel comparison program.
-      GoogleString compare;
-      EXPECT_TRUE(PicturesEqual(compare, input_path, output_path));
+      EXPECT_TRUE(
+          pagespeed::image_compression::CompareAnimatedImages(
+              filename, output_image, &message_handler_));
     }
   }
 

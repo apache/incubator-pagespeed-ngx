@@ -21,6 +21,7 @@
 #include <math.h>
 #include <cstdlib>
 #include <cstdint>
+#include <vector>
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -34,6 +35,7 @@
 #include "pagespeed/kernel/image/read_image.h"
 #include "pagespeed/kernel/image/scanline_interface.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
+
 
 namespace pagespeed {
 
@@ -282,6 +284,14 @@ void SynthesizeImage(int width, int height, int bytes_per_line,
       current_value[ch] = image[y * bytes_per_line + ch] + delta_y[ch];
     }
   }
+}
+
+// Returns true if 2 animated images are identical.
+bool CompareAnimatedImages(const GoogleString& expected_image_filename,
+                           const GoogleString& actual_image_content,
+                           MessageHandler* message_handler) {
+  // TODO(vchudnov): Fill this in.
+  return true;
 }
 
 }  // namespace image_compression

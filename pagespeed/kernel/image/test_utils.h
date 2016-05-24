@@ -263,6 +263,11 @@ inline uint32_t RgbaToPackedRgba(const PixelRgbaChannels rgba) {
                     rgba[RGBA_BLUE]);
 }
 
+// Returns true if 2 animated images are identical.
+bool CompareAnimatedImages(const GoogleString& expected_image_filename,
+                           const GoogleString& actual_image_content,
+                           MessageHandler* message_handler);
+
 }  // namespace image_compression
 
 }  // namespace pagespeed
