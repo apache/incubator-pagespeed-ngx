@@ -12,7 +12,7 @@ install:
   - sudo sh -c 'echo "image/webp webp" >> /etc/mime.types'
   - mkdir -p ~/bin
   - cd ~/bin
-  - svn co https://src.chromium.org/svn/trunk/tools/depot_tools 2>&1 > /dev/null
+  - git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
   - cd ~/build_directory
   - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
   - ~/bin/depot_tools/gclient sync --force --jobs=1 2>&1 > /dev/null
