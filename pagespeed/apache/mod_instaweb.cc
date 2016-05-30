@@ -2016,7 +2016,7 @@ void ApacheProcessContext::InstallCommands() {
           vhost_command_handling_map_[cmd] = kErrorInVHost;
           cmd->req_override = RSRC_CONF;
           break;
-        case RewriteOptions::kProcessScope:
+        case RewriteOptions::kLegacyProcessScope:
           vhost_command_handling_map_[cmd] = kTolerateInVHost;
           cmd->req_override = RSRC_CONF;
           break;

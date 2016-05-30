@@ -627,8 +627,13 @@ class RewriteOptions {
                       // response headers)
     kDirectoryScope,  // customized at directory level (.htaccess, <Directory>)
     kServerScope,     // customized at server level (e.g. VirtualHost)
-    kProcessScope,    // customized at process level only (command-line flags)
-    kProcessScopeStrict,  // as above, but fail startup if included in vhost
+    // Customized at process level only (command-line flags). This is a legacy
+    // value that will make us accept it in a VirtualHost in Apache for
+    // backwards compatibility; it should not be used for new options.
+    kLegacyProcessScope,
+
+    // Customized at process level and enforced as such.
+    kProcessScopeStrict,
   };
 
   static const char kCacheExtenderId[];
@@ -3548,7 +3553,7 @@ class RewriteOptions {
   static void AddRequestProperty(typename OptionClass::ValueType default_value,
                                  OptionClass RewriteOptions::*offset,
                                  const char* id, bool safe_to_print) {
-    AddProperty(default_value, offset, id, kNullOption, kProcessScope,
+    AddProperty(default_value, offset, id, kNullOption, kProcessScopeStrict,
                 NULL, safe_to_print, properties_);
   }
 

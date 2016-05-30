@@ -1309,7 +1309,7 @@ void RewriteOptions::AddProperties() {
       kDefaultMaxHtmlParseBytes,
       &RewriteOptions::max_html_parse_bytes_, "hpb",
       kMaxHtmlParseBytes,
-      kDirectoryScope,  // TODO(jmarantz): switch to kProcessScope?
+      kDirectoryScope,  // TODO(jmarantz): switch to kProcessScopeStrict?
       "Maximum number of bytes of HTML that we parse, before "
       "redirecting to ?ModPagespeed=off", true);
   AddBaseProperty(
@@ -1362,7 +1362,7 @@ void RewriteOptions::AddProperties() {
       kDefaultImageMaxRewritesAtOnce,
       &RewriteOptions::image_max_rewrites_at_once_,
       "im", kImageMaxRewritesAtOnce,
-      kProcessScope,
+      kLegacyProcessScope,
       "Set bound on number of images being rewritten at one time "
       "(0 = unbounded).", true);
   AddBaseProperty(
@@ -1842,7 +1842,7 @@ void RewriteOptions::AddProperties() {
       kDefaultImageWebpTimeoutMs,
       &RewriteOptions::image_webp_timeout_ms_, "wt",
       kImageWebpTimeoutMs,
-      kProcessScope,
+      kLegacyProcessScope,
       NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
   AddBaseProperty(
       kDefaultMaxInlinedPreviewImagesIndex,
@@ -1967,25 +1967,25 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Set the value for the X-Mod-Pagespeed HTTP header", true);
   AddBaseProperty(true, &RewriteOptions::distribute_fetches_, "dfe",
-                  kDistributeFetches, kProcessScope,
+                  kDistributeFetches, kLegacyProcessScope,
                   "Whether or not to distribute IPRO and .pagespeed. resource "
                   "fetch requests from the RewriteDriver before checking the "
                   "cache.", true);
   AddBaseProperty(
       "", &RewriteOptions::distributed_rewrite_key_, "drwk",
-      kDistributedRewriteKey, kProcessScope,
+      kDistributedRewriteKey, kLegacyProcessScope,
       "The key used to authenticate requests from one rewrite task "
       "to another.  This should be random, greater than 8 characters (longer "
       "is better), and the same value on each mod_pagespeed server config in "
       "the rewrite cluster.", false);
   AddBaseProperty(
       "", &RewriteOptions::distributed_rewrite_servers_, "drws",
-      kDistributedRewriteServers, kProcessScope,
+      kDistributedRewriteServers, kLegacyProcessScope,
      "A comma-separated list of hosts to use for distributed rewrites.", false);
   AddBaseProperty(
       kDefaultDistributedTimeoutMs,
       &RewriteOptions::distributed_rewrite_timeout_ms_, "drwt",
-      kDistributedRewriteTimeoutMs, kProcessScope,
+      kDistributedRewriteTimeoutMs, kLegacyProcessScope,
       "Time to wait before giving up on a distributed rewrite request.", false);
   AddBaseProperty(
       true, &RewriteOptions::avoid_renaming_introspective_javascript_,
@@ -3899,7 +3899,7 @@ void RewriteOptions::MergeOnlyProcessScopeOptions(const RewriteOptions& src) {
                                      src.all_options_.size());
   for (size_t i = 0; i < options_to_merge; ++i) {
     OptionScope scope = all_options_[i]->scope();
-    if (scope == kProcessScope || scope == kProcessScopeStrict) {
+    if (scope == kLegacyProcessScope || scope == kProcessScopeStrict) {
       all_options_[i]->Merge(src.all_options_[i]);
     }
   }
@@ -5267,7 +5267,7 @@ GoogleString RewriteOptions::ScopeEnumToString(OptionScope scope) {
       return "Directory";
     case kServerScope:
       return "Server";
-    case kProcessScope:
+    case kLegacyProcessScope:
       return "Process";
     case kProcessScopeStrict:
       return "Process Strict";

@@ -217,21 +217,21 @@ void SystemRewriteOptions::AddProperties() {
                     "Disable security checks that prohibit fetching from "
                     "hostnames mod_pagespeed does not know about", false);
   AddSystemProperty(false, &SystemRewriteOptions::fetch_with_gzip_, "afg",
-                    "FetchWithGzip", kProcessScope,
+                    "FetchWithGzip", kLegacyProcessScope,
                     "Request http content from origin servers using gzip",
                     true);
   AddSystemProperty(1024 * 1024 * 10,  /* 10 Megabytes */
                     &SystemRewriteOptions::ipro_max_response_bytes_,
-                    "imrb", "IproMaxResponseBytes", kProcessScope,
+                    "imrb", "IproMaxResponseBytes", kLegacyProcessScope,
                     "Limit allowed size of IPRO responses. "
                     "Set to 0 for unlimited.", true);
   AddSystemProperty(10,
                     &SystemRewriteOptions::ipro_max_concurrent_recordings_,
-                    "imcr", "IproMaxConcurrentRecordings", kProcessScope,
+                    "imcr", "IproMaxConcurrentRecordings", kLegacyProcessScope,
                     "Limit allowed number of IPRO recordings", true);
   AddSystemProperty(1024 * 50, /* 50 Megabytes */
                     &SystemRewriteOptions::default_shared_memory_cache_kb_,
-                    "dsmc", "DefaultSharedMemoryCacheKB", kProcessScope,
+                    "dsmc", "DefaultSharedMemoryCacheKB", kLegacyProcessScope,
                     "Size of the default shared memory cache used by all "
                     "virtual hosts that don't use "
                     "CreateSharedMemoryMetadataCache. "

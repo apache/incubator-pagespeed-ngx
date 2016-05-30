@@ -3134,12 +3134,12 @@ TEST_F(RewriteOptionsTest, OptionsScopeApplications) {
   GoogleString msg;
   scoped_ptr<RewriteOptions> new_options(new RewriteOptions(&thread_system_));
 
-  // MaxHtmlParseBytes has RewriteOptions::kProcessScope.
+  // MaxHtmlParseBytes has RewriteOptions::kLegacyProcessScope.
   // Setting this value should work.
   RewriteOptions::OptionSettingResult result =
       new_options->ParseAndSetOptionFromNameWithScope(
           RewriteOptions::kMaxHtmlParseBytes, "44",
-          RewriteOptions::kProcessScope, &msg, &handler);
+          RewriteOptions::kLegacyProcessScope, &msg, &handler);
   EXPECT_EQ("", msg);
   EXPECT_EQ(result, RewriteOptions::kOptionOk);
 
