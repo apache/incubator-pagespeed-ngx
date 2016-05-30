@@ -112,7 +112,7 @@ void NgxRewriteOptions::AddProperties() {
       false);
   add_ngx_option(
       "", &NgxRewriteOptions::global_statistics_path_, "ngsp",
-      kGlobalStatisticsPath, kProcessScope,
+      kGlobalStatisticsPath, kProcessScopeStrict,
       "Set the global statistics path. Ex: /ngx_pagespeed_global_statistics",
       false);
   add_ngx_option(
@@ -127,7 +127,8 @@ void NgxRewriteOptions::AddProperties() {
       kServerScope, "Set the admin path.  Ex: /pagespeed_admin", false);
   add_ngx_option(
       "", &NgxRewriteOptions::global_admin_path_, "ngap", kGlobalAdminPath,
-      kProcessScope, "Set the global admin path.  Ex: /pagespeed_global_admin",
+      kProcessScopeStrict,
+      "Set the global admin path.  Ex: /pagespeed_global_admin",
       false);
 
   MergeSubclassProperties(ngx_properties_);
@@ -180,10 +181,10 @@ RewriteOptions::OptionScope NgxRewriteOptions::GetOptionScope(
        it != all_options().end(); ++it) {
     RewriteOptions::OptionBase* option = *it;
     if (option->option_name() == option_name) {
-      // We treat kProcessScope as kProcessScopeStrict, failing to start if an
-      // option is out of place.
-      return option->scope() == kProcessScope ? kProcessScopeStrict
-                                              : option->scope();
+      // We treat kLegacyProcessScope as kProcessScopeStrict, failing to start
+      // if an option is out of place.
+      return option->scope() == kLegacyProcessScope ? kProcessScopeStrict
+                                                    : option->scope();
     }
   }
   return kDirectoryScope;
@@ -391,7 +392,7 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
         result = driver_factory->ParseAndSetOption1(
             directive,
             arg,
-            scope >= RewriteOptions::kProcessScope,
+            scope >= RewriteOptions::kLegacyProcessScope,
             &msg,
             handler);
       }
@@ -404,7 +405,7 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
           directive,
           args[1],
           args[2],
-          scope >= RewriteOptions::kProcessScope,
+          scope >= RewriteOptions::kLegacyProcessScope,
           &msg,
           handler);
     }
