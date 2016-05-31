@@ -442,6 +442,9 @@ namespace pagespeed {
 
 namespace image_compression {
 
+JpegCompressionOptions::~JpegCompressionOptions() {
+}
+
 struct JpegScanlineWriter::Data {
   Data() {
     InitJpegCompress(&jpeg_compress_, &compress_error_);

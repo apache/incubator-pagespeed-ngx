@@ -62,6 +62,9 @@ static const char* const kWebPErrorMessages[] = {
 // The libwebp error code returned in case of timeouts.
 static const int kWebPErrorTimeout = VP8_ENC_ERROR_USER_ABORT;
 
+WebpConfiguration::~WebpConfiguration() {
+}
+
 void WebpConfiguration::CopyTo(WebPConfig* webp_config) const {
   webp_config->lossless = lossless;
   webp_config->quality = quality;

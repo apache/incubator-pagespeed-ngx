@@ -1,0 +1,43 @@
+// Copyright 2016 Google Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Author: huibao@google.com (Huibao Lin)
+// Protobufs for storing options and dimensions for image optimization.
+
+syntax = "proto2";
+
+option optimize_for = LITE_RUNTIME;
+/*
+*/
+
+package pagespeed.image_compression;
+
+message ImageOptions {
+  optional bool allow_png = 1 [ default = true ];
+  optional bool allow_jpeg = 2 [ default = true ];
+  optional bool allow_webp_lossy = 3 [ default = true ];
+  optional bool allow_webp_lossless_or_alpha = 4 [ default = false ];
+  optional bool allow_webp_animated = 5 [ default = false ];
+  optional bool allow_convert_lossless_to_lossy = 6 [ default = false ];
+  optional bool must_reduce_bytes = 7 [ default = true ];
+  optional int32 max_jpeg_quality = 8 [ default = 85 ];
+  optional int32 max_webp_quality = 9 [ default = 85 ];
+  optional int32 max_webp_animated_quality = 10 [ default = 85 ];
+  optional int32 max_timeout_ms = 11 [ default = -1 ];
+}
+
+message ImageDimensions {
+  optional int32 width = 1;
+  optional int32 height = 2;
+}

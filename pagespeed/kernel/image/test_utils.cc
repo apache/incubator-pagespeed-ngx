@@ -114,7 +114,7 @@ void DecodeAndCompareImages(
   DecodeAndCompareImagesByPSNR(image_format1, image_buffer1, buffer_length1,
                                image_format2, image_buffer2, buffer_length2,
                                kMaxPSNR, ignore_transparent_rgb,
-                               false /* do not expand colors */,
+                               true /* expand colors */,
                                message_handler);
 }
 

@@ -444,6 +444,7 @@
       'target_name': 'pagespeed_image_processing',
       'type': '<(library)',
       'dependencies': [
+        ':pagespeed_image_optimizer_pb',
         ':pagespeed_image_types_pb',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/libwebp.gyp:libwebp_enc',
@@ -461,6 +462,7 @@
         'kernel/image/image_analysis.cc',
         'kernel/image/image_converter.cc',
         'kernel/image/image_frame_interface.cc',
+        'kernel/image/image_optimizer.cc',
         'kernel/image/image_resizer.cc',
         'kernel/image/image_util.cc',
         'kernel/image/jpeg_optimizer.cc',
@@ -632,6 +634,19 @@
       ],
       'cflags': [
         '-Wno-sign-compare', # Brotli header has some macros.
+      ],
+    },
+    {
+      'target_name': 'pagespeed_image_optimizer_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/kernel/image',
+      },
+      'sources': [
+        'kernel/image/image_optimizer.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/image_optimizer.pb.cc',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
       ],
     },
   ],

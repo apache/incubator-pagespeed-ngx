@@ -63,10 +63,12 @@ struct JpegLossyOptions {
   ColorSampling color_sampling;
 };
 
-struct JpegCompressionOptions {
+struct JpegCompressionOptions : public ScanlineWriterConfig {
   JpegCompressionOptions()
     : progressive(false), retain_color_profile(false),
       retain_exif_data(false), lossy(false) {}
+
+  ~JpegCompressionOptions() override;
 
   // Whether or not to produce a progressive JPEG. This parameter will only be
   // applied for images with YCbCr colorspace, and it is ignored for other

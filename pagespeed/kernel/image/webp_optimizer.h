@@ -41,7 +41,7 @@ namespace image_compression {
 
 using net_instaweb::MessageHandler;
 
-struct WebpConfiguration {
+struct WebpConfiguration : public ScanlineWriterConfig {
   // This contains a subset of the options in WebPConfig and
   // WebPPicture.
 
@@ -51,6 +51,9 @@ struct WebpConfiguration {
       : lossless(true), quality(75), method(3), target_size(0),
         alpha_compression(1), alpha_filtering(1), alpha_quality(100),
         kmin(0), kmax(0), progress_hook(NULL), user_data(NULL) {}
+
+  ~WebpConfiguration() override;
+
   void CopyTo(WebPConfig* webp_config) const;
 
   int lossless;           // Lossless encoding (0=lossy(default), 1=lossless).

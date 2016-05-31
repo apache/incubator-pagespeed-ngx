@@ -168,6 +168,9 @@ bool ConversionTimeoutHandler::Continue(int percent, void* user_data) {
   return true;
 }
 
+ScanlineWriterConfig::~ScanlineWriterConfig() {
+}
+
 }  // namespace image_compression
 
 }  // namespace pagespeed

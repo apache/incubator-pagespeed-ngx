@@ -32,6 +32,7 @@ extern "C" {
 
 #include <setjmp.h>
 #include <cstddef>
+
 #include "third_party/optipng/src/opngreduc/opngreduc.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -52,9 +53,10 @@ using net_instaweb::MessageHandler;
 
 class ScanlineStreamInput;
 
-struct PngCompressParams {
+struct PngCompressParams : public ScanlineWriterConfig {
   PngCompressParams(int level, int strategy, bool is_progressive);
   PngCompressParams(bool try_best_compression, bool is_progressive);
+  ~PngCompressParams() override;
 
   // Indicates what png filter type to be used while compressing the image.
   // Valid values for this are

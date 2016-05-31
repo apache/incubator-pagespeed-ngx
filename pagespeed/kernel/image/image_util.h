@@ -195,6 +195,10 @@ class ConversionTimeoutHandler {
   net_instaweb::MessageHandler* handler_;
 };
 
+struct ScanlineWriterConfig {
+  virtual ~ScanlineWriterConfig();
+};
+
 }  // namespace image_compression
 
 }  // namespace pagespeed

@@ -161,6 +161,9 @@ PngCompressParams::PngCompressParams(bool compression, bool progressive)
     is_progressive(progressive) {
 }
 
+PngCompressParams::~PngCompressParams() {
+}
+
 ScopedPngStruct::ScopedPngStruct(Type type,
     MessageHandler* handler)
   : png_ptr_(NULL),
