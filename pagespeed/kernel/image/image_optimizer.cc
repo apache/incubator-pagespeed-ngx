@@ -190,7 +190,7 @@ bool ImageOptimizer::ComputeDesiredQualityProgressive() {
 // TODO(huibao): Unify ImageFormat and ImageType.
 ImageFormat ImageOptimizer::ImageTypeToImageFormat(
     net_instaweb::ImageType image_type) {
-  ImageFormat image_format;
+  ImageFormat image_format = IMAGE_UNKNOWN;
   switch (image_type) {
     case net_instaweb::IMAGE_UNKNOWN:
       image_format = IMAGE_UNKNOWN;
