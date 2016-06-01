@@ -716,9 +716,11 @@ bool CssFilter::Context::SerializeCss(int64 in_text_size,
     // Don't rewrite if we didn't edit it or make it any smaller.
     if (!previously_optimized && bytes_saved <= 0) {
       ret = false;
-      Driver()->InfoAt(this, "CSS parser increased size of CSS file %s by %s "
-                      "bytes.", css_base_gurl.spec_c_str(),
-                      Integer64ToString(-bytes_saved).c_str());
+      if (bytes_saved != 0) {
+        Driver()->InfoAt(this, "CSS parser increased size of CSS file %s by %s "
+                         "bytes.", css_base_gurl.spec_c_str(),
+                         Integer64ToString(-bytes_saved).c_str());
+      }
       filter_->num_rewrites_dropped_->Add(1);
       output_partition(0)->add_debug_message(StrCat(
           "CSS rewrite failed: Cannot improve ", css_base_gurl.Spec()));
