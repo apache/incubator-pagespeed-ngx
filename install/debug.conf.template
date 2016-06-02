@@ -136,6 +136,14 @@ ModPagespeedEnableFilters add_instrumentation
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/" >
     AllowOverride All
 </Directory>
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/htaccess" >
+    AllowOverride All
+    ModPagespeedInPlaceWaitForOptimized on
+    ModPagespeedInPlaceRewriteDeadlineMs 10000
+</Directory>
+ModPagespeedLoadFromFile \
+    "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/htaccess/" \
+    "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/htaccess/"
 
 # Enable resize_rendered_image_dimensions
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/resize_rendered_dimensions" >

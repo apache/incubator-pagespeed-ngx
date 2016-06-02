@@ -3350,6 +3350,16 @@ TEST_F(RewriteOptionsTest, MergeAllowDisallow) {
   EXPECT_FALSE(options_.IsAllowed("bar"));
 }
 
+TEST_F(RewriteOptionsTest, MergeAllowDisallowStar) {
+  RewriteOptions one(&thread_system_), two(&thread_system_);
+  one.Disallow("*");
+  EXPECT_FALSE(one.IsAllowed("foo"));
+  two.Allow("*");
+  EXPECT_TRUE(two.IsAllowed("foo"));
+  MergeOptions(one, two);
+  EXPECT_TRUE(options_.IsAllowed("foo"));
+}
+
 TEST_F(RewriteOptionsTest, ImageQualitiesOverride) {
   options_.set_image_recompress_quality(1);
 
