@@ -1023,7 +1023,6 @@ start_test Fetch gzipped, make sure that we have cache compressed at gzip 9.
 URL="$PRIMARY_SERVER/mod_pagespeed_test/invalid.css"
 fetch_until -gzip $URL "wc -c" 27
 
-
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Measurement proxy mode
   # Wrong password --- 403.
@@ -1054,6 +1053,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
       http://mpr.example.com/h/b/secret/www.gstatic.com/psa/static/A.0e5d6484d7bf84edf94c17a8d6a6c6de-mobilize.css+0f58e3ef023072001e64bba88abaeeeb-mobilize.css,Mcc.JzQiGpc0_X.css.pagespeed.cf.0slDU6deBr.css)
   check_from "$OUT" fgrep -q "psmob-map-button"
 fi
+
+start_test Make sure Disallow/Allow overrides work in htaccess hierarchies
+DISALLOWED=$($WGET_DUMP "$TEST_ROOT"/htaccess/purple.css)
+check_from "$DISALLOWED" fgrep -q MediumPurple
+fetch_until "$TEST_ROOT"/htaccess/override/purple.css \
+    'fgrep -c background:#9370db' 1
 
 # Cleanup
 rm -rf $OUTDIR
