@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -408,6 +409,40 @@ TEST_F(RewriteDriverTestUrlNamer, TestDecodeUrls) {
   EXPECT_EQ(2, urls.size());
   EXPECT_EQ("http://example.com/a.css", urls[0]);
   EXPECT_EQ("http://example.com/b.css", urls[1]);
+}
+
+TEST_F(RewriteDriverTestUrlNamer, InputOnlyMode) {
+  TestUrlNamer::SetProxyMode(UrlNamer::ProxyExtent::kInputOnly);
+  rewrite_driver()->AddFilters();
+
+  GoogleUrl at_proxy(
+      Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg"));
+
+  TestUrlNamer::UseNormalEncoding(true);
+  GoogleUrl direct(
+      Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg"));
+
+  StringVector urls;
+  // In input-only mode, We should be able to decode both.
+  EXPECT_TRUE(rewrite_driver()->DecodeUrl(at_proxy, &urls));
+  ASSERT_EQ(1, urls.size());
+  EXPECT_EQ("http://example.com/Puzzle.jpg", urls[0]);
+
+  urls.clear();
+  EXPECT_TRUE(rewrite_driver()->DecodeUrl(direct, &urls));
+  ASSERT_EQ(1, urls.size());
+  EXPECT_EQ("http://example.com/Puzzle.jpg", urls[0]);
+
+  // Now try with full proxy mode. That should accept only proxy-encoded.
+  TestUrlNamer::SetProxyMode(UrlNamer::ProxyExtent::kFull);
+  urls.clear();
+  EXPECT_TRUE(rewrite_driver()->DecodeUrl(at_proxy, &urls));
+  ASSERT_EQ(1, urls.size());
+  EXPECT_EQ("http://example.com/Puzzle.jpg", urls[0]);
+
+  urls.clear();
+  EXPECT_FALSE(rewrite_driver()->DecodeUrl(direct, &urls));
+  EXPECT_EQ(0, urls.size());
 }
 
 // Test to make sure we do not put in extra things into the cache.

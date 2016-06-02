@@ -1534,20 +1534,29 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   }
 
   GoogleString decoded_url;
-  // If we are running in proxy mode we need to ignore URLs where the leaf is
-  // encoded but the URL as a whole isn't proxy encoded, since that can happen
-  // when proxying from a server using mod_pagespeed.
+  // If we are running in full proxy mode we need to ignore URLs where the leaf
+  // is encoded but the URL as a whole isn't proxy encoded, since that can
+  // happen when proxying from a server using mod_pagespeed.
   //
   // This is also important for XSS avoidance when running in proxy mode with
   // a relaxed lawyer, as it ensures that resources will only ever go under
   // the low-privilege proxy domain and not the trusted site domain.
+  //
+  // For input-only mode, we can't do this, however, as URLs we produce aren't
+  // proxy encoded, and we need to be able to fetch (and therefore decode)
+  // our own urls.
+  //
+  // TODO(morlovich): Send out PageSpeed = off header in features that use it
+  // (measurement proxy?) to avoid the dual-pagespeed issue?
   //
   // If we are running in proxy mode and the URL is in the proxy domain, we
   // also need to ensure that the URL decodes correctly as otherwise we end
   // up with an invalid decoded base URL, which ultimately leads to inability
   // to rewrite the URL.
   UrlNamer::ProxyExtent proxy_mode = url_namer->ProxyMode();
-  if (proxy_mode != UrlNamer::ProxyExtent::kNone) {
+  if (proxy_mode == UrlNamer::ProxyExtent::kFull ||
+      (proxy_mode == UrlNamer::ProxyExtent::kInputOnly &&
+       url_namer->IsProxyEncoded(gurl))) {
     if (!url_namer->IsProxyEncoded(gurl)) {
       message_handler()->Message(kInfo,
                                  "Decoding of resource name %s failed because "
