@@ -155,8 +155,8 @@ function fire_ab_load() {
 
 # stop nginx/valgrind
 killall -s KILL nginx
-# TODO(oschaaf): Fix waiting for valgrind on 32 bits systems.
 killall -s KILL memcheck-amd64-
+killall -s KILL memcheck-x86-
 SECONDS=0
 while pgrep -x nginx >/dev/null || pgrep memcheck >/dev/null;do
   if [ $SECONDS -gt 20 ]; then
@@ -240,7 +240,7 @@ if $USE_VALGRIND; then
             --show-possibly-lost=no --log-file=$TEST_TMP/valgrind.log \
             --suppressions="$this_dir/valgrind.sup" \
       $NGINX_EXECUTABLE -c $PAGESPEED_CONF) & VALGRIND_PID=$!
-  trap "echo 'terminating valgrind!' && kill -s sigterm $VALGRIND_PID" EXIT
+  trap "echo 'terminating valgrind!' && kill -s TERM $VALGRIND_PID" EXIT
   echo "Wait until nginx is ready to accept connections"
   while ! curl -I "http://$PRIMARY_HOSTNAME/mod_pagespeed_example/" 2>/dev/null; do
       sleep 0.1;
@@ -295,7 +295,7 @@ else
   if $USE_VALGRIND; then
     # Clear valgrind trap
     trap - EXIT
-    echo "To end valgrind, run 'kill -s quit $VALGRIND_PID'"
+    echo "To end valgrind, run 'kill -s TERM $VALGRIND_PID'"
   fi
   echo "Not running tests; commence manual testing"
   exit 4
@@ -1315,7 +1315,7 @@ start_test Shutting down.
 fire_ab_load
 
 if $USE_VALGRIND; then
-    kill -s quit $VALGRIND_PID
+    kill -s TERM $VALGRIND_PID
     while pgrep memcheck > /dev/null; do sleep 1; done
     # Clear the previously set trap, we don't need it anymore.
     trap - EXIT
@@ -1329,7 +1329,7 @@ fi
 
 if [ "$AB_PID" != "0" ]; then
     echo "Kill ab (pid: $AB_PID)"
-    killall -s KILL $AB_PID &>/dev/null || true
+    kill -s KILL $AB_PID &>/dev/null || true
 fi
 
 start_test Logged output looks healthy.
@@ -1356,6 +1356,8 @@ OUT=$(cat "$ERROR_LOG" \
     | grep -v "\\[warn\\].*Resource based on.*ngx_pagespeed_statistics.*" \
     | grep -v "\\[warn\\].*Canceling 1 functions on sequence Shutdown.*" \
     | grep -v "\\[warn\\].*using uninitialized.*" \
+    | grep -v "\\[warn\\].*Controller process .* exited with wait status 9" \
+    | grep -v "\\[warn\\].*Controller process .* exited with wait status 15" \
     | grep -v "\\[error\\].*BadName*" \
     | grep -v "\\[error\\].*/mod_pagespeed/bad*" \
     | grep -v "\\[error\\].*doesnotexist.css.*" \
