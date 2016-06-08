@@ -1,6 +1,6 @@
 ![ngx_pagespeed](https://lh6.googleusercontent.com/-qufedJIJq7Y/UXEvVYxyYvI/AAAAAAAADo8/JHDFQhs91_c/s401/04_ngx_pagespeed.png)
 
-[![Build Status](https://travis-ci.org/pagespeed/ngx_pagespeed.svg?branch=trunk-tracking)](https://travis-ci.org/pagespeed/mod_pagespeed)
+[![Build Status](https://travis-ci.org/pagespeed/ngx_pagespeed.svg?branch=trunk-tracking)](https://travis-ci.org/pagespeed/ngx_pagespeed)
 
 ngx_pagespeed speeds up your site and reduces page load time by automatically
 applying web performance best practices to pages and associated assets (CSS,
