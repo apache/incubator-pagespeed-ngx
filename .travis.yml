@@ -11,7 +11,7 @@ install:
   - sudo sh -c 'echo "image/webp webp" >> /etc/mime.types'
   - mkdir -p ~/bin
   - cd ~/bin
-  - svn co https://src.chromium.org/svn/trunk/tools/depot_tools 2>&1 > /dev/null
+  - git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
   - mkdir ~/mod_pagespeed
   - cd ~/mod_pagespeed
   - git clone https://github.com/pagespeed/mod_pagespeed.git src
