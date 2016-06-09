@@ -1315,7 +1315,8 @@ start_test Shutting down.
 fire_ab_load
 
 if $USE_VALGRIND; then
-    kill -s TERM $VALGRIND_PID
+    # SIGQUIT requests a graceful shutdown.
+    kill -s QUIT $VALGRIND_PID
     while pgrep memcheck > /dev/null; do sleep 1; done
     # Clear the previously set trap, we don't need it anymore.
     trap - EXIT
