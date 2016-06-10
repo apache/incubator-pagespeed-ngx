@@ -75,7 +75,7 @@ class CssMinify {
 
   // Sets a writer to receive a stream of error messages.  The default is
   // that all error messages are eaten.
-  void set_error_writer(Writer* writer) { error_writer_ = NULL; }
+  void set_error_writer(Writer* writer) { error_writer_ = writer; }
 
  private:
   void Write(const StringPiece& str);
