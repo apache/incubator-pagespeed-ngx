@@ -2348,7 +2348,7 @@ check [ ! -z "$controller_pid" ]  # Controller PID should be in log.
 check grep "Babysitter running with PID " $ERROR_LOG
 
 function count_watcher_messages() {
-  grep -c "Watching the root process to exit if it does." $ERROR_LOG
+  grep -c "Watching the root process to exit if it dies." $ERROR_LOG
 }
 
 # And the ProcessDeathWatcherThread should be running.
@@ -2369,25 +2369,30 @@ function did_controller_restart() {
 }
 
 echo -n "Waiting for babysitter to restart controller ..."
-controller_wait_count=0
-while ! did_controller_restart; do
+SECONDS=0
+while ! did_controller_restart && [ $SECONDS -lt 10 ]; do
   echo -n .
   sleep 0.1
-  controller_wait_count=$(($controller_wait_count + 1))
-  if [ $controller_wait_count -gt 100 ]; then
-    fail
-  fi
 done
 echo
 
+check did_controller_restart
+
 echo "Checking that babysitter reported controller death..."
-grep "Controller process $controller_pid exited" \
+grep "Controller process $controller_pid exited with wait status" \
   $ERROR_LOG > /dev/null
 
 # The ProcessDeathWatcherThread should have been restarted (it's hosted by the
-# controller thread, not the babysitter).
+# controller thread, not the babysitter). This message may be delayed slightly
+# under valgrind, so allow a few retries.
 echo "Checking again that we're watching the right processes."
 final_watcher_count=$(count_watcher_messages)
+SECONDS=0
+while [ $final_watcher_count -eq $initial_watcher_count -a\
+        $SECONDS -lt 2 ]; do
+  sleep 0.1
+  final_watcher_count=$(count_watcher_messages)
+done
 check [ $final_watcher_count -eq $(($initial_watcher_count + 1)) ]
 
 start_test Strip subresources default behaviour

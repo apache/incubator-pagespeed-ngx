@@ -17,12 +17,14 @@
 #ifndef PAGESPEED_CONTROLLER_MANAGER_H_
 #define PAGESPEED_CONTROLLER_MANAGER_H_
 
+#include <memory>
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/system/controller_process.h"
 #include "pagespeed/system/system_rewrite_driver_factory.h"
-
 
 namespace net_instaweb {
 
@@ -30,7 +32,7 @@ namespace net_instaweb {
 // shutting down the process if the host reloads config or shuts down.
 //
 // We fork a babysitter process, which forks a controller process.  If the
-// controller process dies without calling exit() the babysitter will fork off
+// controller process dies without calling exit(0) the babysitter will fork off
 // another controller.
 //
 // The controller runs a thread that watches for the root process to die, or to
@@ -46,41 +48,50 @@ class ControllerManager {
   // Called on system startup, before forking off any workers.  Starts up a
   // babysitter process that starts a controller process and restarts the
   // controller if it dies.  Also called (again) on configuration reloading.
-  static void ForkControllerProcess(SystemRewriteDriverFactory* factory,
-                                    ThreadSystem* thread_system,
-                                    MessageHandler* handler);
+  static void ForkControllerProcess(
+      std::unique_ptr<ControllerProcess>&& process,
+      SystemRewriteDriverFactory* factory, ThreadSystem* thread_system,
+      MessageHandler* handler);
 
   // Relinquishes the reference from us to the controller process. This may be
   // needed if our current process is going to go on and do something unrelated.
   static void DetachFromControllerProcess();
 
  private:
-  // Controller will be hooked up here.  This method is called in a single
-  // centralized "controller" process, and if that process dies it will be
-  // started again.
-  //
-  // When this method is called, there may be an old controller that has not
-  // finished shutting down yet.  So if there are global resources the new
-  // controller needs, it should be prepared to wait for them to be available.
-  static void RunController(SystemRewriteDriverFactory* factory,
-                            MessageHandler* handler);
-
   // Set us up as a proper daemon, with no stdin/out/err and not process group.
   static void Daemonize(MessageHandler* handler);
 
+  // Actually start the ControllerProcess. Returns an exit status.
+  static int RunController(int controller_read_fd, ControllerProcess* process,
+                           ThreadSystem* thread_system,
+                           MessageHandler* handler);
+
   class ProcessDeathWatcherThread : public ThreadSystem::Thread {
    public:
-    // Takes ownership of nothing.  Not that it matters, since we run until we
-    // exit.
+    // Takes ownership of parent_read_fd, in that it will be closed on
+    // destruction.
     ProcessDeathWatcherThread(ThreadSystem* thread_system,
-                              int controller_read_fd,
+                              int parent_read_fd,
+                              ControllerProcess* process,
                               MessageHandler* handler);
 
-    virtual void Run();
+    ~ProcessDeathWatcherThread();
+
+    void Run() override;
+
+    // Called from another thread so must be thread safe. Blocks until the
+    // thread has exited.
+    void Stop();
+
+    bool parent_death_detected() const { return parent_death_detected_; }
 
    private:
     MessageHandler* handler_;
-    int controller_read_fd_;
+    const int parent_read_fd_;
+    int stop_read_fd_;
+    int stop_write_fd_;
+    ControllerProcess* process_;
+    bool parent_death_detected_;
 
     DISALLOW_COPY_AND_ASSIGN(ProcessDeathWatcherThread);
   };

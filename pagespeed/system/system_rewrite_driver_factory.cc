@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/system/controller_manager.h"
+#include "pagespeed/system/controller_process.h"
 #include "pagespeed/system/in_place_resource_recorder.h"
 #include "pagespeed/system/serf_url_async_fetcher.h"
 #include "pagespeed/system/system_caches.h"
@@ -43,7 +44,9 @@
 #include "pagespeed/system/system_server_context.h"
 #include "pagespeed/system/system_thread_system.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
+#include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
@@ -55,6 +58,7 @@
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/sharedmem/shared_circular_buffer.h"
@@ -268,13 +272,48 @@ void SystemRewriteDriverFactory::PrepareControllerProcess() {
   SetupMessageHandlers();
 }
 
+namespace {
+
+// Implementation of ControllerProcess that does nothing but sleep.
+// TODO(cheesy): Remove this once a "real" implementation becomes available
+// in a later change.
+class DummyController : public ControllerProcess {
+ public:
+  DummyController(ThreadSystem* thread_system)
+      : mutex_(thread_system->NewMutex()), condvar_(mutex_->NewCondvar()) {}
+  virtual ~DummyController() { }
+
+  int Run() override {
+    ScopedMutex lock(mutex_.get());
+    while (!stop_called_) {
+      condvar_->Wait();
+    }
+    return 0;
+  }
+
+  void Stop() override {
+    ScopedMutex lock(mutex_.get());
+    stop_called_ = true;
+    condvar_->Signal();
+  }
+
+ private:
+  bool stop_called_ GUARDED_BY(mutex_) = false;
+  std::unique_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
+  std::unique_ptr<ThreadSystem::Condvar> condvar_;
+};
+
+}  // namespace
+
 void SystemRewriteDriverFactory::StartController(
     const SystemRewriteOptions& options) {
   if (options.controller_port() != 0) {
+    std::unique_ptr<DummyController> controller(
+        new DummyController(thread_system()));
     // In the forked process, this call starts a new event loop and never
     // returns.
-    ControllerManager::ForkControllerProcess(this, system_thread_system_,
-                                             message_handler());
+    ControllerManager::ForkControllerProcess(
+        std::move(controller), this, system_thread_system_, message_handler());
   }
 }
 

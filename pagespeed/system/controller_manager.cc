@@ -16,6 +16,7 @@
 
 #include "pagespeed/system/controller_manager.h"
 
+#include <poll.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -23,7 +24,6 @@
 #include <cstdlib>
 
 #include "base/logging.h"
-#include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
@@ -31,55 +31,94 @@ namespace net_instaweb {
 int ControllerManager::controller_write_fd_ = -1;
 
 ControllerManager::ProcessDeathWatcherThread::ProcessDeathWatcherThread(
-    ThreadSystem* thread_system,
-    int controller_read_fd,
-    MessageHandler* handler) : Thread(thread_system,
-                                      "process death watcher",
-                                      ThreadSystem::kDetached),
-                               handler_(handler),
-                               controller_read_fd_(controller_read_fd) {
+    ThreadSystem* thread_system, int controller_read_fd,
+    ControllerProcess* process, MessageHandler* handler)
+    : Thread(thread_system, "process death watcher", ThreadSystem::kJoinable),
+      handler_(handler),
+      parent_read_fd_(controller_read_fd),
+      stop_read_fd_(-1),
+      stop_write_fd_(-1),
+      process_(process),
+      parent_death_detected_(false) {
+  int fds[2];
+  if (pipe(fds) < 0) {
+    LOG(FATAL) << "ProcessDeathWatcherThread: pipe failed: " << strerror(errno);
+    exit(1);  // NOTREACHED
+  }
+  stop_read_fd_ = fds[0];
+  stop_write_fd_ = fds[1];
+}
+
+ControllerManager::ProcessDeathWatcherThread::~ProcessDeathWatcherThread() {
+  close(parent_read_fd_);
+  close(stop_read_fd_);
+  close(stop_write_fd_);  // May be -1.
+}
+
+void ControllerManager::ProcessDeathWatcherThread::Stop() {
+  if (stop_write_fd_ >= 0) {
+    close(stop_write_fd_);
+    stop_write_fd_ = -1;
+  }
+  this->Join();
 }
 
 void ControllerManager::ProcessDeathWatcherThread::Run() {
-  handler_->Message(kInfo, "Watching the root process to exit if it does.");
+  CHECK_GE(stop_read_fd_, 0);
+  CHECK_GE(parent_read_fd_, 0);
 
-  ssize_t status;
-  char buf[1];
-  do {
-    status = read(controller_read_fd_, buf, 1);
-  } while (status == -1 && (errno == EINTR ||
-                            errno == EAGAIN));
-  if (status == -1) {
-    handler_->Message(
-        kWarning, "Controller got error %d reading from pipe, shutting down",
-        errno);
-  } else if (status == 0 /* EOF */) {
-    handler_->Message(kInfo, "Root process exited; controller shutting down.");
-  } else if (status == 1 /* read a byte */) {
-    handler_->Message(
-        kInfo, "Root process is starting a new controller; shutting down.");
-  } else {
-    LOG(FATAL) << "Status of " << status << " doesn't make sense";
-  }
+  // This message is used by system/system_test.sh.
+  handler_->Message(kInfo, "Watching the root process to exit if it dies.");
 
-  // TODO(jefftk): Once the controller is doing real work and there's real
-  // cleanup work to do, we can initiate that from here.
+  struct pollfd fds[2];
+  memset(&fds, 0, sizeof(fds));
+  fds[0].fd = parent_read_fd_;
+  fds[0].events = POLLIN;
+  fds[1].fd = stop_read_fd_;
+  fds[1].events = POLLIN;
 
-  exit(EXIT_SUCCESS);
+  int nready = 0;
+  while (nready <= 0) {
+    nready = poll(fds, arraysize(fds), -1 /* infinite timeout */);
 
-  // Because the controller is exiting via exit(), the babysitter process will
-  // see that and quit itself instead of restarting it.
-}
+    // Activity on parent_read_fd_. That means the Apache/Nginx root either died
+    // or asked us to quit.
+    if (fds[0].revents) {
+      DCHECK_EQ(fds[0].fd, parent_read_fd_);
+      parent_death_detected_ = true;
 
-void ControllerManager::RunController(SystemRewriteDriverFactory* factory,
-                                      MessageHandler* handler) {
-  handler->Message(kInfo, "Controller running with PID %d", getpid());
+      char buf[1];
+      ssize_t status = read(parent_read_fd_, buf, 1);
+      if (status == -1) {
+        // It's very unlikely, but it could be that errno is EINTR here.
+        // Given that these messages are diagnostic only, it's just fine to
+        // ignore that and just exit the loop anyway.
+        handler_->Message(
+            kWarning,
+            "Controller got error %d reading from pipe, shutting down", errno);
+      } else if (status == 0 /* EOF */) {
+        handler_->Message(kInfo,
+                          "Root process exited; controller shutting down.");
+      } else if (status == 1 /* read a byte */) {
+        handler_->Message(
+            kInfo, "Root process is starting a new controller; shutting down.");
+      } else {
+        LOG(FATAL) << "Status of " << status << " doesn't make sense";
+        exit(1);  // NOTREACHED
+      }
+      // Note that it is possible that ControllerProcess::Run has already exited
+      // at this point. However, the API requires that calling Stop() is still
+      // OK.
+      process_->Stop();
+    }
 
-  // Would set up gRPC server here and pass control to its event loop.  Instead
-  // just hang out sleeping until the ProcessDeathWatcherThread decides it's
-  // time to exit.
-  while (true) {
-    sleep(60);  // 1m
+    // Activity on stop_read_fd_. That means ControllerProcess::Run completed
+    // and now we are being shutdown.
+    if (fds[1].revents) {
+      DCHECK_EQ(fds[1].fd, stop_read_fd_);
+      handler_->Message(kInfo,
+                        "Child process complete, stopping root watcher.");
+    }
   }
 }
 
@@ -112,12 +151,38 @@ void ControllerManager::Daemonize(MessageHandler* handler) {
   // If we disconnect file descriptors then logging will break, so don't.
 }
 
+int ControllerManager::RunController(int controller_read_fd,
+                                     ControllerProcess* process,
+                                     ThreadSystem* thread_system,
+                                     MessageHandler* handler) {
+  int exit_status = process->Setup();
+  if (exit_status == 0) {
+    // Start a thread to watch to see if the root process dies,
+    // and quit if it does.
+    std::unique_ptr<ProcessDeathWatcherThread> process_death_watcher_thread(
+        new ProcessDeathWatcherThread(thread_system, controller_read_fd,
+                                      process, handler));
+    CHECK(process_death_watcher_thread->Start());
+
+    exit_status = process->Run();
+    process_death_watcher_thread->Stop();
+
+    // Run may have returned because the parent died, or because of voluntary
+    // exit. If the parent died, we need to trap that and force the exit status
+    // to zero, otherwise the babysitter will unnecessarily respawn us.
+    if (process_death_watcher_thread->parent_death_detected()) {
+      exit_status = 0;
+    }
+  }
+  return exit_status;
+}
+
 void ControllerManager::ForkControllerProcess(
+    std::unique_ptr<ControllerProcess>&& process,
     SystemRewriteDriverFactory* factory,
     ThreadSystem* thread_system,
     MessageHandler* handler) {
-
-  handler->Message(kInfo, "Forking controller process off of %d", getpid());
+  handler->Message(kInfo, "Forking controller process from PID %d", getpid());
 
   // Whenever we fork off a controller we save the fd for a pipe to it.  Then if
   // we fork off another controller we can write a byte to the pipe to tell the
@@ -184,6 +249,7 @@ void ControllerManager::ForkControllerProcess(
   close(file_descriptors[1]);
   int controller_read_fd = file_descriptors[0];
 
+  // This message is used by system/system_test.sh.
   handler->Message(kInfo, "Babysitter running with PID %d", getpid());
 
   while (true) {
@@ -193,17 +259,13 @@ void ControllerManager::ForkControllerProcess(
     if (pid == 0) {
       factory->PrepareForkedProcess("controller");
       factory->PrepareControllerProcess();
-
-      // Start a thread to watch to see if the root or babysitter process
-      // dies, and quit if it does.
-      scoped_ptr<ProcessDeathWatcherThread> process_death_watcher_thread(
-          new ProcessDeathWatcherThread(thread_system,
-                                        controller_read_fd,
-                                        handler));
-      CHECK(process_death_watcher_thread->Start());
-
-      RunController(factory, handler);
-      LOG(FATAL) << "Controller should run until exit().";
+      // This message is used by get_controller_pid in system/system_test.sh.
+      handler->Message(kInfo, "Controller running with PID %d", getpid());
+      int exit_status = RunController(controller_read_fd, process.get(),
+                                      thread_system, handler);
+      handler->Message(kInfo, "Controller %d exiting with status %d",
+                       getpid(), exit_status);
+      exit(exit_status);
     } else {
       // Wait for controller process to die, then continue with the loop by
       // restarting it.
@@ -214,15 +276,21 @@ void ControllerManager::ForkControllerProcess(
       } while (child_pid == -1 && errno == EINTR);
       CHECK(child_pid != -1) << "Call to waitpid failed with status "
                              << child_pid;
-      if (WIFEXITED(status)) {
+      if (WIFEXITED(status) && WEXITSTATUS(status) == EXIT_SUCCESS) {
         handler->Message(kInfo,
             "Controller process %d exited normally, not restarting it. "
             "Shutting down babysitter.", child_pid);
         exit(EXIT_SUCCESS);
       }
+      // system/system_test.sh and the nginx system test look at these messages.
       handler->Message(
-          kWarning, "Controller process %d exited with status code %d",
+          kWarning, "Controller process %d exited with wait status %d",
           child_pid, status);
+      // If the controller used an unclean exit, it probably had a problem
+      // binding to a port or similar. Don't try and restart it immediately.
+      if (WIFEXITED(status)) {
+        sleep(1);
+      }
     }
   }
 }
