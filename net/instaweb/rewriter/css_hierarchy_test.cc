@@ -539,6 +539,19 @@ TEST_F(CssHierarchyTest, ExpandElidesImportsWithNoMedia) {
   EXPECT_EQ(flattened_css, top.minified_contents());
 }
 
+TEST_F(CssHierarchyTest, ChildMediaAllHandledOK) {
+  CssHierarchy top(nullptr);
+
+  InitializeNestedRootWithMedia(&top, "all", "all");
+  ExpandHierarchy(&top);
+
+  EXPECT_TRUE(nullptr != top.stylesheet());
+  ASSERT_EQ(2, top.children().size());
+  // "all" is represented by empty media vectors.
+  EXPECT_TRUE(top.children()[0]->media().empty());
+  EXPECT_TRUE(top.children()[1]->media().empty());
+}
+
 TEST_F(CssHierarchyTest, CompatibleCharset) {
   CssHierarchy top(NULL);
 

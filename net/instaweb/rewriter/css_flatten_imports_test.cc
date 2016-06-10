@@ -931,6 +931,27 @@ TEST_F(CssFlattenImportsTest, FlattenNestedMedia) {
                              kExpectCached | kNoOtherContexts);
 }
 
+TEST_F(CssFlattenImportsTest, FlattenAllMedia) {
+  const GoogleString kStylesContents = "@import url(all.css) all;";
+  const char kAllContents[] = "*{display: inline-block;}";
+  SetResponseWithDefaultHeaders("all.css", kContentTypeCss, kAllContents, 100);
+
+  const char kMinifiedAllContents[] = "*{display:inline-block}";
+
+  ValidateRewriteExternalCss("flatten_all_media", kStylesContents,
+                             kMinifiedAllContents,
+                             kExpectSuccess | kNoClearFetcher);
+
+  // Now double-check against an incompatible one.
+  const GoogleString kStylesContentsPrint = "@import url(print.css) print;";
+  const char kPrintContents[] = "img{display: none;}";
+  SetResponseWithDefaultHeaders("print.css", kContentTypeCss,
+                                kPrintContents, 100);
+  ValidateRewriteExternalCss("flatten_all_media2", kStylesContentsPrint,
+                             "@media print{img{display:none}}",
+                             kExpectSuccess | kNoClearFetcher);
+}
+
 TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   const GoogleString css_screen =
       StrCat("@media screen{", kSimpleCss, "}");

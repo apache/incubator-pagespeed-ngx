@@ -127,15 +127,15 @@ bool CssHierarchy::IsRecursive() const {
 bool CssHierarchy::DetermineImportMedia(const StringVector& containing_media,
                                         const StringVector& import_media) {
   bool result = true;
-  if (import_media.empty()) {
-    // Common case: no media specified on the @import so the caller can just
-    // use the containing media.
+  media_ = import_media;
+  css_util::ClearVectorIfContainsMediaAll(&media_);
+  if (media_.empty()) {
+    // Common case: no media specified on the @import (or equivalent explicit
+    // 'all') so the caller can just use the containing media.
     media_ = containing_media;
   } else {
     // Media were specified for the @import so we need to determine the
     // minimum subset required relative to the containing media.
-    media_ = import_media;
-    css_util::ClearVectorIfContainsMediaAll(&media_);
     std::sort(media_.begin(), media_.end());
     css_util::EliminateElementsNotIn(&media_, containing_media);
     if (media_.empty()) {
