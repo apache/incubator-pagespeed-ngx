@@ -7156,7 +7156,7 @@ mob.button.Map.prototype.clickHandler = function() {
   mob.util.sendBeaconEvent(mob.util.BeaconEvents.MAP_BUTTON, goog.bind(this.openMap_, this));
 };
 mob.button.Map.prototype.getMapUrl_ = function() {
-  return "https://maps.google.com/maps/place/" + this.mapLocation_;
+  return "https://www.google.com/maps/place/" + this.mapLocation_;
 };
 mob.button.Map.prototype.openMap_ = function() {
   if (this.conversionId_ && this.conversionLabel_) {

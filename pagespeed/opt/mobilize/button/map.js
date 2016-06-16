@@ -99,7 +99,7 @@ mob.button.Map.prototype.clickHandler = function() {
  */
 mob.button.Map.prototype.getMapUrl_ = function() {
   var mapUrl =
-      'https://maps.google.com/maps/place/' + this.mapLocation_;
+      'https://www.google.com/maps/place/' + this.mapLocation_;
   return mapUrl;
 };
 
