@@ -1831,6 +1831,11 @@ http {
         "http://$host:@@PRIMARY_PORT@@/mod_pagespeed_test/ipro/instant/"
         "@@SERVER_ROOT@@/mod_pagespeed_test/ipro/instant/";
 
+    location /mod_pagespeed_test/public/ {
+      add_header "Cache-Control" "public, max-age=600";
+      pagespeed PreserveUrlRelativity off;
+    }
+
     pagespeed EnableFilters remove_comments;
 
     # Test LoadFromFile mapping by mapping one dir to another.
