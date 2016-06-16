@@ -65,10 +65,6 @@ class HtmlColor {
     r_ = g_ = b_ = 0;
     is_bad_value_ = kBadColorHSL;
   }
-  void SetDefaultValue() {
-    r_ = g_ = b_ = 0;
-    is_bad_value_ = kGoodColorValue;
-  }
 
  public:
   enum TolerateLevel { EXACTLY_SAME = 0, HIGHLY_SIMILAR = 5, SIMILAR = 10 };

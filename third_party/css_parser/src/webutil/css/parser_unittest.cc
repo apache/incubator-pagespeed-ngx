@@ -843,6 +843,13 @@ TEST_F(ParserTest, numbers) {
   EXPECT_EQ(Value::NO_UNIT, v->GetDimension());
   EXPECT_EQ(';', *p->in_);
 
+  p.reset(new Parser("3vm;"));
+  v.reset(p->ParseNumber());
+  ASSERT_EQ(Value::NUMBER, v->GetLexicalUnitType());
+  EXPECT_EQ(3, v->GetIntegerValue());
+  EXPECT_EQ(Value::VM, v->GetDimension());
+  EXPECT_EQ(';', *p->in_);
+
   p.reset(new Parser("1em;"));
   v.reset(p->ParseNumber());
   ASSERT_EQ(Value::NUMBER, v->GetLexicalUnitType());

@@ -34,7 +34,8 @@ namespace Css {
 
 const char* const Value::kDimensionUnitText[] = {
   "em", "ex", "px", "cm", "mm", "in", "pt", "pc",
-  "deg", "rad", "grad", "ms", "s", "hz", "khz", "%", "OTHER", "" };
+  "deg", "rad", "grad", "ms", "s", "hz", "khz", "%", "vh", "vm", "vw",
+  "OTHER", "" };
 
 //
 // Constructors.
@@ -182,6 +183,13 @@ Value::Unit Value::UnitFromText(const char* str, int len) {
       }
     case 2:
       switch (str[0]) {
+        case 'v': case 'V':
+          switch (str[1]) {
+            case 'h': case 'H': return VH;
+            case 'm': case 'M': return VM;
+            case 'w': case 'W': return VW;
+            default: return OTHER;
+          }
         case 'e': case 'E':
           switch (str[1]) {
             case 'm': case 'M': return EM;

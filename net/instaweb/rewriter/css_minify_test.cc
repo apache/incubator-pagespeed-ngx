@@ -149,6 +149,48 @@ TEST_F(CssMinifyTest, RemoveZeroLengthButNotTimeOrPercentSuffix) {
   EXPECT_STREQ(".a{width:0;height:0%;-moz-transition-delay:0s , 0s}", minified);
 }
 
-}  // namespace
+TEST_F(CssMinifyTest, ParsingAndMinifyingBackgroundAndFont) {
+  const char kCss[] =
+      ".a {\n"
+      "  font:normal 16px Foo, sans-serif;\n"
+      "}\n"
+      "body {\n"
+      "  background: #fff;\n"
+      "}";
+  Css::Parser parser(kCss);
+  std::unique_ptr<Css::Stylesheet> stylesheet(parser.ParseStylesheet());
+  GoogleString minified;
+  StringWriter writer(&minified);
 
+  EXPECT_TRUE(CssMinify::Stylesheet(*stylesheet, &writer, &handler_));
+  // TODO(peleyal): We are adding more data than required. Should be:
+  // ".a{font:normal 16px Foo,sans-serif}"
+  // "body{background:#fff}"
+  EXPECT_STREQ(
+      ".a{font:16px Foo,sans-serif;font-style:normal;font-variant:normal;"
+      "font-weight:normal;font-size:16px;line-height:normal;"
+      "font-family:Foo,sans-serif}"
+      "body{background:#fff;background-color:#fff;background-image:none;"
+      "background-repeat:repeat;background-attachment:scroll;"
+      "background-position-x:0%;background-position-y:0%}",
+      minified);
+}
+
+TEST_F(CssMinifyTest, ParsingAndMinifingViewportUnits) {
+  const char kCss[] =
+      ".a {\n"
+      "  margin-top: 70vh;\n"
+      "  margin-bottom: 20vw;\n"
+      "}\n";
+
+  Css::Parser parser(kCss);
+  std::unique_ptr<Css::Stylesheet> stylesheet(parser.ParseStylesheet());
+  GoogleString minified;
+  StringWriter writer(&minified);
+
+  EXPECT_TRUE(CssMinify::Stylesheet(*stylesheet, &writer, &handler_));
+  EXPECT_STREQ(".a{margin-top:70vh;margin-bottom:20vw}", minified);
+}
+
+}  // namespace
 }  // namespace net_instaweb
