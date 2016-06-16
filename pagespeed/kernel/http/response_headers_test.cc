@@ -197,6 +197,18 @@ class ResponseHeadersTest : public testing::Test {
     headers->RemoveIfNotIn(keep);
   }
 
+  // Initiates a ResponseHeaders instance with the specified cache-control
+  // value, calls SetCacheControlPublic, and returns the resulting cached
+  // control as a joined string.
+  GoogleString AddPublicToCacheControl(const StringVector& cache_control) {
+    ResponseHeaders headers;
+    for (int i = 0, n = cache_control.size(); i < n; ++i) {
+      headers.Add(HttpAttributes::kCacheControl, cache_control[i]);
+    }
+    headers.SetCacheControlPublic();
+    return headers.LookupJoined(HttpAttributes::kCacheControl);
+  }
+
   GoogleMessageHandler message_handler_;
   ResponseHeaders response_headers_;
   ResponseHeadersParser parser_;
@@ -2196,6 +2208,23 @@ TEST_F(ResponseHeadersTest, MultipleOriginalContentLengths) {
                "Content-Length: 50\r\n"
                "\r\n",
                headers.ToString());
+}
+
+TEST_F(ResponseHeadersTest, CacheControlPublic) {
+  EXPECT_STREQ("public", AddPublicToCacheControl({}));
+  EXPECT_STREQ("max-age=100, public", AddPublicToCacheControl({"max-age=100"}));
+  EXPECT_STREQ("public, max-age=100",
+               AddPublicToCacheControl({"public, max-age=100"}));
+  EXPECT_STREQ("public, max-age=100",
+               AddPublicToCacheControl({"public", "max-age=100"}));
+  EXPECT_STREQ("max-age=100, private",
+               AddPublicToCacheControl({"max-age=100,private"}));
+  EXPECT_STREQ("max-age=100, private",
+               AddPublicToCacheControl({"max-age=100", "private"}));
+  EXPECT_STREQ("no-store", AddPublicToCacheControl({"no-store"}));
+  EXPECT_STREQ("no-cache", AddPublicToCacheControl({"no-cache"}));
+  EXPECT_STREQ("No-Store", AddPublicToCacheControl({"No-Store"}));
+  EXPECT_STREQ("No-Cache", AddPublicToCacheControl({"No-Cache"}));
 }
 
 }  // namespace net_instaweb

@@ -1067,7 +1067,7 @@ class RewriteContext::FetchContext {
         response_headers->CopyFrom(*(
             output_resource_->response_headers()));
         // Use the most conservative Cache-Control considering all inputs.
-        ApplyInputCacheControl(response_headers);
+        AdjustCacheControl();
         AddMetadataHeaderIfNecessary(response_headers);
         StringPiece contents = output_resource_->ExtractUncompressedContents();
         async_fetch_->set_content_length(contents.size());
@@ -1109,7 +1109,7 @@ class RewriteContext::FetchContext {
           // Use the most conservative Cache-Control considering all inputs.
           // Note that this is needed because FixFetchFallbackHeaders might
           // actually relax things a bit if the input was no-cache.
-          ApplyInputCacheControl(response_headers);
+          AdjustCacheControl();
           StringPiece contents = input_resource->ExtractUncompressedContents();
           ok = rewrite_context_->SendFallbackResponse(
               original_output_url_, contents, async_fetch_, handler_);
@@ -1166,7 +1166,18 @@ class RewriteContext::FetchContext {
     rewrite_context_->FixFetchFallbackHeaders(*cached_result,
                                               async_fetch_->response_headers());
     // Use the most conservative Cache-Control considering all inputs.
-    ApplyInputCacheControl(async_fetch_->response_headers());
+    AdjustCacheControl();
+
+    // Add 'public' header if rewritten resource had explicit 'public', which
+    // happens if the source URLs had 'public'.  This is needed for
+    // ipro-optimized resources, where the actual inputs are used to
+    // compute the cache-control for a hidden .pagespeed. resource in a
+    // nested RewriteContext, and we need to propogate that to the ipro
+    // resource response headers.
+    if (headers->HasValue(HttpAttributes::kCacheControl, "public")) {
+      async_fetch_->response_headers()->SetCacheControlPublic();
+    }
+
     if (!detached_) {
       // If we're detached then we don't know what the state of the metadata is
       // here as the Rewrite() could still be ongoing in the low-priority
@@ -1200,14 +1211,14 @@ class RewriteContext::FetchContext {
   bool skip_fetch_rewrite() { return skip_fetch_rewrite_; }
 
  private:
-  void ApplyInputCacheControl(ResponseHeaders* headers) {
+  void AdjustCacheControl() {
     ResourceVector inputs;
     for (int i = 0; i < rewrite_context_->num_slots(); i++) {
       inputs.push_back(rewrite_context_->slot(i)->resource());
     }
 
-    rewrite_context_->FindServerContext()->ApplyInputCacheControl(inputs,
-                                                                  headers);
+    rewrite_context_->FindServerContext()->ApplyInputCacheControl(
+        inputs, async_fetch_->response_headers());
   }
 
   RewriteContext* rewrite_context_;

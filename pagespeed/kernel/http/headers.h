@@ -77,6 +77,12 @@ template<class Proto> class Headers {
   // be done in a separate CL from the one I'm typing into now.
   bool Lookup(const StringPiece& name, ConstStringStarVector* values) const;
 
+  // Synthesize a string that represents what all the values a header would
+  // serialize to.  Returns "" if the header isn't present.
+  //
+  // Same constness warnings as for ResponseHeaders::Lookup() apply.
+  GoogleString LookupJoined(StringPiece name) const;
+
   // Looks up a single attribute value.  Returns NULL if the attribute is not
   // found, or if more than one attribute is found (either multiple
   // comma-separated entries, or multiple copies of the header).

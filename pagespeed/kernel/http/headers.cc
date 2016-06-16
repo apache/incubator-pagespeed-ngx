@@ -656,6 +656,15 @@ template<class Proto> bool Headers<Proto>::ExtractNameAndValue(
 template<class Proto> void Headers<Proto>::UpdateHook() {
 }
 
+template<class Proto> GoogleString Headers<Proto>::LookupJoined(
+    StringPiece name) const {
+  ConstStringStarVector values;
+  if (!Lookup(name, &values)) {
+    return "";
+  }
+  return JoinStringStar(values, ", ");
+}
+
 // Explicit template class instantiation.
 // See http://www.cplusplus.com/forum/articles/14272/
 template class Headers<HttpResponseHeaders>;

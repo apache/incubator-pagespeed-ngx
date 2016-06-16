@@ -113,7 +113,7 @@ ModPagespeedDefaultSharedMemoryCacheKB 0
     # in browser caches will stay relevant.
     <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
       Header unset Etag
-      Header set Cache-control "public, max-age=600"
+      Header set Cache-control "max-age=600"
     </FilesMatch>
   </IfModule>
 </Directory>
@@ -998,7 +998,7 @@ NameVirtualHost 127.0.0.1:@@APACHE_TERTIARY_PORT@@
 
     # Make the deadline long here for valgrind tests.  We could
     # conditionalize this.
-    ModPagespeedInPlaceRewriteDeadlineMs 10000
+    ModPagespeedInPlaceRewriteDeadlineMs 20000
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/wait/" >
@@ -1150,6 +1150,11 @@ ModPagespeedUsePerVHostStatistics on
   ModPagespeedDownstreamCachePurgeLocationPrefix "http://localhost:8020"
   ModPagespeedDownstreamCachePurgeMethod "PURGE"
   ModPagespeedDownstreamCacheRebeaconingKey random_rebeaconing_key
+</Directory>
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/public" >
+  Header set Cache-control "public,max-age=600"
+  ModPagespeedPreserveUrlRelativity off
 </Directory>
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>

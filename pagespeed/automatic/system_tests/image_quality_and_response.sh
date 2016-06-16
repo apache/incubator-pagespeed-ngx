@@ -42,7 +42,7 @@ function ipro_rewrite_image_and_verify_response() {
     fetch_until -save $TIME_OUT_STR $URL 'grep -c W/\"PSA-aj-' 1 "$OPT"
 
   local TYPE="$(extract_headers $FETCH_UNTIL_OUTFILE | \
-    scrape_header '^Content-Type')"
+    scrape_header 'Content-Type')"
   check [ $TYPE = $EXPECTED_CONTENT_TYPE ]
   # If the image can be optimized, content length is checked against a range
   # for accommodating image encoder version difference.
@@ -53,7 +53,7 @@ function ipro_rewrite_image_and_verify_response() {
     check [ $LENGTH -ge $MIN_LENGTH ]
     check [ $LENGTH -le $MAX_LENGTH ]
   fi
-  local VARY="$(extract_headers $FETCH_UNTIL_OUTFILE | scrape_header '^Vary')"
+  local VARY="$(extract_headers $FETCH_UNTIL_OUTFILE | scrape_header 'Vary')"
   if [ -z $EXPECTED_VARY ]; then
     check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" grep -q "^Vary: "
   else

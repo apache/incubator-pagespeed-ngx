@@ -465,7 +465,7 @@ void RewriteTestBase::DefaultResponseHeaders(
     ResponseHeaders* response_headers) {
   SetDefaultLongCacheHeaders(&content_type, response_headers);
   response_headers->SetDateAndCaching(
-      timer()->NowMs(), ttl_sec * Timer::kSecondMs, ", public");
+      timer()->NowMs(), ttl_sec * Timer::kSecondMs);
   response_headers->ComputeCaching();
 }
 

@@ -184,6 +184,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // appropriately. Note that all existing max-age values are removed.
   void SetCacheControlMaxAge(int64 ttl_ms);
 
+  // Sets the cache-control to explicitly have 'public', as long as that's
+  // not in conflict with other CC headers.
+  void SetCacheControlPublic();
+
   // Sets the x-original-content-length header, used to relay information on
   // the original size of optimized resources.
   void SetOriginalContentLength(int64 content_length);

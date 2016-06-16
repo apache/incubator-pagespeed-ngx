@@ -481,6 +481,30 @@ void ResponseHeaders::SetDateAndCaching(
                  cache_control_suffix));
 }
 
+void ResponseHeaders::SetCacheControlPublic() {
+  ConstStringStarVector values;
+  if (Lookup(HttpAttributes::kCacheControl, &values)) {
+    for (int i = 0, n = values.size(); i < n; ++i) {
+      StringPiece val = *(values[i]);
+      if (StringCaseEqual(val, "private") ||
+          StringCaseEqual(val, "public") ||
+          StringCaseEqual(val, "no-cache") ||
+          StringCaseEqual(val, "no-store")) {
+        return;
+      }
+    }
+  }
+
+  // Note that adding 'public' to a non-private cache-control does
+  // not change the value of any of the precomputed bools we've stored,
+  // so make the 'dirty' bit unchanged across this operation.
+  bool dirty = cache_fields_dirty_;
+  GoogleString new_value = JoinStringStar(values, ", ");
+  StrAppend(&new_value, new_value.empty() ? "public" : ", public");
+  Replace(HttpAttributes::kCacheControl, new_value);
+  cache_fields_dirty_ = dirty;
+}
+
 void ResponseHeaders::SetTimeHeader(const StringPiece& header, int64 time_ms) {
   GoogleString time_string;
   if (ConvertTimeToString(time_ms, &time_string)) {

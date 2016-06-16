@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/input_info.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
@@ -424,8 +425,9 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
       ResponseHeaders::kHasValidator);
 
   bool browser_cacheable = headers->IsBrowserCacheable();
-  bool no_store = headers->HasValue(HttpAttributes::kCacheControl,
-                                    "no-store");
+  bool no_store = headers->HasValue(HttpAttributes::kCacheControl, "no-store");
+  bool is_public = true;  // Only used if we see a non-empty resource.
+  bool saw_nonempty_resource = false;
   int64 max_age = headers->cache_ttl_ms();
   for (int i = 0, n = inputs.size(); i < n; ++i) {
     const ResourcePtr& input_resource(inputs[i]);
@@ -443,11 +445,18 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
       browser_cacheable &= input_headers->IsBrowserCacheable();
       no_store |= input_headers->HasValue(HttpAttributes::kCacheControl,
                                           "no-store");
+      is_public &= input_headers->HasValue(HttpAttributes::kCacheControl,
+                                           "public");
+      saw_nonempty_resource = true;
     }
   }
   DCHECK(!(proxy_cacheable && !browser_cacheable)) <<
       "You can't have a proxy-cacheable result that is not browser-cacheable";
-  if (!proxy_cacheable) {
+  if (proxy_cacheable) {
+    if (is_public && saw_nonempty_resource) {
+      headers->SetCacheControlPublic();
+    }
+  } else {
     const char* directives = NULL;
     if (browser_cacheable) {
       directives = ",private";

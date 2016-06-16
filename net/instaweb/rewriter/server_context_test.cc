@@ -29,7 +29,7 @@
 #include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/input_info.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -116,8 +116,6 @@ class VerifyContentsCallback : public Resource::AsyncCallback {
 
 class ServerContextTest : public RewriteTestBase {
  protected:
-  ServerContextTest() { }
-
   // Fetches data (which is expected to exist) for given resource,
   // but making sure to go through the path that checks for its
   // non-existence and potentially doing locking, too.
@@ -1530,84 +1528,100 @@ TEST_F(ServerContextTest, TestMergeNonCachingResponseHeaders) {
   EXPECT_EQ("Extra Value", *v[0]);
 }
 
-TEST_F(ServerContextTest, ApplyInputCacheControl) {
-  ResourcePtr public_100(
-      CreateCustomCachingResource("pub_100", 100, ""));
-  ResourcePtr public_200(
-      CreateCustomCachingResource("pub_200", 200, ""));
-  ResourcePtr private_300(
-      CreateCustomCachingResource("pri_300", 300, ",private"));
-  ResourcePtr private_400(
-      CreateCustomCachingResource("pri_400", 400, ",private"));
-  ResourcePtr no_cache_150(
-      CreateCustomCachingResource("noc_150", 400, ",no-cache"));
-  ResourcePtr no_store_200(
-      CreateCustomCachingResource("nos_200", 200, ",no-store"));
+class ServerContextCacheControlTest : public ServerContextTest {
+ protected:
+  void SetUp() override {
+    ServerContextTest::SetUp();
+    implicit_public_100_ = CreateCustomCachingResource("ipub_100", 100, "");
+    implicit_public_200_ = CreateCustomCachingResource("ipub_200", 200, "");
+    explicit_public_200_ = CreateCustomCachingResource(
+        "epub_200", 200, ",public");
+    private_300_ = CreateCustomCachingResource("pri_300", 300, ",private");
+    private_400_ = CreateCustomCachingResource("pri_400", 400, ",private");
+    no_cache_150_ = CreateCustomCachingResource("noc_150", 400, ",no-cache");
+    no_store_200_ = CreateCustomCachingResource("nos_200", 200, ",no-store");
+    DefaultHeaders(&response_headers_);
+  }
 
-  {
-    // If we feed in just public resources, we should get something with
-    // ultra-long TTL, regardless of how soon they expire.
-    ResponseHeaders out;
-    DefaultHeaders(&out);
-    ResourceVector two_public;
-    two_public.push_back(public_100);
-    two_public.push_back(public_200);
-    server_context()->ApplyInputCacheControl(two_public, &out);
-
-    GoogleString expect_ttl = StrCat(
+  GoogleString LongCacheTtl() const {
+    return StrCat(
         "max-age=",
         Integer64ToString(ServerContext::kGeneratedMaxAgeMs /
-                            Timer::kSecondMs));
-    EXPECT_STREQ(expect_ttl, out.Lookup1(HttpAttributes::kCacheControl));
+                          Timer::kSecondMs));
   }
 
-  {
-    // If an input is private, however, we must mark output appropriately
-    // and not cache-extend.
-    ResponseHeaders out;
-    DefaultHeaders(&out);
-    ResourceVector some_private;
-    some_private.push_back(public_100);
-    some_private.push_back(private_300);
-    some_private.push_back(private_400);
-    server_context()->ApplyInputCacheControl(some_private, &out);
-    EXPECT_FALSE(out.HasValue(HttpAttributes::kCacheControl, "public"));
-    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "private"));
-    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "max-age=100"));
+  bool HasCacheControl(StringPiece value) {
+    return response_headers_.HasValue(HttpAttributes::kCacheControl, value);
   }
 
-  {
-    // Similarly no-cache should be incorporated --- but then we also need
-    // to have 0 ttl.
-    ResponseHeaders out;
-    DefaultHeaders(&out);
-    ResourceVector some_nocache;
-    some_nocache.push_back(public_100);
-    some_nocache.push_back(private_300);
-    some_nocache.push_back(private_400);
-    some_nocache.push_back(no_cache_150);
-    server_context()->ApplyInputCacheControl(some_nocache, &out);
-    EXPECT_FALSE(out.HasValue(HttpAttributes::kCacheControl, "public"));
-    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "no-cache"));
-    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "max-age=0"));
-  }
+  ResourcePtr implicit_public_100_;
+  ResourcePtr implicit_public_200_;
+  ResourcePtr explicit_public_200_;
+  ResourcePtr private_300_;
+  ResourcePtr private_400_;
+  ResourcePtr no_cache_150_;
+  ResourcePtr no_store_200_;
+  ResourceVector resources_;
+  ResponseHeaders response_headers_;
+};
 
-  {
-    // Make sure we save no-store as well.
-    ResponseHeaders out;
-    DefaultHeaders(&out);
-    ResourceVector some_nostore;
-    some_nostore.push_back(public_100);
-    some_nostore.push_back(private_300);
-    some_nostore.push_back(private_400);
-    some_nostore.push_back(no_cache_150);
-    some_nostore.push_back(no_store_200);
-    server_context()->ApplyInputCacheControl(some_nostore, &out);
-    EXPECT_FALSE(out.HasValue(HttpAttributes::kCacheControl, "public"));
-    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "no-cache"));
-    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "no-store"));
-    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "max-age=0"));
-  }
+TEST_F(ServerContextCacheControlTest, ImplicitPublic) {
+  // If we feed in just implicitly public resources, we should get
+  // something with ultra-long TTL, regardless of how soon they
+  // expire.
+  resources_.push_back(implicit_public_100_);
+  resources_.push_back(implicit_public_200_);
+  server_context()->ApplyInputCacheControl(resources_, &response_headers_);
+  EXPECT_STREQ(LongCacheTtl(),
+               response_headers_.Lookup1(HttpAttributes::kCacheControl));
+}
+
+TEST_F(ServerContextCacheControlTest, ExplicitPublic) {
+  // An explicit 'public' gets reflected in the output.
+  resources_.push_back(explicit_public_200_);
+  server_context()->ApplyInputCacheControl(resources_, &response_headers_);
+  EXPECT_TRUE(HasCacheControl("public"));
+  EXPECT_FALSE(HasCacheControl("private"));
+  EXPECT_TRUE(HasCacheControl(LongCacheTtl()));
+}
+
+TEST_F(ServerContextCacheControlTest, Private) {
+  // If an input is private, however, we must mark output appropriately
+  // and not cache-extend.
+  resources_.push_back(implicit_public_100_);
+  resources_.push_back(private_300_);
+  resources_.push_back(private_400_);
+  server_context()->ApplyInputCacheControl(resources_, &response_headers_);
+  EXPECT_FALSE(HasCacheControl("public"));
+  EXPECT_TRUE(HasCacheControl("private"));
+  EXPECT_TRUE(HasCacheControl("max-age=100"));
+}
+
+TEST_F(ServerContextCacheControlTest, NoCache) {
+  // Similarly no-cache should be incorporated --- but then we also need
+  // to have 0 ttl.
+  resources_.push_back(implicit_public_100_);
+  resources_.push_back(private_300_);
+  resources_.push_back(private_400_);
+  resources_.push_back(no_cache_150_);
+  server_context()->ApplyInputCacheControl(resources_, &response_headers_);
+  EXPECT_FALSE(HasCacheControl("public"));
+  EXPECT_TRUE(HasCacheControl("no-cache"));
+  EXPECT_TRUE(HasCacheControl("max-age=0"));
+}
+
+TEST_F(ServerContextCacheControlTest, NoStore) {
+  // Make sure we save no-store as well.
+  resources_.push_back(implicit_public_100_);
+  resources_.push_back(private_300_);
+  resources_.push_back(private_400_);
+  resources_.push_back(no_cache_150_);
+  resources_.push_back(no_store_200_);
+  server_context()->ApplyInputCacheControl(resources_, &response_headers_);
+  EXPECT_FALSE(HasCacheControl("public"));
+  EXPECT_TRUE(HasCacheControl("no-cache"));
+  EXPECT_TRUE(HasCacheControl("no-store"));
+  EXPECT_TRUE(HasCacheControl("max-age=0"));
 }
 
 TEST_F(ServerContextTest, WriteChecksInputVector) {
