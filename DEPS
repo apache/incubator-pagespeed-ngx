@@ -90,9 +90,9 @@ vars = {
   "libpng_src": "https://github.com/glennrp/libpng.git",
   "libpng_revision": "@a36c4f3f165fb2dd1772603da7f996eb40326621",
 
-  # Brotli v0.3.0
+  # Brotli v0.5.0-snapshot
   "brotli_src": "https://github.com/google/brotli.git",
-  "brotli_revision": "@98ed7a23a83d64133b0a36a884e489bffb0eb864",
+  "brotli_revision": "@e4c891420c004581cba43d918e73f446affdbbbb",
 
   "proto_src": "https://github.com/google/protobuf.git",
   "protobuf_revision": "v3.0.0-beta-2",

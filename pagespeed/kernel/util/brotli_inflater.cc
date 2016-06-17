@@ -24,15 +24,10 @@
 #include "base/logging.h"
 #include "third_party/brotli/src/dec/decode.h"
 #include "third_party/brotli/src/enc/encode.h"
-#include "third_party/brotli/src/enc/streams.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/writer.h"
-
-using brotli::BrotliMemIn;
-using brotli::BrotliParams;
-using brotli::BrotliStringOut;
 
 namespace net_instaweb {
 
@@ -52,18 +47,19 @@ void BrotliInflater::ResetState() {
 
 bool BrotliInflater::Compress(StringPiece in, int compression_level,
                               MessageHandler* handler, Writer* writer) {
-  // For creating a BrotliStringOut.
-  GoogleString out_str;
-  // Set the compression level ("quality" in brotli terms).
-  BrotliParams params;
-  params.quality = compression_level;
-  BrotliMemIn brotli_input(in.data(), in.length());
-  BrotliStringOut brotli_output(&out_str, std::numeric_limits<int>::max());
+  size_t compressed_size = BrotliEncoderMaxCompressedSize(in.length());
+  uint8_t* compressed = new uint8_t[compressed_size];
   // Compress in one shot with BrotliCompress.
-  if (BrotliCompress(params, &brotli_input, &brotli_output)) {
-    return writer->Write(out_str, handler);
+  bool result = false;
+  if (BrotliEncoderCompress(compression_level, BROTLI_DEFAULT_WINDOW,
+                            BROTLI_DEFAULT_MODE, in.length(),
+                            reinterpret_cast<const uint8_t*>(in.data()),
+                            &compressed_size, compressed)) {
+    StringPiece chunk(reinterpret_cast<char*>(compressed), compressed_size);
+    result = writer->Write(chunk, handler);
   }
-  return false;
+  delete[] compressed;
+  return result;
 }
 
 bool BrotliInflater::Compress(StringPiece in, MessageHandler* handler,
@@ -108,12 +104,8 @@ bool BrotliInflater::DecompressHelper(StringPiece in, MessageHandler* handler,
         // Decompression succeeded, write out the last chunk if needed.
         break;
       case BROTLI_RESULT_ERROR:
-#ifdef BROTLI_ERROR_CODES_LIST
         handler->Message(kError, "%s",
             BrotliErrorString(BrotliGetErrorCode(brotli_state_.get())));
-#else
-        handler->Message(kError, "BROTLI_RESULT_ERROR");
-#endif
         return false;
     }
     StringPiece chunk(output, sizeof(output) - available_out);
