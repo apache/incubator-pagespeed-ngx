@@ -5,7 +5,7 @@ install:
   - sudo apt-get update 2>&1 > /dev/null
   - mkdir -p ~/build_directory
   - mv $TRAVIS_BUILD_DIR ~/build_directory/src
-  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4 php5-common php5 2>&1 > /dev/null
+  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4 php5-common php5 php5-cgi libapache2-mod-php5 2>&1 > /dev/null
   - nohup php-cgi -b 127.0.0.1:9000 &
   - sudo mv /bin/nc.traditional /usr/bin/nc
   - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
