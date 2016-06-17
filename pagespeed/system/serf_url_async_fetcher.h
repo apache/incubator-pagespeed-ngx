@@ -28,6 +28,7 @@
 #include "pagespeed/kernel/base/pool_element.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/response_headers_parser.h"
 
@@ -128,7 +129,6 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   void ReportCompletedFetchStats(SerfFetch* fetch);
 
   apr_pool_t* pool() const { return pool_; }
-  serf_context_t* serf_context() const { return serf_context_; }
 
   void PrintActiveFetches(MessageHandler* handler) const;
   virtual int64 timeout_ms() { return timeout_ms_; }
@@ -187,14 +187,13 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
     https_options_ = https_options;
   }
 
-  void Init(apr_pool_t* parent_pool, const char* proxy);
-  bool SetupProxy(const char* proxy);
+  void Init(apr_pool_t* parent_pool, const char* proxy)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  bool SetupProxy(const char* proxy) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   // Start a SerfFetch. Takes ownership of fetch and makes sure callback is
   // called even if fetch fails to start.
-  //
-  // mutex_ must be held before calling StartFetch.
-  bool StartFetch(SerfFetch* fetch);
+  bool StartFetch(SerfFetch* fetch) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   // AnyPendingFetches is accurate only at the time of call; this is
   // used conservatively during shutdown.  It counts fetches that have been
@@ -206,27 +205,24 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   int ApproximateNumActiveFetches();
 
   void CancelActiveFetches();
-  void CancelActiveFetchesMutexHeld();
+  void CancelActiveFetchesMutexHeld() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
   bool WaitForActiveFetchesHelper(int64 max_ms,
                                   MessageHandler* message_handler);
 
   // This cleans up the serf resources for fetches that errored out.
   // Must be called only immediately after running the serf event loop.
-  // Must be called with mutex_ held.
-  void CleanupFetchesWithErrors();
+  void CleanupFetchesWithErrors() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
-  // These must be accessed with mutex_ held.
-  bool shutdown() const { return shutdown_; }
-  void set_shutdown(bool s) { shutdown_ = s; }
+  bool shutdown() const EXCLUSIVE_LOCKS_REQUIRED(mutex_) { return shutdown_; }
+  void set_shutdown(bool s) EXCLUSIVE_LOCKS_REQUIRED(mutex_) { shutdown_ = s; }
 
   apr_pool_t* pool_;
   ThreadSystem* thread_system_;
   Timer* timer_;
 
-  // mutex_ protects serf_context_ and active_fetches_.
+  // mutex_ protects serf_context_, active_fetches_ and shutdown_. It's
+  // protected because SerfThreadedFetcher needs access.
   ThreadSystem::CondvarCapableMutex* mutex_;
-  serf_context_t* serf_context_;
-  SerfFetchPool active_fetches_;
 
   typedef std::vector<SerfFetch*> FetchVector;
   SerfFetchPool completed_fetches_;
@@ -252,6 +248,9 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   static bool ParseHttpsOptions(StringPiece directive, uint32* options,
                                 GoogleString* error_message);
 
+  serf_context_t* serf_context_ GUARDED_BY(mutex_);
+  SerfFetchPool active_fetches_ GUARDED_BY(mutex_);
+
   Variable* request_count_;
   Variable* byte_count_;
   Variable* time_duration_ms_;
@@ -260,7 +259,7 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   Variable* failure_count_;
   Variable* cert_errors_;
   const int64 timeout_ms_;
-  bool shutdown_;
+  bool shutdown_ GUARDED_BY(mutex_);
   bool list_outstanding_urls_on_error_;
   bool track_original_content_length_;
   uint32 https_options_;  // Composed of HttpsOptions ORed together.
@@ -283,7 +282,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
 
   // Start the fetch. It returns immediately.  This can only be run when
   // locked with fetcher->mutex_.
-  bool Start(SerfUrlAsyncFetcher* fetcher);
+  bool Start(SerfUrlAsyncFetcher* fetcher, serf_context_t* context);
 
   GoogleString DebugInfo();
 

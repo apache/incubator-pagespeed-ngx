@@ -980,7 +980,8 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
   DISALLOW_COPY_AND_ASSIGN(SerfThreadedFetcher);
 };
 
-bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
+bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher,
+                      serf_context_t* serf_context) {
   // Note: this is called in the thread's context, so this is when we do
   // the pool ops.
   fetcher_ = fetcher;
@@ -997,7 +998,7 @@ bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
   DCHECK(fetcher->allow_https() || !using_https_);
 
   apr_status_t status = serf_connection_create2(&connection_,
-                                                fetcher_->serf_context(),
+                                                serf_context,
                                                 url_,
                                                 ConnectionSetup, this,
                                                 ClosedConnection, this,
@@ -1012,8 +1013,8 @@ bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
 
   // Start the fetch. It will connect to the remote host, send the request,
   // and accept the response, without blocking.
-  status = serf_context_run(
-      fetcher_->serf_context(), SERF_DURATION_NOBLOCK, fetcher_->pool());
+  status =
+      serf_context_run(serf_context, SERF_DURATION_NOBLOCK, fetcher_->pool());
 
   if (status == APR_SUCCESS || APR_STATUS_IS_TIMEUP(status)) {
     return true;
@@ -1072,9 +1073,9 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       thread_system_(thread_system),
       timer_(timer),
       mutex_(NULL),
-      serf_context_(NULL),
       threaded_fetcher_(NULL),
       active_count_(NULL),
+      serf_context_(NULL),
       request_count_(NULL),
       byte_count_(NULL),
       time_duration_ms_(NULL),
@@ -1110,9 +1111,9 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       thread_system_(parent->thread_system_),
       timer_(parent->timer_),
       mutex_(NULL),
-      serf_context_(NULL),
       threaded_fetcher_(NULL),
       active_count_(parent->active_count_),
+      serf_context_(NULL),
       request_count_(parent->request_count_),
       byte_count_(parent->byte_count_),
       time_duration_ms_(parent->time_duration_ms_),
@@ -1205,7 +1206,7 @@ void SerfUrlAsyncFetcher::CancelActiveFetchesMutexHeld() {
 bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
   active_fetches_.Add(fetch);
   active_count_->Add(1);
-  bool started = !shutdown_ && fetch->Start(this);
+  bool started = !shutdown_ && fetch->Start(this, serf_context_);
   if (!started) {
     fetch->message_handler()->Message(kWarning, "Fetch failed to start: %s",
                                       fetch->DebugInfo().c_str());
@@ -1318,9 +1319,14 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
   return active_fetches_.size();
 }
 
-void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch) {
-  // We do not have a ScopedMutex in FetchComplete, because it is only
-  // called from Poll and CancelActiveFetches, which have ScopedMutexes.
+void SerfUrlAsyncFetcher::FetchComplete(SerfFetch* fetch)
+    NO_THREAD_SAFETY_ANALYSIS {
+  // This method should really be EXCLUSIVE_LOCKS_REQUIRED(mutex_).
+  // However, because it's called very indirectly through through SerfFetch,
+  // it is at least very annoying, and possibly impossible to add the various
+  // annotations to make that work. Thus, NO_THREAD_SAFETY_ANALYSIS.
+  // We happen to know that SerfFetch will only call this in response to being
+  // poked via Poll or CancelActiveFetches, both of which do lock mutex_.
   // Note that SerfFetch::Cancel is currently not exposed from outside this
   // class.
   active_fetches_.Remove(fetch);
