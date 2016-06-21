@@ -80,6 +80,7 @@ const char kNoScriptRedirectFormatter[] =
 const char kLinkRelCanonicalFormatter[] =
     "<link rel=\"canonical\" href=\"%s\"/>";
 
+
 }  // namespace
 
 #endif  // NET_INSTAWEB_PUBLIC_GLOBAL_CONSTANTS_H_
