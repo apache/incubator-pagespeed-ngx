@@ -246,6 +246,54 @@ void SharedAsyncFetch::HandleHeadersComplete() {
   base_fetch_->HeadersComplete();
 }
 
+void AsyncFetch::FixCacheControlForGoogleCache() {
+  ConstStringStarVector values;
+  if (request_headers()->Lookup(HttpAttributes::kVia, &values)) {
+    for (int i = 0, n = values.size(); i < n; ++i) {
+      // See https://github.com/pagespeed/ngx_pagespeed/issues/1149
+      // In general, it is not necessary to include a specific 'public'
+      // in a cache-control entry to allow a proxy-cache to cache it;
+      // it's sufficient to specify a max-age, as long as 'private'
+      // is not present.
+      //
+      // However, the Google Cloud CDN cache requires it, with some
+      // controversy.  See this discussion with Mark Nottingham:
+      // https://groups.google.com/forum/#!searchin/pagespeed-insights-discuss/nottingham/pagespeed-insights-discuss/NWwrz1By36c/9RN9sHdj9EIJ
+      //
+      // Mark's comment about Firefox treating public differently is
+      // no longer current.
+      //
+      // However the Google Cloud CDN help page on caching unambiguously
+      // requires that 'public' be included in Cache-Control to enable
+      // the Google Cache.
+      // https://cloud.google.com/cdn/docs/caching#cacheability
+      //
+      // We only need to put in the 'public" header if there's
+      // a "Via: 1.1 google" header.  As there's only a small cost
+      // in bytes, we'll just scan the via value for 'google', so
+      // that a future HTTP rev won't break caching.
+      if (IsGoogleCacheVia(*values[i])) {
+        response_headers()->SetCacheControlPublic();
+        break;
+      }
+    }
+  }
+}
+
+// static
+bool AsyncFetch::IsGoogleCacheVia(StringPiece via_value) {
+  // The value of the Google Via header as of this writing
+  // is "1.1 google".  In an attempt to be future proof, we'll
+  // match "X.Y google", and be case-insensitive matching "google".
+  StringPieceVector tokens;
+  SplitStringPieceToVector(via_value, " ", &tokens, true);
+  double version;
+  return
+      (tokens.size() == 2) &&
+      StringCaseEqual(tokens[1], "google") &&
+      StringToDouble(tokens[0], &version);
+}
+
 const char FallbackSharedAsyncFetch::kStaleWarningHeaderValue[] =
     "110 Response is stale";
 
