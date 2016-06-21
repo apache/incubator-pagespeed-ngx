@@ -17,6 +17,7 @@
 
 #include "net/instaweb/http/public/async_fetch.h"
 
+
 #include "net/instaweb/http/public/request_context.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -52,6 +53,17 @@ class AsyncFetchTest : public testing::Test {
             kDefaultHttpOptionsForTests, new NullMutex, NULL)),
         string_fetch_(request_context_),
         handler_(new NullMutex) {
+  }
+
+  bool CheckCacheControlPublicWithVia(const char* via) {
+    StringAsyncFetch fetch(request_context_);
+    fetch.response_headers()->Add(HttpAttributes::kCacheControl, "max-age:100");
+    if (via != nullptr) {
+      fetch.request_headers()->Add(HttpAttributes::kVia, via);
+    }
+    fetch.FixCacheControlForGoogleCache();
+    return fetch.response_headers()->HasValue(
+        HttpAttributes::kCacheControl, "public");
   }
 
  protected:
@@ -115,6 +127,16 @@ TEST_F(AsyncFetchTest, ContentLengthPropagatesToConditional) {
   fetch.HeadersComplete();
   EXPECT_TRUE(string_fetch_.content_length_known());
   EXPECT_EQ(42, string_fetch_.content_length());
+}
+
+TEST_F(AsyncFetchTest, ViaHandling) {
+  EXPECT_FALSE(CheckCacheControlPublicWithVia(nullptr));
+  EXPECT_TRUE(CheckCacheControlPublicWithVia("1.1 google"));
+  EXPECT_TRUE(CheckCacheControlPublicWithVia("2.0 google"));
+  EXPECT_TRUE(CheckCacheControlPublicWithVia("2 google"));
+  EXPECT_TRUE(CheckCacheControlPublicWithVia("1.0 GOOGLE"));
+  EXPECT_FALSE(CheckCacheControlPublicWithVia("varnish"));
+  EXPECT_FALSE(CheckCacheControlPublicWithVia("NotReallyGoogle"));
 }
 
 }  // namespace

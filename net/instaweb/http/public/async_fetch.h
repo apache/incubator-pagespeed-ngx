@@ -154,6 +154,17 @@ class AsyncFetch : public Writer {
   // info.
   virtual AbstractLogRecord* log_record();
 
+  // Determines whether the specified request-headers imply that the
+  // server is running in a context where an explicit cache-control
+  // "public" header is needed to make caching work, and adds that
+  // header if needed.
+  void FixCacheControlForGoogleCache();
+
+  // Determines whether the specified via header value matches the
+  // expected pattern for the Via header provided by the Google Cloud
+  // CDN to services running inside it.
+  static bool IsGoogleCacheVia(StringPiece via_value);
+
  protected:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler) = 0;
   virtual bool HandleFlush(MessageHandler* handler) = 0;
