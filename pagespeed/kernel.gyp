@@ -441,6 +441,20 @@
       ],
     },
     {
+      'target_name': 'tcp_server_thread_for_testing',
+      'type': '<(library)',
+      'sources': [
+        'system/tcp_server_thread_for_testing.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        'pagespeed_base',
+        '<(DEPTH)/third_party/apr/apr.gyp:apr',
+      ],
+    },
+    {
       'target_name': 'pagespeed_image_processing',
       'type': '<(library)',
       'dependencies': [

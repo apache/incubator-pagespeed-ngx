@@ -406,6 +406,7 @@
         '<(DEPTH)/third_party/apr/apr.gyp:apr',
         '<(DEPTH)/third_party/aprutil/aprutil.gyp:aprutil',
         '<(DEPTH)/third_party/httpd/httpd.gyp:include',
+        '<(DEPTH)/pagespeed/kernel.gyp:tcp_server_thread_for_testing',
       ],
       'include_dirs': [
         '<(DEPTH)/third_party/protobuf/src',
