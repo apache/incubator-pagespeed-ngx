@@ -407,6 +407,12 @@ bool ImageOptimizer::Run() {
     timeout_handler_->Stop();
     was_timed_out_ = timeout_handler_->was_timed_out();
   }
+
+  if (result && options_.must_reduce_bytes() &&
+      optimized_contents_->length() > original_contents_.length()) {
+    result = false;
+  }
+
   return result;
 }
 

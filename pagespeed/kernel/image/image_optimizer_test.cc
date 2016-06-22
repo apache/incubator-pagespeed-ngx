@@ -587,4 +587,19 @@ TEST_F(ImageOptimizerTest, SingleUse) {
                "Check failed: is_valid_");
 }
 
+// Make sure that we return false if "must_reduce_bytes" was set to true and
+// we can't make the image smaller.
+TEST_F(ImageOptimizerTest, MustReduceBytes) {
+  GoogleString original_image;
+  GoogleString rewritten_image;
+  ImageFormat rewritten_format;
+  ImageOptimizer optimizer(&message_handler_);
+
+  // o.gif is a well-optimized GIF image with only 43 bytes. We can't improve
+  // this image.
+  ASSERT_TRUE(ReadTestFileWithExt(kGifTestDir, "o.gif", &original_image));
+  ASSERT_FALSE(optimizer.Optimize(StringPiece(original_image),
+                                  &rewritten_image, &rewritten_format));
+}
+
 }  // namespace
