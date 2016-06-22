@@ -181,17 +181,34 @@ TEST_F(SimpleBufferedApacheFetchTest, Success) {
 
   fetch_->Wait();
   EXPECT_EQ(200, request_.status);
-  EXPECT_EQ(
+
+  // Two outputs are possible: we can combine writes, but not accross flush...
+  const char kExpectedSequence1[] =
       "ap_set_content_type(text/plain) "
       "ap_remove_output_filter(MOD_EXPIRES) "
       "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
       "ap_set_content_type(text/plain) "
-      "ap_rwrite(hello world) "  // writes combined, but not across flush
+      "ap_rwrite(hello world) "
       "ap_rflush() "
       "ap_rwrite(.) "
-      "ap_rflush()",
-      MockApache::ActionsSinceLastCall());
+      "ap_rflush()";
 
+  // ... or we can end up not combining if this thread pulls the first
+  // write before the worker produces a 2nd writes.
+  const char kExpectedSequence2[] =
+      "ap_set_content_type(text/plain) "
+      "ap_remove_output_filter(MOD_EXPIRES) "
+      "ap_remove_output_filter(FIXUP_HEADERS_OUT) "
+      "ap_set_content_type(text/plain) "
+      "ap_rwrite(hello ) "
+      "ap_rwrite(world) "
+      "ap_rflush() "
+      "ap_rwrite(.) "
+      "ap_rflush()";
+
+  GoogleString actual = MockApache::ActionsSinceLastCall();
+
+  EXPECT_TRUE(actual == kExpectedSequence1 || actual == kExpectedSequence2);
   EXPECT_EQ(kExpectedHeaders, HeadersOutToString(&request_));
 }
 
