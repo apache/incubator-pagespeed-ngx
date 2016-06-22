@@ -28,8 +28,10 @@ goog.require('goog.labs.userAgent.browser');
 goog.require('goog.structs.Set');
 // goog.style adds ~400 bytes when using getSize and getTransformedSize.
 goog.require('goog.style');
+goog.require('mob.HelpPanel');
 goog.require('mob.button.Dialer');
 goog.require('mob.button.Map');
+goog.require('mob.button.Menu');
 goog.require('mob.util');
 goog.require('mob.util.BeaconEvents');
 goog.require('mob.util.ElementClass');
@@ -72,6 +74,19 @@ mob.Nav = function() {
    * @private {?mob.button.Map}
    */
   this.mapButton_ = null;
+
+  /**
+   * Menu button in the header bar.
+   * @private {?mob.button.Menu}
+   */
+  this.menuButton_ = null;
+
+  /**
+   * Pop up help panel.
+   * @private {?mob.HelpPanel}
+   */
+  this.helpPanel_ = new mob.HelpPanel(
+      goog.dom.getRequiredElement(mob.util.ElementId.IFRAME).src);
 
   /**
    * Tracks time since last scroll to figure out when scrolling is finished.
@@ -227,6 +242,7 @@ mob.Nav.prototype.redraw_ = function() {
     this.headerBar_.style.left = window.scrollX + 'px';
   }
   this.redrawNavCalled_ = true;
+  this.helpPanel_.redraw();
 };
 
 
@@ -290,8 +306,12 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
         // otherwise the bar is not redrawn if a user tries to scroll up past
         // the top of the page, since neither a touchend event nor a scroll
         // event fires to redraw the header.
-        if (!this.isAndroidBrowser_) {
-          goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
+        if (!this.helpPanel_.isOpen()) {
+          if (!this.isAndroidBrowser_) {
+            goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
+          }
+        } else {
+          e.preventDefault();
         }
       }, this), false);
 
@@ -316,21 +336,12 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
 
 
 /**
- * Insert a header bar to the top of the page. For this goal, firstly we
- * insert an empty div so all contents, except those with fixed position,
- * are pushed down. Then we insert the header bar. The header bar may contain
- * a hamburger icon, a logo image, and a call button.
+ * Insert a header bar to the top of the page. The header bar may contain a call
+ * button, a navigation button and a dot menu.
  * @param {!mob.util.ThemeData} themeData
  * @private
  */
 mob.Nav.prototype.addHeaderBar_ = function(themeData) {
-  // Move the header bar and spacer div back to the top of the body, in case
-  // some other JS on the page inserted some elements.
-  if (!document.getElementById(mob.util.ElementId.IFRAME)) {
-    document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]);
-    document.body.insertBefore(this.headerBar_, this.spacerDiv_);
-  }
-
   if (this.isIosWebview_) {
     goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);
   }
@@ -355,6 +366,11 @@ mob.Nav.prototype.addHeaderBar_ = function(themeData) {
                            window.psConversionId, window.psMapConversionLabel);
     this.headerBar_.appendChild(this.mapButton_.el);
   }
+
+  this.menuButton_ = new mob.button.Menu(
+      themeData.menuFrontColor,
+      goog.bind(this.helpPanel_.toggle, this.helpPanel_));
+  this.headerBar_.appendChild(this.menuButton_.el);
 
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(themeData);

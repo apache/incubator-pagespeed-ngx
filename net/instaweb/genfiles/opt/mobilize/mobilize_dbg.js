@@ -4281,8 +4281,8 @@ mob.util.window_ = "undefined" != typeof extension && extension.hasOwnProperty("
 mob.util.getWindow = function() {
   return mob.util.window_;
 };
-mob.util.ElementId = {DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", IFRAME:"psmob-iframe", IFRAME_CONTAINER:"psmob-iframe-container", MAP_BUTTON:"psmob-map-button", SPACER:"psmob-spacer"};
-mob.util.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HIDE:"psmob-hide", IOS_WEBVIEW:"ios-webview", NOSCROLL:"psmob-noscroll", OPEN:"psmob-open"};
+mob.util.ElementId = {CLICK_DETECTOR_DIV:"psmob-click-detector-div", DIALER_BUTTON:"psmob-dialer-button", HEADER_BAR:"psmob-header-bar", HELP_PANEL:"psmob-help-panel", IFRAME:"psmob-iframe", IFRAME_CONTAINER:"psmob-iframe-container", MAP_BUTTON:"psmob-map-button", MENU_BUTTON:"psmob-menu-button", SPACER:"psmob-spacer"};
+mob.util.ElementClass = {BUTTON:"psmob-button", BUTTON_ICON:"psmob-button-icon", BUTTON_TEXT:"psmob-button-text", HIDE:"psmob-hide", IOS_WEBVIEW:"ios-webview", LEARN_MORE:"learn-more", LEARN_MORE_LINK:"learn-more-link", LEARN_MORE_TEXT:"learn-more-text", NOSCROLL:"psmob-noscroll", OPEN:"psmob-open"};
 mob.util.ASCII_0_ = 48;
 mob.util.ASCII_9_ = 57;
 mob.util.Rect = function() {
@@ -4545,6 +4545,34 @@ goog.dom.classlist.addRemove = function(a, b, c) {
   goog.dom.classlist.remove(a, b);
   goog.dom.classlist.add(a, c);
 };
+mob.button = {};
+mob.button.AbstractButton = function(a, b, c, d) {
+  this.el = document.createElement(goog.dom.TagName.A);
+  this.id_ = a;
+  this.iconImage_ = b;
+  this.color_ = c;
+  this.labelText_ = d;
+  this.createButton();
+};
+mob.button.AbstractButton.prototype.createButton = function() {
+  this.el.id = this.id_;
+  goog.dom.classlist.add(this.el, mob.util.ElementClass.BUTTON);
+  this.el.onclick = goog.bind(this.clickHandler, this);
+  var a = document.createElement(goog.dom.TagName.DIV);
+  goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_ICON);
+  a.style.backgroundImage = "url(" + mob.util.synthesizeImage(this.iconImage_, this.color_) + ")";
+  this.el.appendChild(a);
+  this.labelText_ && (a = document.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
+};
+mob.button.Menu = function(a, b) {
+  this.clickHandlerFn_ = b;
+  mob.button.AbstractButton.call(this, mob.util.ElementId.MENU_BUTTON, mob.button.Menu.ICON_, a, null);
+};
+goog.inherits(mob.button.Menu, mob.button.AbstractButton);
+mob.button.Menu.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAsKMj6nL7Q+jnLTai7PevPsPhuJIluaJpurKtu4Lx/JM1/aN5/reAv7PI/2GwOCHiAQYO8nkctNEPjNR59RSlV4rWeKW2y1+JWHxGFL2nSflNTvsflfjlDkdPLzr9/y+/w8YKDiooUWIYHfYpQg32CaYphQYCZlW+QhIOWl5mUWI2dl0aJA4GmBomqq6ytrq+gqrgzpa6uj52RgaZQvqp5nJCdzb9/tXbJy7uYhbq5unOhsrPU1dbX2Nna29zd3t/T1VAAA7";
+mob.button.Menu.prototype.clickHandler = function() {
+  this.clickHandlerFn_();
+};
 goog.json = {};
 goog.json.USE_NATIVE_JSON = !1;
 goog.json.isValid = function(a) {
@@ -4638,25 +4666,6 @@ goog.json.Serializer.prototype.serializeObject_ = function(a, b) {
     }
   }
   b.push("}");
-};
-mob.button = {};
-mob.button.AbstractButton = function(a, b, c, d) {
-  this.el = document.createElement(goog.dom.TagName.A);
-  this.id_ = a;
-  this.iconImage_ = b;
-  this.color_ = c;
-  this.labelText_ = d;
-  this.createButton();
-};
-mob.button.AbstractButton.prototype.createButton = function() {
-  this.el.id = this.id_;
-  goog.dom.classlist.add(this.el, mob.util.ElementClass.BUTTON);
-  this.el.onclick = goog.bind(this.clickHandler, this);
-  var a = document.createElement(goog.dom.TagName.DIV);
-  goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_ICON);
-  a.style.backgroundImage = "url(" + mob.util.synthesizeImage(this.iconImage_, this.color_) + ")";
-  this.el.appendChild(a);
-  this.labelText_ && (a = document.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
 };
 goog.Thenable = function() {
 };
@@ -7143,33 +7152,6 @@ goog.structs.Set.prototype.isSubsetOf = function(a) {
 goog.structs.Set.prototype.__iterator__ = function(a) {
   return this.map_.__iterator__(!1);
 };
-mob.button.Map = function(a, b, c, d) {
-  this.mapLocation_ = b;
-  this.conversionId_ = c;
-  this.conversionLabel_ = d;
-  mob.button.AbstractButton.call(this, mob.util.ElementId.MAP_BUTTON, mob.button.Map.ICON_, a, mob.button.Map.LABEL_);
-};
-goog.inherits(mob.button.Map, mob.button.AbstractButton);
-mob.button.Map.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpuo6Au4Ls3IA1/Y7l/fO5x8P7Pk0weJteDEqj0jJ8llrQqBUnJRRzQKuCq2We/B6wWIxtzyWos3IdbntTufi7zldLmMj9Cx895tX5SQYCEVB2Ed1qJhoWIGYAjnoqMJoYRlJ+aiJgrn41LiE4XlCOim6YhqhSiK5ytoCiyUr4upgW0q7pxuSdQpaiGvgV0nMF3rHW5vs68OsHPuM6iw9TV0dpIadrb3N1O0ddRYeQ0ZuZU4OFna+zu7t/r4dLy9NX/98j3+nv8vc7y8ZwIBxBhJ0Y/BgnYT7ADFs2OwhRE4SaRyrOMwhRjeF1jZOBOJxFrCQf0aSTGDyJEojKm9xa9kAJEyXO2Y+qGnzpricOl3wHPQzqNChRIsaPYo0acUCADs=";
-mob.button.Map.LABEL_ = "DIRECTIONS";
-mob.button.Map.prototype.clickHandler = function() {
-  mob.util.sendBeaconEvent(mob.util.BeaconEvents.MAP_BUTTON, goog.bind(this.openMap_, this));
-};
-mob.button.Map.prototype.getMapUrl_ = function() {
-  return "https://www.google.com/maps/place/" + this.mapLocation_;
-};
-mob.button.Map.prototype.openMap_ = function() {
-  if (this.conversionId_ && this.conversionLabel_) {
-    var a = new Image;
-    a.onload = goog.bind(function() {
-      goog.global.location = this.getMapUrl_();
-    }, this);
-    a.onerror = a.onload;
-    a.src = "//www.googleadservices.com/pagead/conversion/" + this.conversionId_ + "/?label=" + this.conversionLabel_ + "&amp;guid=ON&amp;script=0";
-  } else {
-    goog.global.location = this.getMapUrl_();
-  }
-};
 goog.dom.vendor = {};
 goog.dom.vendor.getVendorJsPrefix = function() {
   return goog.userAgent.WEBKIT ? "Webkit" : goog.userAgent.GECKO ? "Moz" : goog.userAgent.IE ? "ms" : goog.userAgent.OPERA ? "O" : null;
@@ -7868,11 +7850,134 @@ goog.style.getCssTranslation = function(a) {
   a = goog.style.getComputedTransform(a);
   return a ? (a = a.match(goog.style.MATRIX_TRANSLATION_REGEX_)) ? new goog.math.Coordinate(parseFloat(a[1]), parseFloat(a[2])) : new goog.math.Coordinate(0, 0) : new goog.math.Coordinate(0, 0);
 };
+mob.HelpPanel = function(a) {
+  this.el = document.createElement(goog.dom.TagName.A);
+  this.el.id = mob.util.ElementId.HELP_PANEL;
+  this.clickDetectorDiv_ = null;
+  this.lastScrollY_ = 0;
+  this.originalUrl_ = a;
+  this.initialize_();
+};
+mob.HelpPanel.WIDTH_ = 270;
+mob.HelpPanel.VIEW_ORIGINAL_SITE_ICON_ = "R0lGODlhYABgAPAAAHV1dQAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpurKtu4Lx/LcAvaN5/p+M/wPBHyCRKCviPQgl7kj08h5Sp3SXafKpGJx0W1y4dV1w0FteEz+mb1oLi3w1fDey3Zvlt3MZU+7jd+nZwVT5Sf0UrYnN1gDpZjxqFJmEHlReTJJyQi5iZKpKSYYmvIJ2iR66gmVcFnRGlJ68Doxq7SqUBuRi9rJ2muxy6nmEEz8aztsPCqcCnvbUAx9zLus3IwRLRHbWG14B9i9mAx+LZ5dcr7mRjdNsR2T7jvOHu7+TF9uPw/crt1v/Q9CPATx3rkK+CCdwYP19OVLeI/ZOonf/O0zNxEbQqhTGy0+dJgRYEOKf6iVFBjRkEqUF690VMdyYMyQ/EbCSYnsI61/LYe8BBPwZ02dHmkCrYhOqDyiBE9iUtrUJqsVMjkifWPVqUaphKDK8mqi6k2uiMCOZdqVrEitWM8aBXkVq1ixJOaarWuW7gi7armhhZgmcCGTggvj3Gk48ULEihu/Zeg4ss/IjZ1RNoz3Mpm2nDt7/gw6tOjRpEubPo06terVrFuHKAAAOw==";
+mob.HelpPanel.CONTACT_BAR_BY_GOOGLE_ICON_ = "R0lGODlhYABgAPAAAHV1dQAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpuoqAu4Lu+wa1zY8t/fO5xwPBPouwaJwGDEqj8jF8slsGqDUnTRQzVqH2q7N5w3jZuIygGwOo9PdNTvrflNz6mSR3q708PDMF1zlMcYHBSLDVXj1Mae4+NTouAQZqTTZkWi58Zj5I8mpsfnp5ymKQVpKVIlqqjoqNzgRyvr6YnE6S3um1+qaa8uLS/tr1JmrS3Gbajx8p2l8HAus7LtL7Lxc3Qz6zBxUTI2cnC3cHTVNPm5eLneuTiNtB58iDiH7bt3ufkIfj69iH47fCIAB5ekwKAHTPoEJCYZQGMzfQYQFKfay2JARJVKM0TR+Y5jOYUeIl/KEBJmPJIM6E5+ZbOnS48CYgVDQVEniJseNOv/E6QnrJ9ArQGspKmrppihuq16tSpDmaYOXUut5q4o1q9atXLt6/Qo27KoCADs=";
+mob.HelpPanel.VIEW_ORIGINAL_SITE_TEXT_ = "View original site";
+mob.HelpPanel.CONTACT_BAR_BY_GOOGLE_TEXT_ = "Contact bar by Google";
+mob.HelpPanel.LEARN_MORE_TEXT_ = "Learn more";
+mob.HelpPanel.HELP_PAGE_URL_ = "https://support.google.com/ads/answer/7016176";
+mob.HelpPanel.prototype.createMenuItem_ = function(a, b, c, d, e, f) {
+  var g = document.createElement(goog.dom.TagName.LI);
+  a.appendChild(g);
+  g.id = b;
+  a = g;
+  f || (a = document.createElement(goog.dom.TagName.A), a.href = e, g.appendChild(a));
+  g = document.createElement(goog.dom.TagName.SPAN);
+  g.style.backgroundImage = "url(data:image/gif;base64," + d + ")";
+  a.appendChild(g);
+  d = document.createElement(goog.dom.TagName.P);
+  a.appendChild(d);
+  f ? (goog.dom.classlist.add(d, mob.util.ElementClass.LEARN_MORE), f = document.createElement(goog.dom.TagName.P), d.appendChild(f), goog.dom.classlist.add(f, mob.util.ElementClass.LEARN_MORE_TEXT), f.appendChild(document.createTextNode(c)), a = document.createElement(goog.dom.TagName.A), a.href = e, d.appendChild(a), goog.dom.classlist.add(a, mob.util.ElementClass.LEARN_MORE_LINK), a.appendChild(document.createTextNode(mob.HelpPanel.LEARN_MORE_TEXT_))) : d.appendChild(document.createTextNode(c));
+};
+mob.HelpPanel.prototype.initialize_ = function() {
+  document.body.appendChild(this.el);
+  var a = document.createElement(goog.dom.TagName.UL);
+  this.el.appendChild(a);
+  this.createMenuItem_(a, "psmob-help-panel-0", mob.HelpPanel.VIEW_ORIGINAL_SITE_TEXT_, mob.HelpPanel.VIEW_ORIGINAL_SITE_ICON_, this.originalUrl_, !1);
+  this.createMenuItem_(a, "psmob-help-panel-1", mob.HelpPanel.CONTACT_BAR_BY_GOOGLE_TEXT_, mob.HelpPanel.CONTACT_BAR_BY_GOOGLE_ICON_, mob.HelpPanel.HELP_PAGE_URL_, !0);
+  this.addClickDetectorDiv_();
+  this.addButtonEvents_();
+  this.el.addEventListener(goog.events.EventType.TOUCHMOVE, goog.bind(function(a) {
+    if (this.isOpen()) {
+      var c = a.touches[0].clientY;
+      if (1 != a.touches.length) {
+        a.preventDefault();
+      } else {
+        var d = c > this.lastScrollY_, e = 0 == this.el.scrollTop, f = this.el.scrollTop >= this.el.scrollHeight - this.el.offsetHeight - 1;
+        a.cancelable && (d && e || !d && f) && a.preventDefault();
+        a.stopImmediatePropagation && a.stopImmediatePropagation();
+        this.lastScrollY_ = c;
+      }
+    }
+  }, this), !1);
+  window.addEventListener(goog.events.EventType.SCROLL, goog.bind(function(a) {
+    this.isOpen() && !this.el.contains(a.target) && (a.stopPropagation(), a.preventDefault());
+  }, this));
+  window.addEventListener(goog.events.EventType.TOUCHSTART, goog.bind(function(a) {
+    this.lastScrollY_ = a.touches[0].clientY;
+  }, this), !1);
+};
+mob.HelpPanel.prototype.redraw = function() {
+  var a = mob.util.getZoomLevel(), b = mob.util.pixelValue(window.getComputedStyle(document.body).width);
+  b && (a = Math.min(a, b / mob.HelpPanel.WIDTH_));
+  this.el.style.fontSize = a + "px";
+  this.el.style.top = window.scrollY + "px";
+  var c = window.innerWidth;
+  "hidden" != window.getComputedStyle(document.body).getPropertyValue("overflow-y") && (c -= goog.style.getScrollbarWidth());
+  this.el.style.right = b - window.scrollX - c + 10 * a + "px";
+};
+mob.HelpPanel.prototype.addClickDetectorDiv_ = function() {
+  this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
+  this.clickDetectorDiv_.id = mob.util.ElementId.CLICK_DETECTOR_DIV;
+  document.body.insertBefore(this.clickDetectorDiv_, this.el);
+  this.clickDetectorDiv_.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a) {
+    this.isOpen() && this.toggle();
+  }, this), !1);
+};
+mob.HelpPanel.prototype.toggle = function() {
+  var a = this.isOpen() ? mob.util.BeaconEvents.MENU_BUTTON_CLOSE : mob.util.BeaconEvents.MENU_BUTTON_OPEN, b = this.isOpen() ? goog.dom.classlist.remove : goog.dom.classlist.add;
+  mob.util.sendBeaconEvent(a);
+  b(this.el, mob.util.ElementClass.OPEN);
+  b(this.clickDetectorDiv_, mob.util.ElementClass.OPEN);
+  b(document.body, mob.util.ElementClass.NOSCROLL);
+  this.redraw();
+};
+mob.HelpPanel.prototype.addButtonEvents_ = function() {
+  for (var a = this.el.querySelectorAll(goog.dom.TagName.LI + " > " + goog.dom.TagName.A), b = 0, c;c = a[b];b++) {
+    c.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a, b) {
+      mob.util.sendBeaconEvent(mob.util.BeaconEvents.MENU_NAV_CLICK);
+      b.preventDefault();
+      this.toggle();
+      goog.global.location = a;
+    }, this, c.href));
+  }
+};
+mob.HelpPanel.prototype.isOpen = function() {
+  return goog.dom.classlist.contains(this.el, mob.util.ElementClass.OPEN);
+};
+mob.button.Map = function(a, b, c, d) {
+  this.mapLocation_ = b;
+  this.conversionId_ = c;
+  this.conversionLabel_ = d;
+  mob.button.AbstractButton.call(this, mob.util.ElementId.MAP_BUTTON, mob.button.Map.ICON_, a, mob.button.Map.LABEL_);
+};
+goog.inherits(mob.button.Map, mob.button.AbstractButton);
+mob.button.Map.ICON_ = "R0lGODlhYABgAPAAAAAAAAAAACH5BAEAAAEAIf8LSW1hZ2VNYWdpY2sHZ2FtbWE9MQAsAAAAAGAAYAAAAv6Mj6nL7Q+jnLTai7PevPsPhuJIluaJpuo6Au4Ls3IA1/Y7l/fO5x8P7Pk0weJteDEqj0jJ8llrQqBUnJRRzQKuCq2We/B6wWIxtzyWos3IdbntTufi7zldLmMj9Cx895tX5SQYCEVB2Ed1qJhoWIGYAjnoqMJoYRlJ+aiJgrn41LiE4XlCOim6YhqhSiK5ytoCiyUr4upgW0q7pxuSdQpaiGvgV0nMF3rHW5vs68OsHPuM6iw9TV0dpIadrb3N1O0ddRYeQ0ZuZU4OFna+zu7t/r4dLy9NX/98j3+nv8vc7y8ZwIBxBhJ0Y/BgnYT7ADFs2OwhRE4SaRyrOMwhRjeF1jZOBOJxFrCQf0aSTGDyJEojKm9xa9kAJEyXO2Y+qGnzpricOl3wHPQzqNChRIsaPYo0acUCADs=";
+mob.button.Map.LABEL_ = "DIRECTIONS";
+mob.button.Map.prototype.clickHandler = function() {
+  mob.util.sendBeaconEvent(mob.util.BeaconEvents.MAP_BUTTON, goog.bind(this.openMap_, this));
+};
+mob.button.Map.prototype.getMapUrl_ = function() {
+  return "https://www.google.com/maps/place/" + this.mapLocation_;
+};
+mob.button.Map.prototype.openMap_ = function() {
+  if (this.conversionId_ && this.conversionLabel_) {
+    var a = new Image;
+    a.onload = goog.bind(function() {
+      goog.global.location = this.getMapUrl_();
+    }, this);
+    a.onerror = a.onload;
+    a.src = "//www.googleadservices.com/pagead/conversion/" + this.conversionId_ + "/?label=" + this.conversionLabel_ + "&amp;guid=ON&amp;script=0";
+  } else {
+    goog.global.location = this.getMapUrl_();
+  }
+};
 mob.Nav = function() {
   this.headerBar_ = goog.dom.getRequiredElement(mob.util.ElementId.HEADER_BAR);
   this.styleTag_ = null;
   this.spacerDiv_ = goog.dom.getRequiredElement(mob.util.ElementId.SPACER);
-  this.scrollTimer_ = this.mapButton_ = this.dialer_ = null;
+  this.menuButton_ = this.mapButton_ = this.dialer_ = null;
+  this.helpPanel_ = new mob.HelpPanel(goog.dom.getRequiredElement(mob.util.ElementId.IFRAME).src);
+  this.scrollTimer_ = null;
   this.currentTouches_ = 0;
   this.headerBarHeight_ = -1;
   this.elementsToOffset_ = new goog.structs.Set;
@@ -7899,6 +8004,7 @@ mob.Nav.prototype.redraw_ = function() {
     this.redrawNavCalled_ && b != a && window.scrollBy(0, b - a);
     this.isIosWebview_ || (this.headerBar_.style.top = window.scrollY + "px", this.headerBar_.style.left = window.scrollX + "px");
     this.redrawNavCalled_ = !0;
+    this.helpPanel_.redraw();
   }
 };
 mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
@@ -7918,7 +8024,7 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
     this.currentTouches_ = a.touches.length;
   }, this), !1);
   window.addEventListener(goog.events.EventType.TOUCHMOVE, goog.bind(function(a) {
-    this.isAndroidBrowser_ || goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
+    this.helpPanel_.isOpen() ? a.preventDefault() : this.isAndroidBrowser_ || goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.HIDE);
   }, this), !1);
   window.addEventListener(goog.events.EventType.TOUCHEND, goog.bind(function(b) {
     this.currentTouches_ = b.touches.length;
@@ -7932,12 +8038,13 @@ mob.Nav.prototype.addHeaderBarResizeEvents_ = function() {
   }, this), !1);
 };
 mob.Nav.prototype.addHeaderBar_ = function(a) {
-  document.getElementById(mob.util.ElementId.IFRAME) || (document.body.insertBefore(this.spacerDiv_, document.body.childNodes[0]), document.body.insertBefore(this.headerBar_, this.spacerDiv_));
   this.isIosWebview_ && goog.dom.classlist.add(this.headerBar_, mob.util.ElementClass.IOS_WEBVIEW);
   this.headerBar_.style.borderBottomColor = mob.util.colorNumbersToString(a.menuFrontColor);
   this.headerBar_.style.backgroundColor = mob.util.colorNumbersToString(a.menuBackColor);
   window.psPhoneNumber && (this.dialer_ = new mob.button.Dialer(a.menuFrontColor, window.psPhoneNumber, window.psConversionId, window.psPhoneConversionLabel), this.headerBar_.appendChild(this.dialer_.el));
   window.psMapLocation && (this.mapButton_ = new mob.button.Map(a.menuFrontColor, window.psMapLocation, window.psConversionId, window.psMapConversionLabel), this.headerBar_.appendChild(this.mapButton_.el));
+  this.menuButton_ = new mob.button.Menu(a.menuFrontColor, goog.bind(this.helpPanel_.toggle, this.helpPanel_));
+  this.headerBar_.appendChild(this.menuButton_.el);
   this.addHeaderBarResizeEvents_();
   this.addThemeColor_(a);
 };

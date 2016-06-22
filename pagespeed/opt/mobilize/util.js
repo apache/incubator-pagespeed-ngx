@@ -66,11 +66,14 @@ mob.util.getWindow = function() {
  * @enum {string}
  */
 mob.util.ElementId = {
+  CLICK_DETECTOR_DIV: 'psmob-click-detector-div',
   DIALER_BUTTON: 'psmob-dialer-button',
   HEADER_BAR: 'psmob-header-bar',
+  HELP_PANEL: 'psmob-help-panel',
   IFRAME: 'psmob-iframe',
   IFRAME_CONTAINER: 'psmob-iframe-container',
   MAP_BUTTON: 'psmob-map-button',
+  MENU_BUTTON: 'psmob-menu-button',
   SPACER: 'psmob-spacer'
 };
 
@@ -85,6 +88,9 @@ mob.util.ElementClass = {
   BUTTON_TEXT: 'psmob-button-text',
   HIDE: 'psmob-hide',
   IOS_WEBVIEW: 'ios-webview',
+  LEARN_MORE: 'learn-more',
+  LEARN_MORE_LINK: 'learn-more-link',
+  LEARN_MORE_TEXT: 'learn-more-text',
   NOSCROLL: 'psmob-noscroll',
   OPEN: 'psmob-open'
 };
