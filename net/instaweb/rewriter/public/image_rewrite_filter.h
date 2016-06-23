@@ -44,6 +44,7 @@
 
 namespace net_instaweb {
 
+// See MessageForInlineResult for enum meanings.
 enum InlineResult {
   INLINE_SUCCESS,
   INLINE_UNSUPPORTED_DEVICE,
@@ -53,6 +54,7 @@ enum InlineResult {
   INLINE_CACHE_SMALL_IMAGES_UNREWRITTEN,
   // Image should not be inlined because it is part of a responsive image.
   INLINE_RESPONSIVE,
+  INLINE_SHORTCUT,
   INLINE_INTERNAL_ERROR,
 };
 

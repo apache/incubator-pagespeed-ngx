@@ -365,6 +365,9 @@ const char* MessageForInlineResult(InlineResult inline_result) {
       // image will be deleted before the user sees it, so message won't be
       // useful.
       break;
+    case INLINE_SHORTCUT:
+      message = "The image was not inlined because it is a shortcut icon.";
+      break;
     case INLINE_INTERNAL_ERROR:
       message = "The image was not inlined because the internal data was "
         "corrupted.";
@@ -1606,6 +1609,15 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       StringPiece(responsive_attr) !=
       ResponsiveImageFirstFilter::kInlinableVirtualImage) {
     *inline_result = INLINE_RESPONSIVE;
+  } else if (element->keyword() == HtmlName::kLink) {
+    // Don't inline shortcut images.  All shortcut images are on link tags, and
+    // no non-shortcut images are on link tags, so we can just check if this is
+    // a link tag.  This is to exclude inlining on:
+    // * <link rel=icon ...>
+    // * <link rel=apple-touch-icon ...>
+    // * <link rel=apple-touch-icon-precomposed ...>
+    // * <link rel=apple-touch-startup-image ...>
+    *inline_result = INLINE_SHORTCUT;
   } else {
     // See if we have a data URL, and if so use it if the browser can handle it
     // TODO(jmaessen): get rid of a string copy here. Tricky because
