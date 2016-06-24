@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "apr.h"
+#include "apr_network_io.h"
 #include "apr_strings.h"
 #include "apr_pools.h"
 #include "apr_thread_proc.h"
@@ -99,6 +100,7 @@ const char SerfStats::kSerfFetchActiveCount[] =
 const char SerfStats::kSerfFetchTimeoutCount[] = "serf_fetch_timeout_count";
 const char SerfStats::kSerfFetchFailureCount[] = "serf_fetch_failure_count";
 const char SerfStats::kSerfFetchCertErrors[] = "serf_fetch_cert_errors";
+const char SerfStats::kSerfFetchReadCalls[] = "serf_fetch_num_calls_to_read";
 
 GoogleString GetAprErrorString(apr_status_t status) {
   char error_str[1024];
@@ -589,6 +591,9 @@ apr_status_t SerfFetch::ReadBody(serf_bucket_t* response) {
   apr_size_t len = 0;
   apr_size_t bytes_to_flush = 0;
   while (MoreDataAvailable(status) && (async_fetch_ != NULL)) {
+    if (fetcher_->read_calls_count_ != nullptr) {
+      fetcher_->read_calls_count_->Add(1);
+    }
     status = serf_bucket_read(response, SERF_READ_ALL_AVAIL, &data, &len);
     bytes_received_ += len;
     bytes_to_flush += len;
@@ -1083,6 +1088,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       timeout_count_(NULL),
       failure_count_(NULL),
       cert_errors_(NULL),
+      read_calls_count_(NULL),
       timeout_ms_(timeout_ms),
       shutdown_(false),
       list_outstanding_urls_on_error_(false),
@@ -1101,6 +1107,8 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
   timeout_count_ = statistics->GetVariable(SerfStats::kSerfFetchTimeoutCount);
   failure_count_ = statistics->GetVariable(SerfStats::kSerfFetchFailureCount);
   cert_errors_ = statistics->GetVariable(SerfStats::kSerfFetchCertErrors);
+  // Using FindVariable for this one since it's only set in debug builds.
+  read_calls_count_ = statistics->FindVariable(SerfStats::kSerfFetchReadCalls);
   Init(pool, proxy);
   threaded_fetcher_ = new SerfThreadedFetcher(this, proxy);
 }
@@ -1121,6 +1129,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       timeout_count_(parent->timeout_count_),
       failure_count_(parent->failure_count_),
       cert_errors_(parent->cert_errors_),
+      read_calls_count_(parent->read_calls_count_),
       timeout_ms_(parent->timeout_ms()),
       shutdown_(false),
       list_outstanding_urls_on_error_(parent->list_outstanding_urls_on_error_),
@@ -1421,6 +1430,9 @@ void SerfUrlAsyncFetcher::InitStats(Statistics* statistics) {
   statistics->AddVariable(SerfStats::kSerfFetchTimeoutCount);
   statistics->AddVariable(SerfStats::kSerfFetchFailureCount);
   statistics->AddVariable(SerfStats::kSerfFetchCertErrors);
+#ifndef NDEBUG
+  statistics->AddVariable(SerfStats::kSerfFetchReadCalls);
+#endif
 }
 
 void SerfUrlAsyncFetcher::set_list_outstanding_urls_on_error(bool x) {

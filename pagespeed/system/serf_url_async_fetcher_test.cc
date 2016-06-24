@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <vector>
 
+#include "apr_network_io.h"
 #include "apr_pools.h"
 #include "apr_uri.h"
 #include "base/logging.h"
@@ -34,7 +35,9 @@
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/statistics.h"
+#include "pagespeed/kernel/base/statistics_template.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
@@ -47,6 +50,7 @@
 #include "pagespeed/kernel/util/gzip_inflater.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/system/tcp_server_thread_for_testing.h"
 
 namespace {
 
@@ -958,6 +962,82 @@ TEST_F(SerfUrlAsyncFetcherTestWithProxy, TestBlankUrl) {
   ASSERT_EQ(WaitTillDone(index, index), 1);
   ASSERT_TRUE(fetches_[index]->IsDone());
   EXPECT_EQ(HttpStatus::kNotFound, response_headers(index)->status_code());
+}
+
+class SerfUrlAsyncFetcherTestFakeWebServer : public SerfUrlAsyncFetcherTest {
+ public:
+  class FakeWebServerThread : public TcpServerThreadForTesting {
+   public:
+    FakeWebServerThread(apr_port_t desired_listen_port,
+                        ThreadSystem* thread_system)
+        : TcpServerThreadForTesting(desired_listen_port_, "fake_webserver",
+                                    thread_system) {}
+    virtual ~FakeWebServerThread() {}
+
+    void HandleClientConnection(apr_socket_t* sock) override {
+      char request_buffer[kStackBufferSize];
+      apr_size_t req_bufsz = sizeof(request_buffer) - 1;
+      apr_socket_recv(sock, request_buffer, &req_bufsz);
+
+      static const char kResponse[] = R"END(HTTP/1.0 282 Fake Status Code
+Content-Length: 500
+Connection: close
+Content-Type: text/plain
+
+This text is less than 500 bytes.
+)END";
+
+      apr_size_t response_size = STATIC_STRLEN(kResponse);
+      apr_socket_send(sock, kResponse, &response_size);
+      usleep(kFetcherTimeoutMs * 1000);
+      apr_socket_close(sock);
+    }
+  };
+
+  static void SetUpTestCase() {
+    TcpServerThreadForTesting::PickListenPortOnce(&desired_listen_port_);
+  }
+
+  void SetUp() override {
+    thread_.reset(
+        new FakeWebServerThread(desired_listen_port_, thread_system_.get()));
+    ASSERT_TRUE(thread_->Start());
+    // This blocks until the thread is actually listening.
+    int port = thread_->GetListeningPort();
+    GoogleString proxy_address = StrCat("127.0.0.1:", IntegerToString(port));
+    SetUpWithProxy(proxy_address.c_str());
+  }
+
+  scoped_ptr<FakeWebServerThread> thread_;
+
+ private:
+  static apr_port_t desired_listen_port_;
+};
+
+apr_port_t SerfUrlAsyncFetcherTestFakeWebServer::desired_listen_port_ = 0;
+
+TEST_F(SerfUrlAsyncFetcherTestFakeWebServer, TestHangingGet) {
+  Variable* timeouts =
+      statistics_->GetVariable(SerfStats::kSerfFetchTimeoutCount);
+  EXPECT_EQ(0, timeouts->Get());
+  int index = AddTestUrl(StrCat("http://", test_host_, "/never_fetched"), "");
+  StartFetches(index, index);
+  ASSERT_EQ(WaitTillDone(index, index), 1);
+  ASSERT_TRUE(fetches_[index]->IsDone());
+  EXPECT_EQ(1, timeouts->Get());
+  EXPECT_EQ(282, response_headers(index)->status_code());
+  EXPECT_STREQ("This text is less than 500 bytes.\n", contents(index));
+  Variable* read_calls =
+      statistics_->FindVariable("serf_fetch_num_calls_to_read");
+#ifdef NDEBUG
+  // We don't want this statistic on prod builds.
+  EXPECT_EQ(nullptr, read_calls);
+#else
+  // TODO(cheesy): Currently this test verifies that the code is calling read
+  // too much (Recent run was >3M times). Fix the code and then change this
+  // expectation.
+  EXPECT_LE(10, read_calls->Get());
+#endif
 }
 
 }  // namespace net_instaweb

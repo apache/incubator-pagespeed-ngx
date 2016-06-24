@@ -17,6 +17,7 @@
 #include "pagespeed/system/tcp_server_thread_for_testing.h"
 
 #include <sys/socket.h>
+#include <cstdlib>
 
 #include "apr_network_io.h"
 #include "base/logging.h"
@@ -40,6 +41,12 @@ TcpServerThreadForTesting::~TcpServerThreadForTesting() {
   if (pool_ != nullptr) {
     apr_pool_destroy(pool_);
   }
+}
+
+/* static */ void TcpServerThreadForTesting::PickListenPortOnce(
+    apr_port_t* static_port_number) {
+  // A listen_port of 0 means the system will pick for us.
+  *static_port_number = 0;
 }
 
 void TcpServerThreadForTesting::Run() {

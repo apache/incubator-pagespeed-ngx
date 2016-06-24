@@ -213,11 +213,13 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
 
   class FakeMemcacheServerThread : public TcpServerThreadForTesting {
    public:
-    FakeMemcacheServerThread(ThreadSystem* thread_system)
-        : TcpServerThreadForTesting(GetDesiredListenPort(), "fake_memcache",
+    FakeMemcacheServerThread(apr_port_t fake_memcache_listen_port,
+                             ThreadSystem* thread_system)
+        : TcpServerThreadForTesting(fake_memcache_listen_port, "fake_memcache",
                                     thread_system) {}
     virtual ~FakeMemcacheServerThread() {}
 
+   private:
     void HandleClientConnection(apr_socket_t* sock) override {
       static const char kMessage[] = "blah\n";
       apr_size_t message_size = STATIC_STRLEN(kMessage);
@@ -227,12 +229,6 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
       apr_socket_send(sock, kMessage, &message_size);
       apr_socket_close(sock);
     }
-
-   private:
-    static int GetDesiredListenPort() {
-      return desired_listen_port_;
-    }
-    static int desired_listen_port_;
   };
 
   SystemCachesTest()
@@ -255,6 +251,10 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     CacheStats::InitStats(
         PropertyCache::GetStatsPrefix(RewriteDriver::kDependenciesCohort),
         stats);
+  }
+
+  static void SetUpTestCase() {
+    TcpServerThreadForTesting::PickListenPortOnce(&fake_memcache_listen_port_);
   }
 
   virtual void SetUp() {
@@ -504,12 +504,13 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   scoped_ptr<SystemServerContext> system_server_context_;
   bool purge_done_;
   bool purge_success_;
+  static apr_port_t fake_memcache_listen_port_;
 
  private:
   GoogleString server_spec_;  // Set lazily by MemCachedServerSpec()
 };
 
-int SystemCachesTest::FakeMemcacheServerThread::desired_listen_port_ = 0;
+apr_port_t SystemCachesTest::fake_memcache_listen_port_ = 0;
 
 
 TEST_F(SystemCachesTest, BasicFileAndLruCache) {
@@ -1054,8 +1055,8 @@ TEST_F(SystemCachesTest, HangingMultigetTest) {
   // Test that we do not hang in the case of corrupted responses from memcached,
   // as seen in bug report 1048
   // https://github.com/pagespeed/mod_pagespeed/issues/1048
-  scoped_ptr<FakeMemcacheServerThread> thread(
-      new FakeMemcacheServerThread(thread_system_.get()));
+  scoped_ptr<FakeMemcacheServerThread> thread(new FakeMemcacheServerThread(
+      fake_memcache_listen_port_, thread_system_.get()));
   ASSERT_TRUE(thread->Start());
   apr_port_t port = thread->GetListeningPort();
   GoogleString apr_str = StrCat("localhost:", Integer64ToString(port));

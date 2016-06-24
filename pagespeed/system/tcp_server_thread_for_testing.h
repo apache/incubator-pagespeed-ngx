@@ -45,6 +45,10 @@ class TcpServerThreadForTesting : public ThreadSystem::Thread {
   // bound port number, which will be bound to IPv4 localhost.
   apr_port_t GetListeningPort();
 
+  // Helper to deal with only allocating the listening port once.
+  // port_number must be a pointer to a static apr_port_t.
+  static void PickListenPortOnce(apr_port_t* port_number);
+
  private:
   // Called after a successful call to apr_accept. Implementor must close
   // sock.

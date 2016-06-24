@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "apr_network_io.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest_prod.h"
@@ -72,6 +73,7 @@ struct SerfStats {
   static const char kSerfFetchTimeoutCount[];
   static const char kSerfFetchFailureCount[];
   static const char kSerfFetchCertErrors[];
+  static const char kSerfFetchReadCalls[];
 };
 
 // Identifies the set of HTML keywords.  This is used in error messages emitted
@@ -258,6 +260,7 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   Variable* timeout_count_;
   Variable* failure_count_;
   Variable* cert_errors_;
+  Variable* read_calls_count_;  // Non-NULL only on debug builds.
   const int64 timeout_ms_;
   bool shutdown_ GUARDED_BY(mutex_);
   bool list_outstanding_urls_on_error_;
