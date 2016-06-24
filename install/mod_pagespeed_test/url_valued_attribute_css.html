@@ -1,0 +1,26 @@
+<!-- this should get inlined -->
+<link rel=stylesheet href="../mod_pagespeed_example/styles/bold.css">
+
+<!-- these should get rewritten in-place -->
+<link data-stylesheet="../mod_pagespeed_example/styles/bold.css">
+<span data-stylesheet-a="../mod_pagespeed_example/styles/bold.css"
+      data-stylesheet-b="../mod_pagespeed_example/styles/bold.css"
+      data-stylesheet-c="../mod_pagespeed_example/styles/bold.css"></span>
+
+<!-- this should still get rewritten in-place -->
+<link rel=invalid data-stylesheet="../mod_pagespeed_example/styles/bold.css">
+
+<!-- this should get inlined, and data-stylesheet rewritten in-place -->
+<link rel=stylesheet
+      href="../mod_pagespeed_example/styles/bold.css"
+      data-stylesheet="../mod_pagespeed_example/styles/bold.css">
+
+<!-- javascript to give a combining barrier -->
+<script src="this-doesnt-exist.js"></script>
+
+<!-- combining should treat span/data-stylesheet-a as a barrier -->
+<link rel=stylesheet href="../mod_pagespeed_example/styles/blue.css">
+<span data-stylesheet-a="../mod_pagespeed_example/styles/bold.css"></span>
+<link rel=stylesheet href="../mod_pagespeed_example/styles/yellow.css">
+
+

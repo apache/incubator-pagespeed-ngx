@@ -739,6 +739,26 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   http_proxy=$SECONDARY_HOSTNAME \
       fetch_until $UVA_EXTEND_CACHE 'count_exact_matches .pagespeed.ic' 10
 
+  start_test url-valued stylesheet attributes are properly handled
+
+  URL="$TEST/url_valued_attribute_css.html"
+  URL+="?PageSpeedFilters=debug,combine_css,rewrite_css,inline_css"
+  http_proxy=$SECONDARY_HOSTNAME \
+      fetch_until -save "$URL" 'count_exact_matches .pagespeed.cf.' 7
+  OUT=$(cat $FETCH_UNTIL_OUTFILE)
+  check_from "$OUT" grep "<style>.bold{font-weight:bold}</style>"
+  check_from "$OUT" grep \
+    "Could not combine over barrier: custom or alternate stylesheet attribute"
+  check_from "$OUT" grep 'link data-stylesheet=[^<]*.pagespeed.cf'
+  LOOK_FOR="<span data-stylesheet-a=[^<]*.pagespeed.cf"
+  LOOK_FOR+="[^<]*data-stylesheet-b=[^<]*.pagespeed.cf"
+  LOOK_FOR+="[^<]*data-stylesheet-c=[^<]*.pagespeed.cf"
+  check_from "$OUT" grep "$LOOK_FOR"
+  check_from "$OUT" grep "<link rel=invalid data-stylesheet=[^<]*.pagespeed.cf"
+  check_from "$OUT" grep \
+    "<style data-stylesheet=[^<]*.pagespeed.cf[^>]*>.bold{font-weight:bold}"
+  check_not_from "$OUT" fgrep "blue.css+yellow.css"
+
   start_test load from file with ipro
   URL="http://lff-ipro.example.com/mod_pagespeed_test/lff_ipro/fake.woff"
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O - $URL)

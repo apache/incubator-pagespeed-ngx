@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -456,6 +457,19 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
     }
     if (!context_->AddElement(element, href)) {
       NextCombination("resource not rewritable");
+    }
+  } else {
+    // Treat custom UrlValuedAttributes as combining barriers.
+    resource_tag_scanner::UrlCategoryVector attributes;
+    // This includes checking for spec-defined ones, but any elements that would
+    // match spec-defined ones would have hit the ParseCssElement case above.
+    resource_tag_scanner::ScanElement(
+        element, driver()->options(), &attributes);
+    for (resource_tag_scanner::UrlCategoryPair uc : attributes) {
+      if (uc.category == semantic_type::kStylesheet) {
+        NextCombination("custom or alternate stylesheet attribute");
+        return;
+      }
     }
   }
 }

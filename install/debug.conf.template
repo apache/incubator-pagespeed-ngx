@@ -710,6 +710,11 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedUrlValuedAttribute video alt-b Image
   ModPagespeedUrlValuedAttribute video alt-b Image
 
+  ModPagespeedUrlValuedAttribute link data-stylesheet Stylesheet
+  ModPagespeedUrlValuedAttribute span data-stylesheet-a Stylesheet
+  ModPagespeedUrlValuedAttribute span data-stylesheet-b Stylesheet
+  ModPagespeedUrlValuedAttribute span data-stylesheet-c Stylesheet
+
   # Also test that we can redefine spec-defined attributes.
   ModPagespeedUrlValuedAttribute blockquote cite Image
 </VirtualHost>

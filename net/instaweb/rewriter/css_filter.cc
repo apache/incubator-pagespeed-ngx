@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -999,22 +1000,19 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
   if (in_style_element_) {
     CHECK(style_element_ == element);  // HtmlParse should not pass unmatching.
     in_style_element_ = false;
-
-  // Rewrite an external style.
-  } else if (element->keyword() == HtmlName::kLink &&
-             driver()->IsRewritable(element)) {
-    if (CssTagScanner::IsStylesheetOrAlternate(
-            element->AttributeValue(HtmlName::kRel))) {
-      HtmlElement::Attribute* element_href = element->FindAttribute(
-          HtmlName::kHref);
-      if (element_href != NULL) {
-        // If it has a href= attribute
-        StartExternalRewrite(element, element_href);
+  }
+  if (driver()->IsRewritable(element)) {
+    resource_tag_scanner::UrlCategoryVector attributes;
+    resource_tag_scanner::ScanElement(
+        element, driver()->options(), &attributes);
+    for (resource_tag_scanner::UrlCategoryPair uc : attributes) {
+      if (uc.category == semantic_type::kStylesheet) {
+        StartExternalRewrite(element, uc.url);
       }
     }
-  // Note any meta tag charset specifier.
-  } else if (meta_tag_charset_.empty() &&
-             element->keyword() == HtmlName::kMeta) {
+  }
+  if (meta_tag_charset_.empty() && element->keyword() == HtmlName::kMeta) {
+    // Note any meta tag charset specifier.
     GoogleString content, mime_type, charset;
     if (ExtractMetaTagDetails(*element, NULL, &content, &mime_type, &charset)) {
       meta_tag_charset_ = charset;

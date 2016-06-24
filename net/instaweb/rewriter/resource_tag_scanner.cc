@@ -210,6 +210,15 @@ semantic_type::Category CategorizeAttribute(
         StringCaseEqual(attribute->name_str(), attribute_i)) {
       return category_i;
     }
+    if (element->keyword() == HtmlName::kStyle) {
+      // When inlining we turn <link> into <style> while preserving attributes.
+      // This means that any custom attributes defined for <link> should also be
+      // interpreted on <style>.
+      if (StringCaseEqual("link", element_i) &&
+          StringCaseEqual(attribute->name_str(), attribute_i)) {
+        return category_i;
+      }
+    }
   }
 
   // Handle spec-defined attributes.

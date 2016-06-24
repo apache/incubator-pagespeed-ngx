@@ -448,15 +448,15 @@ class CssCombineFilterTest : public RewriteTestBase {
                           StringVector *css_urls) {
     // Put original CSS files into our fetcher.
     GoogleString html_url = StrCat(kDomain, "base_url.html");
-    const char a_css_url[] = "http://other_domain.test/foo/a.css";
-    const char b_css_url[] = "http://other_domain.test/foo/b.css";
-    const char c_css_url[] = "http://other_domain.test/foo/c.css";
+    static const char kACssUrl[] = "http://other_domain.test/foo/a.css";
+    static const char kBCssUrl[] = "http://other_domain.test/foo/b.css";
+    static const char kCCssUrl[] = "http://other_domain.test/foo/c.css";
 
     ResponseHeaders default_css_header;
     SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-    SetFetchResponse(a_css_url, default_css_header, kACssBody);
-    SetFetchResponse(b_css_url, default_css_header, kBCssBody);
-    SetFetchResponse(c_css_url, default_css_header, kCCssBody);
+    SetFetchResponse(kACssUrl, default_css_header, kACssBody);
+    SetFetchResponse(kBCssUrl, default_css_header, kBCssBody);
+    SetFetchResponse(kCCssUrl, default_css_header, kCCssBody);
 
     // Rewrite
     ParseUrl(html_url, html_input);
@@ -496,8 +496,8 @@ class CssCombineFilterTest : public RewriteTestBase {
     AddDomain("a.com");
     AddDomain("b.com");
     bool supply_mock = false;
-    const char kUrl1[] = "http://a.com/1.css";
-    const char kUrl2[] = "http://b.com/2.css";
+    static const char kUrl1[] = "http://a.com/1.css";
+    static const char kUrl2[] = "http://b.com/2.css";
     css_in.Add(kUrl1, kYellow, "", supply_mock);
     css_in.Add(kUrl2, kBlue, "", supply_mock);
     ResponseHeaders default_css_header;
@@ -766,62 +766,70 @@ TEST_F(CssCombineFilterWithDebugTest, IEDirectiveBarrier) {
 
 TEST_F(CssCombineFilterTest, StyleBarrier) {
   SetHtmlMimetype();
-  const char style_barrier[] = "<style>a { color: red }</style>\n";
+  static const char kStyleBarrier[] = "<style>a { color: red }</style>\n";
   UseMd5Hasher();
-  CombineCss("combine_css_style", style_barrier, "", true);
+  CombineCss("combine_css_style", kStyleBarrier, "", true);
 }
 
 TEST_F(CssCombineFilterWithDebugTest, StyleBarrier) {
   SetHtmlMimetype();
-  const char style_barrier[] = "<style>a { color: red }</style>\n";
+  static const char kStyleBarrier[] = "<style>a { color: red }</style>\n";
   UseMd5Hasher();
-  CombineCss("combine_css_style", style_barrier,
+  CombineCss("combine_css_style", kStyleBarrier,
              "<!--combine_css: Could not combine over barrier: inline style-->",
              true);
 }
 
 TEST_F(CssCombineFilterTest, BogusLinkBarrier) {
   SetHtmlMimetype();
-  const char bogus_barrier[] = "<link rel='stylesheet' "
+  static const char kBogusBarrier[] = "<link rel='stylesheet' "
       "href='crazee://big/blue/fake' type='text/css'>\n";
   UseMd5Hasher();
-  CombineCss("combine_css_bogus_link", bogus_barrier, "",  true);
+  CombineCss("combine_css_bogus_link", kBogusBarrier, "",  true);
 }
 
 TEST_F(CssCombineFilterWithDebugTest, BogusLinkBarrier) {
   SetHtmlMimetype();
-  const char bogus_barrier[] = "<link rel='stylesheet' "
+  static const char kBogusBarrier[] = "<link rel='stylesheet' "
       "href='crazee://big/blue/fake' type='text/css'>\n";
   UseMd5Hasher();
-  CombineCss("combine_css_bogus_link", bogus_barrier,
+  CombineCss("combine_css_bogus_link", kBogusBarrier,
              "<!--combine_css: Could not combine over barrier: "
              "resource not rewritable-->",  true);
 }
 
 TEST_F(CssCombineFilterTest, AlternateStylesheetBarrier) {
   SetHtmlMimetype();
-  const char barrier[] =
+  static const char kBarrier[] =
       "<link rel='alternate stylesheet' type='text/css' href='a.css'>";
   UseMd5Hasher();
-  // TODO(sligocki): This should actually be a barrier: s/false/true/
-  // Add CssCombineFilterWithDebugTest version as well when it is.
-  CombineCss("alternate_stylesheet_barrier", barrier, "", false);
+  CombineCss("alternate_stylesheet_barrier", kBarrier, "", true);
+}
+
+TEST_F(CssCombineFilterWithDebugTest, AlternateStylesheetBarrier) {
+  SetHtmlMimetype();
+  static const char kBarrier[] =
+      "<link rel='alternate stylesheet' type='text/css' href='a.css'>";
+  UseMd5Hasher();
+  CombineCss("alternate_stylesheet_barrier", kBarrier,
+             "<!--combine_css: Could not combine over barrier: "
+             "custom or alternate stylesheet attribute-->", true);
 }
 
 TEST_F(CssCombineFilterTest, NonStandardAttributesBarrier) {
   SetHtmlMimetype();
-  const char barrier[] =
+  static const char kBarrier[] =
       "<link rel='stylesheet' type='text/css' href='a.css' foo='bar'>";
   UseMd5Hasher();
-  CombineCss("non_standard_attributes_barrier", barrier, "", true);
+  CombineCss("non_standard_attributes_barrier", kBarrier, "", true);
 }
 
 TEST_F(CssCombineFilterWithDebugTest, NonStandardAttributesBarrier) {
   SetHtmlMimetype();
-  const char barrier[] =
+  static const char kBarrier[] =
       "<link rel='stylesheet' type='text/css' href='a.css' foo='bar'>";
   UseMd5Hasher();
-  CombineCss("non_standard_attributes_barrier", barrier,
+  CombineCss("non_standard_attributes_barrier", kBarrier,
              "<!--combine_css: Could not combine over barrier: "
              "potentially non-combinable attribute: &#39;foo&#39;-->", true);
 }
@@ -896,7 +904,7 @@ TEST_F(CssCombineFilterTest, StripBom) {
 
 TEST_F(CssCombineFilterTest, StripBomReconstruct) {
   // Make sure we strip the BOM properly when reconstructing, too.
-  const char kCssText[] = "div {background-image:url(fancy.png);}";
+  static const char kCssText[] = "div {background-image:url(fancy.png);}";
   SetResponseWithDefaultHeaders(kCssA, kContentTypeCss,
                                 StrCat(kUtf8Bom, kCssText),
                                 300);
@@ -913,45 +921,45 @@ TEST_F(CssCombineFilterTest, StripBomReconstruct) {
 
 TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   SetHtmlMimetype();
-  const char noscript_barrier[] =
+  static const char kNoscriptBarrier[] =
       "<noscript>\n"
       "  <link rel='stylesheet' href='d.css' type='text/css'>\n"
       "</noscript>\n";
 
   // Put this in the Test class to remove repetition here and below.
   GoogleString d_css_url = StrCat(kDomain, "d.css");
-  const char d_css_body[] = ".c4 {\n color: green;\n}\n";
+  static const char kDCssBody[] = ".c4 {\n color: green;\n}\n";
   ResponseHeaders default_css_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-  SetFetchResponse(d_css_url, default_css_header, d_css_body);
+  SetFetchResponse(d_css_url, default_css_header, kDCssBody);
 
   UseMd5Hasher();
-  CombineCss("combine_css_noscript", noscript_barrier, "", true);
+  CombineCss("combine_css_noscript", kNoscriptBarrier, "", true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
   SetHtmlMimetype();
-  const char non_barrier[] =
+  static const char kNonBarrier[] =
       "<noscript>\n"
       "  <p>You have no scripts installed</p>\n"
       "</noscript>\n";
   UseMd5Hasher();
-  CombineCss("combine_css_fake_noscript", non_barrier, "", false);
+  CombineCss("combine_css_fake_noscript", kNonBarrier, "", false);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
   SetHtmlMimetype();
-  const char media_barrier[] =
+  static const char kMediaBarrier[] =
       "<link rel='stylesheet' href='d.css' type='text/css' media='print'>\n";
 
   GoogleString d_css_url = StrCat(kDomain, "d.css");
-  const char d_css_body[] = ".c4 {\n color: green;\n}\n";
+  static const char kDCssBody[] = ".c4 {\n color: green;\n}\n";
   ResponseHeaders default_css_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-  SetFetchResponse(d_css_url, default_css_header, d_css_body);
+  SetFetchResponse(d_css_url, default_css_header, kDCssBody);
 
   UseMd5Hasher();
-  CombineCss("combine_css_media", media_barrier, "", true);
+  CombineCss("combine_css_media", kMediaBarrier, "", true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
@@ -964,14 +972,14 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   GoogleString c_css_url = StrCat(kDomain, "c.css");
   GoogleString d_css_url = StrCat(kDomain, "d.css");
 
-  const char d_css_body[] = ".c4 {\n color: green;\n}\n";
+  static const char kDCssBody[] = ".c4 {\n color: green;\n}\n";
 
   ResponseHeaders default_css_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
   SetFetchResponse(a_css_url, default_css_header, kACssBody);
   SetFetchResponse(b_css_url, default_css_header, kBCssBody);
   SetFetchResponse(c_css_url, default_css_header, kCCssBody);
-  SetFetchResponse(d_css_url, default_css_header, d_css_body);
+  SetFetchResponse(d_css_url, default_css_header, kDCssBody);
 
   // Only the first two CSS files should be combined.
   GoogleString html_input(StrCat(
@@ -1124,14 +1132,14 @@ TEST_F(CssCombineFilterTest, CombineCssNoInput) {
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
   SetFetchResponse(StrCat(kTestDomain, kCssB),
                    default_css_header, ".a {}");
-  static const char html_input[] =
+  static const char kHtmlInput[] =
       "<head>\n"
       "  <link rel='stylesheet' href='a_broken.css' type='text/css'>\n"
       "  <link rel='stylesheet' href='b.css' type='text/css'>\n"
       "</head>\n"
       "<body><div class='c1'><div class='c2'><p>\n"
       "  Yellow on Blue</p></div></div></body>";
-  ValidateNoChanges("combine_css_missing_input", html_input);
+  ValidateNoChanges("combine_css_missing_input", kHtmlInput);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssXhtml) {
@@ -1744,7 +1752,7 @@ class CssFilterWithCombineTest : public CssCombineFilterTest {
   GoogleString OptimizedContent() { return "div{}div{}"; }
 
   void SetupResources() {
-    const char kCssText[] = " div {    } ";
+    static const char kCssText[] = " div {    } ";
     SetResponseWithDefaultHeaders(kCssA, kContentTypeCss, kCssText, 300);
     SetResponseWithDefaultHeaders(kCssB, kContentTypeCss, kCssText, 300);
   }
@@ -1829,8 +1837,8 @@ TEST_F(CssFilterWithCombineTestUrlNamer, TestFollowCombine) {
   // A verbatim copy of the test above but using TestUrlNamer.
   const GoogleString kCssOut =
       EncodeCssCombineAndOptimize(kTestDomain, MultiUrl(kCssA, kCssB));
-  const char kCssText[] = " div {    } ";
-  const char kCssTextOptimized[] = "div{}";
+  static const char kCssText[] = " div {    } ";
+  static const char kCssTextOptimized[] = "div{}";
 
   SetResponseWithDefaultHeaders(kCssA, kContentTypeCss, kCssText, 300);
   SetResponseWithDefaultHeaders(kCssB, kContentTypeCss, kCssText, 300);
@@ -2031,7 +2039,7 @@ TEST_F(CollapseWhitespaceGeneralTest, CollapseAfterCombine) {
                    default_css_header, ".c { color: blue; }");
 
   // Before and expected after text.
-  const char before[] =
+  static const char kBefore[] =
       "<html>\n"
       "  <head>\n"
       "    <link rel=stylesheet type=text/css href=a.css>\n"
@@ -2039,16 +2047,16 @@ TEST_F(CollapseWhitespaceGeneralTest, CollapseAfterCombine) {
       "    <link rel=stylesheet type=text/css href=c.css>\n"
       "  </head>\n"
       "</html>\n";
-  const char after_template[] =
+  static const char kAfterTemplate[] =
       "<html>\n"
       "<head>\n"
       "<link rel=stylesheet type=text/css href=%s />\n"
       "</head>\n"
       "</html>\n";
-  GoogleString after = StringPrintf(after_template, Encode(
+  GoogleString after = StringPrintf(kAfterTemplate, Encode(
       "", "cc", "0", MultiUrl(kCssA, kCssB, "c.css"), "css").c_str());
 
-  ValidateExpected("collapse_after_combine", before, after);
+  ValidateExpected("collapse_after_combine", kBefore, after);
 }
 
 /*
