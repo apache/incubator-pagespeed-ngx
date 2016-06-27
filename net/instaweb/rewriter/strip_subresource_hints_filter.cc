@@ -51,7 +51,9 @@ void StripSubresourceHintsFilter::StartElement(HtmlElement* element) {
 
   if (element->keyword() == HtmlName::kLink) {
     const char *value = element->AttributeValue(HtmlName::kRel);
-    if (value && StringCaseEqual(value, "subresource")) {
+    if (value && (
+            StringCaseEqual(value, "subresource") ||
+            StringCaseEqual(value, "preload"))) {
       const RewriteOptions *options = driver_->options();
       const char *resource_url = element->AttributeValue(HtmlName::kSrc);
       if (!resource_url) {

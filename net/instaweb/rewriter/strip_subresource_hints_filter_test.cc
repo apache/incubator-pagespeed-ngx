@@ -156,6 +156,16 @@ TEST_F(StripSubresourceHintsFilterTest, SingleResourceValidLink) {
   ValidateStripSubresourceHint(source, rewritten);
 }
 
+TEST_F(StripSubresourceHintsFilterTest, SingleResourceValidPreloadLink) {
+  const char *source =
+    "<head><link rel=\"preload\" src=\"/test.gif\" as=\"image\"/></head>"
+    "<body><img src=\"1.jpg\"/></body>";
+  const char *rewritten =
+    "<head></head>"
+    "<body><img src=\"1.jpg\"/></body>";
+  ValidateStripSubresourceHint(source, rewritten);
+}
+
 TEST_F(StripSubresourceHintsFilterTest, SingleResourceExternalLink) {
   const char *source =
     "<head>"
