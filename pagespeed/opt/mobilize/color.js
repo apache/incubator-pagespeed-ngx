@@ -83,6 +83,22 @@ mob.Color.prototype.distance_ = function(rgb1, rgb2) {
 
 
 /**
+ * Calculate the contrast ratio between two RGB colors as defined by the Web
+ * Content Accessibility Guidelines.
+ * https://www.w3.org/TR/2008/REC-WCAG20-20081211/#contrast-ratiodef
+ * @param {!goog.color.Rgb} rgb1
+ * @param {!goog.color.Rgb} rgb2
+ * @private
+ * @return {number}
+ */
+mob.Color.prototype.contrastRatio_ = function(rgb1, rgb2) {
+  var l1 = this.rgbToGray_(rgb1);
+  var l2 = this.rgbToGray_(rgb2);
+  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+};
+
+
+/**
  * Convert a value from sRGB to RGB.
  * http://www.w3.org/TR/2008/REC-WCAG20-20081211/#relativeluminancedef
  * Input range [0, 255], output range [0, 1];
@@ -129,11 +145,11 @@ mob.Color.prototype.enhanceColors_ = function(themeColors) {
 
   // If both background and foreground are black, we can't enhance the colors.
   if (bkGray < this.EPSILON_ && frGray < this.EPSILON_) {
-    return themeColors;
+    return this.fixContrast_(themeColors);
   }
 
   // If the colors already have enough contrast, we're all set.
-  var contrast = frGray / bkGray;
+  var contrast = (frGray + 0.05) / (bkGray + 0.05);
   if (contrast < 1) {
     contrast = 1 / contrast;
   }
@@ -141,45 +157,62 @@ mob.Color.prototype.enhanceColors_ = function(themeColors) {
     return themeColors;
   }
 
-  // To enhance contrast, we convert the colors from RGB to HSV. We keep the
+  // To enhance contrast, we convert the colors from RGB to HSL. We keep the
   // hue (H) and saturation (S) components, so the color will not be changed.
-  // We increase the contrast by only modifying the luminance (V) component.
-  var bkHsv = goog.color.rgbArrayToHsv(bk);
-  var frHsv = goog.color.rgbArrayToHsv(fr);
-
+  // We iteratively increase the contrast by only modifying the Lightness (L)
+  // component until the contrast ratio is above the minimal contrast ratio.
+  var bkHsl = goog.color.rgbArrayToHsl(bk);
+  var frHsl = goog.color.rgbArrayToHsl(fr);
   var minV = null;
   var maxV = null;
-  if (bkHsv[2] < frHsv[2]) {
-    minV = bkHsv[2];
-    maxV = frHsv[2];
+  if (bkHsl[2] < frHsl[2]) {
+    minV = bkHsl[2];
+    maxV = frHsl[2];
   } else {
-    minV = frHsv[2];
-    maxV = bkHsv[2];
+    minV = frHsl[2];
+    maxV = bkHsl[2];
   }
+  do {
+    minV = Math.max(0, minV - 0.05);
+    maxV = Math.min(1, maxV + 0.05);
+    if (bkHsl[2] < frHsl[2]) {
+      bkHsl[2] = minV;
+      frHsl[2] = maxV;
+    } else {
+      frHsl[2] = minV;
+      bkHsl[2] = maxV;
+    }
+    bk = goog.color.hslArrayToRgb(bkHsl);
+    fr = goog.color.hslArrayToRgb(frHsl);
+  } while (this.contrastRatio_(bk, fr) < this.MIN_CONTRAST_);
+  return this.fixContrast_(new mob.Color.ThemeColors_(bk, fr));
+};
 
-  var delta = ((this.MIN_CONTRAST_ * minV) - maxV) / (this.MIN_CONTRAST_ + 1);
-  if (minV > delta) {
-    minV = minV - delta;
-  } else {
-    minV = 0;
-  }
-  if (maxV < 1 - 2 * delta) {
-    maxV += 2 * delta;
-  } else {
-    maxV = 255;
-  }
 
-  if (bkHsv[2] < frHsv[2]) {
-    bkHsv[2] = minV;
-    frHsv[2] = maxV;
-  } else {
-    frHsv[2] = minV;
-    bkHsv[2] = maxV;
+/**
+ * Replaces the background color if the contrast is not enough
+ * for the text to be readable.
+ * https://www.w3.org/TR/WCAG20/#visual-audio-contrast-contrast
+ *
+ * @param {!mob.Color.ThemeColors_} themeColors
+ * @private
+ * @return {!mob.Color.ThemeColors_}
+ */
+mob.Color.prototype.fixContrast_ = function(themeColors) {
+  var bk = themeColors.background;
+  var fr = themeColors.foreground;
+  if (this.contrastRatio_(bk, fr) < this.MIN_CONTRAST_) {
+    var black = [0, 0, 0];
+    var white = [255, 255, 255];
+    var contrastRatioWhite = this.contrastRatio_(fr, white);
+    var contrastRatioBlack = this.contrastRatio_(fr, black);
+    if (contrastRatioWhite > contrastRatioBlack) {
+      return (new mob.Color.ThemeColors_(white, fr));
+    } else {
+      return (new mob.Color.ThemeColors_(black, fr));
+    }
   }
-
-  bk = goog.color.hsvArrayToRgb(bkHsv);
-  fr = goog.color.hsvArrayToRgb(frHsv);
-  return (new mob.Color.ThemeColors_(bk, fr));
+  return themeColors;
 };
 
 
@@ -327,18 +360,12 @@ mob.Color.prototype.run = function(imageElement, backgroundColor) {
   } else {
     mob.util.consoleLog('Did not find logo. Using default color.');
   }
-
-  var foregroundColor = [0, 0, 0];
   if (backgroundColor) {
-    // Use white foreground if the background is dark; or black foreground
-    // otherwise.
-    var hsv = goog.color.rgbArrayToHsv(backgroundColor);
-    if (hsv[2] <= 0.7 * 255) {
-      foregroundColor = [255, 255, 255];
-    }
+    // Compute a foreground and background color based on the detected
+    // background color.
+    return this.fixContrast_(
+        new mob.Color.ThemeColors_(backgroundColor, backgroundColor));
   } else {
-    backgroundColor = [255, 255, 255];
+    return (new mob.Color.ThemeColors_([255, 255, 255], [0, 0, 0]));
   }
-
-  return (new mob.Color.ThemeColors_(backgroundColor, foregroundColor));
 };

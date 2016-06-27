@@ -1322,7 +1322,7 @@ TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
       "<html>"
       "<head>"
       "<link rel=\"stylesheet\" href=\"",
-      rewritten_css_url_1_.c_str(),
+      rewritten_css_url_1_,
       "\"/>\n",
       FlushEarlyContentWriterFilter::kDisableLinkTag,
       "<script type='text/javascript'>"
