@@ -118,9 +118,6 @@ SerfFetch::SerfFetch(const GoogleString& url,
       async_fetch_(async_fetch),
       parser_(async_fetch->response_headers()),
       status_line_read_(false),
-      one_byte_read_(false),
-      has_saved_byte_(false),
-      saved_byte_('\0'),
       message_handler_(message_handler),
       pool_(NULL),  // filled in once assigned to a thread, to use its pool.
       bucket_alloc_(NULL),
@@ -369,21 +366,14 @@ apr_status_t SerfFetch::HandleResponse(serf_request_t* request,
 }
 
 // static
-bool SerfFetch::MoreDataAvailable(apr_status_t status) {
+bool SerfFetch::StatusIndicatesDataPossible(apr_status_t status) {
   // This OR is structured like this to make debugging easier, as it's
   // not obvious when looking at the status mask which of these conditions
   // is hit.
-  if (APR_STATUS_IS_EAGAIN(status)) {
+  if (APR_STATUS_IS_EOF(status)) {
     return true;
   }
-  return APR_STATUS_IS_EINTR(status);
-}
-
-// static
-bool SerfFetch::IsStatusOk(apr_status_t status) {
-  return ((status == APR_SUCCESS) ||
-          APR_STATUS_IS_EOF(status) ||
-          MoreDataAvailable(status));
+  return status == APR_SUCCESS;
 }
 
 #if SERF_HTTPS_FETCHING
@@ -471,44 +461,51 @@ apr_status_t SerfFetch::HandleResponse(serf_bucket_t* response) {
     return APR_EGENERAL;
   }
 
+  // If async_fetch_ is NULL, we've already finished up and have nothing more
+  // to do. In that case we *ought* to have been removed from the serf event
+  // loop making this call impossible, however in practice this does happen. So
+  // we just return EOF to have the socket cleaned up.
+  if (async_fetch_ == nullptr) {
+    return APR_EOF;
+  }
+
   // The response-handling code must be robust to packets coming in all at once,
-  // one byte at a time, or anything in between.  If we get EAGAIN we need to
-  // return it to our caller so it can do more work and call us again.  See the
-  // serf example code in serf_get.c.
-  apr_status_t status = APR_EAGAIN;
-  while (MoreDataAvailable(status) && (async_fetch_ != NULL) &&
-         !parser_.headers_complete()) {
+  // one byte at a time, or anything in between. The various reads will return
+  // EAGAIN if we have read all available data but not yet reached EOF. In
+  // that case we must return EAGAIN to our caller so it can do more work and
+  // call us again. See the serf example code in serf_get.c.
+  apr_status_t status;
+  do {
     if (!status_line_read_) {
         status = ReadStatusLine(response);
-    }
-
-    if (status_line_read_ && !one_byte_read_) {
-      status = ReadOneByteFromBody(response);
-    }
-
-    if (one_byte_read_ && !parser_.headers_complete()) {
+    } else if (!parser_.headers_complete()) {
       status = ReadHeaders(response);
+      // ReadHeaders returns EOF at the end of headers or actual EOF.
+      // If the parser has a complete set of headers, it's not real EOF and we
+      // set APR_SUCCESS to allow things to proceed.
+      if (APR_STATUS_IS_EOF(status) && parser_.headers_complete()) {
+        status = APR_SUCCESS;
+      }
+    } else {
+      status = ReadBody(response);
     }
+  } while (status == APR_SUCCESS || APR_STATUS_IS_EINTR(status));
 
-    if (APR_STATUS_IS_EAGAIN(status)) {
-      return status;
-    }
-  }
-
-  if (parser_.headers_complete()) {
-    status = ReadBody(response);
-  }
-
-  if ((async_fetch_ != NULL) &&
-      ((APR_STATUS_IS_EOF(status) && parser_.headers_complete()) ||
-       (status == APR_EGENERAL))) {
-    bool success = (IsStatusOk(status) && parser_.headers_complete());
-    if (!parser_.headers_complete() && (async_fetch_ != NULL)) {
+  // Are we now done with the socket? That is the case either at EOF or error.
+  // SERF_BUCKET_READ_ERROR considers EINTR to be an error but we shouldn't exit
+  // the loop above in that case.
+  // TODO(cheesy): Note that the error handling in the caller isn't great. If
+  // this function returns an error code but doesn't invoke the callback, the
+  // Fetch simply idles in the queue and is eventually timed out.
+  if (APR_STATUS_IS_EOF(status) || SERF_BUCKET_READ_ERROR(status)) {
+    if (!parser_.headers_complete()) {
       // Be careful not to leave headers in inconsistent state in some error
       // conditions.
       async_fetch_->response_headers()->Clear();
     }
-    CallCallback(success);
+    bool successful_completion =
+        APR_STATUS_IS_EOF(status) && parser_.headers_complete();
+    CallCallback(successful_completion);  // Zeros async_fetch_.
   }
   return status;
 }
@@ -527,31 +524,25 @@ apr_status_t SerfFetch::ReadStatusLine(serf_bucket_t* response) {
   return status;
 }
 
-apr_status_t SerfFetch::ReadOneByteFromBody(serf_bucket_t* response) {
-  apr_size_t len = 0;
-  const char* data = NULL;
-  apr_status_t status = serf_bucket_read(response, 1, &data, &len);
-  if (!APR_STATUS_IS_EINTR(status) && IsStatusOk(status)) {
-    one_byte_read_ = true;
-    if (len == 1) {
-      has_saved_byte_ = true;
-      saved_byte_ = data[0];
-    }
-  }
-  return status;
-}
-
 apr_status_t SerfFetch::ReadHeaders(serf_bucket_t* response) {
-  serf_bucket_t* headers = serf_bucket_response_get_headers(response);
+  // serf_bucket_response_get_headers does not guarantee that the headers
+  // have actually arrived, so call serf_bucket_response_get_headers to
+  // see if they have. With a non-blocking socket, this doesn't actually wait;
+  // It will return EAGAIN if the headers aren't yet complete.
+  apr_status_t status = serf_bucket_response_wait_for_headers(response);
+  if (!StatusIndicatesDataPossible(status)) {
+    return status;
+  }
+
   const char* data = NULL;
   apr_size_t len = 0;
-  apr_status_t status = serf_bucket_read(headers, SERF_READ_ALL_AVAIL,
-                                         &data, &len);
+  serf_bucket_t* headers = serf_bucket_response_get_headers(response);
+  status = serf_bucket_read(headers, SERF_READ_ALL_AVAIL, &data, &len);
 
   // Feed valid chunks to the header parser --- but skip empty ones,
   // which can occur for value-less headers, since otherwise they'd
   // look like parse errors.
-  if (IsStatusOk(status) && (len > 0)) {
+  if (StatusIndicatesDataPossible(status) && len > 0) {
     if (parser_.ParseChunk(StringPiece(data, len), message_handler_)) {
       if (parser_.headers_complete()) {
         ResponseHeaders* response_headers = async_fetch_->response_headers();
@@ -559,7 +550,6 @@ apr_status_t SerfFetch::ReadHeaders(serf_bucket_t* response) {
           response_headers->set_status_code(HttpStatus::kNotFound);
           message_handler_->Message(kInfo, "%s: %s", DebugInfo().c_str(),
                                     ssl_error_message_);
-          has_saved_byte_ = false;
         }
 
         if (fetcher_->track_original_content_length()) {
@@ -567,14 +557,6 @@ apr_status_t SerfFetch::ReadHeaders(serf_bucket_t* response) {
           int64 content_length;
           if (response_headers->FindContentLength(&content_length)) {
             response_headers->SetOriginalContentLength(content_length);
-          }
-        }
-        // Stream the one byte read from ReadOneByteFromBody to writer.
-        if (has_saved_byte_) {
-          ++bytes_received_;
-          if (!async_fetch_->Write(StringPiece(&saved_byte_, 1),
-                                   message_handler_)) {
-            status = APR_EGENERAL;
           }
         }
       }
@@ -586,20 +568,25 @@ apr_status_t SerfFetch::ReadHeaders(serf_bucket_t* response) {
 }
 
 apr_status_t SerfFetch::ReadBody(serf_bucket_t* response) {
-  apr_status_t status = APR_EAGAIN;
-  const char* data = NULL;
-  apr_size_t len = 0;
+  apr_status_t status = APR_SUCCESS;
   apr_size_t bytes_to_flush = 0;
-  while (MoreDataAvailable(status) && (async_fetch_ != NULL)) {
+  // Read as many times as required to gobble up all the data, then call Flush
+  // once when done. In theory we could depend on the loop in HandleResponse to
+  // take care of this, but ultimately this approach seems to make the code more
+  // readable.
+  while (status == APR_SUCCESS || APR_STATUS_IS_EINTR(status)) {
     if (fetcher_->read_calls_count_ != nullptr) {
       fetcher_->read_calls_count_->Add(1);
     }
+    apr_size_t len;
+    const char* data;
     status = serf_bucket_read(response, SERF_READ_ALL_AVAIL, &data, &len);
-    bytes_received_ += len;
-    bytes_to_flush += len;
-    if (IsStatusOk(status) && (len != 0) &&
-        !async_fetch_->Write(StringPiece(data, len), message_handler_)) {
-      status = APR_EGENERAL;
+    if (StatusIndicatesDataPossible(status) && len > 0) {
+      bytes_received_ += len;
+      bytes_to_flush += len;
+      if (!async_fetch_->Write(StringPiece(data, len), message_handler_)) {
+        status = APR_EGENERAL;
+      }
     }
   }
   if ((bytes_to_flush != 0) && !async_fetch_->Flush(message_handler_)) {

@@ -989,8 +989,42 @@ This text is less than 500 bytes.
 
       apr_size_t response_size = STATIC_STRLEN(kResponse);
       apr_socket_send(sock, kResponse, &response_size);
-      usleep(kFetcherTimeoutMs * 1000);
+      // Wait for over the timeout to make really sure it times out.
+      WaitForHangupOrTimeout(sock, kFetcherTimeoutMs * 1000 * 2);
       apr_socket_close(sock);
+    }
+
+   private:
+    // Use apr_poll to wait up to timeout_us for the socket to hangup or go
+    // readable (which we assume to be a hangup).
+    void WaitForHangupOrTimeout(apr_socket_t* socket, int timeout_us) {
+      // Create pollset. Using NOCOPY so we can just feed in a stack variable
+      // for the pollfd.
+      apr_pollset_t* pollset;
+      apr_status_t status = apr_pollset_create(&pollset, 1 /* size */, pool(),
+                                               APR_POLLSET_NOCOPY);
+      ASSERT_EQ(APR_SUCCESS, status);
+
+      // Populate pollfd and add it to pollset.
+      apr_pollfd_t pollfd = { 0 };
+      pollfd.desc_type = APR_POLL_SOCKET;
+      pollfd.desc.s = socket;
+      pollfd.reqevents = APR_POLLHUP | APR_POLLERR | APR_POLLIN;
+      pollfd.p = pool();
+      status = apr_pollset_add(pollset, &pollfd);
+      ASSERT_EQ(APR_SUCCESS, status);
+
+      // Now actually wait.
+      do {
+        apr_int32_t nactive;
+        const apr_pollfd_t* outfds;
+        status = apr_pollset_poll(pollset, timeout_us, &nactive, &outfds);
+      } while (APR_STATUS_IS_EINTR(status));
+      ASSERT_EQ(APR_SUCCESS, status);
+
+      // Be nice and cleanup.
+      status = apr_pollset_destroy(pollset);
+      ASSERT_EQ(APR_SUCCESS, status);
     }
   };
 
@@ -1033,10 +1067,10 @@ TEST_F(SerfUrlAsyncFetcherTestFakeWebServer, TestHangingGet) {
   // We don't want this statistic on prod builds.
   EXPECT_EQ(nullptr, read_calls);
 #else
-  // TODO(cheesy): Currently this test verifies that the code is calling read
-  // too much (Recent run was >3M times). Fix the code and then change this
-  // expectation.
-  EXPECT_LE(10, read_calls->Get());
+  // This is the most important part of this test. Verify that read was only
+  // called a handful of times (while we waited in poll), not millions of times
+  // until it stopped returning EAGAIN.
+  EXPECT_GE(5, read_calls->Get());
 #endif
 }
 

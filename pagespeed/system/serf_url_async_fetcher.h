@@ -356,8 +356,12 @@ class SerfFetch : public PoolElement<SerfFetch> {
                                      serf_bucket_t* response,
                                      void* handler_baton,
                                      apr_pool_t* pool);
-  static bool MoreDataAvailable(apr_status_t status);
-  static bool IsStatusOk(apr_status_t status);
+  // After a serf read operation, return true if the status indicates that
+  // data might have been read. The "number of bytes read" paramater is not
+  // guaranteed to be updated if the status is anything other than SUCCESS or
+  // EOF. So, one must either zero "nread" before calling serf_bucket_read or
+  // check for one of those statuses before consulting the value in "nread".
+  static bool StatusIndicatesDataPossible(apr_status_t status);
 
 #if SERF_HTTPS_FETCHING
   // Called indicating whether SSL certificate errors have occurred detected.
@@ -378,21 +382,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
 
   apr_status_t ReadStatusLine(serf_bucket_t* response);
 
-  // Know what's weird?  You have do a body-read to get access to the
-  // headers.  You need to read 1 byte of body to force an FSM inside
-  // Serf to parse the headers.  Then you can parse the headers and
-  // finally read the rest of the body.  I know, right?
-  //
-  // The simpler approach, and likely what the Serf designers intended,
-  // is that you read the entire body first, and then read the headers.
-  // But if you are trying to stream the data as its fetched through some
-  // kind of function that needs to know the content-type, then it's
-  // really a drag to have to wait till the end of the body to get the
-  // content type.
-  apr_status_t ReadOneByteFromBody(serf_bucket_t* response);
-
-  // Once that one byte is read from the body, we can go ahead and
-  // parse the headers.  The dynamics of this appear that for N
+  // Parse the headers.  The dynamics of this appear that for N
   // headers we'll get 2N calls to serf_bucket_read: one each for
   // attribute names & values.
   apr_status_t ReadHeaders(serf_bucket_t* response);
@@ -421,9 +411,6 @@ class SerfFetch : public PoolElement<SerfFetch> {
   AsyncFetch* async_fetch_;
   ResponseHeadersParser parser_;
   bool status_line_read_;
-  bool one_byte_read_;
-  bool has_saved_byte_;
-  char saved_byte_;
   MessageHandler* message_handler_;
 
   apr_pool_t* pool_;

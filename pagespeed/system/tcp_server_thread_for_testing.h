@@ -49,6 +49,9 @@ class TcpServerThreadForTesting : public ThreadSystem::Thread {
   // port_number must be a pointer to a static apr_port_t.
   static void PickListenPortOnce(apr_port_t* port_number);
 
+ protected:
+  apr_pool_t* pool() { return pool_; }
+
  private:
   // Called after a successful call to apr_accept. Implementor must close
   // sock.
