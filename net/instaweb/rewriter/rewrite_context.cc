@@ -1219,6 +1219,7 @@ class RewriteContext::FetchContext {
 
     rewrite_context_->FindServerContext()->ApplyInputCacheControl(
         inputs, async_fetch_->response_headers());
+    async_fetch_->FixCacheControlForGoogleCache();
   }
 
   RewriteContext* rewrite_context_;

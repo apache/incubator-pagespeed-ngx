@@ -194,11 +194,19 @@ TEST_F(RewriteDriverTest, NoChanges) {
 
 TEST_F(RewriteDriverTest, CloneMarksNested) {
   RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kAccept, "image/webp");
   request_headers.Add("a", "b");
+  request_headers.Add(HttpAttributes::kVia, "1.1 google");
   rewrite_driver()->SetRequestHeaders(request_headers);
   RewriteDriver* clone1 = rewrite_driver()->Clone();
   EXPECT_TRUE(clone1->is_nested());
+  EXPECT_TRUE(clone1->request_properties()->SupportsWebpRewrittenUrls());
+  EXPECT_TRUE(rewrite_driver()->request_headers()->HasValue("a", "b"));
   EXPECT_TRUE(clone1->request_headers()->HasValue("a", "b"));
+  EXPECT_TRUE(rewrite_driver()->request_headers()->HasValue(
+      HttpAttributes::kVia, "1.1 google"));
+  EXPECT_FALSE(clone1->request_headers()->HasValue(
+      HttpAttributes::kVia, "1.1 google"));
   clone1->Cleanup();
 
   RewriteDriver* parent2 =
@@ -472,6 +480,32 @@ TEST_F(RewriteDriverTest, TestCacheUse) {
   EXPECT_TRUE(TryFetchResource(css_minified_url));
   EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+}
+
+// Test to make sure when we fetch a with a Via header, "public"
+// is added to the Cache-Control.
+TEST_F(RewriteDriverTest, ViaPublicPageSpeedResource) {
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kVia, "1.1 google");
+  AddFilter(RewriteOptions::kRewriteCss);
+
+  const char kCss[] = "* { display: none; }";
+  const char kMinCss[] = "*{display:none}";
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
+
+  GoogleString url = Encode(kTestDomain, RewriteOptions::kCssFilterId,
+                            hasher()->Hash(kMinCss), "a.css", "css");
+
+  // Cold load.
+  ResponseHeaders response;
+  GoogleString contents;
+  ASSERT_TRUE(FetchResourceUrl(url, &request_headers, &contents, &response));
+  EXPECT_TRUE(response.HasValue(HttpAttributes::kCacheControl, "public"));
+
+  // Warm load.
+  response.Clear();
+  ASSERT_TRUE(FetchResourceUrl(url, &request_headers, &contents, &response));
+  EXPECT_TRUE(response.HasValue(HttpAttributes::kCacheControl, "public"));
 }
 
 // Extension of above with cache invalidation.

@@ -28,7 +28,13 @@ function check_public_cc() {
 
 # Takes an HTML CSS link and returns the URL of the CSS file.
 function scrape_css_link() {
-  tr -s '[:space:]' '\n' | grep href | cut -d= -f2 | cut '-d"' -f2
+  url=$(tr -s '[:space:]' '\n' | grep href | cut -d= -f2 | cut '-d"' -f2)
+  # We will want to fetch the URL with wget, so absolutify what was
+  # in the HTML if necessary.
+  if [[ "$url" != http* ]]; then
+    url="$1/$url"
+  fi
+  echo "$url"
 }
 
 # For combined resources, identified with the correct hash, we do not have
@@ -39,13 +45,11 @@ start_test Cache-Control:public added iff GCE for combined .pagespeed. file.
 fetch_until -save \
   $EXAMPLE_ROOT/combine_css.html?PageSpeedFilters=combine_css \
   "fgrep -c .pagespeed.cc" 1
-COMBINED=$(scrape_css_link < $FETCH_FILE)
+COMBINED=$(scrape_css_link "$EXAMPLE_ROOT" < $FETCH_FILE)
 check_public_cc "$COMBINED" no
-# TODO(jmarantz): change to "public" when Via:*google is supported.
-check_public_cc "$COMBINED" -via no
+check_public_cc "$COMBINED" -via public
 check_public_cc "$COMBINED" no
-# TODO(jmarantz): change to "public" when Via:*google is supported.
-check_public_cc "$COMBINED" -via no
+check_public_cc "$COMBINED" -via public
 
 # We won't add 'public' to an ipro-request until the request is optimized, so
 # wait for that to happen.  Then we can check an ipro-rewritten resource to make
@@ -53,11 +57,9 @@ check_public_cc "$COMBINED" -via no
 start_test Cache-Control:public added iff GCE for ipro css file.
 fetch_until "$YELLOW" 'fgrep -c background-color:#ff0' 1
 check_public_cc "$YELLOW" no
-# TODO(jmarantz): change to "public" when Via:*google is supported.
-check_public_cc "$YELLOW" -via no
+check_public_cc "$YELLOW" -via public
 check_public_cc "$YELLOW" no
-# TODO(jmarantz): change to "public" when Via:*google is supported.
-check_public_cc "$YELLOW" -via no
+check_public_cc "$YELLOW" -via public
 
 start_test Cache-Control:public when source has cc:public, for ipro
 fetch_until "$PUBYELLOW" 'fgrep -c background-color:#ff0' 1
@@ -70,7 +72,7 @@ start_test Cache-Control:public when source has cc:public, for .pagespeed.
 fetch_until -save \
   $TEST_ROOT/public/rewrite_css.html?PageSpeedFilters=rewrite_css \
   "fgrep -c .pagespeed.cf" 1
-REWRITTEN_YELLOW=$(scrape_css_link < $FETCH_FILE)
+REWRITTEN_YELLOW=$(scrape_css_link "$TEST_ROOT/public" < $FETCH_FILE)
 check_public_cc "$REWRITTEN_YELLOW" -via public
 check_public_cc "$REWRITTEN_YELLOW" public
 check_public_cc "$REWRITTEN_YELLOW" -via public

@@ -397,7 +397,19 @@ RewriteDriver* RewriteDriver::Clone() {
     result = server_context_->NewRewriteDriverFromPool(pool, request_context_);
   }
   result->is_nested_ = true;
-  result->SetRequestHeaders(*request_headers_);
+
+  // Remove any Via headers for the nested driver.  This is intended for
+  // removing "Via:1.1 google", so that nested drivers don't wind up
+  // adding cc:public into intermediate cached results.
+  //
+  // Note that we *do* want to propagate http/2 detection to nested drivers.
+  // This is OK because it gets captured in the RequestContext, which is
+  // shared, and is not reconstructed from request-headers.
+  RequestHeaders headers;
+  headers.CopyFrom(*request_headers_);
+  headers.RemoveAll(HttpAttributes::kVia);
+  result->SetRequestHeaders(headers);
+
   return result;
 }
 
@@ -1806,6 +1818,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         output_resource_->Link(value, handler_);
         output_resource_->SetWritten(true);
         async_fetch_->set_content_length(content.size());
+        async_fetch_->FixCacheControlForGoogleCache();
         async_fetch_->HeadersComplete();
         success = async_fetch_->Write(content, handler_);
       }
