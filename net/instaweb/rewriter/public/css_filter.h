@@ -94,11 +94,6 @@ class CssFilter : public RewriteFilter {
   // Add this filters related options to the given vector.
   static void AddRelatedOptions(StringPieceVector* target);
 
-  // Note: AtExitManager needs to be initialized or you get a nasty error:
-  // Check failed: false. Tried to RegisterCallback without an AtExitManager.
-  // This is called by Initialize.
-  static void InitializeAtExitManager();
-
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);

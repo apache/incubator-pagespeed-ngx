@@ -74,14 +74,6 @@
 #include "pagespeed/opt/logging/enums.pb.h"
 #include "webutil/css/parser.h"
 
-#include "base/at_exit.h"
-
-namespace {
-
-base::AtExitManager* at_exit_manager = NULL;
-
-}  // namespace
-
 namespace net_instaweb {
 
 class CacheExtender;
@@ -895,8 +887,6 @@ T* MergeArrays(const T* a, int a_size, const T* b, int b_size, int* out_size) {
 }  // namespace
 
 void CssFilter::Initialize() {
-  InitializeAtExitManager();
-
   CHECK(merged_filters_ == NULL);
 #ifndef NDEBUG
   for (int i = 1; i < kRelatedFiltersSize; ++i) {
@@ -918,12 +908,6 @@ void CssFilter::Initialize() {
 }
 
 void CssFilter::Terminate() {
-  // Note: This is not thread-safe, but I don't believe we need it to be.
-  if (at_exit_manager != NULL) {
-    delete at_exit_manager;
-    at_exit_manager = NULL;
-  }
-
   CHECK(merged_filters_ != NULL);
   delete [] merged_filters_;
   merged_filters_ = NULL;
@@ -935,13 +919,6 @@ void CssFilter::Terminate() {
 void CssFilter::AddRelatedOptions(StringPieceVector* target) {
   for (int i = 0, n = arraysize(kRelatedOptions); i < n; ++i) {
     target->push_back(kRelatedOptions[i]);
-  }
-}
-
-void CssFilter::InitializeAtExitManager() {
-  // Note: This is not thread-safe, but I don't believe we need it to be.
-  if (at_exit_manager == NULL) {
-    at_exit_manager = new base::AtExitManager;
   }
 }
 

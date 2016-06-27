@@ -19,6 +19,8 @@
 #include "pagespeed/kernel/http/http_names.h"
 
 
+#include "base/at_exit.h"
+#include "base/lazy_instance.h"
 #include "base/logging.h"
 #include "pagespeed/kernel/base/string_util.h"
 
@@ -33,6 +35,8 @@ const char HttpAttributes::kAccessControlAllowCredentials[] =
     "Access-Control-Allow-Credentials";
 const char HttpAttributes::kAge[] = "Age";
 const char HttpAttributes::kAllow[] = "Allow";
+const char HttpAttributes::kAltSvc[] = "Alt-Svc";
+const char HttpAttributes::kAlternateProtocol[] = "Alternate-Protocol";
 const char HttpAttributes::kAttachment[] = "attachment";
 const char HttpAttributes::kAuthorization[] = "Authorization";
 const char HttpAttributes::kCacheControl[] = "Cache-Control";
@@ -189,43 +193,144 @@ const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
   return "";
 }
 
-StringPieceVector HttpAttributes::SortedHopByHopHeaders() {
-  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
-  const int kReserveSize = 10;
-  int index = 0;
-  StringPieceVector names(kReserveSize);
+namespace {
 
-  // This exact mechanism of initializing the names is used because it allows
-  // populating a StringPieceVector from locally defined string constants
-  // without having runtime calls to strlen to find the length.
-  names[index++] = StringPiece(HttpAttributes::kConnection);
-  names[index++] = StringPiece(HttpAttributes::kKeepAlive);
-  names[index++] = StringPiece(HttpAttributes::kProxyAuthenticate);
-  names[index++] = StringPiece(HttpAttributes::kProxyAuthorization);
-  names[index++] = StringPiece(HttpAttributes::kSetCookie);
-  names[index++] = StringPiece(HttpAttributes::kSetCookie2);
-  names[index++] = StringPiece(HttpAttributes::kTE);
-  names[index++] = StringPiece(HttpAttributes::kTrailers);
-  names[index++] = StringPiece(HttpAttributes::kTransferEncoding);
-  names[index++] = StringPiece(HttpAttributes::kUpgrade);
-  DCHECK_EQ(kReserveSize, index);
-  return names;
+class EndToEndHeadersContainer {
+ public:
+  EndToEndHeadersContainer() {
+    BuildEndToEnd();
+    BuildHopByHop();
+    BuildCachingHeadersToBeRemoved();
+  }
+
+  void BuildEndToEnd() {
+    // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1
+    const int kReserveSize = 36;
+    int index = 0;
+    StringPieceVector names(kReserveSize);
+
+    names[index++] = StringPiece(HttpAttributes::kAccept);
+    names[index++] = StringPiece(HttpAttributes::kAcceptEncoding);
+    names[index++] = StringPiece(HttpAttributes::kAccessControlAllowOrigin);
+    names[index++] =
+        StringPiece(HttpAttributes::kAccessControlAllowCredentials);
+    names[index++] = StringPiece(HttpAttributes::kAge);
+    names[index++] = StringPiece(HttpAttributes::kAllow);
+    names[index++] = StringPiece(HttpAttributes::kAuthorization);
+    names[index++] = StringPiece(HttpAttributes::kCacheControl);
+    names[index++] = StringPiece(HttpAttributes::kContentDisposition);
+    names[index++] = StringPiece(HttpAttributes::kContentEncoding);
+    names[index++] = StringPiece(HttpAttributes::kContentLanguage);
+    names[index++] = StringPiece(HttpAttributes::kContentLength);
+    names[index++] = StringPiece(HttpAttributes::kContentType);
+    names[index++] = StringPiece(HttpAttributes::kCookie);
+    names[index++] = StringPiece(HttpAttributes::kCookie2);
+    names[index++] = StringPiece(HttpAttributes::kDate);
+    names[index++] = StringPiece(HttpAttributes::kEtag);
+    names[index++] = StringPiece(HttpAttributes::kExpires);
+    names[index++] = StringPiece(HttpAttributes::kHost);
+    names[index++] = StringPiece(HttpAttributes::kIfModifiedSince);
+    names[index++] = StringPiece(HttpAttributes::kIfNoneMatch);
+    names[index++] = StringPiece(HttpAttributes::kLastModified);
+    names[index++] = StringPiece(HttpAttributes::kLink);
+    names[index++] = StringPiece(HttpAttributes::kLocation);
+    names[index++] = StringPiece(HttpAttributes::kOrigin);
+    names[index++] = StringPiece(HttpAttributes::kPragma);
+    names[index++] = StringPiece(HttpAttributes::kPurpose);
+    names[index++] = StringPiece(HttpAttributes::kReferer);
+    names[index++] = StringPiece(HttpAttributes::kRefresh);
+    names[index++] = StringPiece(HttpAttributes::kServer);
+    names[index++] = StringPiece(HttpAttributes::kSetCookie2);
+    names[index++] = StringPiece(HttpAttributes::kSetCookie);
+    names[index++] = StringPiece(HttpAttributes::kUserAgent);
+    names[index++] = StringPiece(HttpAttributes::kVary);
+    names[index++] = StringPiece(HttpAttributes::kVia);
+    names[index++] = StringPiece(HttpAttributes::kWarning);
+
+    DCHECK_EQ(kReserveSize, index);
+    end_to_end_ = names;
+  }
+
+  void BuildHopByHop() {
+    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
+    const int kReserveSize = 12;
+    int index = 0;
+    StringPieceVector names(kReserveSize);
+
+    // This exact mechanism of initializing the names is used because it allows
+    // populating a StringPieceVector from locally defined string constants
+    // without having runtime calls to strlen to find the length.
+    names[index++] = StringPiece(HttpAttributes::kAltSvc);
+    names[index++] = StringPiece(HttpAttributes::kAlternateProtocol);
+    names[index++] = StringPiece(HttpAttributes::kConnection);
+    names[index++] = StringPiece(HttpAttributes::kKeepAlive);
+    names[index++] = StringPiece(HttpAttributes::kProxyAuthenticate);
+    names[index++] = StringPiece(HttpAttributes::kProxyAuthorization);
+    names[index++] = StringPiece(HttpAttributes::kSetCookie);
+    names[index++] = StringPiece(HttpAttributes::kSetCookie2);
+    names[index++] = StringPiece(HttpAttributes::kTE);
+    names[index++] = StringPiece(HttpAttributes::kTrailers);
+    names[index++] = StringPiece(HttpAttributes::kTransferEncoding);
+    names[index++] = StringPiece(HttpAttributes::kUpgrade);
+    DCHECK_EQ(kReserveSize, index);
+    hop_by_hop_ = names;
+  }
+
+  void BuildCachingHeadersToBeRemoved() {
+    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
+    const int kReserveSize = 3;
+    int index = 0;
+    StringPieceVector names(kReserveSize);
+
+    // This exact mechanism of initializing the names is used because it allows
+    // populating a StringPieceVector from locally defined string constants
+    // without having runtime calls to strlen to find the length.
+    names[index++] = StringPiece(HttpAttributes::kLastModified);
+    names[index++] = StringPiece(HttpAttributes::kExpires);
+    names[index++] = StringPiece(HttpAttributes::kEtag);
+    DCHECK_EQ(kReserveSize, index);
+    caching_headers_to_be_removed_ = names;
+  }
+
+  const StringPieceVector& end_to_end() const {
+    return end_to_end_;
+  }
+
+  const StringPieceVector& hop_by_hop() const {
+    return hop_by_hop_;
+  }
+
+  const StringPieceVector& caching_headers_to_be_removed() const {
+    return caching_headers_to_be_removed_;
+  }
+
+ private:
+  StringPieceVector end_to_end_;
+  StringPieceVector hop_by_hop_;
+  StringPieceVector caching_headers_to_be_removed_;
+};
+
+
+base::LazyInstance<EndToEndHeadersContainer>
+    headers_container = LAZY_INSTANCE_INITIALIZER;
+
+const EndToEndHeadersContainer& get_headers_container() {
+  return headers_container.Get();
 }
 
-StringPieceVector HttpAttributes::CachingHeadersToBeRemoved() {
-  // http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
-  const int kReserveSize = 3;
-  int index = 0;
-  StringPieceVector names(kReserveSize);
+}  // namespace
 
-  // This exact mechanism of initializing the names is used because it allows
-  // populating a StringPieceVector from locally defined string constants
-  // without having runtime calls to strlen to find the length.
-  names[index++] = StringPiece(HttpAttributes::kLastModified);
-  names[index++] = StringPiece(HttpAttributes::kExpires);
-  names[index++] = StringPiece(HttpAttributes::kEtag);
-  DCHECK_EQ(kReserveSize, index);
-  return names;
+
+const StringPieceVector& HttpAttributes::SortedEndToEndHeaders() {
+  return get_headers_container().end_to_end();
+}
+
+const StringPieceVector& HttpAttributes::SortedHopByHopHeaders() {
+  return get_headers_container().hop_by_hop();
+}
+
+const StringPieceVector& HttpAttributes::CachingHeadersToBeRemoved() {
+  return get_headers_container().caching_headers_to_be_removed();
 }
 
 }  // namespace net_instaweb

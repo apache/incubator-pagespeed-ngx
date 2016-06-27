@@ -716,16 +716,26 @@ TEST_F(ResponseHeadersTest, GetSanitizedProto) {
                       "Vary: User-Agent\r\n"
                       "Set-Cookie2: LA=1275937193\r\n"
                       "Vary: Accept-Encoding\r\n"
+                      "Connection: Foo, bar, Connection, Keep-Alive, "
+                      "Cache-Control,, foo\r\n"
+                      "foo: bar\r\n"
+                      "bar: foo\r\n"
+                      "ShouldRemain: foo\r\n"
                       "\r\n"));
   HttpResponseHeaders proto;
   response_headers_.GetSanitizedProto(&proto);
-  ASSERT_EQ(proto.header_size(), 4);
+  ASSERT_EQ(proto.header_size(), 5);
   EXPECT_EQ(proto.header(0).name(), HttpAttributes::kDate);
+  // Cache-Control is an end-to-end header, and should not be sanitized even
+  // though it is referenced in the Connection: header.
   EXPECT_EQ(proto.header(1).name(), HttpAttributes::kCacheControl);
   EXPECT_EQ(proto.header(1).value(), "max-age=100");
   EXPECT_EQ(proto.header(2).name(), HttpAttributes::kVary);
   EXPECT_EQ(proto.header(2).value(), "User-Agent");
   EXPECT_EQ(proto.header(3).name(), HttpAttributes::kVary);
+  EXPECT_EQ(proto.header(3).value(), "Accept-Encoding");
+  EXPECT_EQ(proto.header(4).name(), "ShouldRemain");
+  EXPECT_EQ(proto.header(4).value(), "foo");
   EXPECT_EQ(proto.status_code(), 200);
 }
 
@@ -2225,6 +2235,43 @@ TEST_F(ResponseHeadersTest, CacheControlPublic) {
   EXPECT_STREQ("no-cache", AddPublicToCacheControl({"no-cache"}));
   EXPECT_STREQ("No-Store", AddPublicToCacheControl({"No-Store"}));
   EXPECT_STREQ("No-Cache", AddPublicToCacheControl({"No-Cache"}));
+}
+
+TEST_F(ResponseHeadersTest, TestHopByHopSanitization) {
+  // RFC hop-by-hop list: http://tools.ietf.org/html/rfc7230#section-6.1
+  ResponseHeaders headers;
+
+  headers.Add(HttpAttributes::kConnection,
+              "Keep-Alive, Foo,, , bar, Cache-Control");
+  headers.Add(HttpAttributes::kKeepAlive, "foo");
+  headers.Add(HttpAttributes::kProxyAuthenticate, "foo");
+  headers.Add(HttpAttributes::kProxyAuthorization, "foo");
+  headers.Add(HttpAttributes::kTE, "foo");
+  headers.Add(HttpAttributes::kTrailers, "foo");
+  headers.Add(HttpAttributes::kTransferEncoding, "foo");
+  headers.Add(HttpAttributes::kUpgrade, "foo");
+  headers.Add(HttpAttributes::kAlternateProtocol, "foo");
+  headers.Add(HttpAttributes::kCacheControl, "foo");
+  // foo: foo is be referenced in "Connection: Foo", and therefore is marked
+  // as hop-by-hop and as such candidate for sanitization.
+  headers.Add("foo", "foo");
+
+  EXPECT_TRUE(headers.Sanitize());
+
+  // After sanitization, only end-to-end header Cache-Control should remain.
+  EXPECT_EQ("HTTP/1.0 0 (null)\r\nCache-Control: foo\r\n\r\n",
+            headers.ToString());
+
+  // Test to make sure we don't screw up if Connection: marks itself as
+  // explicitly hop-by-hop.
+  ResponseHeaders headers2;
+  headers2.Add(HttpAttributes::kConnection,
+               "Connection, Foo");
+  headers2.Add("foo", "foo");
+  headers2.Add("bar", "baz");
+
+  EXPECT_TRUE(headers2.Sanitize());
+  EXPECT_EQ("HTTP/1.0 0 (null)\r\nbar: baz\r\n\r\n", headers2.ToString());
 }
 
 }  // namespace net_instaweb

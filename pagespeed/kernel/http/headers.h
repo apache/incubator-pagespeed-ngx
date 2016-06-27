@@ -137,7 +137,8 @@ template<class Proto> class Headers {
   // Removes all headers whose name is in |names|, which must be in
   // string-insensitive sorted order.  Returns true if anything was
   // removed.
-  static bool RemoveFromHeaders(const StringPiece* names,
+  template<class StringType>
+  static bool RemoveFromHeaders(const StringType* names,
                                 int names_size,
                                 protobuf::RepeatedPtrField<NameValue>* headers);
 

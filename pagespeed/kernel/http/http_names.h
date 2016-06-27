@@ -37,6 +37,8 @@ struct HttpAttributes {
   static const char kAccessControlAllowCredentials[];
   static const char kAge[];
   static const char kAllow[];
+  static const char kAltSvc[];
+  static const char kAlternateProtocol[];
   static const char kAttachment[];
   static const char kAuthorization[];
   static const char kCacheControl[];
@@ -152,6 +154,13 @@ struct HttpAttributes {
   static const char kXSendfile[];
   static const char kXAccelRedirect[];
 
+  // Gets a sorted StringPieceVector containing all the end-to-end headers.
+  // Any fields listed in here should be ignored during sanitization when they
+  // are specified in a Connection: header.
+  // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1
+  // and https://www.mnot.net/blog/2011/07/11/what_proxies_must_do
+  static const StringPieceVector& SortedEndToEndHeaders();
+
   // Gets a sorted StringPieceVector containing all the hop-by-hop headers,
   // plus Set-Cookie and Set-Cookie2, per
   //
@@ -160,7 +169,7 @@ struct HttpAttributes {
   // returning it via StringPieceVector causes us to lose this guarantee and we
   // end up creating temporary GoogleStrings to convert these back to char*.
   // This performance overhead might be revisited if considered important.
-  static StringPieceVector SortedHopByHopHeaders();
+  static const StringPieceVector& SortedHopByHopHeaders();
 
   // Gets a StringPieceVector containing the caching-related headers that should
   // be removed from responses.
@@ -168,7 +177,7 @@ struct HttpAttributes {
   // returning it via StringPieceVector causes us to lose this guarantee and we
   // end up creating temporary GoogleStrings to convert these back to char*.
   // This performance overhead might be revisited if considered important.
-  static StringPieceVector CachingHeadersToBeRemoved();
+  static const StringPieceVector& CachingHeadersToBeRemoved();
 };
 
 namespace HttpStatus {

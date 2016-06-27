@@ -274,6 +274,7 @@ bool IsCommaSeparatedField(const StringPiece& name) {
   if (StringCaseEqual(name, HttpAttributes::kAccept) ||
       StringCaseEqual(name, HttpAttributes::kCacheControl) ||
       StringCaseEqual(name, HttpAttributes::kContentEncoding) ||
+      StringCaseEqual(name, HttpAttributes::kConnection) ||
       StringCaseEqual(name, HttpAttributes::kVary)) {
     return true;
   } else {
@@ -444,8 +445,9 @@ template<class Proto> bool Headers<Proto>::RemoveAllFromSortedArray(
   return removed_anything;
 }
 
-template<class Proto> bool Headers<Proto>::RemoveFromHeaders(
-    const StringPiece* names, int names_size,
+template<class Proto> template<class StringType>
+bool Headers<Proto>::RemoveFromHeaders(
+    const StringType* names, int names_size,
     protobuf::RepeatedPtrField<NameValue>* headers) {
   // Remove all headers that are slated for removal.
   std::vector<bool> to_keep;
@@ -667,7 +669,18 @@ template<class Proto> GoogleString Headers<Proto>::LookupJoined(
 
 // Explicit template class instantiation.
 // See http://www.cplusplus.com/forum/articles/14272/
+template bool Headers<HttpResponseHeaders>::RemoveFromHeaders<StringPiece>(
+    const StringPiece* names,
+    int names_size,
+    protobuf::RepeatedPtrField<NameValue>* headers);
+
+template bool Headers<HttpResponseHeaders>::RemoveFromHeaders<GoogleString>(
+    const GoogleString* names,
+    int names_size,
+    protobuf::RepeatedPtrField<NameValue>* headers);
+
 template class Headers<HttpResponseHeaders>;
 template class Headers<HttpRequestHeaders>;
+
 
 }  // namespace net_instaweb

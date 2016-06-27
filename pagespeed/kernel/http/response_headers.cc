@@ -539,17 +539,83 @@ void ResponseHeaders::SetOriginalContentLength(int64 content_length) {
 }
 
 bool ResponseHeaders::Sanitize() {
-  // Remove cookies, which we will never store in a cache.
-  StringPieceVector names_to_sanitize = HttpAttributes::SortedHopByHopHeaders();
-  return RemoveAllFromSortedArray(&names_to_sanitize[0],
-                                  names_to_sanitize.size());
+  ConstStringStarVector v;
+  bool changed = false;
+
+  // Sanitize any fields marked as hop-by-hop via the Connection: header
+  if (Lookup(HttpAttributes::kConnection, &v)) {
+    for (int i = 0, n = v.size(); i < n; ++i) {
+      StringPiece val = *v[i];
+      if (!IsHopByHopIndication(val)) {
+        continue;
+      }
+
+      if (StringCaseEqual(val, HttpAttributes::kConnection)) {
+        // Don't want to remove it since we have pointers into it, and it's
+        // already hop-by-hop.
+        continue;
+      }
+
+      changed = RemoveAll(*v[i]) || changed;
+    }
+  }
+
+  // Remove cookies plus any well-known hop-by-hop headers, which we will never
+  // store in a cache.
+  const StringPieceVector& names_to_sanitize =
+      HttpAttributes::SortedHopByHopHeaders();
+  changed = RemoveAllFromSortedArray(
+      &names_to_sanitize[0], names_to_sanitize.size()) || changed;
+  return changed;
 }
 
 void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
   Headers<HttpResponseHeaders>::CopyToProto(proto);
   protobuf::RepeatedPtrField<NameValue>* headers = proto->mutable_header();
-  StringPieceVector names_to_sanitize = HttpAttributes::SortedHopByHopHeaders();
+
+  // Note that these need to be deep-copies as we are mutating the underlying
+  // data.
+  StringVector more_names;
+
+  // Mark all headers marked as hop-by-hop in "Connection: " for sanitization.
+  for (int i = 0, n = headers->size(); i < n; ++i) {
+    if (StringCaseEqual(headers->Get(i).name(), HttpAttributes::kConnection)) {
+      StringCompareInsensitive compare;
+      StringPieceVector split;
+      SplitStringPieceToVector(headers->Get(i).value(), ",", &split, true);
+      if (split.empty()) {
+        split.push_back(headers->Get(i).value());
+      }
+
+      // Check each value in Connection: val1, val2, ...
+      for (int j = 0, m = split.size(); j < m; ++j) {
+        StringPiece val = split[j];
+        TrimWhitespace(&val);
+        // Skip values that are connection-tokens, empty, or are defined
+        // as being end-to-end.
+        if (!IsHopByHopIndication(val)) {
+          continue;
+        }
+
+        // Find the position at which we should insert to keep the list sorted.
+        StringVector::iterator up = std::lower_bound(
+            more_names.begin(), more_names.end(), val, compare);
+
+        // Insert when the entry is not already contained.
+        if (up == more_names.end() || !StringCaseEqual(*up, val)) {
+          more_names.insert(up, val.as_string());
+        }
+      }
+    }
+  }
+
+  const StringPieceVector& names_to_sanitize =
+      HttpAttributes::SortedHopByHopHeaders();
   RemoveFromHeaders(&names_to_sanitize[0], names_to_sanitize.size(), headers);
+  // The common case will be that more_names is empty.
+  if (more_names.size() > 0) {
+    RemoveFromHeaders(&more_names[0], more_names.size(), headers);
+  }
 }
 
 namespace {
@@ -1272,6 +1338,19 @@ bool ResponseHeaders::ApplySMaxAge(int s_maxage_sec,
     return false;
   }
   *updated_cache_control = StrCat(existing_cache_control, ", ", s_maxage_str);
+  return true;
+}
+
+bool ResponseHeaders::IsHopByHopIndication(StringPiece val) {
+  StringCompareInsensitive compare;
+  const StringPieceVector& end_to_end = HttpAttributes::SortedEndToEndHeaders();
+
+  if (val.empty() || StringCaseEqual(val, "keep-alive") ||
+      StringCaseEqual(val, "close") || StringCaseStartsWith(val, "timeout=") ||
+      StringCaseStartsWith(val, "max=") ||
+      std::binary_search(end_to_end.begin(), end_to_end.end(), val, compare)) {
+    return false;
+  }
   return true;
 }
 

@@ -196,7 +196,8 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // x-orginal-content-length header.
   void SetContentLength(int64 content_length);
 
-  // Removes cookie headers, and returns true if any changes were made.
+  // Removes hop-by-hop plus cookie headers, and returns true if any changes
+  // were made.
   bool Sanitize();
 
   // Copies the HttpResponseHeaders proto from the response headers to the given
@@ -392,6 +393,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   static bool ApplySMaxAge(int s_maxage_sec,
                            StringPiece existing_cache_control,
                            GoogleString* updated_cache_control);
+
+  // Returns true if the given value should be interpreted as a header being
+  // marked as hop by hop when listed as a value in a Connection: header.
+  static bool IsHopByHopIndication(StringPiece val);
 
  protected:
   virtual void UpdateHook();
