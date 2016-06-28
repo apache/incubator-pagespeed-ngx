@@ -32,9 +32,11 @@ IMAGES_QUALITY="PageSpeedImageRecompressionQuality"
 JPEG_QUALITY="PageSpeedJpegRecompressionQuality"
 WEBP_QUALITY="PageSpeedWebpRecompressionQuality"
 
-run_test gce_public_cache
 run_test initial_header_check
 run_test initial_sanity_checks
+
+# Add new tests here.
+run_test gce_public_cache
 run_test query_params_in_resource_flow
 run_test ipro
 run_test smaxage
