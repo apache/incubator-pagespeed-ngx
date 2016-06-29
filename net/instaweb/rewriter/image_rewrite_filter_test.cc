@@ -1326,6 +1326,20 @@ TEST_F(ImageRewriteTest, ImgTag) {
   RewriteImage("img", kContentTypeJpeg);
 }
 
+TEST_F(ImageRewriteTest, ImgSrcSet) {
+  AddFileToMockFetcher("a.png", kBikePngFile, kContentTypePng, 100);
+  AddFileToMockFetcher("b.png", kCuppaPngFile, kContentTypePng, 100);
+
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+
+  ValidateExpected(
+      "srcset",
+      "<img src=\"a.png\" srcset=\"a.png 1x, b.png 2x\">",
+      "<img src=\"xa.png.pagespeed.ic.0.png\" "
+      "srcset=\"xa.png.pagespeed.ic.0.png 1x, xb.png.pagespeed.ic.0.png 2x\">");
+}
+
 TEST_F(ImageRewriteTest, ImgTagWithComputeStatistics) {
   options()->EnableFilter(RewriteOptions::kComputeStatistics);
   RewriteImage("img", kContentTypeJpeg);

@@ -229,6 +229,9 @@ class ImageRewriteFilter : public RewriteFilter {
   const ContentType* ImageToContentType(const GoogleString& origin_url,
                                         Image* image);
   void BeginRewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
+  void BeginRewriteSrcSet(HtmlElement* element, HtmlElement::Attribute* srcset);
+
+  void ComputePreserveUrls(const RewriteOptions* options, ResourceSlot* slot);
 
   RewriteResult RewriteLoadedResourceImpl(Context* context,
                                           const ResourcePtr& input_resource,

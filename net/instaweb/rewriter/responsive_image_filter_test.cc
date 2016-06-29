@@ -526,12 +526,19 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       "<!--ResponsiveImageFilter: Not adding srcset because of "
       "data-pagespeed-no-transform attribute.-->");
 
+  // Note that here the regular rewrite images filter touches the srcset,
+  // and spams a whole bunch of debug comments. (It's also unable to rewrite
+  // b.png)
   ValidateExpected(
       "with_srcset",
       "<img src=a.jpg width=100 height=100 srcset='a.jpg 1x, b.png 2x'>",
-
       StrCat("<img src=", EncodeImage(100, 100, "a.jpg", "0", "jpg"),
-             " width=100 height=100 srcset='a.jpg 1x, b.png 2x'>"
+             " width=100 height=100 srcset='",
+             EncodeImage(-1, -1, "a.jpg", "0", "jpg"), " 1x, b.png 2x'>",
+             "<!--Image does not appear to need resizing.-->"
+             "<!--Image has no transparent pixels, is sensitive to "
+             "compression noise, and has no animation.-->"
+             "<!--Image does not appear to need resizing.-->"
              "<!--Resized image from 1023x766 to 100x100-->"
              "<!--ResponsiveImageFilter: Not adding srcset because image "
              "already has one.-->"));

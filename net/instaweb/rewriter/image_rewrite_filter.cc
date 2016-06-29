@@ -52,6 +52,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/rewriter/public/srcset_slot.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/controller/central_controller.h"
 #include "pagespeed/controller/expensive_operation_callback.h"
@@ -380,15 +381,23 @@ const char* MessageForInlineResult(InlineResult inline_result) {
 
 class ImageRewriteFilter::Context : public SingleRewriteContext {
  public:
+  enum class Place {
+    kCss,
+    kFetch,
+    kHtmlAttr,
+    kSrcset,
+    kNonCssNested,
+  };
+
   Context(int64 css_image_inline_max_bytes,
           ImageRewriteFilter* filter, RewriteDriver* driver,
           RewriteContext* parent, ResourceContext* resource_context,
-          bool is_css, int html_index, bool in_noscript_element,
+          Place place, int html_index, bool in_noscript_element,
           bool is_resized_using_rendered_dimensions)
       : SingleRewriteContext(driver, parent, resource_context),
         css_image_inline_max_bytes_(css_image_inline_max_bytes),
         filter_(filter),
-        is_css_(is_css),
+        place_(place),
         html_index_(html_index),
         in_noscript_element_(in_noscript_element),
         is_resized_using_rendered_dimensions_(
@@ -425,7 +434,7 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
 
   int64 css_image_inline_max_bytes_;
   ImageRewriteFilter* filter_;
-  bool is_css_;
+  Place place_;
   const int html_index_;
   bool in_noscript_element_;
   bool is_resized_using_rendered_dimensions_;
@@ -561,12 +570,12 @@ void ImageRewriteFilter::Context::Render() {
   CachedResult* result = output_partition(0);
   bool rewrote_url = false;
   ResourceSlot* resource_slot = slot(0).get();
-  if (is_css_ || !has_parent()) {
+  if (place_ == Place::kCss || !has_parent()) {
     InlineResult inline_result;
-    if (is_css_) {
+    if (place_ == Place::kCss) {
       rewrote_url = filter_->FinishRewriteCssImageUrl(
           css_image_inline_max_bytes_, result, resource_slot, &inline_result);
-    } else {  // html
+    } else if (place_ == Place::kHtmlAttr) {
       // We use manual rendering for HTML, as we have to consider whether to
       // inline, and may also pass in width and height attributes.
       HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(
@@ -587,9 +596,10 @@ void ImageRewriteFilter::Context::Render() {
       }
     }
 
-    if (Driver()->options()->Enabled(RewriteOptions::kInlineImages)) {
+    if (Driver()->options()->Enabled(RewriteOptions::kInlineImages) &&
+        (place_ == Place::kCss || place_ == Place::kHtmlAttr)) {
       // Show the debug message for inlining only when this option has been
-      // enabled.
+      // enabled. We also don't inline srcset images.
       // Note: Although debug message is saved to the cached_result, it is
       // *not* cached because the cached_result has already been stored in
       // the cache previously. This is good because the exact debug message
@@ -1406,6 +1416,29 @@ const ContentType* ImageRewriteFilter::ImageToContentType(
   return content_type;
 }
 
+void ImageRewriteFilter::ComputePreserveUrls(
+    const RewriteOptions* options, ResourceSlot* slot) {
+  // Note that in RewriteOptions::Merge we turn off image_preserve_urls
+  // when merging into a configuration that has explicitly
+  // enabled cache_extend_images.
+  //
+  // Consider a hosting provider that turns on "optimize for
+  // bandwidth" mode, and then a site enables resize_images
+  // explicitly.  That should override the image-url-preservation
+  // default that was set at root.  Note that explicitly turning on
+  // RecompressImages doesn't mean we'll want to override
+  // image_preserve_urls rewrite URLs here, since we can still get
+  // the benefit of recompression via IPRO.  But we make an
+  // exception for inlining and image-resizing directives since
+  // those can only be done via url-rewriting.
+  if (options->image_preserve_urls() &&
+      !options->Enabled(RewriteOptions::kResizeImages) &&
+      !options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions) &&
+      !options->Enabled(RewriteOptions::kInlineImages)) {
+    slot->set_preserve_urls(true);
+  }
+}
+
 void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
                                               HtmlElement::Attribute* src) {
   scoped_ptr<ResourceContext> resource_context(new ResourceContext);
@@ -1450,32 +1483,43 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   Context* context = new Context(0 /* No CSS inlining, it's html */,
                                  this, driver(), NULL /*not nested */,
                                  resource_context.release(),
-                                 false /*not css */, image_counter_++,
+                                 Context::Place::kHtmlAttr, image_counter_++,
                                  noscript_element() != NULL,
                                  is_resized_using_rendered_dimensions);
   ResourceSlotPtr slot(driver()->GetSlot(input_resource, element, src));
   context->AddSlot(slot);
 
-  // Note that in RewriteOptions::Merge we turn off image_preserve_urls
-  // when merging into a configuration that has explicitly
-  // enabled cache_extend_images.
-  //
-  // Consider a hosting provider that turns on "optimize for
-  // bandwidth" mode, and then a site enables resize_images
-  // explicitly.  That should override the image-url-preservation
-  // default that was set at root.  Note that explicitly turning on
-  // RecompressImages doesn't mean we'll want to override
-  // image_preserve_urls rewrite URLs here, since we can still get
-  // the benefit of recompression via IPRO.  But we make an
-  // exception for inlining and image-resizing directives since
-  // those can only be done via url-rewriting.
-  if (options->image_preserve_urls() &&
-      !options->Enabled(RewriteOptions::kResizeImages) &&
-      !options->Enabled(RewriteOptions::kResizeToRenderedImageDimensions) &&
-      !options->Enabled(RewriteOptions::kInlineImages)) {
-    slot->set_preserve_urls(true);
-  }
+  ComputePreserveUrls(options, slot.get());
   driver()->InitiateRewrite(context);
+}
+
+void ImageRewriteFilter::BeginRewriteSrcSet(HtmlElement* element,
+                                            HtmlElement::Attribute* srcset) {
+  // TODO(morlovich): This needs to go through a factory method like other
+  // slots do, once more than one filter uses it, so they share, otherwise
+  // they would randomly overwrite each other.
+  RefCountedPtr<SrcSetSlotCollection> slot_collection(
+      new SrcSetSlotCollection(driver(), this, element, srcset));
+
+  for (int i = 0; i < slot_collection->num_image_candidates(); ++i) {
+    SrcSetSlot* slot = slot_collection->slot(i);
+    if (slot == nullptr) {
+      continue;
+    }
+
+    scoped_ptr<ResourceContext> resource_context(new ResourceContext);
+    EncodeUserAgentIntoResourceContext(resource_context.get());
+
+    Context* context = new Context(0 /* No CSS inlining, it's html */,
+                                   this, driver(), nullptr /*not nested */,
+                                   resource_context.release(),
+                                   Context::Place::kSrcset, image_counter_++,
+                                   noscript_element() != nullptr,
+                                   false /*not resizing with rendered dim */);
+    context->AddSlot(RefCountedPtr<ResourceSlot>(slot));
+    ComputePreserveUrls(driver()->options(), slot);
+    driver()->InitiateRewrite(context);
+  }
 }
 
 bool ImageRewriteFilter::FinishRewriteCssImageUrl(
@@ -2051,6 +2095,13 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
 
     BeginRewriteImageUrl(element, attributes[i].url);
   }
+
+  if (element->keyword() == HtmlName::kImg) {
+    HtmlElement::Attribute* srcset = element->FindAttribute(HtmlName::kSrcset);
+    if (srcset != nullptr) {
+      BeginRewriteSrcSet(element, srcset);
+    }
+  }
 }
 
 const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
@@ -2073,7 +2124,8 @@ RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
   EncodeUserAgentIntoResourceContext(resource_context);
   return new Context(0 /*No CSS inlining, it's html */,
                      this, driver(), NULL /*not nested */,
-                     resource_context, false /*not css */,
+                     resource_context,
+                     Context::Place::kFetch,
                      kNotCriticalIndex,
                      false /*not in noscript */,
                      false /*not resized by rendered dimensions*/);
@@ -2101,7 +2153,8 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
   }
   Context* context = new Context(css_image_inline_max_bytes,
                                  this, NULL /* driver*/, parent,
-                                 cloned_context, true /*is css */,
+                                 cloned_context,
+                                 Context::Place::kCss,
                                  kNotCriticalIndex,
                                  false /*not in noscript */,
                                  false /*not resized by rendered dimensions*/);
@@ -2119,8 +2172,8 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
   }
   Context* context = new Context(
       0 /*No Css inling */, this, NULL /* driver */, parent, resource_context,
-      false /*not css */, kNotCriticalIndex, false /*not in noscript */,
-      false /*not resized by rendered dimensions*/);
+      Context::Place::kNonCssNested, kNotCriticalIndex,
+      false /*not in noscript */, false /*not resized by rendered dimensions*/);
   context->AddSlot(slot);
   return context;
 }

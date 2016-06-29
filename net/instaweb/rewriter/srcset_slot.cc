@@ -38,7 +38,11 @@ namespace net_instaweb {
 SrcSetSlotCollection::SrcSetSlotCollection(
     RewriteDriver* driver, CommonFilter* filter, HtmlElement* element,
     HtmlElement::Attribute* attribute)
-    : driver_(driver), element_(element), attribute_(attribute) {
+    : driver_(driver), element_(element), attribute_(attribute),
+      // Note: these need to be deep-copied in case we run as a detached
+      // rewrite, in which case element_ may be dead.
+      begin_line_number_(element->begin_line_number()),
+      end_line_number_(element->end_line_number()) {
   StringPiece input(attribute->DecodedValueOrNull());
   ParseSrcSet(input, &candidates_);
 
@@ -163,12 +167,11 @@ void SrcSetSlot::Render() {
 }
 
 GoogleString SrcSetSlot::LocationString() const {
-  HtmlElement* element = parent_->element();
   return StrCat(parent_->driver()->id(), ": ",
                 "candidate image ", IntegerToString(index_), " of srcset at ",
-                IntegerToString(element->begin_line_number()),
+                IntegerToString(parent_->begin_line_number()),
                 "-",
-                IntegerToString(element->end_line_number()));
+                IntegerToString(parent_->end_line_number()));
 }
 
 }  // namespace net_instaweb

@@ -16,3 +16,9 @@ fetch_until $URL 'grep -c srcset=' 2    # And only two srcsets (for Puzzle.jpg).
 # Make sure all Puzzle URLs are rewritten.
 fetch_until -save $URL 'grep -c [^x]Puzzle.jpg' 0
 check egrep -q 'xPuzzle.jpg.pagespeed.+srcset="([^ ]*images/([0-9]+x[0-9]+)?xPuzzle.jpg.pagespeed.ic.[0-9a-zA-Z_-]+.jpg [0-9.]+x,?)+"' $FETCH_FILE
+
+start_test rewrite_images can rewrite srcset itself
+URL=$TEST_ROOT/image_rewriting/srcset.html?PageSpeedFilters=+rewrite_images,+debug
+fetch_until -save $URL 'grep -c xPuzzle.*1x.*xCuppa.*2x' 1
+
+

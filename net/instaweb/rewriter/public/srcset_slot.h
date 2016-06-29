@@ -75,6 +75,9 @@ class SrcSetSlotCollection : public RefCounted<SrcSetSlotCollection> {
   HtmlElement* element() { return element_; }
   RewriteDriver* driver() { return driver_; }
 
+  int begin_line_number() const { return begin_line_number_; }
+  int end_line_number() const { return end_line_number_; }
+
   // This serializes everything back to the attribute.
   // (Which is sadly quadratic, but the size should be small enough that it's
   //  more practical than trying to coordinate).
@@ -96,6 +99,8 @@ class SrcSetSlotCollection : public RefCounted<SrcSetSlotCollection> {
   RewriteDriver* driver_;
   HtmlElement* element_;
   HtmlElement::Attribute* attribute_;
+  int begin_line_number_;
+  int end_line_number_;
 
   DISALLOW_COPY_AND_ASSIGN(SrcSetSlotCollection);
 };
