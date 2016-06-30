@@ -102,6 +102,10 @@
           '-fasynchronous-unwind-tables',
           # We'd like to add '-Wtype-limits', but this does not work on
           # earlier versions of g++ on supported operating systems.
+          #
+          # Use -DFORTIFY_SOURCE to add extra checks to functions like printf,
+          # and bounds checking to copies.
+          '-D_FORTIFY_SOURCE=2',
         ],
         'cflags_cc!': [
           # Newer Chromium build adds -Wsign-compare which we have some
@@ -111,6 +115,7 @@
         ],
         'cflags_cc': [
           '-frtti',  # Hardy's g++ 4.2 <trl/function> uses typeid
+          '-D_FORTIFY_SOURCE=2',
         ],
         'defines!': [
           # testing/gtest.gyp defines GTEST_HAS_RTTI=0 for itself and all deps.
