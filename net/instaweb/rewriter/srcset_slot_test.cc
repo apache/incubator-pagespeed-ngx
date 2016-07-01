@@ -159,11 +159,12 @@ TEST_F(SrcSetSlotTest, BasicOperation) {
   slot0->Render();
   slot1->Render();
 
-  EXPECT_EQ("srcset_slot_test: candidate image 0 of srcset at 42-43",
+  // Empty descriptor output a bit silly... not expected in real life, though.
+  EXPECT_EQ("srcset_slot_test:42-43 srcset entry for ",
             slot0->LocationString());
-  EXPECT_EQ("srcset_slot_test: candidate image 1 of srcset at 42-43",
+  EXPECT_EQ("srcset_slot_test:42-43 srcset entry for 100w",
             slot1->LocationString());
-  EXPECT_EQ("srcset_slot_test: candidate image 2 of srcset at 42-43",
+  EXPECT_EQ("srcset_slot_test:42-43 srcset entry for 1000w",
             slot2->LocationString());
 
   EXPECT_EQ("<img srcset=\"a.jpg, b.pagespeed.webp 100w, c.png 1000w\"/>",

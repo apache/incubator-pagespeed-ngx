@@ -167,11 +167,14 @@ void SrcSetSlot::Render() {
 }
 
 GoogleString SrcSetSlot::LocationString() const {
-  return StrCat(parent_->driver()->id(), ": ",
-                "candidate image ", IntegerToString(index_), " of srcset at ",
-                IntegerToString(parent_->begin_line_number()),
-                "-",
-                IntegerToString(parent_->end_line_number()));
+  GoogleString loc = StrCat(parent_->driver()->id(), ":",
+                            IntegerToString(parent_->begin_line_number()));
+  if (parent_->end_line_number() != parent_->begin_line_number()) {
+    StrAppend(&loc, "-", IntegerToString(parent_->end_line_number()));
+  }
+
+  StrAppend(&loc, " srcset entry for ", parent_->descriptor(index_));
+  return loc;
 }
 
 }  // namespace net_instaweb
