@@ -3014,7 +3014,7 @@ ngx_int_t ps_preaccess_handler(ngx_http_request_t* r) {
 ngx_int_t ps_etag_filter_init(ngx_conf_t* cf) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
-  if (cfg_m->driver_factory != NULL) {
+  if (cfg_m != NULL && cfg_m->driver_factory != NULL) {
     ngx_http_ef_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ps_etag_header_filter;
   }
@@ -3096,6 +3096,11 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
 
+  // See https://github.com/pagespeed/ngx_pagespeed/issues/1220
+  if (cfg_m == NULL) {
+    return NGX_OK;
+  }
+
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
   ngx_http_core_srv_conf_t** cscfp = static_cast<ngx_http_core_srv_conf_t**>(
@@ -3163,7 +3168,7 @@ void ps_exit_child_process(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
   NgxBaseFetch::Terminate();
-  if (cfg_m->driver_factory != NULL) {
+  if (cfg_m != NULL && cfg_m->driver_factory != NULL) {
     cfg_m->driver_factory->ShutDown();
   }
 }
@@ -3173,7 +3178,7 @@ void ps_exit_child_process(ngx_cycle_t* cycle) {
 ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
-  if (cfg_m->driver_factory == NULL) {
+  if (cfg_m == NULL || cfg_m->driver_factory == NULL) {
     return NGX_OK;
   }
 
