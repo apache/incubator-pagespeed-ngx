@@ -210,7 +210,9 @@ void NgxRewriteDriverFactory::StartThreads() {
 void NgxRewriteDriverFactory::SetMainConf(NgxRewriteOptions* main_options) {
   // Propagate process-scope options from the copy we had during nginx option
   // parsing to our own.
-  default_options()->MergeOnlyProcessScopeOptions(*main_options);
+  if (main_options != NULL) {
+    default_options()->MergeOnlyProcessScopeOptions(*main_options);
+  }
 }
 
 void NgxRewriteDriverFactory::LoggingInit(
