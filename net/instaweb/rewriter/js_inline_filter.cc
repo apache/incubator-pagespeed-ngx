@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
+#include "pagespeed/kernel/util/gzip_inflater.h"
 #include "pagespeed/kernel/util/re2.h"
 
 namespace net_instaweb {
@@ -113,9 +114,7 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
 
 bool JsInlineFilter::ShouldInline(const ResourcePtr& resource,
                                   GoogleString* reason) const {
-  // Don't inline if it's too big or looks like it's trying to get at its own
-  // url.
-
+  // Don't inline if it's too big.
   StringPiece contents(resource->ExtractUncompressedContents());
   if (contents.size() > size_threshold_bytes_) {
     *reason = StrCat("JS not inlined since it's bigger than ",
@@ -123,7 +122,12 @@ bool JsInlineFilter::ShouldInline(const ResourcePtr& resource,
                      " bytes");
     return false;
   }
-
+  // Or if it looks like it's gzip encoded.
+  if (GzipInflater::HasGzipMagicBytes(contents)) {
+    *reason = "JS not inlined because it appears to be gzip-encoded";
+    return false;
+  }
+  // Or if it looks like it's trying to get at its own url.
   if (driver()->options()->avoid_renaming_introspective_javascript() &&
       JavascriptCodeBlock::UnsafeToRename(contents)) {
     *reason = "JS not inlined since it may be looking for its source";

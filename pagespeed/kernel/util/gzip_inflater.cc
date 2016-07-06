@@ -426,4 +426,11 @@ bool GzipInflater::Inflate(StringPiece in, InflateType format, Writer* writer) {
   return true;
 }
 
+// All gzip files start with a ten-byte header beginning with 0x1f8b.
+bool GzipInflater::HasGzipMagicBytes(StringPiece in) {
+  return in.size() >= 10 &&
+      in[0] == static_cast<char>(0x1f) &&
+      in[1] == static_cast<char>(0x8b);
+}
+
 }  // namespace net_instaweb

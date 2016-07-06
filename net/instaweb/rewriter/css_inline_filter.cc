@@ -34,6 +34,7 @@
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/util/gzip_inflater.h"
 
 namespace net_instaweb {
 
@@ -161,16 +162,23 @@ bool CssInlineFilter::HasClosingStyleTag(StringPiece contents) {
 bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
                                    const StringPiece& attrs_charset,
                                    GoogleString* reason) const {
-  // If the contents are bigger than our threshold or the contents contain
-  // "</style>" anywhere, don't inline. If we inline an external stylesheet
-  // containing a "</style>", the <style> tag will be ended early.
-  if (resource->UncompressedContentsSize() > size_threshold_bytes_) {
+  // If the contents are bigger than our threshold, don't inline.
+  StringPiece contents(resource->ExtractUncompressedContents());
+  if (contents.size() > size_threshold_bytes_) {
     *reason = StrCat("CSS not inlined since it's bigger than ",
                      Integer64ToString(size_threshold_bytes_),
                      " bytes");
     return false;
   }
-  if (HasClosingStyleTag(resource->ExtractUncompressedContents())) {
+  // Also don't inline if it looks gzipped.
+  if (GzipInflater::HasGzipMagicBytes(contents)) {
+    *reason = "CSS not inlined because it appears to be gzip-encoded";
+    return false;
+  }
+  // And also not if the contents contain "</style>" anywhere. If we inline an
+  // external stylesheet containing a "</style>", the <style> tag will be ended
+  // early.
+  if (HasClosingStyleTag(contents)) {
     *reason = "CSS not inlined since it contains style closing tag";
     return false;
   }

@@ -53,3 +53,22 @@ fi
 
 test_filter inline_javascript inlines a small JS file.
 fetch_until $URL 'grep -c document.write' 1
+
+start_test inlining gzip-encoded resources
+# If a resource is double-gzipped, or gzipped once but missing the headers,
+# we need to not inline the compressed (binary) version.
+#
+# compressed.css and compressed.js are gzipped on disk, but small enough that
+# PageSpeed would inline them if it were allowed to.  So fetch the page until we
+# see two .pagespeed. resources, then verify that we see the debug comments we
+# expect to see.
+URL="$TEST_ROOT/gzip_precompressed/?PageSpeedFilters=+debug"
+fetch_until -save $URL 'fgrep -c .pagespeed.' 2
+
+OUT=$(cat $FETCH_UNTIL_OUTFILE)
+# First verify that the inliners are actually enabled.
+check_from "$OUT" fgrep "Inline Javascript"
+check_from "$OUT" fgrep "Inline Css"
+# Then check for the debug comments.
+check_from "$OUT" fgrep "JS not inlined because it appears to be gzip-encoded"
+check_from "$OUT" fgrep "CSS not inlined because it appears to be gzip-encoded"

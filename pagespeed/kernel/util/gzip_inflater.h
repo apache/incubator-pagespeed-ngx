@@ -76,6 +76,9 @@ class GzipInflater {
   // if there was some kind of failure, such as a corrupt input.
   static bool Inflate(StringPiece in, InflateType format, Writer* writer);
 
+  // Checks whether in starts with the gzip file signature.
+  static bool HasGzipMagicBytes(StringPiece in);
+
  private:
   friend class GzipInflaterTestPeer;
 
