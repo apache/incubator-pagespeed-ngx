@@ -99,6 +99,36 @@ const char kAsyncGA[] =
     "})();"
     "</script>";
 
+const char kSynchronousDC[] =
+    "%s"
+    "<script>"
+    " var gaJsHost = ((\"https:\" == document.location.protocol) ?"
+    "                \"https://\" : \"http://\");"
+    " document.write(unescape(\"%%3Cscript src='\" + gaJsHost +"
+    "                         \"stats.g.doubleclick.net/dc.js'"
+    "                         type='text/javascript'%%3E%%3C/script%%3E\"));"
+    "</script>"
+    "<script>%s"
+    " try { var pageTracker = _gat._getTracker(\"%s\");"
+    "       pageTracker._trackPageview(); } catch(err) {}"
+    "</script>";
+
+const char kAsyncDC[] =
+    "%s"
+    "<script type='text/javascript'>document.write('another script');</script>"
+    "<script>%s"
+    "var _gaq = _gaq || [];"
+    "_gaq.push(['_setAccount', '%s']);"
+    "_gaq.push(['_trackPageview']);"
+    "(function() {"
+    "  var ga = document.createElement('script');"
+    "  ga.src = ('https:' == document.location.protocol ?"
+    "  'https://' : 'http://') +"
+    "  'stats.g.doubleclick.net/dc.js'';"
+    "  ga.setAttribute('async', 'true');"
+    "  document.documentElement.firstChild.appendChild(ga);"
+    "})();"
+    "</script>";
 
 const char kAsyncGAPart1[] =
     "<script type='text/javascript'>document.write('another script');</script>"
@@ -553,6 +583,17 @@ TEST_F(InsertGAFilterTest, SynchronousGACustomVarExperiment) {
   ValidateExpected("extend sync ga.js for cv experiment", input, output);
 }
 
+TEST_F(InsertGAFilterTest, SynchronousDCCustomVarExperiment) {
+  // dc.js version of SynchronousGACustomVarExperiment.
+  GoogleString experiment_string;
+  SetUpCustomVarExperiment(false, &experiment_string);
+  GoogleString input = StringPrintf(kSynchronousDC, "", "", kGaId);
+  GoogleString output = StringPrintf(kSynchronousDC, "<head/>", StringPrintf(
+      kGAExperimentSnippet, kGASpeedTracking, 4,
+      experiment_string.c_str()).c_str(), kGaId);
+  ValidateExpected("extend sync dc.js for cv experiment", input, output);
+}
+
 TEST_F(InsertGAFilterTest, SynchronousGAContentExperiment) {
   // Show that we can add content experiment tracking to existing synchronous
   // ga.js usage.
@@ -590,6 +631,17 @@ TEST_F(InsertGAFilterTest, AsynchronousGACustomVarExperiment) {
       kGAExperimentSnippet, kGASpeedTracking, 4,
       experiment_string.c_str()).c_str(), kGaId);
   ValidateExpected("extend async ga.js for cv experiment", input, output);
+}
+
+TEST_F(InsertGAFilterTest, AsynchronousDCCustomVarExperiment) {
+  // dc.js version of AsynchronousGACustomVarExperiment.
+  GoogleString experiment_string;
+  SetUpCustomVarExperiment(false, &experiment_string);
+  GoogleString input = StringPrintf(kAsyncDC, "", "", kGaId);
+  GoogleString output = StringPrintf(kAsyncDC, "<head/>", StringPrintf(
+      kGAExperimentSnippet, kGASpeedTracking, 4,
+      experiment_string.c_str()).c_str(), kGaId);
+  ValidateExpected("extend async dc.js for cv experiment", input, output);
 }
 
 TEST_F(InsertGAFilterTest, AsynchronousGAContentExperiment) {

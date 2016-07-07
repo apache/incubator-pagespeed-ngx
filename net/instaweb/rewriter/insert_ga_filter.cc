@@ -221,8 +221,10 @@ void InsertGAFilter::StartElementImpl(HtmlElement* element) {
 // some false positives; the later check is more thorough.
 InsertGAFilter::AnalyticsStatus InsertGAFilter::FindSnippetInScript(
     const GoogleString& s) {
+  // dc.js is a synonym for old-style ga.js
   if (!seen_sync_ga_js_ &&
-      s.find("google-analytics.com/ga.js") != GoogleString::npos) {
+      (s.find("google-analytics.com/ga.js") != GoogleString::npos ||
+       s.find("stats.g.doubleclick.net/dc.js") != GoogleString::npos)) {
     // The synchronous snippet has two parts: first one with
     // [google-analytics.com/ga.js] (no initial dot) and then a later one with
     // ga_id, _getTracker, and _trackPageview.  Track that we've seen what is
@@ -236,7 +238,8 @@ InsertGAFilter::AnalyticsStatus InsertGAFilter::FindSnippetInScript(
   }
   if (s.find(".google-analytics.com/urchin.js") != GoogleString::npos) {
     return kUnusableSnippetFound;  // urchin.js is too old.
-  } else if (s.find(".google-analytics.com/ga.js") != GoogleString::npos) {
+  } else if (s.find(".google-analytics.com/ga.js") != GoogleString::npos ||
+             s.find("stats.g.doubleclick.net/dc.js") != GoogleString::npos) {
     // With the async snippet there is one part that first loads ga.js
     // (using [.google-analytics.com/ga.js], with initial dot) and then has the
     // ga_id (which we checked for above).
