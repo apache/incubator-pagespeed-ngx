@@ -179,4 +179,38 @@ TEST_F(LRUCacheTest, MultiGet) {
   TestMultiGet();
 }
 
+TEST_F(LRUCacheTest, KeyNotFoundWhenUnhealthy) {
+  CheckPut("nameA", "valueA");
+  cache_.set_is_healthy(false);
+  CheckNotFound("nameA");
+}
+
+// Cache starts in 'healthy' state and it should be healthy before
+// performing any checks, otherwise Get will return 'not found'
+TEST_F(LRUCacheTest, DoesNotPutWhenUnhealthy) {
+  cache_.set_is_healthy(false);
+  CheckPut("nameA", "valueA");
+
+  cache_.set_is_healthy(true);
+  CheckNotFound("nameA");
+}
+
+TEST_F(LRUCacheTest, DoesNotDeleteWhenUnhealthy) {
+  CheckPut("nameA", "valueA");
+  cache_.set_is_healthy(false);
+  CheckDelete("nameA");
+
+  cache_.set_is_healthy(true);
+  CheckGet("nameA", "valueA");
+}
+
+TEST_F(LRUCacheTest, DoesNotDeleteWithPrefixWhenUnhealthy) {
+  CheckPut("nameA", "valueA");
+  cache_.set_is_healthy(false);
+  cache_.DeleteWithPrefixForTesting("name");
+
+  cache_.set_is_healthy(true);
+  CheckGet("nameA", "valueA");
+}
+
 }  // namespace net_instaweb
