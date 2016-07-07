@@ -114,6 +114,42 @@ TEST_F(PushPreloadFilterTest, BasicOperation) {
                *links[1]);
 }
 
+TEST_F(PushPreloadFilterTest, IndirectCollected) {
+  // Cover indirect dependencies collected by css_filter here, too.
+  SetResponseWithDefaultHeaders("c.css", kContentTypeCss,
+                                "@import \"i1.css\" all;\n"
+                                "@import \"i2.css\" print, screen;\n"
+                                "@import \"i3.css\" print;         ", 100);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  rewrite_driver()->AddFilters();
+
+  const char kInput[] = "<link rel=stylesheet href=c.css>";
+  const char kOutput[] =
+    "<link rel=stylesheet href=A.c.css.pagespeed.cf.0.css>";
+
+  ValidateExpected("basic_res", kInput, kOutput);
+
+  // Now that we've collected stuff, see if it produces proper headers.
+  ResetDriver();
+  rewrite_driver()->StartParse(kTestDomain);
+  rewrite_driver()->ParseText("<!doctype html><html>");
+  rewrite_driver()->Flush();   // Run filters
+  ConstStringStarVector links;
+
+  EXPECT_TRUE(rewrite_driver()->response_headers()->Lookup(
+                  HttpAttributes::kLink, &links));
+  rewrite_driver()->FinishParse();
+
+  ASSERT_EQ(3, links.size());
+  EXPECT_STREQ("</A.c.css.pagespeed.cf.0.css>; rel=\"preload\"; as=style",
+               *links[0]);
+  EXPECT_STREQ("</i1.css>; rel=\"preload\"; as=style",
+               *links[1]);
+  EXPECT_STREQ("</i2.css>; rel=\"preload\"; as=style",
+               *links[2]);
+  // not i3, since it's print only.
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

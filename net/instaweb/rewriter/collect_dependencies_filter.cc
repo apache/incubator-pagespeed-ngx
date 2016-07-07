@@ -68,7 +68,7 @@ class CollectDependenciesFilter::Context : public RewriteContext {
   void Rewrite(int partition_index,
                CachedResult* partition,
                const OutputResourcePtr& output_resource) override {
-    Dependency* dep = partition->mutable_collected_dependency();
+    Dependency* dep = partition->add_collected_dependency();
     dep->set_url(slot(0)->resource()->url());
     dep->set_content_type(dep_type_);
 
@@ -118,8 +118,8 @@ class CollectDependenciesFilter::Context : public RewriteContext {
 
       Driver()->dependency_tracker()->ReportDependencyCandidate(
           dep_id_,
-          result->has_collected_dependency() ?
-              &result->collected_dependency() : nullptr);
+          result->collected_dependency_size() > 0 ?
+              &result->collected_dependency(0) : nullptr);
     } else {
       Driver()->dependency_tracker()->ReportDependencyCandidate(
           dep_id_, nullptr);

@@ -144,7 +144,7 @@ message CachedResult {
   optional int32 optimized_image_type = 25;
 
   // Used by CollectDependenciesFilter
-  optional Dependency collected_dependency = 26;
+  repeated Dependency collected_dependency = 26;
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general
