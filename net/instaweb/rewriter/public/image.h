@@ -220,6 +220,9 @@ class Image {
   // Returns the resized image debug message.
   virtual const GoogleString& resize_debug_message() = 0;
 
+  // Sets the URL to be printed in debug messages.
+  virtual void SetDebugMessageUrl(const GoogleString& url) = 0;
+
  protected:
   explicit Image(const StringPiece& original_contents);
   explicit Image(ImageType type);

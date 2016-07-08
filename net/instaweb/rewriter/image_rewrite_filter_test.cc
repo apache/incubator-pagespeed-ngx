@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/image_testing_peer.h"
 #include "net/instaweb/rewriter/public/dom_stats_filter.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/mock_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -2286,7 +2287,9 @@ TEST_F(ImageRewriteTest, DebugResizeTest) {
   ParseUrl(page_url, html_input);
   EXPECT_THAT(
       output_buffer_,
-      testing::HasSubstr("<!--Resized image from 1023x766 to 256x192-->"));
+      testing::HasSubstr(
+          "<!--Resized image http://test.com/Puzzle.jpg "
+          "from 1023x766 to 256x192-->"));
 }
 
 TEST_F(ImageRewriteTest, DebugNoResizeTest) {
@@ -2301,7 +2304,52 @@ TEST_F(ImageRewriteTest, DebugNoResizeTest) {
   ParseUrl(page_url, html_input);
   EXPECT_THAT(
       output_buffer_,
-      testing::HasSubstr("<!--Image does not appear to need resizing.-->"));
+      testing::HasSubstr(
+          "<!--Image http://test.com/Puzzle.jpg "
+          "does not appear to need resizing.-->"));
+}
+
+TEST_F(ImageRewriteTest, DebugWithMapRewriteDomain) {
+  options()->EnableFilter(RewriteOptions::kDebug);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kRewriteDomains);
+  options()->WriteableDomainLawyer()->AddRewriteDomainMapping(
+      "external.example.com", kTestDomain, message_handler());
+  rewrite_driver()->AddFilters();
+  GoogleString initial_url = StrCat(kTestDomain, kPuzzleJpgFile);
+  GoogleString page_url = StrCat(kTestDomain, "test.html");
+  AddFileToMockFetcher(initial_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
+  const char html_boilerplate[] = "<img src='%s'>";
+  GoogleString html_input = StringPrintf(html_boilerplate, initial_url.c_str());
+  ParseUrl(page_url, html_input);
+  EXPECT_THAT(
+      output_buffer_,
+      testing::HasSubstr(
+          "<img src='http://external.example.com/Puzzle.jpg'>"
+          "<!--Image http://external.example.com/Puzzle.jpg does "
+          "not appear to need resizing.-->"));
+}
+
+TEST_F(ImageRewriteTest, DebugWithMapRewriteDomainOptOnly) {
+  // w/o rewrite_domains we don't touch the URLs in comments, as they can be
+  // left as such in the page source proper anyway.
+  options()->EnableFilter(RewriteOptions::kDebug);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->WriteableDomainLawyer()->AddRewriteDomainMapping(
+      "external.example.com", kTestDomain, message_handler());
+  rewrite_driver()->AddFilters();
+  GoogleString initial_url = StrCat(kTestDomain, kPuzzleJpgFile);
+  GoogleString page_url = StrCat(kTestDomain, "test.html");
+  AddFileToMockFetcher(initial_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
+  const char html_boilerplate[] = "<img src='%s'>";
+  GoogleString html_input = StringPrintf(html_boilerplate, initial_url.c_str());
+  ParseUrl(page_url, html_input);
+  EXPECT_THAT(
+      output_buffer_,
+      testing::HasSubstr(
+          "<img src='http://test.com/Puzzle.jpg'>"
+          "<!--Image http://test.com/Puzzle.jpg does "
+          "not appear to need resizing.-->"));
 }
 
 TEST_F(ImageRewriteTest, TestLoggingWithoutOptimize) {
@@ -2457,7 +2505,9 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeKeepDims) {
   // Image should have been resized
   EXPECT_THAT(
       output_buffer_,
-      testing::HasSubstr("<!--Resized image from 192x256 to 48x64-->"));
+      testing::HasSubstr(
+          "<!--Resized image http://test.com/IronChef2.gif "
+          "from 192x256 to 48x64-->"));
   // And inlined
   EXPECT_THAT(
       output_buffer_,
@@ -3922,16 +3972,22 @@ TEST_F(ImageRewriteTest, DebugMessageImageInfo) {
 
   const GoogleString expected = StrCat(
       "<img src=", Encode("", "ic", "0", "photo_opaque.gif", "png"), ">"
-      "<!--Image does not appear to need resizing.-->"
-      "<!--Image has no transparent pixels, is not sensitive to compression "
+      "<!--Image http://test.com/photo_opaque.gif "
+      "does not appear to need resizing.-->"
+      "<!--Image http://test.com/photo_opaque.gif "
+      "has no transparent pixels, is not sensitive to compression "
       "noise, and has no animation.-->"
       "<img src=graphic_transparent.png>"
-      "<!--Image does not appear to need resizing.-->"
-      "<!--Image has transparent pixels, is sensitive to compression noise, "
+      "<!--Image http://test.com/graphic_transparent.png "
+      "does not appear to need resizing.-->"
+      "<!--Image http://test.com/graphic_transparent.png "
+      "has transparent pixels, is sensitive to compression noise, "
       "and has no animation.-->"
       "<img src=animated.gif>"
-      "<!--Image does not appear to need resizing.-->"
-      "<!--Image has no transparent pixels, is sensitive to compression noise, "
+      "<!--Image http://test.com/animated.gif "
+      "does not appear to need resizing.-->"
+      "<!--Image http://test.com/animated.gif "
+      "has no transparent pixels, is sensitive to compression noise, "
       "and has animation.-->");
 
   EXPECT_THAT(output_buffer_, HasSubstr(expected));
@@ -3975,8 +4031,10 @@ TEST_F(ImageRewriteTest, DebugMessageUnauthorized) {
   const GoogleString expected = StrCat(
       "<img src=", Encode(kTestDomain, "ic", "0", "photo_opaque.gif", "png"),
       ">"
-      "<!--Image does not appear to need resizing.-->"
-      "<!--Image has no transparent pixels, is not sensitive to compression "
+      "<!--Image http://test.com/photo_opaque.gif "
+      "does not appear to need resizing.-->"
+      "<!--Image http://test.com/photo_opaque.gif "
+      "has no transparent pixels, is not sensitive to compression "
       "noise, and has no animation.-->"
       "<img src=", kUnauthorizedPath, ">",
       "<!--",

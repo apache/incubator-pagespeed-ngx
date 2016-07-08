@@ -535,11 +535,15 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       StrCat("<img src=", EncodeImage(100, 100, "a.jpg", "0", "jpg"),
              " width=100 height=100 srcset='",
              EncodeImage(-1, -1, "a.jpg", "0", "jpg"), " 1x, b.png 2x'>",
-             "<!--Image does not appear to need resizing.-->"
-             "<!--Image has no transparent pixels, is sensitive to "
+             "<!--Image http://test.com/b.png "
+             "does not appear to need resizing.-->"
+             "<!--Image http://test.com/b.png "
+             "has no transparent pixels, is sensitive to "
              "compression noise, and has no animation.-->"
-             "<!--Image does not appear to need resizing.-->"
-             "<!--Resized image from 1023x766 to 100x100-->"
+             "<!--Image http://test.com/a.jpg "
+             "does not appear to need resizing.-->"
+             "<!--Resized image http://test.com/a.jpg "
+             "from 1023x766 to 100x100-->"
              "<!--ResponsiveImageFilter: Not adding srcset because image "
              "already has one.-->"));
 
@@ -548,7 +552,8 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       "<img src=a.jpg>",
 
       StrCat("<img src=", EncodeImage(-1, -1, "a.jpg", "0", "jpg"), ">"
-             "<!--Image does not appear to need resizing.-->"
+             "<!--Image http://test.com/a.jpg "
+             "does not appear to need resizing.-->"
              "<!--ResponsiveImageFilter: Not adding srcset because image does "
              "not have dimensions (or a src URL).-->"));
 
@@ -557,7 +562,8 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
       "<img src=small_1x1.gif width=1 height=1>",
 
       "<img src=small_1x1.gif width=1 height=1>"
-      "<!--Image does not appear to need resizing.-->"
+      "<!--Image http://test.com/small_1x1.gif "
+      "does not appear to need resizing.-->"
       "<!--ResponsiveImageFilter: Not adding srcset to tracking pixel.-->");
 
   ValidateExpected(
@@ -571,35 +577,40 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
              "to the virtual 1.5x image with src=",
              EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width=1534 height=1149-->"
-             "<!--Image does not appear to need resizing.-->"
+             "<!--Image http://test.com/a.jpg "
+             "does not appear to need resizing.-->"
 
              // 2x virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual 2x image with src=",
              EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width=2046 height=1532-->"
-             "<!--Image does not appear to need resizing.-->"
+             "<!--Image http://test.com/a.jpg "
+             "does not appear to need resizing.-->"
 
              // 3x virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual 3x image with src=",
              EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width=3069 height=2298-->"
-             "<!--Image does not appear to need resizing.-->"
+             "<!--Image http://test.com/a.jpg "
+             "does not appear to need resizing.-->"
 
              // Inlinable virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual inlinable 3x image with src=",
              EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width=3069 height=2298-->"
-             "<!--Image does not appear to need resizing.-->"
+             "<!--Image http://test.com/a.jpg "
+             "does not appear to need resizing.-->"
 
              // Full virtual image debug messages:
              "<!--ResponsiveImageFilter: Any debug messages after this refer "
              "to the virtual full-sized image with src=",
              EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
              " width= height=-->"
-             "<!--Image does not appear to need resizing.-->"
+             "<!--Image http://test.com/a.jpg "
+             "does not appear to need resizing.-->"
 
              // Actual image + debug messages:
              "<img src=", EncodeImage(-1, -1, "a.jpg", "0", "jpg"),
@@ -612,7 +623,8 @@ TEST_F(ResponsiveImageFilterTest, Debug) {
              "because it is the same as previous candidate.-->"
              "<!--ResponsiveImageFilter: Not adding 1.5x candidate to srcset "
              "because it is the same as previous candidate.-->"
-             "<!--Image does not appear to need resizing.-->"));
+             "<!--Image http://test.com/a.jpg "
+             "does not appear to need resizing.-->"));
 
   ValidateExpected(
       "same_src",

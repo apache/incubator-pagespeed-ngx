@@ -223,6 +223,11 @@ class ImageImpl : public Image {
     return resize_debug_message_;
   }
 
+  void SetDebugMessageUrl(const GoogleString& url) override {
+    // We add a space here so we can format-in empty one by default.
+    debug_message_url_ = StrCat(" ", url);
+  }
+
   bool GenerateBlankImage();
 
   StringPiece original_contents() { return original_contents_; }
@@ -330,6 +335,7 @@ class ImageImpl : public Image {
   Timer* timer_;
   GoogleString debug_message_;
   GoogleString resize_debug_message_;
+  GoogleString debug_message_url_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageImpl);
 };
@@ -674,7 +680,9 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
                            original_contents_.length(),
                            handler_.get()));
   if (image_reader == NULL) {
-    resize_debug_message_ = "Cannot resize: Cannot open the image to resize";
+    resize_debug_message_ =
+        StringPrintf("Cannot resize: Cannot open the image%s to resize",
+                     debug_message_url_.c_str());
     PS_LOG_INFO(handler_, "Cannot open the image to resize.");
     return false;
   }
@@ -682,7 +690,9 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
   ScanlineResizer resizer(handler_.get());
   if (!resizer.Initialize(image_reader.get(), new_dim.width(),
                           new_dim.height())) {
-    resize_debug_message_ = "Cannot resize: Unable to initialize resizer";
+    resize_debug_message_ =
+        StringPrintf("Cannot resize%s: Unable to initialize resizer",
+                     debug_message_url_.c_str());
     return false;
   }
 
@@ -720,7 +730,9 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
       break;
 
     default:
-      resize_debug_message_ = "Cannot resize: Unsupported image format";
+      resize_debug_message_ =
+          StringPrintf("Cannot resize%s: Unsupported image format",
+                       debug_message_url_.c_str());
       PS_LOG_DFATAL(handler_, "Unsupported image format");
   }
 
@@ -732,16 +744,22 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
   void* scanline = NULL;
   while (resizer.HasMoreScanLines()) {
     if (!resizer.ReadNextScanline(&scanline)) {
-      resize_debug_message_ = "Cannot resize: Reading image failed";
+      resize_debug_message_ =
+          StringPrintf("Cannot resize%s: Reading image failed",
+                       debug_message_url_.c_str());
       return false;
     }
     if (!writer->WriteNextScanline(scanline)) {
-      resize_debug_message_ = "Cannot resize: Writing image failed";
+      resize_debug_message_ =
+          StringPrintf("Cannot resize%s: Writing image failed",
+                       debug_message_url_.c_str());
       return false;
     }
   }
   if (!writer->FinalizeWrite()) {
-    resize_debug_message_ = "Cannot resize: Finalizing writing image failed";
+    resize_debug_message_ =
+        StringPrintf("Cannot resize%s: Finalizing writing image failed",
+                     debug_message_url_.c_str());
     return false;
   }
 
@@ -751,7 +769,9 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
   output_contents_.clear();
   resized_dimensions_ = new_dim;
   resize_debug_message_ = StringPrintf(
-      "Resized image from %dx%d to %dx%d", dims_.width(), dims_.height(),
+      "Resized image%s from %dx%d to %dx%d",
+      debug_message_url_.c_str(),
+      dims_.width(), dims_.height(),
       resized_dimensions_.width(), resized_dimensions_.height());
   return true;
 }
@@ -1028,9 +1048,10 @@ inline bool ImageImpl::ComputeOutputContentsFromGifOrPng(
                &is_animated, &has_transparency, &is_photo,
                NULL /* quality */, NULL /* reader */, handler_.get());
 
-  debug_message_ = StringPrintf("Image has%s transparent pixels,"
+  debug_message_ = StringPrintf("Image%s has%s transparent pixels,"
                                 " is%s sensitive to compression noise, and"
                                 " has%s animation.",
+                                debug_message_url_.c_str(),
                                 (has_transparency ? "" : " no"),
                                 (is_photo ? " not" : ""),
                                 (is_animated ? "" : " no"));

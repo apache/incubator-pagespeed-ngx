@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/css_util.h"
+#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -424,6 +425,9 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
     AddLinkRelCanonicalForFallbackHeaders(headers);
     SingleRewriteContext::FixFetchFallbackHeaders(cached_result, headers);
   }
+
+  using RewriteContext::Options;
+  using RewriteContext::FindServerContext;
 
  private:
   class InvokeRewriteFunction;
@@ -911,7 +915,7 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
 // Resize image if necessary, returning true if this resizing succeeds and false
 // if it's unnecessary or fails.
 bool ImageRewriteFilter::ResizeImageIfNecessary(
-    const RewriteContext* rewrite_context, const GoogleString& url,
+    const Context* rewrite_context, const GoogleString& url,
     ResourceContext* resource_context, Image* image, CachedResult* cached) {
   bool resized = false;
   // Begin by resizing the image if necessary
@@ -919,7 +923,9 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
   image->Dimensions(&image_dim);
 
   if (image_dim.width() <= 0 || image_dim.height() <= 0) {
-    cached->add_debug_message("Cannot resize: Image must be at least 1x1");
+    cached->add_debug_message(
+        StringPrintf("Cannot resize %s: Image must be at least 1x1",
+                     UrlForDebugMessages(rewrite_context).c_str()));
     return false;
   }
 
@@ -948,7 +954,9 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
                      desired_dim->width(), desired_dim->height());
     cached->add_debug_message(image->resize_debug_message());
   } else {
-    cached->add_debug_message("Image does not appear to need resizing.");
+    cached->add_debug_message(
+        StringPrintf("Image %s does not appear to need resizing.",
+                     UrlForDebugMessages(rewrite_context).c_str()));
   }
 
   // Cache image dimensions, including any resizing we did.
@@ -1073,6 +1081,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   int optimized_size = original_size;
   bool is_recompressed = false;
   bool is_resized = false;
+  image->SetDebugMessageUrl(UrlForDebugMessages(rewrite_context));
 
   if (original_image_type == IMAGE_UNKNOWN) {
     image_rewrites_dropped_intentionally_->Add(1);
@@ -1270,6 +1279,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       low_image.reset(NewImage(image->Contents(), input_resource->url(),
           server_context()->filename_prefix(), image_options,
           timer, message_handler));
+      low_image->SetDebugMessageUrl(UrlForDebugMessages(rewrite_context));
     }
     low_image->SetTransformToLowRes();
     if (ShouldInlinePreview(low_image->Contents().size(),
@@ -1800,6 +1810,35 @@ void ImageRewriteFilter::SaveDebugMessageToCache(const GoogleString& message,
     // to the parent automatically, and we need to be replayable independently.
     cached_result->add_debug_message(message);
   }
+}
+
+GoogleString ImageRewriteFilter::UrlForDebugMessages(
+    const Context* rc) const {
+  GoogleString slot_url = rc->slot(0)->resource()->url();
+  GoogleUrl url(slot_url);
+  if (!url.IsWebValid()) {
+    return slot_url;
+  }
+
+  // If we're adjusting all the URLs based on domain lawyer, we should do so
+  // with comments we add. If unoptimized URLs are left as is, we can do so
+  // with debug comments as well.
+  if (!rc->Options()->Enabled(RewriteOptions::kRewriteDomains)) {
+    return slot_url;
+  }
+
+  GoogleString mapped;
+  if (DomainRewriteFilter::Rewrite(url.Spec(), url,
+                                   rc->FindServerContext(),
+                                   rc->Options(),
+                                   true, /* apply sharding */
+                                   true, /* apply_domain_suffix*/
+                                   &mapped)
+       == DomainRewriteFilter::kRewroteDomain) {
+    return mapped;
+  }
+
+  return slot_url;
 }
 
 bool ImageRewriteFilter::IsHtmlCriticalImage(StringPiece image_url) const {
