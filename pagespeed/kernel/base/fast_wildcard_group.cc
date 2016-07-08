@@ -33,10 +33,6 @@
 namespace net_instaweb {
 
 namespace {
-// Don't generate a hash unless there are this many
-// non-wildcard-only patterns.
-const int kMinPatterns = 11;
-
 // Maximum rolling hash window size
 const int32 kMaxRollingHashWindow = 256;
 
@@ -266,23 +262,24 @@ bool FastWildcardGroup::Match(const StringPiece& str, bool allow) const {
     return allow;
   }
   int max_effective_index = kNoEntry;
-  // Start by matching against all-wildcard patterns in reverse order,
-  // stopping if a match is found (since earlier matches will have
-  // a smaller index and be overridden by the already-found match).
-  // TODO(jmaessen): These patterns all devolve to
-  // a string length check (== or >=).  Consider optimizing them.
-  for (int i = wildcard_only_indices_.size() - 1; i >= 0; --i) {
+  // Start by matching against all-wildcard patterns in reverse order.  Their
+  // indices are stored in reverse index order in wildcard_only_indices, so
+  // traverse it forwards.  Stop if a match is found (since earlier matches will
+  // have a smaller index and be overridden by the already-found match).
+  // TODO(jmaessen): These patterns all devolve to a string length check (== or
+  // >=).  Consider optimizing them.
+  for (int i = 0, sz = wildcard_only_indices_.size(); i < sz; ++i) {
     int index = wildcard_only_indices_[i];
     if (wildcards_[index]->Match(str)) {
       max_effective_index = effective_indices_[index];
       break;
     }
   }
+  int exit_effective_index = wildcards_.size() - 1;
   int rolling_end = str.size() - rolling_hash_length;
-  if (rolling_end >= 0) {
+  if (max_effective_index < exit_effective_index && rolling_end >= 0) {
     // Do a Rabin-Karp rolling match through the string.
     uint64 rolling_hash = RollingHash(str.data(), 0, rolling_hash_length);
-    int exit_effective_index = wildcards_.size() - 1;
       // Uses signed arithmetic for correct comparison below.
     for (int ofs = 0;
          max_effective_index < exit_effective_index && ofs <= rolling_end; ) {

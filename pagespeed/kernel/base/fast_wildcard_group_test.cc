@@ -139,6 +139,54 @@ TEST_F(FastWildcardGroupTest, AppendSequenceLarge) {
   Append();
 }
 
+TEST_F(FastWildcardGroupTest, AllowDisallowCompiled) {
+  FastWildcardGroup group;
+  group.Disallow("*");
+  // Pad the group with irrelevant stuff to force it to be compiled.
+  for (int i = 0; i < FastWildcardGroup::kMinPatterns; ++i) {
+    group.Allow("a");
+  }
+  group.Allow("*");
+
+  EXPECT_TRUE(group.Match("a", true));
+  EXPECT_TRUE(group.Match("b", true));
+  EXPECT_TRUE(group.Match("c", true));
+}
+
+TEST_F(FastWildcardGroupTest, AllowDisallowCompiledLarger) {
+  FastWildcardGroup group;
+  group.Allow("*");
+  // Pad the group with irrelevant stuff to force it to be compiled.
+  for (int i = 0; i < FastWildcardGroup::kMinPatterns; ++i) {
+    group.Disallow("a");
+  }
+  group.Disallow("*");
+  for (int i = 0; i < FastWildcardGroup::kMinPatterns; ++i) {
+    group.Allow("c");
+  }
+
+  EXPECT_FALSE(group.Match("a", true));
+  EXPECT_FALSE(group.Match("b", true));
+  EXPECT_TRUE(group.Match("c", true));
+}
+
+TEST_F(FastWildcardGroupTest, AllowDisallowLargeWildcardOnly) {
+  FastWildcardGroup group;
+  group.Allow("?");
+  // Pad the group with irrelevant stuff to force it to be compiled.
+  for (int i = 0; i < FastWildcardGroup::kMinPatterns; ++i) {
+    group.Allow("aa");
+  }
+  group.Disallow("??");
+
+  EXPECT_TRUE(group.Match("a", true));
+  EXPECT_FALSE(group.Match("aa", true));
+  EXPECT_TRUE(group.Match("aaa", true));
+  EXPECT_TRUE(group.Match("a", false));
+  EXPECT_FALSE(group.Match("aa", false));
+  EXPECT_FALSE(group.Match("aaa", false));
+}
+
 TEST_F(FastWildcardGroupTest, HardCodedDefault) {
   HardCodedDefault();
 }

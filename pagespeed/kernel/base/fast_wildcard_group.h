@@ -93,6 +93,11 @@ don't get long, and all failed probes terminate in an empty bucket.
 
 class FastWildcardGroup {
  public:
+  // Don't generate a hash unless there are this many non-wildcard-only
+  // patterns.  Exposed for testing purposes (we can't use FRIEND_TEST here for
+  // open-source dependency reasons).
+  static const int kMinPatterns = 11;
+
   FastWildcardGroup()
       : rolling_hash_length_(kUncompiled) { }
   FastWildcardGroup(const FastWildcardGroup& src)
@@ -150,7 +155,7 @@ class FastWildcardGroup {
   // Information that is computed during compilation.
   mutable std::vector<uint64> rolling_hashes_;  // One per wildcard
   mutable std::vector<int> effective_indices_;  // One per wildcard
-  mutable std::vector<int> wildcard_only_indices_;
+  mutable std::vector<int> wildcard_only_indices_;  // Reverse order
   mutable std::vector<int> pattern_hash_index_;  // hash table
   mutable AtomicInt32 rolling_hash_length_;
 
