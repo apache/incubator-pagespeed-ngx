@@ -284,6 +284,12 @@ const char UserAgentMatcherTestBase::kRoverUserAgent[] =
 const char UserAgentMatcherTestBase::kSafariUserAgent[] =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.51.22 "
     "(KHTML, like Gecko) Version/5.1.1 Safari/534.51.22";
+const char UserAgentMatcherTestBase::kSafari6UserAgent[] =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_4) AppleWebKit/536.25 "
+    "(KHTML, like Gecko) Version/6.0 Safari/536.25";
+const char UserAgentMatcherTestBase::kSafari9UserAgent[] =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/601.6.17 "
+    "(KHTML, like Gecko) Version/9.1.1 Safari/601.6.17";
 const char UserAgentMatcherTestBase::kSAGEMMobileUserAgent[] =
     "SAGEM-my202C/Orange1.0 UP.Browser/5.0.5.6 (GUI)";
 const char UserAgentMatcherTestBase::kSAGEMUserAgent[] =

@@ -442,6 +442,10 @@ TEST_F(UserAgentMatcherTest, SupportsDnsPrefetch) {
       kIe9UserAgent));
   EXPECT_TRUE(user_agent_matcher_->SupportsDnsPrefetch(
       kFirefox5UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsDnsPrefetch(
+      kSafari6UserAgent));
+  EXPECT_TRUE(user_agent_matcher_->SupportsDnsPrefetch(
+      kSafari9UserAgent));
   for (int i = 0; i < kIe11UserAgentsArraySize; ++i) {
     EXPECT_TRUE(user_agent_matcher_->SupportsDnsPrefetch(
         kIe11UserAgents[i]));

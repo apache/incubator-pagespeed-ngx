@@ -215,11 +215,10 @@ const char* kWebpAnimatedBlacklist[] = {
   "*CriOS/31.*",
 };
 
-// TODO(rahulbansal): We haven't added Safari here since it supports dns
-// prefetch only from 5.0.1 which causes the wildcard to be a bit messy.
 const char* kInsertDnsPrefetchWhitelist[] = {
   "*Chrome/*",
   "*Firefox/*",
+  "*Safari/*",
   // Plus IE, see code below.
   "*Wget*",
   // The following user agents are used only for internal testing
@@ -230,6 +229,15 @@ const char* kInsertDnsPrefetchBlacklist[] = {
   "*Firefox/1.*",
   "*Firefox/2.*",
   "*Firefox/3.*",
+  // Safari indicates version with a separate Version/N.N.N token that appears
+  // somewhere before the Safari/ token.  This only started with version 3, but
+  // versions before 3 are 10+ years old at this point and won't run on any
+  // supported OS.
+  "*Version/3.*Safari/*",
+  "*Version/4.*Safari/*",
+  // 5.0.1+ actually did support it, but that's long obsolete, so don't bother
+  // contorting the list to include it.
+  "*Version/5.*Safari/*",
   "*MSIE 5.*",
   "*MSIE 6.*",
   "*MSIE 7.*",
