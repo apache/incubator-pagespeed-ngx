@@ -1689,11 +1689,13 @@
         '<(DEPTH)/third_party/aprutil/aprutil.gyp:include',
         '<(DEPTH)/third_party/domain_registry_provider/src/domain_registry/domain_registry.gyp:init_registry_tables_lib',
         '<(DEPTH)/third_party/grpc/grpc.gyp:grpc_cpp',
+        '<(DEPTH)/third_party/hiredis/hiredis.gyp:hiredis',
       ],
       'sources': [
         '<(DEPTH)/pagespeed/system/add_headers_fetcher.cc',
         '<(DEPTH)/pagespeed/system/admin_site.cc',
         '<(DEPTH)/pagespeed/system/apr_mem_cache.cc',
+        '<(DEPTH)/pagespeed/system/redis_cache.cc',
         '<(DEPTH)/pagespeed/system/apr_thread_compatible_pool.cc',
         '<(DEPTH)/pagespeed/system/controller_manager.cc',
         '<(DEPTH)/pagespeed/system/in_place_resource_recorder.cc',
