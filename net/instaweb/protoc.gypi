@@ -48,7 +48,7 @@
           'variables': {
             'protoc_args': [
               '--plugin=protoc-gen-grpc=<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)grpc_cpp_plugin<(EXECUTABLE_SUFFIX)',
-              '--grpc_out=<(protoc_out_dir)',
+              '--grpc_out=services_namespace=grpc:<(protoc_out_dir)',
             ],
           },
           'inputs': [

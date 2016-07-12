@@ -129,6 +129,7 @@ BASE_LIBS = \
   pagespeed/libpagespeed_base_test_infrastructure.a \
   pagespeed/libpagespeed_cache.a \
   pagespeed/libpagespeed_controller.a \
+  pagespeed/libpagespeed_controller_proto.a \
   pagespeed/libpagespeed_html.a \
   pagespeed/libpagespeed_html_gperf.a \
   pagespeed/libpagespeed_http.a \

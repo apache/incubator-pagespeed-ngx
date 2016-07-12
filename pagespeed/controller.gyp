@@ -22,7 +22,7 @@
   },
   'targets': [
     {
-      'target_name': 'controller_proto',
+      'target_name': 'pagespeed_controller_proto',
       'variables': {
         'instaweb_protoc_subdir': 'pagespeed/controller',
         'has_services': 1,
@@ -42,6 +42,7 @@
       'type': '<(library)',
       'sources': [
         'controller/central_controller.cc',
+        'controller/central_controller_rpc_server.cc',
         'controller/compatible_central_controller.cc',
         'controller/expensive_operation_callback.cc',
         'controller/in_process_central_controller.cc',
@@ -55,7 +56,7 @@
         '<(DEPTH)',
       ],
       'dependencies': [
-        ':controller_proto',
+        ':pagespeed_controller_proto',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/grpc/grpc.gyp:grpc_cpp',
       ],
