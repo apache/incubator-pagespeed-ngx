@@ -499,16 +499,22 @@ bool CssHierarchy::RollUpStylesheets() {
 
   if (flattening_succeeded_) {
     // Flattening succeeded so delete our @charset and @import rules then
-    // merge our children's rulesets (only) into ours.
+    // merge our children's rulesets and @font-faces (only) into ours.
     stylesheet_->mutable_charsets().clear();
     STLDeleteElements(&stylesheet_->mutable_imports());
     Css::Rulesets& target = stylesheet_->mutable_rulesets();
+    Css::FontFaces& fonts_target = stylesheet_->mutable_font_faces();
     for (int i = n - 1; i >= 0; --i) {  // reverse order
       Css::Stylesheet* stylesheet = children_[i]->stylesheet_.get();
       if (stylesheet != NULL) {  // NULL if empty
         Css::Rulesets& source = stylesheet->mutable_rulesets();
         target.insert(target.begin(), source.begin(), source.end());
         source.clear();
+
+        Css::FontFaces& fonts_source = stylesheet->mutable_font_faces();
+        fonts_target.insert(fonts_target.begin(),
+                            fonts_source.begin(), fonts_source.end());
+        fonts_source.clear();
       }
     }
   }

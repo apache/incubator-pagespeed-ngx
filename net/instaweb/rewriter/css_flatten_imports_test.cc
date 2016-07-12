@@ -952,6 +952,15 @@ TEST_F(CssFlattenImportsTest, FlattenAllMedia) {
                              kExpectSuccess | kNoClearFetcher);
 }
 
+TEST_F(CssFlattenImportsTest, FlattenFontFace) {
+  const char kStylesFont[] = "@import url(font.css);";
+  SetResponseWithDefaultHeaders("font.css", kContentTypeCss,
+                                "@font-face { font-family: 'cyborgo'; }", 100);
+  ValidateRewriteExternalCss("flatten_font_face", kStylesFont,
+                             "@font-face{font-family:'cyborgo'}",
+                             kExpectSuccess | kNoClearFetcher);
+}
+
 TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   const GoogleString css_screen =
       StrCat("@media screen{", kSimpleCss, "}");
