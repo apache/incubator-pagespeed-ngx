@@ -273,6 +273,7 @@ class RewriteOptions {
   static const char kFlushBufferLimitBytes[];
   static const char kFlushHtml[];
   static const char kFlushMoreResourcesEarlyIfTimePermits[];
+  static const char kFollowFlushes[];
   static const char kGoogleFontCssInlineMaxBytes[];
   static const char kForbidAllDisabledFilters[];
   static const char kHideRefererUsingMeta[];
@@ -2336,6 +2337,9 @@ class RewriteOptions {
     return flush_more_resources_early_if_time_permits_.value();
   }
 
+  void set_follow_flushes(bool x) { set_option(x, &follow_flushes_); }
+  bool follow_flushes() const { return follow_flushes_.value(); }
+
   void set_flush_more_resources_in_ie_and_firefox(bool x) {
     set_option(x, &flush_more_resources_in_ie_and_firefox_);
   }
@@ -3864,6 +3868,9 @@ class RewriteOptions {
   Option<bool> respect_vary_;
   Option<bool> respect_x_forwarded_proto_;
   Option<bool> flush_html_;
+  // If set to true, ProxyFetch will request a flush on its RewriteDriver when
+  // Flush() is called on it.
+  Option<bool> follow_flushes_;
   // Should we serve stale responses if the fetch results in a server side
   // error.
   Option<bool> serve_stale_if_fetch_error_;

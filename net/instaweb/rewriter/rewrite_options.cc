@@ -136,6 +136,7 @@ const char RewriteOptions::kFlushBufferLimitBytes[] = "FlushBufferLimitBytes";
 const char RewriteOptions::kFlushHtml[] = "FlushHtml";
 const char RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits[] =
     "FlushMoreResourcesEarlyIfTimePermits";
+const char RewriteOptions::kFollowFlushes[] = "FollowFlushes";
 const char RewriteOptions::kForbidAllDisabledFilters[] =
     "ForbidAllDisabledFilters";
 const char RewriteOptions::kGoogleFontCssInlineMaxBytes[] =
@@ -1578,6 +1579,12 @@ void RewriteOptions::AddProperties() {
       "fretp", kFlushMoreResourcesEarlyIfTimePermits,
       kDirectoryScope,
       NULL, true);  // TODO(jmarantz): implement for mod_pagespeed.
+  AddBaseProperty(
+      true, &RewriteOptions::follow_flushes_, "ff", kFollowFlushes,
+      kDirectoryScope,
+      "Attempt to mirror incoming flushes for html streams in the output "
+      "when ProxyFetch is used.",
+      true);
   AddRequestProperty(
       false,
       &RewriteOptions::flush_more_resources_in_ie_and_firefox_,

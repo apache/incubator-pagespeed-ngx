@@ -980,6 +980,7 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kFlushBufferLimitBytes,
     RewriteOptions::kFlushHtml,
     RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits,
+    RewriteOptions::kFollowFlushes,
     RewriteOptions::kForbidAllDisabledFilters,
     RewriteOptions::kGoogleFontCssInlineMaxBytes,
     RewriteOptions::kHideRefererUsingMeta,

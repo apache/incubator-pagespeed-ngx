@@ -357,6 +357,7 @@ class ProxyFetch : public SharedAsyncFetch {
   friend class ProxyFetchPropertyCallbackCollector;
   friend class MockProxyFetch;
   FRIEND_TEST(ProxyFetchTest, TestInhibitParsing);
+  FRIEND_TEST(ProxyFetchTest, TestFollowFlushes);
 
   // Called by ProxyFetchPropertyCallbackCollector when all property-cache
   // fetches are complete.  This function takes ownership of collector.

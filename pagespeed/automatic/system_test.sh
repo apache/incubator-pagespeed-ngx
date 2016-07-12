@@ -92,6 +92,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   run_test invalid_host_header
   run_test optimize_to_webp
   run_test image_quality_and_response
+  run_test follow_flushes
 fi
 
 run_test content_length

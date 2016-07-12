@@ -32,6 +32,7 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -39,6 +40,7 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/thread/mock_scheduler.h"
 #include "pagespeed/kernel/thread/thread_synchronizer.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/platform.h"
@@ -308,6 +310,91 @@ TEST_F(ProxyFetchTest, TestInhibitParsing) {
   }
 
   mock_proxy_fetch->Done(true);
+}
+
+namespace {
+
+class FlushLoggingStringAsyncFetch : public StringAsyncFetch {
+ public:
+  explicit FlushLoggingStringAsyncFetch(
+      const RequestContextPtr& request_context)
+      : StringAsyncFetch(request_context) {}
+
+  virtual ~FlushLoggingStringAsyncFetch() {}
+
+  bool HandleFlush(MessageHandler* handler) override {
+    HandleWrite("|Flush|", handler);
+    return true;
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(FlushLoggingStringAsyncFetch);
+};
+
+}  // namespace
+
+TEST_F(ProxyFetchTest, TestFollowFlushes) {
+  NullMessageHandler handler;
+  RewriteOptions* options = server_context()->global_options();
+  options->ClearSignatureForTesting();
+  options->DisableFilter(RewriteOptions::kAddHead);
+  options->set_follow_flushes(true);
+  options->ComputeSignature();
+  FlushLoggingStringAsyncFetch fetch(
+      RequestContext::NewTestRequestContext(
+          server_context()->thread_system()));
+  fetch.response_headers()->Add("Content-Type", "text/html");
+  ProxyFetchFactory factory(server_context_);
+  MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
+      &fetch, &factory, server_context());
+  mock_proxy_fetch->response_headers()->ComputeCaching();
+
+  // To get a more predictable output with regard to flush markers, we wait
+  // for flushes to be fully processed before continuing. ProxyFetch may
+  // otherwise aggregate, reposition, or ignore induced flushes.
+  mock_proxy_fetch->Write("<html><d>1</d>", &handler);
+  mock_proxy_fetch->Flush(&handler);
+  mock_scheduler()->AwaitQuiescence();
+  mock_proxy_fetch->Write("<d>2</d></html>", &handler);
+  mock_proxy_fetch->Flush(&handler);
+  mock_scheduler()->AwaitQuiescence();
+
+  // Verify we are parsing HTML.
+  EXPECT_TRUE(mock_proxy_fetch->started_parse_);
+
+  mock_proxy_fetch->Done(true);
+  mock_scheduler()->AwaitQuiescence();
+  EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
+  EXPECT_EQ("<html><d>1</d>|Flush|<d>2</d></html>|Flush||Flush|",
+            fetch.buffer());
+
+  // Test following flushes off behaves as expected.
+  options->ClearSignatureForTesting();
+  options->set_follow_flushes(false);
+  options->ComputeSignature();
+
+  FlushLoggingStringAsyncFetch fetch_off(
+      RequestContext::NewTestRequestContext(
+          server_context()->thread_system()));
+  fetch_off.response_headers()->Add("Content-Type", "text/html");
+
+  mock_proxy_fetch = new MockProxyFetch(
+      &fetch_off, &factory, server_context());
+  mock_proxy_fetch->response_headers()->ComputeCaching();
+
+  mock_proxy_fetch->Write("<html><d>1</d>", &handler);
+  mock_proxy_fetch->Flush(&handler);
+  mock_scheduler()->AwaitQuiescence();
+  mock_proxy_fetch->Write("<d>2</d></html>", &handler);
+  mock_proxy_fetch->Flush(&handler);
+  mock_scheduler()->AwaitQuiescence();
+
+  EXPECT_TRUE(mock_proxy_fetch->started_parse_);
+
+  mock_proxy_fetch->Done(true);
+  mock_scheduler()->AwaitQuiescence();
+  EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
+  EXPECT_EQ("<html><d>1</d><d>2</d></html>|Flush|", fetch_off.buffer());
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, EmptyCollectorTest) {

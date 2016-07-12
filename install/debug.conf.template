@@ -391,6 +391,12 @@ ModPagespeedMapProxyDomain @@APACHE_DOMAIN@@/gstatic_images \
 AddType text/html .shtml
 AddOutputFilter INCLUDES .shtml
 
+# Some of our tests have php flush output to test our behavior. This is needed
+# for mod_fcgid to actually propagate those flushes.
+<IfModule fcgid_module>
+FcgidOutputBufferSize 0
+</IfModule>
+
 # For the mod_rewrite test in apache/system_test.sh
 <IfModule !rewrite_module>
   LoadModule rewrite_module  @@APACHE_MODULES@@/mod_rewrite.so
@@ -1927,6 +1933,16 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
   ModPagespeedDomainRewriteHyperlinks on
   ModPagespeedCriticalImagesBeaconEnabled false
   ModPagespeedRewriteDeadlinePerFlushMs 5000
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName flush.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_test"
+  ModPagespeed on
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedRewriteDeadlinePerFlushMs 1
+  ModPagespeedDisableFilters add_instrumentation
 </VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:

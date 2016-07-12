@@ -961,7 +961,7 @@ bool ProxyFetch::HandleFlush(MessageHandler* message_handler) {
     // in ExecuteQueued.  Note that this can re-order Flushes behind
     // pending text, and aggregate together multiple flushes received from
     // the network into one.
-    if (Options()->flush_html()) {
+    if (Options()->flush_html() || Options()->follow_flushes()) {
       ScopedMutex lock(mutex_.get());
       network_flush_outstanding_ = true;
       ScheduleQueueExecutionIfNeeded();
@@ -1043,16 +1043,21 @@ void ProxyFetch::ExecuteQueued() {
     ScopedMutex lock(mutex_.get());
     DCHECK(!waiting_for_flush_to_finish_);
 
-    // See if we should force a flush based on how much stuff has
-    // accumulated.
     size_t total = 0;
     size_t force_flush_chunk_count = 0;  // set only if force_flush is true.
-    for (size_t c = 0, n = text_queue_.size(); c < n; ++c) {
-      total += text_queue_[c]->length();
-      if (total >= buffer_limit) {
-        force_flush = true;
-        force_flush_chunk_count = c + 1;
-        break;
+    if (network_flush_outstanding_ && Options()->follow_flushes()) {
+      force_flush = true;
+      force_flush_chunk_count = text_queue_.size();
+    } else {
+      // See if we should force a flush based on how much stuff has
+      // accumulated.
+      for (size_t c = 0, n = text_queue_.size(); c < n; ++c) {
+        total += text_queue_[c]->length();
+        if (total >= buffer_limit) {
+          force_flush = true;
+          force_flush_chunk_count = c + 1;
+          break;
+        }
       }
     }
 
