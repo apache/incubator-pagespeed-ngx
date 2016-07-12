@@ -1,7 +1,10 @@
 # mod_pagespeed
 ![logo](https://storage.googleapis.com/icons.google.com.a.appspot.com/google-assets/branding/product_logos/_quantum/res-export/logo_pagespeed_192px_clr.svg)
 
-[![Build Status](https://travis-ci.org/pagespeed/mod_pagespeed.svg?branch=master)](https://travis-ci.org/pagespeed/mod_pagespeed)
+|CI|Status|
+|---|---|
+|Travis|[![Build Status](https://travis-ci.org/pagespeed/mod_pagespeed.svg?branch=master)](https://travis-ci.org/pagespeed/mod_pagespeed)|
+|Jenkins (CentOS5)|[![Build Status](http://104.197.120.21:8080/buildStatus/icon?job=mod_pagespeed)](http://104.197.120.21:8080/job/mod_pagespeed)|
 
 `mod_pagespeed` is an open-source Apache module created by Google to help Make the Web Faster by rewriting web pages to reduce latency and bandwidth.
 
