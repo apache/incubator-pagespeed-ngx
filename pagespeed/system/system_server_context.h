@@ -244,7 +244,7 @@ class SystemServerContext : public ServerContext {
 
   SystemCachePath* cache_path_;
 
-  scoped_ptr<::grpc::CompletionQueue> grpc_queue_;
+  std::shared_ptr<::grpc::Channel> grpc_channel_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemServerContext);
 };

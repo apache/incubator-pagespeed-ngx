@@ -16,8 +16,6 @@
 
 #include "pagespeed/system/system_server_context.h"
 
-#include <memory>
-
 #include "base/logging.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
@@ -25,13 +23,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "pagespeed/system/add_headers_fetcher.h"
-#include "pagespeed/system/loopback_route_fetcher.h"
-#include "pagespeed/system/system_cache_path.h"
-#include "pagespeed/system/system_caches.h"
-#include "pagespeed/system/system_request_context.h"
-#include "pagespeed/system/system_rewrite_driver_factory.h"
-#include "pagespeed/system/system_rewrite_options.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -43,6 +34,13 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_statistics.h"
+#include "pagespeed/system/add_headers_fetcher.h"
+#include "pagespeed/system/loopback_route_fetcher.h"
+#include "pagespeed/system/system_cache_path.h"
+#include "pagespeed/system/system_caches.h"
+#include "pagespeed/system/system_request_context.h"
+#include "pagespeed/system/system_rewrite_driver_factory.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 namespace net_instaweb {
 
@@ -296,7 +294,12 @@ void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {
     // TODO(cheesy): We don't actually use this right now, but it does verify
     // that we have correctly linked against gRPC. In future, this will be used
     // when we connect to a real gRPC server running on the controller process.
-    grpc_queue_.reset(new ::grpc::CompletionQueue());
+    if (global_system_rewrite_options()->controller_port() != 0) {
+      GoogleString controller_string = StringPrintf(
+          "localhost:%d", global_system_rewrite_options()->controller_port());
+      grpc_channel_ = ::grpc::CreateChannel(
+          controller_string, ::grpc::InsecureChannelCredentials());
+    }
   }
 }
 

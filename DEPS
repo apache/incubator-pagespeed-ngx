@@ -101,9 +101,12 @@ vars = {
   ## When updating grpc, you should check the nanopb submodule version
   ## specified by your branch.
   "grpc_src": "https://github.com/grpc/grpc.git",
-  "grpc_revision": "release-0_13_1",
+  "grpc_revision": "release-0_15_0",
   "nanopb_src": "https://github.com/nanopb/nanopb.git",
   "nanopb_revision": "f8ac463766281625ad710900479130c7fcb4d63b",
+
+  "hiredis_src": "https://github.com/redis/hiredis.git",
+  "hiredis_revision": "v0.13.3",
 }
 
 deps = {
@@ -253,6 +256,9 @@ deps = {
 
   "src/third_party/grpc/src/third_party/nanopb":
     Var("nanopb_src") + '@' + Var("nanopb_revision"),
+
+  "src/third_party/hiredis/src":
+    Var("hiredis_src") + '@' + Var("hiredis_revision"),
 }
 
 
@@ -284,14 +290,6 @@ skip_child_includes = [
 
 
 hooks = [
-  {
-    # Generate a gyp file for grpc.
-    # Must happen before we actually run gyp below.
-    'pattern': '.',
-    'action': ['src/third_party/grpc/generate_grpc_gyp',
-               'src/third_party/grpc/src',
-               'src/third_party/grpc/grpc.gyp'],
-  },
   {
     # Pull clang on mac. If nothing changed, or on non-mac platforms, this takes
     # zero seconds to run. If something changed, it downloads a prebuilt clang,
