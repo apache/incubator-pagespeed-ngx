@@ -1877,7 +1877,8 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::finder_properties_cache_expiration_time_ms_,
       "fpce", kFinderPropertiesCacheExpirationTimeMs,
       kDirectoryScope,
-      NULL, true);  // Not applicable for mod_pagespeed.
+      "Number of ms that beacon results for the critical selector finders "
+      "should be considered valid.", true);
   AddBaseProperty(
       kDefaultFinderPropertiesCacheRefreshTimeMs,
       &RewriteOptions::finder_properties_cache_refresh_time_ms_,

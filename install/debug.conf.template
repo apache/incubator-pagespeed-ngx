@@ -1984,6 +1984,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedFileCacheInodeLimit 10000
 #ALL_DIRECTIVES ModPagespeedFileCachePath /tmp/cache/
 #ALL_DIRECTIVES ModPagespeedFileCacheSizeKb 1000
+#ALL_DIRECTIVES ModPagespeedFinderPropertiesCacheExpirationTimeMs 300000
 #ALL_DIRECTIVES ModPagespeedForbidAllDisabledFilters true
 #ALL_DIRECTIVES ModPagespeedForbidFilters rewrite_images
 #ALL_DIRECTIVES ModPagespeedForceCaching off
