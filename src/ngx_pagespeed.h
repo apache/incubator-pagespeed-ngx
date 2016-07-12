@@ -52,7 +52,7 @@ class InPlaceResourceRecorder;
 // NGX_DECLINED immediately unless send_last_buf.
 ngx_int_t string_piece_to_buffer_chain(
     ngx_pool_t* pool, StringPiece sp,
-    ngx_chain_t** link_ptr, bool send_last_buf);
+    ngx_chain_t** link_ptr, bool send_last_buf, bool send_flush);
 
 StringPiece str_to_string_piece(ngx_str_t s);
 
@@ -109,6 +109,7 @@ typedef struct {
   // Location: headers that start with '/' without regarding X-Forwarded-Proto.
   bool location_field_set;
   bool psol_vary_accept_only;
+  bool follow_flushes;
 } ps_request_ctx_t;
 
 ps_request_ctx_t* ps_get_request_context(ngx_http_request_t* r);

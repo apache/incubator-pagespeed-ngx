@@ -124,7 +124,7 @@ char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
 // (potentially) longer string to nginx and want it to take ownership.
 ngx_int_t string_piece_to_buffer_chain(
     ngx_pool_t* pool, StringPiece sp, ngx_chain_t** link_ptr,
-    bool send_last_buf) {
+    bool send_last_buf, bool send_flush) {
   // Below, *link_ptr will be NULL if we're starting the chain, and the head
   // chain link.
   *link_ptr = NULL;
@@ -198,6 +198,9 @@ ngx_int_t string_piece_to_buffer_chain(
 
 
   CHECK(tail_link != NULL);
+  if (send_flush) {
+    tail_link->buf->flush = true;
+  }
   if (send_last_buf) {
     tail_link->buf->last_buf = true;
   }
@@ -1875,6 +1878,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ctx->r = r;
     ctx->html_rewrite = false;
     ctx->in_place = false;
+    ctx->follow_flushes = options->follow_flushes();
     ctx->preserve_caching_headers = kDontPreserveHeaders;
 
     // See build_context_for_request() in mod_instaweb.cc
@@ -2095,7 +2099,6 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
   int last_buf = 0;
   for (cur = in; cur != NULL; cur = cur->next) {
     last_buf = cur->buf->last_buf;
-
     // Buffers are not really the last buffer until they've been through
     // pagespeed.
     cur->buf->last_buf = 0;
@@ -2120,6 +2123,19 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
         }
       }
     }
+    if (cur->buf->flush && ctx->follow_flushes) {
+      // Calling ctx->proxy_fetch->Flush(cfg_s->handler) will be a no-op here,
+      // unless we have follow_flushes or flush_html enabled. Note that PSOL
+      // might aggregate multiple flushes into 1, and actually flush a little bit
+      // later due to html parser state and earlier scheduled operations.
+      // Also, unless we also set the flush flag on the nginx buffers we won't
+      // actually flush.
+      // Note that too many flushes could harm optimization over larger html
+      // fragments as PSOL gets less context to work with, e.g. it can't combine
+      // two css files if a flush happens in between.
+      ctx->proxy_fetch->Flush(cfg_s->handler);
+    }
+
     // We're done with buffers as we pass them through, so mark them as sent as
     // we go.
     cur->buf->pos = cur->buf->last;
@@ -2128,9 +2144,6 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
   if (last_buf) {
     ctx->proxy_fetch->Done(true /* success */);
     ctx->proxy_fetch = NULL;  // ProxyFetch deletes itself on Done().
-  } else {
-    // TODO(jefftk): Decide whether Flush() is warranted here.
-    ctx->proxy_fetch->Flush(cfg_s->handler);
   }
 }
 
@@ -2583,7 +2596,7 @@ ngx_int_t send_out_headers_and_body(
   // Send the body.
   ngx_chain_t* out;
   rc = string_piece_to_buffer_chain(
-      r->pool, output, &out, true /* send_last_buf */);
+      r->pool, output, &out, true /* send_last_buf */, false);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }

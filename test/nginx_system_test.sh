@@ -1309,6 +1309,12 @@ OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
 MATCHES=$(echo "$OUT" | grep -c "Vary: Accept-Encoding") || true
 check [ $MATCHES -eq 1 ]
 
+start_test Follow flushes can be turned off.
+echo "Check that FollowFlushes off outputs a single chunk"
+URL="http://noflush.example.com/mod_pagespeed_test/slow_flushing_html_response.php"
+check_flushing "curl -N --raw --silent --proxy $SECONDARY_HOSTNAME $URL" \
+  5.4 1
+
 start_test Shutting down.
 
 # Fire up some heavy load if ab is available to test a stressed shutdown

@@ -169,6 +169,7 @@ class NgxBaseFetch : public AsyncFetch {
   GoogleString buffer_;
   NgxServerContext* server_context_;
   const RewriteOptions* options_;
+  bool need_flush_;
   bool done_called_;
   bool last_buf_sent_;
   // How many active references there are to this fetch. Starts at two,
