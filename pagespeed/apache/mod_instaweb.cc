@@ -305,13 +305,20 @@ class ApacheProcessContext {
   }
 
   ~ApacheProcessContext() {
+    // We must delete the factory before ProcessContext's dtor is called, which
+    // terminates the protobuf libraries.  It is unsafe to free our structures
+    // after the protobuf library has been shut down.
+    //
+    // Similarly, the ApacheRewriteDriverFactory destructor may involve the
+    // shutdown process, and we want that to happen before we clean up various
+    // globals in ApacheRewriteDriverFactory::Terminate, as they may still
+    // be needed. For example, the SHM segment table is required for shutting
+    // down SHM stats.
+    factory_.reset(nullptr);
+
     ApacheRewriteDriverFactory::Terminate();
     delete [] apache_cmds_;
     log_message_handler::ShutDown();
-    // We must reset the factory to NULL before ProcessContext's dtor
-    // is called, which terminates the protobuf libraries.  It is unsafe
-    // to free our structures after the protobuf library has been shut down.
-    factory_.reset(NULL);
   }
 
   void InstallCommands();
