@@ -93,6 +93,7 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
       message_handler_(handler),
       cache_policy_(policy),
       mutex_(thread_system->NewMutex()),
+      next_clean_ms_(INT64_MAX),
       path_length_limit_(file_system_->MaxPathLength(path)),
       clean_time_path_(path),
       clean_lock_path_(path),
@@ -101,7 +102,9 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
       evictions_(stats->GetVariable(kEvictions)),
       bytes_freed_in_cleanup_(stats->GetVariable(kBytesFreedInCleanup)),
       write_errors_(stats->GetVariable(kWriteErrors)) {
-  next_clean_ms_ = policy->timer->NowMs() + policy->clean_interval_ms / 2;
+  if (policy->cleaning_enabled()) {
+    next_clean_ms_ = policy->timer->NowMs() + policy->clean_interval_ms / 2;
+  }
   EnsureEndsInSlash(&clean_time_path_);
   StrAppend(&clean_time_path_, kCleanTimeName);
   EnsureEndsInSlash(&clean_lock_path_);
@@ -181,6 +184,7 @@ const int64 kEmptyDirCleanAgeSec = 60;
 }  // namespace
 
 bool FileCache::Clean(int64 target_size_bytes, int64 target_inode_count) {
+  DCHECK(cache_policy_->cleaning_enabled());
   // TODO(jud): this function can delete .lock and .outputlock files, is this
   // problematic?
   message_handler_->Message(kInfo,
@@ -304,6 +308,10 @@ void FileCache::CleanWithLocking(int64 next_clean_time_ms) {
 }
 
 bool FileCache::ShouldClean(int64* suggested_next_clean_time_ms) {
+  if (!cache_policy_->cleaning_enabled()) {
+    return false;
+  }
+
   bool to_return = false;
   const int64 now_ms = cache_policy_->timer->NowMs();
   {

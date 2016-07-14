@@ -53,11 +53,7 @@ class FileCacheTest : public CacheTestBase {
         kTargetInodeLimit(10),
         stats_(thread_system_.get()) {
     FileCache::InitStats(&stats_);
-    cache_.reset(new FileCache(
-        GTestTempDir(), &file_system_, thread_system_.get(), &worker_,
-        new FileCache::CachePolicy(&mock_timer_, &hasher_, kCleanIntervalMs,
-                                   kTargetSize, kTargetInodeLimit),
-        &stats_, &message_handler_));
+    ResetFileCache(kCleanIntervalMs, kTargetSize);
     disk_checks_ = stats_.GetVariable(FileCache::kDiskChecks);
     cleanups_ = stats_.GetVariable(FileCache::kCleanups);
     evictions_ = stats_.GetVariable(FileCache::kEvictions);
@@ -67,6 +63,14 @@ class FileCacheTest : public CacheTestBase {
     // TODO(jmarantz): consider using mock_thread_system if we want
     // explicit control of time.
     file_system_.set_advance_time_on_update(true, &mock_timer_);
+  }
+
+  void ResetFileCache(int64 clean_interval_ms, int64 target_size_bytes) {
+    cache_.reset(new FileCache(
+        GTestTempDir(), &file_system_, thread_system_.get(), &worker_,
+        new FileCache::CachePolicy(&mock_timer_, &hasher_, clean_interval_ms,
+                                   target_size_bytes, kTargetInodeLimit),
+        &stats_, &message_handler_));
   }
 
   void CheckCleanTimestamp(int64 min_time_ms) {
@@ -276,6 +280,56 @@ TEST_F(FileCacheTest, CheckClean) {
   RunClean();
   // And the timestamp should be updated.
   CheckCleanTimestamp(time_ms);
+}
+
+// Test cleaning doesn't mean deleting everything in the cache.
+TEST_F(FileCacheTest, CheckPartialClean) {
+  // Set the cache capacity to be big enough to hold two entries.  We clean down
+  // to something like 75% full, though, so after cleaning only one entry will
+  // be left.
+  const int target_size = StrCat("Name1", "Value1",
+                                 "Name2", "Value2").length();
+  ResetFileCache(kCleanIntervalMs, target_size);
+
+  CheckPut("Name1", "Value1");
+  CheckPut("Name2", "Value2");
+  // Advance time to make sure we clean the old ones first.
+  mock_timer_.SleepMs(1);
+  CheckPut("Name3", "Value3");
+  mock_timer_.SleepMs(kCleanIntervalMs + 1);
+
+  // The cache is now oversize.  Run clean.  It deletes entries 1 and 2.
+  RunClean();
+
+  CheckNotFound("Name1");  // cleaned
+  CheckNotFound("Name2");  // cleaned
+  CheckGet("Name3", "Value3");
+}
+
+// Test that if we disable cleaning then cleaning doesn't happen.  This is the
+// same as CheckPartialClean, with cleaning disabled.
+TEST_F(FileCacheTest, CheckPartialCleanWithCleaningDisabled) {
+  // Set the cache capacity to be big enough to hold two entries.  We clean down
+  // to something like 75% full, though, so after cleaning only one entry will
+  // be left.
+  const int target_size = StrCat("Name1", "Value1",
+                                 "Name2", "Value2").length();
+  ResetFileCache(FileCache::kDisableCleaning, target_size);
+
+  CheckPut("Name1", "Value1");
+  CheckPut("Name2", "Value2");
+  // Advance time for consistency with the yes-clean version above.
+  mock_timer_.SleepMs(1);
+  CheckPut("Name3", "Value3");
+  mock_timer_.SleepMs(kCleanIntervalMs + 1);
+
+  // The cache is now oversize, but we won't clean because that's turned off.
+  RunClean();
+
+  // Everything is still there.
+  CheckGet("Name1", "Value1");
+  CheckGet("Name2", "Value2");
+  CheckGet("Name3", "Value3");
 }
 
 }  // namespace net_instaweb

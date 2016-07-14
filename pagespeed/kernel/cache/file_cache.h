@@ -52,6 +52,7 @@ class FileCache : public CacheInterface {
     int64 clean_interval_ms;
     int64 target_size_bytes;
     int64 target_inode_count;
+    bool cleaning_enabled() { return clean_interval_ms != kDisableCleaning; }
    private:
     DISALLOW_COPY_AND_ASSIGN(CachePolicy);
   };
@@ -89,6 +90,10 @@ class FileCache : public CacheInterface {
   // Files evicted from cache during cleanup.
   static const char kEvictions[];
   static const char kWriteErrors[];
+
+  // What to set clean_interval_ms to in order to disable cleaning.  This needs
+  // to be -1, because that's what we have in our public documentation.
+  static const int kDisableCleaning = -1;
 
  private:
   class CacheCleanFunction;

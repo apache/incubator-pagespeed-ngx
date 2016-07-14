@@ -134,7 +134,8 @@ void SystemRewriteOptions::AddProperties() {
   AddSystemProperty(
       Timer::kHourMs, &SystemRewriteOptions::file_cache_clean_interval_ms_,
       "afcci", RewriteOptions::kFileCacheCleanIntervalMs,
-      "Set the interval (in ms) for cleaning the file cache", true);
+      "Set the interval (in ms) for cleaning the file cache, -1 to disable "
+      "cleaning", true);
   AddSystemProperty(100 * 1024 /* 100 megabytes */,
                     &SystemRewriteOptions::file_cache_clean_size_kb_,
                     "afc", RewriteOptions::kFileCacheCleanSizeKb,
