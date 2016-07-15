@@ -18,12 +18,15 @@
 #define PAGESPEED_KERNEL_BASE_PROTO_UTIL_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
 
 #include "google/protobuf/io/zero_copy_stream_impl_lite.h"
+#include "google/protobuf/message.h"
 #include "google/protobuf/message_lite.h"
 #include "google/protobuf/repeated_field.h"
+#include "google/protobuf/text_format.h"
 
 namespace net_instaweb {
 
@@ -41,6 +44,11 @@ using namespace google::protobuf;  // NOLINT
 inline bool ParseProtoFromStringPiece(
     StringPiece sp, protobuf::MessageLite* proto) {
   return proto->ParseFromArray(sp.data(), sp.size());
+}
+
+inline bool ParseTextFormatProtoFromString(const GoogleString& s,
+                                           protobuf::Message* proto) {
+  return google::protobuf::TextFormat::ParseFromString(s, proto);
 }
 
 }  // namespace net_instaweb

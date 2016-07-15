@@ -195,6 +195,27 @@
           },
         },
         {
+          'target_name': 'protobuf_message_differencer',
+          'type': 'static_library',
+          'toolsets': ['target'],
+          'dependencies': [
+            'protobuf_full_do_not_use',
+          ],
+          'sources': [
+            'src/src/google/protobuf/util/field_comparator.cc',
+            'src/src/google/protobuf/util/message_differencer.cc',
+          ],
+          'include_dirs': [
+            '<(config_h_dir)',
+            'src/src',
+          ],
+          'all_dependent_settings': {
+            'include_dirs': [
+              'src/src',
+            ],
+          },
+        },
+        {
           'target_name': 'protoc_lib',
           'type': '<(library)',
           'toolsets': ['host'],

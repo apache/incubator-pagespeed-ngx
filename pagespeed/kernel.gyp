@@ -309,6 +309,18 @@
       ]
     },
     {
+      'target_name': 'pagespeed_proto_matcher_test_proto',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/kernel/base',
+      },
+      'sources': [
+        'kernel/base/proto_matcher_test.proto',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'pagespeed_http_pb',
       'variables': {
         'instaweb_protoc_subdir': 'pagespeed/kernel/http',
