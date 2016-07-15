@@ -1760,6 +1760,10 @@ http {
       expires 5m;
     }
 
+    location /mod_pagespeed_test/example.json {
+      expires 10m;
+    }
+
     location /mod_pagespeed_test/ipro/cc200/ {
       add_header "Cache-Control" "max-age=200";
     }
@@ -1987,6 +1991,7 @@ http {
     image/svg+xml                         svg svgz;
     image/webp                            webp;
 
+    application/json                      json;
     application/java-archive              jar war ear;
     application/mac-binhex40              hqx;
     application/msword                    doc;
