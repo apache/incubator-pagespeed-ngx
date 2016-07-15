@@ -2004,7 +2004,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
 
   }
 
-  if (html_rewrite) {
+  if (html_rewrite && options->IsAllowed(url.Spec())) {
     ps_create_base_fetch(url.Spec(), ctx, request_context,
                          request_headers.release(), kHtmlTransform, options);
     // Do not store driver in request_context, it's not safe.
