@@ -3278,7 +3278,7 @@ bool RewriteContext::SendFallbackResponse(StringPiece output_url_base,
   const ContentType* content_type =
       async_fetch->response_headers()->DetermineContentType();
   if (content_type == NULL ||
-      !(content_type->IsJs() ||
+      !(content_type->IsJsLike() ||
         content_type->IsCss() ||
         content_type->IsImage() ||
         content_type == &kContentTypePdf)) {

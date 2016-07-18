@@ -312,8 +312,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     // Try to preserve original content type to avoid breaking upstream proxies
     // and the like.
     const ContentType* content_type = script_resource->type();
-    if (content_type == nullptr ||
-        content_type->type() != ContentType::kJavascript) {
+    if (content_type == nullptr || !content_type->IsJsLike()) {
       content_type = &kContentTypeJavascript;
     }
     if (Driver()->Write(ResourceVector(1, script_resource),

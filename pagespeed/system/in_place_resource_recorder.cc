@@ -188,7 +188,7 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
   if (content_type == NULL ||
       !(content_type->IsImage() ||
         content_type->IsCss() ||
-        content_type->IsJs())) {
+        content_type->IsJsLike())) {
     // We remember wrong mimetypes as uncacheable. This is slightly goofy,
     // and is inconsistent with how they are treated on normal rewrite path...
     DroppedAsUncacheable();

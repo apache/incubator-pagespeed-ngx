@@ -133,7 +133,7 @@ bool ContentType::IsCss() const {
   return type_ == kCss;
 }
 
-bool ContentType::IsJs() const {
+bool ContentType::IsJsLike() const {
   switch (type_) {
     case kJavascript:
     case kJson:
@@ -294,7 +294,7 @@ void MimeTypeListToContentTypeSet(
 
 bool ContentType::IsCompressible() const {
   // TODO(jcrowell): Investigate images with exif data as compressible.
-  return IsXmlLike() || IsHtmlLike() || IsJs() || IsCss() || type_ == kText;
+  return IsXmlLike() || IsHtmlLike() || IsJsLike() || IsCss() || type_ == kText;
 }
 
 bool ContentType::IsLikelyStaticResource() const {
