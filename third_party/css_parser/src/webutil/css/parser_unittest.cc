@@ -1291,7 +1291,6 @@ TEST_F(ParserTest, ruleset_starts_with_combinator) {
   EXPECT_FALSE(t.get());
 }
 
-
 TEST_F(ParserTest, simple_selectors) {
   // First, a basic case
   scoped_ptr<Parser> a(new Parser("*[lang|=fr]"));
@@ -1311,6 +1310,125 @@ TEST_F(ParserTest, simple_selectors) {
     EXPECT_EQ("lang", UnicodeTextToUTF8(c->attribute()));
     EXPECT_EQ("fr", UnicodeTextToUTF8(c->value()));
   }
+
+  // :lang pseudoselector.
+  a.reset(new Parser("div:lang( fr-CA)"));
+  t.reset(a->ParseSimpleSelectors(false));
+  ASSERT_TRUE(t != nullptr);
+  ASSERT_EQ(2, t->size());
+  EXPECT_EQ(SimpleSelectors::NONE, t->combinator());
+  {
+    const SimpleSelector* c = t->get(0);
+    ASSERT_TRUE(c != nullptr);
+    EXPECT_EQ(SimpleSelector::ELEMENT_TYPE, c->type());
+    EXPECT_EQ("div", UnicodeTextToUTF8(c->element_text()));
+  }
+
+  {
+    const SimpleSelector* c = t->get(1);
+    ASSERT_TRUE(c != nullptr);
+    ASSERT_EQ(SimpleSelector::LANG, c->type());
+    EXPECT_EQ("fr-CA", UnicodeTextToUTF8(c->lang()));
+  }
+
+  // The lang bit is case-insensitive, too.
+  a.reset(new Parser("div:LanG( fr-CA)"));
+  t.reset(a->ParseSimpleSelectors(false));
+  ASSERT_TRUE(t != nullptr);
+  ASSERT_EQ(2, t->size());
+  EXPECT_EQ(SimpleSelectors::NONE, t->combinator());
+  {
+    const SimpleSelector* c = t->get(0);
+    ASSERT_TRUE(c != nullptr);
+    EXPECT_EQ(SimpleSelector::ELEMENT_TYPE, c->type());
+    EXPECT_EQ("div", UnicodeTextToUTF8(c->element_text()));
+  }
+
+  {
+    const SimpleSelector* c = t->get(1);
+    ASSERT_TRUE(c != nullptr);
+    ASSERT_EQ(SimpleSelector::LANG, c->type());
+    EXPECT_EQ("fr-CA", UnicodeTextToUTF8(c->lang()));
+  }
+
+
+  // Unknown functional selector with parentheses. Should be a parse error
+  // at this level.
+  a.reset(new Parser("div:foo(42)"));
+  t.reset(a->ParseSimpleSelectors(false));
+  EXPECT_TRUE(t == nullptr);
+
+  // Selector with parenthesis.
+  a.reset(new Parser("div:nth-child(1n)"));
+  t.reset(a->ParseSimpleSelectors(false));
+
+  EXPECT_EQ(SimpleSelectors::NONE, t->combinator());
+
+  {
+    const SimpleSelector* c = t->get(0);
+    ASSERT_TRUE(c != nullptr);
+    EXPECT_EQ(SimpleSelector::ELEMENT_TYPE, c->type());
+    EXPECT_EQ("div", UnicodeTextToUTF8(c->element_text()));
+  }
+
+  {
+    const SimpleSelector* c = t->get(1);
+    ASSERT_TRUE(c != nullptr);
+    ASSERT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, c->type());
+    EXPECT_EQ("nth-child", UnicodeTextToUTF8(c->functional_pseudo_function()));
+    EXPECT_EQ("1n", UnicodeTextToUTF8(c->functional_pseudo_content()));
+  }
+
+  // :lang(foo)
+  a.reset(new Parser("div:lang( fr-CA )"));
+  t.reset(a->ParseSimpleSelectors(false));
+  EXPECT_EQ(SimpleSelectors::NONE, t->combinator());
+  ASSERT_EQ(2, t->size());
+
+  {
+    const SimpleSelector* c = t->get(1);
+    ASSERT_TRUE(c != nullptr);
+    ASSERT_EQ(SimpleSelector::LANG, c->type());
+    EXPECT_EQ("fr-CA", UnicodeTextToUTF8(c->lang()));
+  }
+
+  // :lang(  ), which is an error.
+  a.reset(new Parser("div:lang(  )"));
+  t.reset(a->ParseSimpleSelectors(false));
+  EXPECT_EQ(nullptr, t.get());
+
+  // :not(something)
+  a.reset(new Parser("div:not( #someid )"));
+  t.reset(a->ParseSimpleSelectors(false));
+  EXPECT_EQ(SimpleSelectors::NONE, t->combinator());
+  ASSERT_EQ(2, t->size());
+
+  {
+    const SimpleSelector* c = t->get(1);
+    ASSERT_TRUE(c != nullptr);
+    ASSERT_EQ(SimpleSelector::NOT, c->type());
+    const SimpleSelector* i = c->not_nested();
+    ASSERT_TRUE(i != nullptr);
+    EXPECT_EQ(SimpleSelector::ID, i->type());
+    EXPECT_EQ("someid", UnicodeTextToUTF8(i->value()));
+  }
+
+  // :not(:not(foo)) is a parse error, at CSS3 level. (Looks like it will
+  // change in 4, though).
+  a.reset(new Parser("div:not(:not(#someid))"));
+  t.reset(a->ParseSimpleSelectors(false));
+  EXPECT_TRUE(a->errors_seen_mask() & Parser::kSelectorError);
+
+  // TODO(morlovich): This is a failure, due to trouble with empty value.
+  // This should parse.
+  a.reset(new Parser("html:not([lang*=\"\"])"));
+  t.reset(a->ParseSimpleSelectors(false));
+  EXPECT_TRUE(t == nullptr);
+
+  // Variant of above that works.
+  a.reset(new Parser("html:not([lang*=\"fr\"])"));
+  t.reset(a->ParseSimpleSelectors(false));
+  EXPECT_TRUE(t != nullptr);
 
   // Now, a very complex one.
   a.reset(new Parser(
@@ -1800,14 +1918,6 @@ TEST_F(ParserTest, SelectorError) {
   scoped_ptr<Stylesheet> stylesheet(p.ParseStylesheet());
   EXPECT_EQ(0, stylesheet->rulesets().size());
   EXPECT_TRUE(Parser::kSelectorError & p.errors_seen_mask());
-
-  Parser p2("div:nth-child(1n) { color: red; }");
-  stylesheet.reset(p2.ParseStylesheet());
-  EXPECT_TRUE(Parser::kSelectorError & p2.errors_seen_mask());
-  // Note: We fail to parse the (1n). If this is fixed, this test should be
-  // updated accordingly.
-  EXPECT_EQ("/* AUTHOR */\n\n\n\ndiv:nth-child {color: #ff0000}\n",
-            stylesheet->ToString());
 
   Parser p3("}}");
   stylesheet.reset(p3.ParseStylesheet());
@@ -2700,6 +2810,180 @@ TEST_F(ParserTest, ParseAnyParens) {
   scoped_ptr<Value> value(p->ParseAny());
   // ParseAny() should parse past exactly "(2 + 3)".
   EXPECT_STREQ(" 9 7)", p->in_);
+}
+
+TEST_F(ParserTest, ParseNot) {
+  scoped_ptr<Parser> p;
+  scoped_ptr<SimpleSelector> s;
+
+  // Normal --- note that we're starting after the :not( for all of these,
+  // and that the returned value is the condition being inverted.
+  p.reset(new Parser("#someid )"));
+  s.reset(p->ParseNot());
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::ID, s->type());
+  EXPECT_EQ("someid", UnicodeTextToUTF8(s->value()));
+
+  // Parse error inside.
+  p.reset(new Parser("#)"));
+  s.reset(p->ParseNot());
+  EXPECT_TRUE(s == nullptr);
+
+  // Problems with termination.
+  p.reset(new Parser("#someid "));
+  s.reset(p->ParseNot());
+  EXPECT_TRUE(s == nullptr);
+  EXPECT_TRUE(p->errors_seen_mask() & Parser::kSelectorError);
+
+  p.reset(new Parser("#someid !"));
+  s.reset(p->ParseNot());
+  EXPECT_TRUE(s == nullptr);
+  EXPECT_TRUE(p->errors_seen_mask() & Parser::kSelectorError);
+}
+
+TEST_F(ParserTest, ParseNthPseudo) {
+  scoped_ptr<Parser> p;
+  scoped_ptr<SimpleSelector> s;
+
+  // Normal --- note that we're starting after the :nth-whatever( for these,
+  // and that the returned value is the whole thing.
+  p.reset(new Parser("2n - 1)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("2n - 1", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  // No input whatsoever.
+  p.reset(new Parser(""));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  EXPECT_TRUE(s == nullptr);
+
+  // Stop after a sign
+  p.reset(new Parser("+"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  EXPECT_TRUE(p->errors_seen_mask() & Parser::kSelectorError);
+  EXPECT_TRUE(s == nullptr);
+
+  // Just a signed number (plus termination).
+  p.reset(new Parser("+5)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("+5", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  // Signed... not a number. (Can't use NaN here since N is special and
+  // that would test a different path!)
+  p.reset(new Parser("+inf)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  EXPECT_TRUE(p->errors_seen_mask() & Parser::kSelectorError);
+  EXPECT_TRUE(s == nullptr);
+
+  // Signed number with n.
+  p.reset(new Parser("+5n)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("+5n", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  // Not properly terminated.
+  p.reset(new Parser("+5n"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  EXPECT_TRUE(p->errors_seen_mask() & Parser::kSelectorError);
+  EXPECT_TRUE(s == nullptr);
+
+  // Signed n is possible, too!
+  p.reset(new Parser("-n)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("-n", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  // And with an expression, including some whitespace.
+  p.reset(new Parser("-N + 3)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("-N + 3", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  // Can't just have nonsense after, though.
+  p.reset(new Parser("-N + NaN)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  EXPECT_TRUE(p->errors_seen_mask() & Parser::kSelectorError);
+  EXPECT_TRUE(s == nullptr);
+
+  // Can also just straight up start with an N
+  p.reset(new Parser(" n-1)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("n-1", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  // A couple shorthands, too.
+  p.reset(new Parser("Odd)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("Odd", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  p.reset(new Parser("EveN)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("EveN", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  // And some things which aren't.
+  p.reset(new Parser("Owkward)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  EXPECT_TRUE(p->errors_seen_mask() & Parser::kSelectorError);
+  EXPECT_TRUE(s == nullptr);
+
+  p.reset(new Parser("Awkward)"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  EXPECT_TRUE(p->errors_seen_mask() & Parser::kSelectorError);
+  EXPECT_TRUE(s == nullptr);
+
+  // Can have numbers, too, without without following N-expressions.
+  p.reset(new Parser(" 42 )"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("42", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  p.reset(new Parser(" 42n - 1 )"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  ASSERT_TRUE(s != nullptr);
+  EXPECT_EQ(SimpleSelector::FUNCTIONAL_PSEUDO, s->type());
+  EXPECT_EQ("nth-child", UnicodeTextToUTF8(s->functional_pseudo_function()));
+  EXPECT_EQ("42n - 1", UnicodeTextToUTF8(s->functional_pseudo_content()));
+
+  // No space before the n, though!
+  p.reset(new Parser(" 12 n + 3 )"));
+  s.reset(p->ParseNthPseudo(UTF8ToUnicodeText("nth-child")));
+  EXPECT_TRUE(p->errors_seen_mask() & Parser::kSelectorError);
+  EXPECT_TRUE(s == nullptr);
+}
+
+TEST_F(ParserTest, SkipInteger) {
+  scoped_ptr<Parser> p;
+  p.reset(new Parser("42"));
+  EXPECT_TRUE(p->SkipInteger());
+  EXPECT_EQ(2, p->CurrentOffset());
+
+  p.reset(new Parser("nop"));
+  EXPECT_FALSE(p->SkipInteger());
+
+  p.reset(new Parser("42n"));
+  EXPECT_TRUE(p->SkipInteger());
+  EXPECT_EQ(2, p->CurrentOffset());
 }
 
 TEST_F(ParserTest, BadPartialImport) {

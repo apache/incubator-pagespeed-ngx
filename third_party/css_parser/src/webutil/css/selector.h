@@ -114,10 +114,12 @@ class SimpleSelector {
 
     // Miscellaneous conditions:
     PSEUDOCLASS,  // a:hover matches <a href=blah> when mouse is hovering
-    LANG,          // :lang(en) matches if the element is in English.
+    LANG,         // :lang(en) matches if the element is in English.
+    NOT,          // :not(S)
+    FUNCTIONAL_PSEUDO,  // e.g. :nth-of-type(...), :nth-child(...)
 
     // We don't implement these (yet).
-    // AND, OR, NOT, ONLY_CHILD, ONLY_TYPE, CONTENT, POSITIONAL
+    // AND, OR, ONLY_CHILD, ONLY_TYPE, CONTENT, POSITIONAL
     //    ROOT, TEXT, PSEUDOELEMENT, PROCESSING_INSTRUCTION,
     //    NEGATIVE, COMMENT, CDATA_SECTION,
   };
@@ -135,6 +137,9 @@ class SimpleSelector {
   static SimpleSelector* NewPseudoclass(const UnicodeText& pseudoclass,
                                         const UnicodeText& sep);
   static SimpleSelector* NewLang(const UnicodeText& lang);
+  static SimpleSelector* NewFunctionalPseudo(const UnicodeText& value,
+                                             const UnicodeText& pseudoclass);
+  static SimpleSelector* NewNot(SimpleSelector* nested);
 
   // oper is '=' for EXACT_ATTRIBUTE, or the first character of the attribute
   // selector operator, i.e. '~', '|', etc.
@@ -196,10 +201,28 @@ class SimpleSelector {
     return attribute_;
   }
 
+  // FUNCTIONAL_PSEUDO accessors:
+  const UnicodeText& functional_pseudo_content() const {
+    DCHECK_EQ(FUNCTIONAL_PSEUDO, type_);
+    return value_;
+  }
+
+  // e.g. nth-child
+  const UnicodeText& functional_pseudo_function() const {
+    DCHECK_EQ(FUNCTIONAL_PSEUDO, type_);
+    return attribute_;
+  }
+
   // lang accessor
   const UnicodeText& lang() const {
     DCHECK_EQ(LANG, type_);
     return value_;
+  }
+
+  // NOT accessor
+  const SimpleSelector* not_nested() const {
+    DCHECK_EQ(NOT, type_);
+    return nested_.get();
   }
 
   string ToString() const;
@@ -213,6 +236,8 @@ class SimpleSelector {
   UnicodeText attribute_;  // Attribute name, valid for *_ATTRIBUTE, CLASS, ID
   UnicodeText value_;    // Valid for *_ATTRIBUTE, CLASS, ID, PSEUDOCLASS, LANG
 
+  scoped_ptr<SimpleSelector> nested_;  // Valid for NOT
+
   // Private constructors, for use by factory methods
   SimpleSelector(Type type, const UnicodeText& attribute,
                  const UnicodeText& value)
@@ -220,6 +245,8 @@ class SimpleSelector {
   SimpleSelector(HtmlTagEnum element_type, const UnicodeText& element_text)
       : type_(ELEMENT_TYPE),
         element_type_(element_type), element_text_(element_text) { }
+  SimpleSelector(Type type, SimpleSelector* nested)
+      : type_(type), nested_(nested) { }
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(SimpleSelector);
 };

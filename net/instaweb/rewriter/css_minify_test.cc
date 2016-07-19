@@ -192,5 +192,20 @@ TEST_F(CssMinifyTest, ParsingAndMinifingViewportUnits) {
   EXPECT_STREQ(".a{margin-top:70vh;margin-bottom:20vw}", minified);
 }
 
+TEST_F(CssMinifyTest, ParsingAndMinifyingHandleSelectorWithParenthesis) {
+  const char kCss[] =
+      ".boo:not(:first-of-type) {\n"
+      "}"
+      ".foo:nth-of-type(3n) {\n"
+      "}";
+  Css::Parser parser(kCss);
+  std::unique_ptr<Css::Stylesheet> stylesheet(parser.ParseStylesheet());
+  GoogleString minified;
+  StringWriter writer(&minified);
+
+  EXPECT_TRUE(CssMinify::Stylesheet(*stylesheet, &writer, &handler_));
+  EXPECT_STREQ(".boo:not(:first-of-type){}.foo:nth-of-type(3n){}", minified);
+}
+
 }  // namespace
 }  // namespace net_instaweb

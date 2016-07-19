@@ -84,6 +84,16 @@ SimpleSelector* SimpleSelector::NewLang(const UnicodeText& lang) {
                             UnicodeText(), lang);
 }
 
+SimpleSelector* SimpleSelector::NewFunctionalPseudo(
+    const UnicodeText& value, const UnicodeText& function) {
+  return new SimpleSelector(SimpleSelector::FUNCTIONAL_PSEUDO,
+                            function, value);
+}
+
+SimpleSelector* SimpleSelector::NewNot(SimpleSelector* nested) {
+  return new SimpleSelector(SimpleSelector::NOT, nested);
+}
+
 //
 // Some destructors that need STLDeleteElements() from stl_util.h
 //
