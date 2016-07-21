@@ -19,7 +19,10 @@
 #ifndef PAGESPEED_SYSTEM_REDIS_CACHE_H_
 #define PAGESPEED_SYSTEM_REDIS_CACHE_H_
 
+#include <memory>
+#include <initializer_list>
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string.h"
@@ -30,11 +33,17 @@ namespace net_instaweb {
 
 // Interface to Redis using hiredis library
 // Details are changing rapidly.
-// Right now this implementation uses sync API of hiredis and is, therefore,
-// blocking. No auto-reconnection, logging or statistics.
+// Right now this implementation uses sync API of hiredis and is blocking.
+// TODO(yeputons): use async API
+// TODO(yeputons): add auto-reconnection
+// TODO(yeputons): add statistics
+// TODO(yeputons): consider making Redis-reported errors treated as failures
 class RedisCache : public CacheInterface {
  public:
-  RedisCache(const StringPiece& host, int port);
+  // Does not take ownership of MessageHandler, and assumes the pointer is valid
+  // throughout full lifetime of RedisCache
+  RedisCache(const StringPiece& host, int port,
+             MessageHandler* message_handler);
   ~RedisCache() override { ShutDown(); }
 
   bool Connect();
@@ -56,6 +65,22 @@ class RedisCache : public CacheInterface {
   GoogleString host_;
   int port_;
   redisContext* redis_;
+
+  MessageHandler *message_handler_;
+
+  struct RedisReplyDeleter {
+    void operator()(redisReply* ptr) {
+      freeReplyObject(ptr);
+    }
+  };
+  typedef std::unique_ptr<redisReply, RedisReplyDeleter> RedisReply;
+
+  RedisReply redisCommand(const char* format, ...);
+
+  void LogRedisContextError(const char* cause);
+  bool ValidateRedisReply(const RedisReply& reply,
+                          std::initializer_list<int> valid_types,
+                          const char* command_executed);
 
   DISALLOW_COPY_AND_ASSIGN(RedisCache);
 };

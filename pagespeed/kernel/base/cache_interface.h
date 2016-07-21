@@ -176,12 +176,16 @@ class CacheInterface {
   // returning from Get and MultiGet.
   virtual bool IsBlocking() const = 0;
 
-  // Returns true if the cache is in a healthy state.  Memory and
-  // file-based caches can simply return 'true'.  But for server-based
-  // caches, it is handy to be able to query to see whether it is in a
-  // good state.  It should be safe to call this frequently -- the
-  // implementation shouldn't do much more than check a bool flag
-  // under mutex.
+  // IsHealthy() is a rough estimation of whether cache is available for any
+  // operations. If it's false, caller may reasonably expect that making calls
+  // right now is useless as they will fail or have high latency. If it's true,
+  // operations should succeed, but some still may fail occasionally. The
+  // primary goal is to avoid sending commands to 'unhealthy' caches, e.g. if
+  // cache is under heavy load, we do not want to send even more requests.
+  //
+  // Memory and file-based caches can simply return 'true'. It should be safe
+  // to call this frequently -- the implementation shouldn't do much more that
+  // check a bool flag under mutex.
   virtual bool IsHealthy() const = 0;
 
   // Stops all cache activity.  Further Put/Delete calls will be dropped, and

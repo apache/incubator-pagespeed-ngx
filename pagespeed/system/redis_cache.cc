@@ -19,26 +19,33 @@
 #include "pagespeed/system/redis_cache.h"
 
 #include <cstddef>
+#include <cstdarg>
+
 #include "base/logging.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
-RedisCache::RedisCache(const StringPiece& host, int port)
-    : host_(host.as_string()), port_(port), redis_(nullptr) {}
+RedisCache::RedisCache(const StringPiece& host, int port,
+                       MessageHandler* message_handler)
+    : host_(host.as_string()),
+      port_(port),
+      redis_(nullptr),
+      message_handler_(message_handler) {}
 
 bool RedisCache::Connect() {
   ShutDown();
 
   redis_ = redisConnect(host_.c_str(), port_);
   if (redis_ == nullptr) {
-    LOG(ERROR) << "Cannot allocate redis context";
+    message_handler_->Message(kError, "Cannot allocate redis context");
     return false;
   }
   if (redis_->err) {
-    LOG(ERROR) << "Error while connecting to Redis: " << redis_->errstr;
+    LogRedisContextError("Error while connecting to redis");
     redisFree(redis_);
+    redis_ = nullptr;
     return false;
   }
   return true;
@@ -60,27 +67,21 @@ void RedisCache::ShutDown() {
 
 void RedisCache::Get(const GoogleString& key, Callback* callback) {
   if (!IsHealthy()) {
+    // TODO(yeputons): return kNetworkError instead?
     ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
     return;
   }
 
-  redisReply* reply = static_cast<redisReply*>(
-      redisCommand(redis_, "GET %b", key.data(), key.length()));
+  RedisReply reply = redisCommand("GET %b", key.data(), key.length());
   KeyState keyState = CacheInterface::kNotFound;
-  if (reply != nullptr) {
+  if (ValidateRedisReply(reply, {REDIS_REPLY_STRING, REDIS_REPLY_NIL}, "GET")) {
     if (reply->type == REDIS_REPLY_STRING) {
       // The only type of values that we store in Redis is string
       *callback->value() = SharedString(StringPiece(reply->str, reply->len));
       keyState = CacheInterface::kAvailable;
-    } else if (reply->type == REDIS_REPLY_NIL) {
-      // key not found, do nothing
-    } else if (reply->type == REDIS_REPLY_ERROR) {
-      LOG(ERROR) << "Redis GET returned error: "
-                 << StringPiece(reply->str, reply->len);
     } else {
-      LOG(ERROR) << "Unexpected reply type from redis GET: " << reply->type;
+      // REDIS_REPLY_NIL means 'key not found', do nothing
     }
-    freeReplyObject(reply);
   }
   ValidateAndReportResult(key, keyState, callback);
 }
@@ -90,10 +91,22 @@ void RedisCache::Put(const GoogleString& key, SharedString* value) {
     return;
   }
 
-  // TODO(yeputons): check for server's response and log errors
-  redisCommand(redis_, "SET %b %b",
-               key.data(), key.length(),
-               value->data(), static_cast<size_t>(value->size()));
+  RedisReply reply = redisCommand(
+      "SET %b %b",
+      key.data(), key.length(),
+      value->data(), static_cast<size_t>(value->size()));
+  if (!ValidateRedisReply(reply, {REDIS_REPLY_STATUS}, "SET")) {
+    return;
+  }
+  GoogleString answer(reply->str, reply->len);
+  if (answer == "OK") {
+    // success, nothing to do
+  } else {
+    LOG(DFATAL) << "Unexpected status from redis as answer to SET: " << answer;
+    message_handler_->Message(
+        kError, "Unexpected status from redis as answer to SET: %s",
+        answer.c_str());
+  }
 }
 
 void RedisCache::Delete(const GoogleString& key) {
@@ -101,8 +114,50 @@ void RedisCache::Delete(const GoogleString& key) {
     return;
   }
 
-  // TODO(yeputons): check for server's response and log errors
-  redisCommand(redis_, "DEL %b", key.data(), key.length());
+  RedisReply reply = redisCommand("DEL %b", key.data(), key.length());
+  // Redis returns amount of keys deleted (probably, zero), no need in check
+  // that amount; all other errors are handled by ValidateRedisReply
+  ValidateRedisReply(reply, {REDIS_REPLY_INTEGER}, "DEL");
+}
+
+RedisCache::RedisReply RedisCache::redisCommand(const char* format, ...) {
+  CHECK(redis_ != nullptr);
+  va_list args;
+  va_start(args, format);
+  void* result = redisvCommand(redis_, format, args);
+  va_end(args);
+  return RedisReply(static_cast<redisReply*>(result));
+}
+
+void RedisCache::LogRedisContextError(const char* cause) {
+  message_handler_->Message(kError, "%s: err flags is %d, %s",
+                            cause, redis_->err, redis_->errstr);
+}
+
+bool RedisCache::ValidateRedisReply(const RedisReply& reply,
+                                    std::initializer_list<int> valid_types,
+                                    const char* command_executed) {
+  if (reply == nullptr) {
+    LogRedisContextError(command_executed);
+    return false;
+  }
+  if (reply->type == REDIS_REPLY_ERROR) {
+    GoogleString error(reply->str, reply->len);
+    LOG(DFATAL) << command_executed << ": redis returned error: " << error;
+    message_handler_->Message(kError, "%s: redis returned error: %s",
+                              command_executed, error.c_str());
+    return false;
+  }
+  for (int type : valid_types) {
+    if (reply->type == type) {
+      return true;
+    }
+  }
+  LOG(DFATAL) << command_executed
+              << ": unexpected reply type from redis: " << reply->type;
+  message_handler_->Message(kError, "%s: unexpected reply type from redis: %d",
+                            command_executed, reply->type);
+  return false;
 }
 
 }  // namespace net_instaweb

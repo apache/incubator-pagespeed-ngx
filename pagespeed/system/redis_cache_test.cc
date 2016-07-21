@@ -22,6 +22,7 @@
 
 #include <cstddef>
 
+#include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -44,7 +45,7 @@ class RedisCacheTest : public CacheTestBase {
       return false;
     }
 
-    cache_.reset(new RedisCache("localhost", port));
+    cache_.reset(new RedisCache("localhost", port, &handler_));
     return cache_->Connect();
   }
 
@@ -52,6 +53,7 @@ class RedisCacheTest : public CacheTestBase {
 
  private:
   scoped_ptr<RedisCache> cache_;
+  GoogleMessageHandler handler_;
 };
 
 // Simple flow of putting in an item, getting it, deleting it.
@@ -68,6 +70,28 @@ TEST_F(RedisCacheTest, PutGetDelete) {
 
   CheckDelete("Name");
   CheckNotFound("Name");
+}
+
+TEST_F(RedisCacheTest, MultiGet) {
+  if (!InitRedisOrSkip()) {
+    return;
+  }
+  TestMultiGet();  // test from CacheTestBase is just fine
+}
+
+TEST_F(RedisCacheTest, BasicInvalid) {
+  if (!InitRedisOrSkip()) {
+    return;
+  }
+
+  // Check that we honor callback veto on validity.
+  CheckPut("nameA", "valueA");
+  CheckPut("nameB", "valueB");
+  CheckGet("nameA", "valueA");
+  CheckGet("nameB", "valueB");
+  set_invalid_value("valueA");
+  CheckNotFound("nameA");
+  CheckGet("nameB", "valueB");
 }
 
 }  // namespace net_instaweb
