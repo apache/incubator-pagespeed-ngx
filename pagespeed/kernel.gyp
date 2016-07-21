@@ -197,6 +197,7 @@
         'kernel/cache/delegating_cache_callback.cc',
         'kernel/cache/fallback_cache.cc',
         'kernel/cache/file_cache.cc',
+        'kernel/cache/in_memory_cache.cc',
         'kernel/cache/key_value_codec.cc',
         'kernel/cache/lru_cache.cc',
         'kernel/cache/purge_context.cc',

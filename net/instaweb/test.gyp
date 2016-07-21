@@ -281,6 +281,7 @@
         '<(DEPTH)/pagespeed/kernel/cache/delay_cache_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/fallback_cache_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/file_cache_test.cc',
+        '<(DEPTH)/pagespeed/kernel/cache/in_memory_cache_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/key_value_codec_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/lru_cache_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/mock_time_cache_test.cc',
