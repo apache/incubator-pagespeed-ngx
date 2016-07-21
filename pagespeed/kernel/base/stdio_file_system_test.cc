@@ -192,4 +192,8 @@ TEST_F(StdioFileSystemTest, TestLockTimeout) {
   TestLockTimeout();
 }
 
+TEST_F(StdioFileSystemTest, TestLockBumping) {
+  TestLockBumping();
+}
+
 }  // namespace net_instaweb

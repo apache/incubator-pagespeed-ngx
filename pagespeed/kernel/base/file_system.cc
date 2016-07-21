@@ -178,6 +178,13 @@ bool FileSystem::RecursivelyMakeDir(const StringPiece& full_path_const,
 
 void FileSystem::GetDirInfo(const StringPiece& path, DirInfo* dirinfo,
                             MessageHandler* handler) {
+  NullProgressNotifier notifier;
+  GetDirInfoWithProgress(path, dirinfo, &notifier, handler);
+}
+
+void FileSystem::GetDirInfoWithProgress(
+    const StringPiece& path, DirInfo* dirinfo, ProgressNotifier* notifier,
+    MessageHandler* handler) {
   // This function is not guaranteed to produce correct results if files or
   // directories are modified while this function is executing.
 
@@ -190,6 +197,7 @@ void FileSystem::GetDirInfo(const StringPiece& path, DirInfo* dirinfo,
   StringVector dirs_to_traverse;
   dirs_to_traverse.push_back(path.as_string());
   while (!dirs_to_traverse.empty()) {
+    notifier->Notify();
     GoogleString dir = dirs_to_traverse.back();
     dirs_to_traverse.pop_back();
     StringVector dir_contents;
@@ -209,6 +217,7 @@ void FileSystem::GetDirInfo(const StringPiece& path, DirInfo* dirinfo,
     dirinfo->inode_count += dir_contents.size();
     StringVector::iterator it;
     for (it = dir_contents.begin(); it != dir_contents.end(); ++it) {
+      notifier->Notify();
       GoogleString file_name = *it;
       // Add size for both files and directories
       int64 file_size;

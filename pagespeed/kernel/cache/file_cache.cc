@@ -73,6 +73,8 @@ const char FileCache::kBytesFreedInCleanup[] =
 const char FileCache::kCleanups[] = "file_cache_cleanups";
 const char FileCache::kDiskChecks[] = "file_cache_disk_checks";
 const char FileCache::kEvictions[] = "file_cache_evictions";
+const char FileCache::kSkippedCleanups[] = "file_cache_skipped_cleanups";
+const char FileCache::kStartedCleanups[] = "file_cache_started_cleanups";
 const char FileCache::kWriteErrors[] = "file_cache_write_errors";
 
 // Filenames for the next scheduled clean time and the lockfile.  In
@@ -80,6 +82,49 @@ const char FileCache::kWriteErrors[] = "file_cache_write_errors";
 // contain characters that our filename encoder would escape.
 const char FileCache::kCleanTimeName[] = "!clean!time!";
 const char FileCache::kCleanLockName[] = "!clean!lock!";
+
+// Be willing to wait for a cache cleaner that hasn't bumped it's lock file in
+// the last 5min.  A successful cache cleaner should be hitting it far more
+// often than every 5min, this leaves plenty of leeway to make sure we don't
+// start running the cache cleaner twice at the same time.
+const int FileCache::kLockTimeoutMs = Timer::kMinuteMs * 5;
+
+namespace {
+
+// Bump the lock once out of this many calls to Notify().
+const int kLockBumpIntervalCycles = 1000;
+
+class LockBumpingProgressNotifier : public FileSystem::ProgressNotifier {
+ public:
+  // Takes ownership of nothing.
+  LockBumpingProgressNotifier(FileSystem* file_system,
+                              GoogleString* clean_lock_path,
+                              MessageHandler* handler) :
+      file_system_(file_system),
+      clean_lock_path_(clean_lock_path),
+      handler_(handler),
+      count_(0) {}
+
+  void Notify() override {
+    if (++count_ % kLockBumpIntervalCycles == 0) {
+      // BumpLockTimeout will log errors if it fails.
+      file_system_->BumpLockTimeout(clean_lock_path_->c_str(), handler_);
+    }
+    // TODO(jefftk): Consider using this callback to throttle cache cleaning
+    // iops as well.
+  }
+
+ private:
+  FileSystem* file_system_;
+  GoogleString* clean_lock_path_;
+  MessageHandler* handler_;
+
+  // Incremented on every Notify() call so we can bump the lock only every
+  // kLockBumpInterval calls.
+  int64 count_;
+};
+
+}  // namespace
 
 // TODO(abliss): remove policy from constructor; provide defaults here
 // and setters below.
@@ -97,10 +142,13 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
       path_length_limit_(file_system_->MaxPathLength(path)),
       clean_time_path_(path),
       clean_lock_path_(path),
+      notifier_for_tests_(nullptr),
       disk_checks_(stats->GetVariable(kDiskChecks)),
       cleanups_(stats->GetVariable(kCleanups)),
       evictions_(stats->GetVariable(kEvictions)),
       bytes_freed_in_cleanup_(stats->GetVariable(kBytesFreedInCleanup)),
+      skipped_cleanups_(stats->GetVariable(kSkippedCleanups)),
+      started_cleanups_(stats->GetVariable(kStartedCleanups)),
       write_errors_(stats->GetVariable(kWriteErrors)) {
   if (policy->cleaning_enabled()) {
     next_clean_ms_ = policy->timer->NowMs() + policy->clean_interval_ms / 2;
@@ -119,6 +167,8 @@ void FileCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCleanups);
   statistics->AddVariable(kDiskChecks);
   statistics->AddVariable(kEvictions);
+  statistics->AddVariable(kSkippedCleanups);
+  statistics->AddVariable(kStartedCleanups);
   statistics->AddVariable(kWriteErrors);
 }
 
@@ -181,12 +231,15 @@ namespace {
 // directories that StdioFileSystem uses and is set to be double
 // ServerContext::kBreakLockMs / kSecondMs.
 const int64 kEmptyDirCleanAgeSec = 60;
+
 }  // namespace
 
 bool FileCache::Clean(int64 target_size_bytes, int64 target_inode_count) {
+  started_cleanups_->Add(1);
+
   DCHECK(cache_policy_->cleaning_enabled());
-  // TODO(jud): this function can delete .lock and .outputlock files, is this
-  // problematic?
+  // While this function can delete .lock and .outputlock files, the use of
+  // kEmptyDirCleanAgeSec should keep that from being a problem.
   message_handler_->Message(kInfo,
                             "Checking cache size against target %s and inode "
                             "count against target %s",
@@ -196,9 +249,16 @@ bool FileCache::Clean(int64 target_size_bytes, int64 target_inode_count) {
 
   bool everything_ok = true;
 
+  LockBumpingProgressNotifier lock_bumping_notifier(
+      file_system_, &clean_lock_path_, message_handler_);
+  FileSystem::ProgressNotifier* notifier = &lock_bumping_notifier;
+  if (notifier_for_tests_ != NULL) {
+    notifier = notifier_for_tests_;
+  }
   // Get the contents of the cache
   FileSystem::DirInfo dir_info;
-  file_system_->GetDirInfo(path_, &dir_info, message_handler_);
+  file_system_->GetDirInfoWithProgress(
+      path_, &dir_info, notifier, message_handler_);
 
   // Check to see if cache size or inode count exceeds our limits.
   // target_inode_count of 0 indicates no inode limit.
@@ -226,6 +286,7 @@ bool FileCache::Clean(int64 target_size_bytes, int64 target_inode_count) {
   StringVector::iterator it;
   for (it = dir_info.empty_dirs.begin(); it != dir_info.empty_dirs.end();
        ++it) {
+    notifier->Notify();
     // StdioFileSystem uses an empty directory as a file lock. Avoid deleting
     // these file locks by not removing the file cache clean lock file, and
     // making sure empty directories are at least n seconds old before removing
@@ -259,6 +320,7 @@ bool FileCache::Clean(int64 target_size_bytes, int64 target_inode_count) {
          (cache_size > target_size_bytes ||
           (target_inode_count != 0 &&
            cache_inode_count > target_inode_count))) {
+    notifier->Notify();
     FileSystem::FileInfo file = *file_itr;
     ++file_itr;
     // Don't clean the clean_time or clean_lock files! They ought to be the
@@ -287,9 +349,9 @@ bool FileCache::Clean(int64 target_size_bytes, int64 target_inode_count) {
 }
 
 void FileCache::CleanWithLocking(int64 next_clean_time_ms) {
-  if (file_system_->TryLockWithTimeout(
-          clean_lock_path_, Timer::kHourMs, cache_policy_->timer,
-          message_handler_).is_true()) {
+  if (file_system_->TryLockWithTimeout(clean_lock_path_, kLockTimeoutMs,
+                                       cache_policy_->timer,
+                                       message_handler_).is_true()) {
     // Update the timestamp file.
     {
       ScopedMutex lock(mutex_.get());
@@ -302,8 +364,14 @@ void FileCache::CleanWithLocking(int64 next_clean_time_ms) {
     }
 
     // Now actually clean.
-    Clean(cache_policy_->target_size_bytes, cache_policy_->target_inode_count);
+    Clean(cache_policy_->target_size_bytes,
+          cache_policy_->target_inode_count);
     file_system_->Unlock(clean_lock_path_, message_handler_);
+  } else {
+    // The previous cache cleaning run is still active, so skip this round.
+    skipped_cleanups_->Add(1);
+    message_handler_->Message(
+        kInfo, "Skipped file cache cleaning: previous cleanup still ongoing");
   }
 }
 
@@ -327,7 +395,7 @@ bool FileCache::ShouldClean(int64* suggested_next_clean_time_ms) {
   int64 new_clean_time_ms = now_ms + cache_policy_->clean_interval_ms;
   NullMessageHandler null_handler;
   if (file_system_->ReadFile(clean_time_path_.c_str(), &clean_time_str,
-                              &null_handler)) {
+                             &null_handler)) {
     StringToInt64(clean_time_str, &clean_time_ms);
   } else {
     message_handler_->Message(
@@ -367,6 +435,15 @@ void FileCache::CleanIfNeeded() {
     int64 suggested_next_clean_time_ms;
     if (ShouldClean(&suggested_next_clean_time_ms)) {
       worker_->Start();
+      // TODO(jefftk): On systems with multiple filecaches that take non-trivial
+      // amounts of time to clean this is probably not right.  If at least two
+      // caches are getting at least 1QPS of PUTs then they'll keep their clean
+      // times synchronized and each time one of them will randomly get to run
+      // and the others won't.  We could fix this by having cache cleaning be
+      // global, and clean all file caches together, we could have the worker
+      // queue cache cleaning jobs, or we could bump next_clean_time by
+      // something much less than the cache cleaning interval if the worker is
+      // busy here.
       worker_->RunIfNotBusy(
           new CacheCleanFunction(this, suggested_next_clean_time_ms));
     }

@@ -20,6 +20,7 @@
 #define PAGESPEED_KERNEL_BASE_FILE_SYSTEM_TEST_BASE_H_
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
@@ -27,7 +28,6 @@
 
 namespace net_instaweb {
 
-class FileSystem;
 class Timer;
 
 // TODO(huibao): Rename FileSystemTest to FileSystemTestBase.
@@ -109,6 +109,7 @@ class FileSystemTest : public testing::Test {
   void TestDirInfo();
   void TestLock();
   void TestLockTimeout();
+  void TestLockBumping();
 
   GoogleMessageHandler handler_;
   GoogleString test_tmpdir_;
@@ -118,6 +119,16 @@ class FileSystemTest : public testing::Test {
   static const int kBlockSize = 4096;
 
   DISALLOW_COPY_AND_ASSIGN(FileSystemTest);
+};
+
+class CountingProgressNotifier : public FileSystem::ProgressNotifier {
+ public:
+  CountingProgressNotifier() : count_(0) {}
+  void Notify() override { count_++; }
+  int get_count() { return count_; }
+
+ private:
+  int count_;
 };
 
 }  // namespace net_instaweb

@@ -62,7 +62,7 @@ class StdioFileSystem : public FileSystem {
   // utilization could differ from the apparent size of the file as it depends
   // on the underlying file system and default block size.
   virtual bool Size(const StringPiece& path, int64* size,
-                    MessageHandler* handler);
+                    MessageHandler* handler) const;
   virtual BoolOrError Exists(const char* path, MessageHandler* handler);
   virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
 
@@ -72,6 +72,8 @@ class StdioFileSystem : public FileSystem {
                                          int64 timeout_ms,
                                          const Timer* timer,
                                          MessageHandler* handler);
+  virtual bool BumpLockTimeout(const StringPiece& lock_name,
+                               MessageHandler* handler);
 
   virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
 
@@ -89,7 +91,7 @@ class StdioFileSystem : public FileSystem {
  private:
   // Used by *time and Size methods to get file info.
   bool Stat(const StringPiece& path, struct stat* statbuf,
-            MessageHandler* handler);
+            MessageHandler* handler) const;
 
   int64 slow_file_latency_threshold_us_;
   Timer* timer_;

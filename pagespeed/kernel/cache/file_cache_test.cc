@@ -22,7 +22,9 @@
 #include <unistd.h>
 
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/file_system_test_base.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
@@ -36,6 +38,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/thread/slow_worker.h"
+#include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
 
@@ -51,12 +54,15 @@ class FileCacheTest : public CacheTestBase {
         kCleanIntervalMs(Timer::kMinuteMs),
         kTargetSize(12),  // Small enough to overflow with a few strings.
         kTargetInodeLimit(10),
-        stats_(thread_system_.get()) {
+        stats_(thread_system_.get()),
+        lock_timeout_ms_(FileCache::kLockTimeoutMs) {
     FileCache::InitStats(&stats_);
     ResetFileCache(kCleanIntervalMs, kTargetSize);
     disk_checks_ = stats_.GetVariable(FileCache::kDiskChecks);
     cleanups_ = stats_.GetVariable(FileCache::kCleanups);
     evictions_ = stats_.GetVariable(FileCache::kEvictions);
+    skipped_cleanups_ = stats_.GetVariable(FileCache::kSkippedCleanups);
+    started_cleanups_ = stats_.GetVariable(FileCache::kStartedCleanups);
     bytes_freed_in_cleanup_ = stats_.GetVariable(
         FileCache::kBytesFreedInCleanup);
 
@@ -92,14 +98,70 @@ class FileCacheTest : public CacheTestBase {
   virtual void PostOpCleanup() { }
 
   bool Clean(int64 size, int64 inode_count) {
-    return cache_->Clean(size, inode_count);
+    // Cache expects to be locked when cleaning.
+    EXPECT_TRUE(file_system_.TryLock(
+        cache_->clean_lock_path_, &message_handler_).is_true());
+
+    bool success = cache_->Clean(size, inode_count);
+
+    EXPECT_TRUE(file_system_.Unlock(
+        cache_->clean_lock_path_, &message_handler_));
+
+    return success;
+  }
+
+  void WaitForWorker(SlowWorker* worker) {
+    while (worker->IsBusy()) {
+      usleep(10);
+    }
   }
 
   void RunClean() {
     cache_->CleanIfNeeded();
-    while (worker_.IsBusy()) {
-      usleep(10);
+    WaitForWorker(&worker_);
+  }
+
+  class StallingNotifier : public FileSystem::ProgressNotifier {
+   public:
+    StallingNotifier(ThreadSystem* thread_system) :
+        stall_on_next_use_(false),
+        stall_(thread_system),
+        resume_(thread_system) {}
+
+    void Notify() override {
+      if (stall_on_next_use_) {
+        stall_on_next_use_ = false;
+        resume_.Notify();
+        stall_.Wait();
+      }
     }
+
+    void StallOnNextUse() {
+      CHECK(!stall_on_next_use_);
+      stall_on_next_use_ = true;
+    }
+
+    void WaitUntilStall() {
+      resume_.Wait();
+    }
+
+    void Unstall() {
+      stall_.Notify();
+    }
+
+   private:
+    bool stall_on_next_use_;
+    WorkerTestBase::SyncPoint stall_;
+    WorkerTestBase::SyncPoint resume_;
+  };
+
+  void SetNotifier(FileSystem::ProgressNotifier* notifier) {
+    cache_->notifier_for_tests_ = notifier;
+  }
+
+  void BumpLock() {
+    file_system_.BumpLockTimeout(cache_->clean_lock_path_.c_str(),
+                                 &message_handler_);
   }
 
  protected:
@@ -114,10 +176,13 @@ class FileCacheTest : public CacheTestBase {
   SimpleStats stats_;
   scoped_ptr<FileCache> cache_;
   GoogleMessageHandler message_handler_;
+  const int64 lock_timeout_ms_;
 
   Variable* disk_checks_;
   Variable* cleanups_;
   Variable* evictions_;
+  Variable* skipped_cleanups_;
+  Variable* started_cleanups_;
   Variable* bytes_freed_in_cleanup_;
 
  private:
@@ -253,6 +318,26 @@ TEST_F(FileCacheTest, Clean) {
   EXPECT_EQ(6, dir_info.inode_count);
 }
 
+// Test that Clean properly calls the notifier.
+TEST_F(FileCacheTest, CheckCleanNotifier) {
+  CheckPut("Name1", "Value1");
+  CheckPut("Name2", "Value2");
+  CheckPut("Name3", "Value3");
+  CountingProgressNotifier notifier;
+  SetNotifier(&notifier);
+  EXPECT_TRUE(Clean(0 /* delete everything */, 0));
+
+  int expected_notifications = (
+      1 /* for getDirInfo considering the parent directory */ +
+      3 /* for getDirInfo considering the three entries */ +
+      3 /* for deleting the three entries */);
+
+  EXPECT_EQ(expected_notifications, notifier.get_count());
+  CheckNotFound("Name1");
+  CheckNotFound("Name2");
+  CheckNotFound("Name3");
+}
+
 // Test the auto-cleaning behavior
 TEST_F(FileCacheTest, CheckClean) {
   CheckPut("Name1", "Value");
@@ -330,6 +415,96 @@ TEST_F(FileCacheTest, CheckPartialCleanWithCleaningDisabled) {
   CheckGet("Name1", "Value1");
   CheckGet("Name2", "Value2");
   CheckGet("Name3", "Value3");
+}
+
+// Test that if we start a cache cleaning run that takes longer than the
+// cleaning interval and then start another run, that the second run quits
+// immediately.
+TEST_F(FileCacheTest, MultipleSimultaneousCacheCleans) {
+  StallingNotifier notifier1(thread_system_.get());
+  SetNotifier(&notifier1);
+
+  // This won't trigger cleaning, because there's no timestamp.  Sets up the
+  // timestamp for future Put()s, though.
+  CheckPut("Name", "Value");
+  // We still have to wait before checking the stat, though, in case we're
+  // wrong.
+  WaitForWorker(&worker_);
+  EXPECT_EQ(0, started_cleanups_->Get());
+  EXPECT_EQ(0, skipped_cleanups_->Get());
+
+  // The second put will trigger cleaning, which will walk the fs and decide
+  // nothing needs cleaning.
+  mock_timer_.SleepMs(kCleanIntervalMs + 1);
+  CheckPut("Name", "Value");
+  WaitForWorker(&worker_);
+
+  EXPECT_EQ(1, started_cleanups_->Get());
+  EXPECT_EQ(0, skipped_cleanups_->Get());  // Still nothing skipped.
+  stats_.Clear();
+
+  // Trigger cleaning again, but this time stall it first.
+  notifier1.StallOnNextUse();
+  mock_timer_.SleepMs(kCleanIntervalMs + 1);
+  CheckPut("Name", "Value");
+  notifier1.WaitUntilStall();
+
+  // Now make a new cache pointing to the same file system, representing a
+  // different machine using the same file cache.  They do use the same stats
+  // though, for testing convenience.  This cache has a much smaller target
+  // size, so always deletes everything if it cleans succesfully.
+  SlowWorker worker2("cleaner2", thread_system_.get());
+  FileCache cache2(
+      GTestTempDir(), &file_system_, thread_system_.get(),
+      &worker2, new FileCache::CachePolicy(
+          &mock_timer_, &hasher_, kCleanIntervalMs,
+          1 /* target_size, very small */, kTargetInodeLimit),
+      &stats_, &message_handler_);
+
+  // First cleaning is still stalled.  Advance time, bump the lock, trigger the
+  // second cache to try cleaning, see it fail to take the lock and abort the
+  // clean.
+  mock_timer_.SleepMs(kCleanIntervalMs + 1);
+  BumpLock();
+  CheckPut(&cache2, "Name", "Value");
+  WaitForWorker(&worker2);
+  EXPECT_EQ(1, skipped_cleanups_->Get());
+
+  // Unstall the first cache, let cleaning finish.
+  notifier1.Unstall();
+  WaitForWorker(&worker_);
+
+  // This cleanup also got as far as scanning the FS, but still didn't delete
+  // anything, because the cache isn't oversized.
+  EXPECT_EQ(1, started_cleanups_->Get());
+  EXPECT_EQ(0, cleanups_->Get());
+  stats_.Clear();
+
+  CheckGet("Name", "Value");
+  CheckGet(&cache2, "Name", "Value");
+
+  // Now test what happens when we break the lock.
+  StallingNotifier notifier2(thread_system_.get());
+  SetNotifier(&notifier2);
+  notifier2.StallOnNextUse();
+  CheckPut("Name", "Value");
+  notifier2.WaitUntilStall();
+  mock_timer_.SleepMs(kCleanIntervalMs + lock_timeout_ms_);
+
+  // Don't bump the lock, so that the second cleaner will run.
+  CheckPut(&cache2, "Name", "Value");
+  WaitForWorker(&worker2);
+  EXPECT_EQ(1, cleanups_->Get());  // Second cleanup actually deleted stuff.
+  // Verify it's actually gone.
+  CheckNotFound("Name");
+
+  // Let the first cache cleanup finish.
+  notifier2.Unstall();
+  WaitForWorker(&worker_);
+  EXPECT_EQ(2, started_cleanups_->Get());  // Both cleanups scanned the FS.
+  EXPECT_EQ(0, skipped_cleanups_->Get());  // Neither cleanup was skipped.
+  // First cleanup didn't do any deletes; second one did.
+  EXPECT_EQ(1, cleanups_->Get());
 }
 
 }  // namespace net_instaweb

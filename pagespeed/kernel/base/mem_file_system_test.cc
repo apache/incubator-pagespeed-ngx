@@ -171,10 +171,13 @@ TEST_F(MemFileSystemTest, TestLock) {
   TestLock();
 }
 
-// TODO(sligocki): This test does not seem to work for MemFileSystem
-// TEST_F(MemFileSystemTest, TestLockTimeout) {
-//   TestLockTimeout();
-// }
+TEST_F(MemFileSystemTest, TestLockTimeout) {
+  TestLockTimeout();
+}
+
+TEST_F(MemFileSystemTest, TestLockBumping) {
+  TestLockBumping();
+}
 
 // Since this filesystem doesn't support directories, we skip these tests:
 // TestIsDir

@@ -116,6 +116,17 @@ class FileSystem {
     virtual ~OutputFile();
   };
 
+  class ProgressNotifier {
+   public:
+    virtual void Notify() = 0;
+    virtual ~ProgressNotifier() {}
+  };
+
+  class NullProgressNotifier : public ProgressNotifier {
+   public:
+    void Notify() override {}
+  };
+
   struct FileInfo {
     FileInfo(int64 size_bytes, int64 atime_sec, const GoogleString& name)
         : size_bytes(size_bytes), atime_sec(atime_sec), name(name) {}
@@ -263,8 +274,14 @@ class FileSystem {
   // directories are modified while we traverse, we are not guaranteed to
   // represent their final state. The path name should NOT end in a "/".
   // TODO(abliss): unify all slash-ending assumptions
-  virtual void GetDirInfo(const StringPiece& path, DirInfo* dirinfo,
-                          MessageHandler* handler);
+  void GetDirInfo(const StringPiece& path, DirInfo* dirinfo,
+                  MessageHandler* handler);
+
+  // Like GetDirInfo, but notifier->Notify() is called repeatedly as long as
+  // GetDirInfo is making progress.
+  virtual void GetDirInfoWithProgress(
+      const StringPiece& path, DirInfo* dirinfo,
+      ProgressNotifier* notifier, MessageHandler* handler);
 
   // Given a file, computes its size in bytes and store it in *size.  Returns
   // true on success, false on failure.  Behavior is undefined if path refers to
@@ -275,7 +292,7 @@ class FileSystem {
   // size on disk.
   // TODO(abliss): replace this with a single Stat() function.
   virtual bool Size(const StringPiece& path, int64* size,
-                    MessageHandler* handler) = 0;
+                    MessageHandler* handler) const = 0;
 
   // Attempts to obtain a global (cross-process, cross-thread) lock of the given
   // name (which should be a valid filename, not otherwise used, in an extant
@@ -285,16 +302,32 @@ class FileSystem {
   virtual BoolOrError TryLock(const StringPiece& lock_name,
                               MessageHandler* handler) = 0;
 
-  // Like TryLock, but may attempt to break the lock if it appears to be staler
-  // than the given number of milliseconds.  (The default implementation never
-  // actually breaks locks.)  If you obtain a lock through this method, there
-  // are no hard guarantees that nobody else has it too.
+  // Like TryLock, but may attempt to break stale locks, though the default
+  // implementation never actually breaks any.  A lock is stale if it was taken
+  // (or last bumped) more than timeout_millis ms ago.
+  //
+  // If you obtain a lock through this method, there are no hard guarantees that
+  // nobody else has it too.
   // <blink> If you use this function, your lock becomes "best-effort". </blink>
+  //
+  // If you override this function, you need to override BumpLockTimeout as
+  // well.
   virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
                                          int64 timeout_millis,
                                          const Timer* timer,
                                          MessageHandler* handler) {
     return TryLock(lock_name, handler);
+  }
+
+  // If you're holding a lock for a long running task you want to avoid someone
+  // else receiving the lock if they request it with TryLockWithTimeout because
+  // you've been working for longer than the timeout, you should bump it often
+  // enough that it doesn't expire.
+  virtual bool BumpLockTimeout(const StringPiece& lock_name,
+                               MessageHandler* handler) {
+    // Default implementation does nothing, since the default implementation of
+    // TryLockWithTimeout doesn't do anything either.
+    return true;
   }
 
   // Attempts to release a lock previously obtained through TryLock.  If your

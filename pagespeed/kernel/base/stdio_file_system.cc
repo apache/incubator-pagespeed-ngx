@@ -20,6 +20,7 @@
 
 #include <errno.h>
 #include <sys/stat.h>
+#include <utime.h>
 #ifdef WIN32
 #include <direct.h>
 #include <io.h>
@@ -509,7 +510,7 @@ bool StdioFileSystem::ListContents(const StringPiece& dir, StringVector* files,
 }
 
 bool StdioFileSystem::Stat(const StringPiece& path, struct stat* statbuf,
-                           MessageHandler* handler) {
+                           MessageHandler* handler) const {
   const GoogleString path_string = path.as_string();
   const char* path_str = path_string.c_str();
   if (stat(path_str, statbuf) == 0) {
@@ -546,7 +547,7 @@ bool StdioFileSystem::Mtime(const StringPiece& path, int64* timestamp_sec,
 }
 
 bool StdioFileSystem::Size(const StringPiece& path, int64* size,
-                           MessageHandler* handler) {
+                           MessageHandler* handler) const {
   struct stat statbuf;
   bool ret = Stat(path, &statbuf, handler);
   if (ret) {
@@ -599,7 +600,7 @@ BoolOrError StdioFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
   int64 now_us = timer->NowUs();
   int64 elapsed_since_lock_us = now_us - Timer::kSecondUs * m_time_sec;
   int64 timeout_us = Timer::kMsUs * timeout_ms;
-  if (elapsed_since_lock_us < timeout_us) {
+  if (elapsed_since_lock_us <= timeout_us) {
     // The lock is held and timeout hasn't elapsed.
     return BoolOrError(false);
   }
@@ -632,6 +633,17 @@ BoolOrError StdioFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
     handler->Info(lock_str, 0, "Failed to take lock after breaking it!");
   }
   return result;
+}
+
+bool StdioFileSystem::BumpLockTimeout(const StringPiece& lock_name,
+                                      MessageHandler* handler) {
+  bool success = utime(lock_name.as_string().c_str(),
+                       NULL /* update mtime to current time */) == 0;
+  if (!success) {
+    handler->Info(lock_name.as_string().c_str(), 0,
+                  "Failed to bump lock: %s", strerror(errno));
+  }
+  return success;
 }
 
 bool StdioFileSystem::Unlock(const StringPiece& lock_name,

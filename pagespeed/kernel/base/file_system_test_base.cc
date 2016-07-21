@@ -403,10 +403,15 @@ void FileSystemTest::TestDirInfo() {
 
   FileSystem::DirInfo dir_info;
   FileSystem::DirInfo dir_info2;
-  file_system()->GetDirInfo(dir_name2, &dir_info2, &handler_);
+  CountingProgressNotifier notifier1;
+  file_system()->GetDirInfoWithProgress(
+      dir_name2, &dir_info2, &notifier1, &handler_);
   EXPECT_EQ(FileSize(content1) + FileSize(content2), dir_info2.size_bytes);
   EXPECT_EQ(2, dir_info2.inode_count);
   EXPECT_EQ(static_cast<size_t>(2), dir_info2.files.size());
+  // GetDirInfoWithProgress doesn't commit to a specific number of Notify()
+  // calls, but it should be at least one.
+  EXPECT_LE(1, notifier1.get_count());
   // dir_info.files is not guaranteed to be in any particular order, and in fact
   // come back in different order for mem and apr filesystems, so sort it so
   // that the comparison is consistent.
@@ -415,11 +420,16 @@ void FileSystemTest::TestDirInfo() {
   EXPECT_STREQ(full_path2, dir_info2.files[1].name);
   EXPECT_EQ(static_cast<size_t>(0), dir_info2.empty_dirs.size());
 
-  file_system()->GetDirInfo(dir_name, &dir_info, &handler_);
+  CountingProgressNotifier notifier2;
+  file_system()->GetDirInfoWithProgress(
+      dir_name, &dir_info, &notifier2, &handler_);
   int dir_size = DefaultDirSize();
   EXPECT_EQ(dir_size * 2 + FileSize(content1) + FileSize(content2),
             dir_info.size_bytes);
   EXPECT_EQ(4, dir_info.inode_count);
+  // Running on this larger directory structure we should have at least one more
+  // Notify() call than on the smaller one.
+  EXPECT_LT(notifier1.get_count(), notifier2.get_count());
   std::sort(dir_info.files.begin(), dir_info.files.end(), CompareByName());
   EXPECT_STREQ(full_path1, dir_info.files[0].name);
   EXPECT_STREQ(full_path2, dir_info.files[1].name);
@@ -457,9 +467,9 @@ void FileSystemTest::TestLockTimeout() {
   // steal by mistake (since we're running in non-mock time).
   EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kMinuteMs,
                                                 timer(), &handler_).is_false());
-  // Wait 1 second so that we're definitely different from ctime.
+  // Wait just over 1 second so that we're past the timout.
   // Now we should seize lock.
-  timer()->SleepMs(Timer::kSecondMs);
+  timer()->SleepMs(Timer::kSecondMs + 1);
   EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs,
                                                 timer(), &handler_).is_true());
   // Lock should still be held.
@@ -469,6 +479,46 @@ void FileSystemTest::TestLockTimeout() {
   file_system()->Unlock(lock_name, &handler_);
   // Lock should now be unambiguously unlocked.
   EXPECT_TRUE(file_system()->TryLock(lock_name, &handler_).is_true());
+}
+
+void FileSystemTest::TestLockBumping() {
+  const GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir");
+  DeleteRecursively(dir_name);
+  ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
+  const GoogleString lock_name = dir_name + "/lock";
+
+  // No one holds the lock, so it can't be bumped.
+  EXPECT_FALSE(file_system()->BumpLockTimeout(lock_name, &handler_));
+
+  // Take the lock.
+  EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs * 3,
+                                                timer(), &handler_).is_true());
+
+  // Sleep 2s.  We still hold the lock.
+  timer()->SleepMs(Timer::kSecondMs * 2);
+
+  // Bump the lock.
+  EXPECT_TRUE(file_system()->BumpLockTimeout(lock_name, &handler_));
+
+  // Try to take the lock again.  This should fail even if bumping didn't work
+  // because the original lock was only 2s old anyway.
+  EXPECT_FALSE(file_system()->TryLockWithTimeout(
+      lock_name, Timer::kSecondMs * 3, timer(), &handler_).is_true());
+
+  // Sleep 2s.  We still hold the lock, because we bumped it.
+  timer()->SleepMs(Timer::kSecondMs * 2);
+
+  // Try to take the lock again.  If bumping didn't work, then the lock would
+  // have expired 1s ago and we could have taken it here.
+  EXPECT_FALSE(file_system()->TryLockWithTimeout(
+      lock_name, Timer::kSecondMs * 3, timer(), &handler_).is_true());
+
+  // Sleep 2s.  The lock is now fully timed out.
+  timer()->SleepMs(Timer::kSecondMs * 2);
+
+  // With the lock timed out it's available for the taking.
+  EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs * 3,
+                                                timer(), &handler_).is_true());
 }
 
 }  // namespace net_instaweb

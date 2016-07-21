@@ -77,7 +77,7 @@ class MemFileSystem : public FileSystem {
   virtual bool Mtime(const StringPiece& path, int64* timestamp_sec,
                      MessageHandler* handler);
   virtual bool Size(const StringPiece& path, int64* size,
-                    MessageHandler* handler);
+                    MessageHandler* handler) const;
   virtual BoolOrError Exists(const char* path, MessageHandler* handler);
   virtual BoolOrError IsDir(const char* path, MessageHandler* handler);
 
@@ -87,6 +87,8 @@ class MemFileSystem : public FileSystem {
                                          int64 timeout_ms,
                                          const Timer* timer,
                                          MessageHandler* handler);
+  virtual bool BumpLockTimeout(const StringPiece& lock_name,
+                               MessageHandler* handler);
   virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
 
   // When atime is disabled, reading a file will not update its atime.
