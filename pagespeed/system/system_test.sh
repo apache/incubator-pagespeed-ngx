@@ -757,12 +757,23 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   start_test url-valued stylesheet attributes are properly handled
 
+  function url_valued_attribute_css_optimization_status() {
+    local input=$(cat)
+    if [[ $(echo "$input" | fgrep -o ".pagespeed.cf." | wc -l) != 7 ]]; then
+      echo incomplete  # still some unoptimized css files
+    elif ! echo "$input" | \
+             grep -q "<style>.bold{font-weight:bold}</style>"; then
+      echo incomplete  # bold.css still not inlined
+    else
+      echo complete
+    fi
+  }
+
   URL="$TEST/url_valued_attribute_css.html"
   URL+="?PageSpeedFilters=debug,combine_css,rewrite_css,inline_css"
-  http_proxy=$SECONDARY_HOSTNAME \
-      fetch_until -save "$URL" 'count_exact_matches .pagespeed.cf.' 7
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save "$URL" \
+    url_valued_attribute_css_optimization_status complete
   OUT=$(cat $FETCH_UNTIL_OUTFILE)
-  check_from "$OUT" grep "<style>.bold{font-weight:bold}</style>"
   check_from "$OUT" grep \
     "Could not combine over barrier: custom or alternate stylesheet attribute"
   check_from "$OUT" grep 'link data-stylesheet=[^<]*.pagespeed.cf'
