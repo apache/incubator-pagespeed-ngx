@@ -1562,6 +1562,15 @@ http {
     }
   }
   server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name debug-filters.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters debug;
+  }
+  server {
     listen @@PRIMARY_PORT@@;
     listen [::]:@@PRIMARY_PORT@@;
     server_name  localhost;
