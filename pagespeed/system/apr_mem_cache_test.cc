@@ -38,6 +38,8 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/posix_timer.h"
+#include "pagespeed/kernel/cache/cache_key_prepender.h"
 #include "pagespeed/kernel/cache/cache_spammer.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/cache/fallback_cache.h"
@@ -96,7 +98,21 @@ class AprMemCacheTest : public CacheTestBase {
     }
     servers_.reset(new AprMemCache(server_spec_, 5, hasher, &statistics_,
                                    &timer_, &handler_));
-    cache_.reset(new FallbackCache(servers_.get(), lru_cache_.get(),
+    // As memcached is not restarted between tests, we need some other kind of
+    // isolation. One option would be to flush memcached, if apr_memcache
+    // supported that. We do not want to modify our fork even further, so we
+    // prepend the test name and current time to all keys that go to memcached.
+    const ::testing::TestInfo* const test_info =
+        ::testing::UnitTest::GetInstance()->current_test_info();
+    PosixTimer timer;
+    const GoogleString memcache_prefix =
+        StrCat(test_info->test_case_name(), ".",
+               test_info->name(), "_",
+               Integer64ToString(timer.NowUs()), "_");
+    prefixed_memcache_.reset(
+        new CacheKeyPrepender(memcache_prefix, servers_.get()));
+
+    cache_.reset(new FallbackCache(prefixed_memcache_.get(), lru_cache_.get(),
                                    kTestValueSizeThreshold,
                                    &handler_));
 
@@ -137,6 +153,7 @@ class AprMemCacheTest : public CacheTestBase {
   MockTimer timer_;
   scoped_ptr<LRUCache> lru_cache_;
   scoped_ptr<AprMemCache> servers_;
+  scoped_ptr<CacheKeyPrepender> prefixed_memcache_;
   scoped_ptr<FallbackCache> cache_;
   scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats statistics_;
@@ -322,7 +339,7 @@ TEST_F(AprMemCacheTest, MultiServerFallback) {
   // Make another connection to the same memcached, but with a different
   // fallback cache.
   LRUCache lru_cache2(kLRUCacheSize);
-  FallbackCache mem_cache2(servers_.get(), &lru_cache2,
+  FallbackCache mem_cache2(prefixed_memcache_.get(), &lru_cache2,
                            kTestValueSizeThreshold,
                            &handler_);
 
@@ -356,7 +373,7 @@ TEST_F(AprMemCacheTest, KeyOver64kDropped) {
   const int kBigLruSize = 1000000;
   const int kThreshold =  200000;    // fits key and small value.
   LRUCache lru_cache2(kLRUCacheSize);
-  FallbackCache mem_cache2(servers_.get(), &lru_cache2,
+  FallbackCache mem_cache2(prefixed_memcache_.get(), &lru_cache2,
                            kThreshold, &handler_);
 
   const GoogleString kKey(kBigLruSize, 'a');
@@ -412,7 +429,7 @@ TEST_F(AprMemCacheTest, ThreadSafe) {
                          200 /* num_iters */,
                          10 /* num_inserts */,
                          false, true, large_pattern.c_str(),
-                         servers_.get(),
+                         prefixed_memcache_.get(),
                          thread_system_.get());
 }
 
@@ -489,4 +506,23 @@ TEST_F(AprMemCacheTest, OneMicrosecondDelete) {
   EXPECT_EQ(1, statistics_.GetVariable("memcache_timeouts")->Get());
 }
 
+// Two following tests are identical and ensure that no keys are leaked between
+// tests through shared running Memcached server.
+TEST_F(AprMemCacheTest, TestsAreIsolated1) {
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
+
+  CheckNotFound("SomeKey");
+  CheckPut("SomeKey", "SomeValue");
+}
+
+TEST_F(AprMemCacheTest, TestsAreIsolated2) {
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
+
+  CheckNotFound("SomeKey");
+  CheckPut("SomeKey", "SomeValue");
+}
 }  // namespace net_instaweb

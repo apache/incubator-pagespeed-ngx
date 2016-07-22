@@ -52,6 +52,7 @@ class CacheTestBase : public testing::Test {
       noop_wait_called_ = false;
       value_of_called_when_wait_was_invoked_ = false;
       invalid_value_ = NULL;
+      invalid_key_ = NULL;
       return this;
     }
 
@@ -59,6 +60,9 @@ class CacheTestBase : public testing::Test {
                                    CacheInterface::KeyState state) {
       validate_called_ = true;
       if ((invalid_value_ != NULL) && (value_str() == invalid_value_)) {
+        return false;
+      }
+      if ((invalid_key_ != NULL) && (key == invalid_key_)) {
         return false;
       }
       return true;
@@ -81,6 +85,7 @@ class CacheTestBase : public testing::Test {
     }
 
     void set_invalid_value(const char* v) { invalid_value_ = v; }
+    void set_invalid_key(const char* k) { invalid_key_ = k; }
     StringPiece value_str() { return value()->Value(); }
 
     bool validate_called_;
@@ -90,6 +95,7 @@ class CacheTestBase : public testing::Test {
    private:
     CacheTestBase* test_;
     const char* invalid_value_;
+    const char* invalid_key_;
 
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };
@@ -97,6 +103,7 @@ class CacheTestBase : public testing::Test {
  protected:
   CacheTestBase()
       : invalid_value_(NULL),
+        invalid_key_(NULL),
         mutex_(new NullMutex),
         outstanding_fetches_(0) {
   }
@@ -158,6 +165,7 @@ class CacheTestBase : public testing::Test {
   Callback* AddCallback() {
     Callback* callback = NewCallback();
     callback->set_invalid_value(invalid_value_);
+    callback->set_invalid_key(invalid_key_);
     callbacks_.push_back(callback);
     return callback;
   }
@@ -221,6 +229,7 @@ class CacheTestBase : public testing::Test {
   }
 
   void set_invalid_value(const char* v) { invalid_value_ = v; }
+  void set_invalid_key(const char* k) { invalid_key_ = k; }
 
   // Initiate a cache Get, and return the Callback* which can be
   // passed to WaitAndCheck or WaitAndCheckNotFound.
@@ -260,6 +269,7 @@ class CacheTestBase : public testing::Test {
   }
 
   const char* invalid_value_;  // may be NULL.
+  const char* invalid_key_;  // may be NULL.
   std::vector<Callback*> callbacks_;
   scoped_ptr<AbstractMutex> mutex_;
   int outstanding_fetches_;  // protected by mutex_

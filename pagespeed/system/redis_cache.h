@@ -61,6 +61,9 @@ class RedisCache : public CacheInterface {
   bool IsHealthy() const override;
   void ShutDown() override;
 
+  // Flushes ALL DATA IN REDIS in blocking mode. Used in tests
+  bool FlushAll();
+
  private:
   GoogleString host_;
   int port_;

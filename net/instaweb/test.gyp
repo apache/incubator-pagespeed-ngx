@@ -276,6 +276,8 @@
         '<(DEPTH)/pagespeed/kernel/base/wildcard_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/async_cache_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/cache_batcher_test.cc',
+        '<(DEPTH)/pagespeed/kernel/cache/cache_key_prepender.cc',
+        '<(DEPTH)/pagespeed/kernel/cache/cache_key_prepender_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/cache_stats_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/compressed_cache_test.cc',
         '<(DEPTH)/pagespeed/kernel/cache/delay_cache_test.cc',

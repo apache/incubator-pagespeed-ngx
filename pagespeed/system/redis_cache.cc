@@ -120,6 +120,15 @@ void RedisCache::Delete(const GoogleString& key) {
   ValidateRedisReply(reply, {REDIS_REPLY_INTEGER}, "DEL");
 }
 
+bool RedisCache::FlushAll() {
+  if (!IsHealthy()) {
+    return false;
+  }
+
+  RedisReply reply = redisCommand("FLUSHALL");
+  return ValidateRedisReply(reply, {REDIS_REPLY_STATUS}, "FLUSHALL");
+}
+
 RedisCache::RedisReply RedisCache::redisCommand(const char* format, ...) {
   CHECK(redis_ != nullptr);
   va_list args;

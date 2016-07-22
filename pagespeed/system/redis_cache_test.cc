@@ -30,6 +30,8 @@
 
 namespace net_instaweb {
 
+// TODO(yeputons): refactor this class with AprMemCacheTest, see details in
+// apr_mem_cache_test.cc
 class RedisCacheTest : public CacheTestBase {
  protected:
   RedisCacheTest() {}
@@ -46,13 +48,13 @@ class RedisCacheTest : public CacheTestBase {
     }
 
     cache_.reset(new RedisCache("localhost", port, &handler_));
-    return cache_->Connect();
+    return cache_->Connect() && cache_->FlushAll();
   }
 
   CacheInterface* Cache() override { return cache_.get(); }
 
- private:
   scoped_ptr<RedisCache> cache_;
+ private:
   GoogleMessageHandler handler_;
 };
 
@@ -92,6 +94,39 @@ TEST_F(RedisCacheTest, BasicInvalid) {
   set_invalid_value("valueA");
   CheckNotFound("nameA");
   CheckGet("nameB", "valueB");
+}
+
+
+TEST_F(RedisCacheTest, FlushAll) {
+  if (!InitRedisOrSkip()) {
+    return;
+  }
+
+  CheckPut("Name1", "Value1");
+  CheckPut("Name2", "Value2");
+  cache_->FlushAll();
+  CheckNotFound("Name1");
+  CheckNotFound("Name2");
+}
+
+// Two following tests are identical and ensure that no keys are leaked between
+// tests through shared running Redis server.
+TEST_F(RedisCacheTest, TestsAreIsolated1) {
+  if (!InitRedisOrSkip()) {
+    return;
+  }
+
+  CheckNotFound("SomeKey");
+  CheckPut("SomeKey", "SomeValue");
+}
+
+TEST_F(RedisCacheTest, TestsAreIsolated2) {
+  if (!InitRedisOrSkip()) {
+    return;
+  }
+
+  CheckNotFound("SomeKey");
+  CheckPut("SomeKey", "SomeValue");
 }
 
 }  // namespace net_instaweb
