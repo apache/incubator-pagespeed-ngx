@@ -698,6 +698,20 @@ function fetch_until() {
       if [ $expect_time_out -eq 1 ]; then
         echo "TIMEOUT: expected"
       else
+        local file_size=$(cat "$FETCH_FILE" | wc -c)
+        local file_mime=$(file -ib "$FETCH_FILE")
+
+        if echo "$file_mime" | grep -q "^text/"; then
+          # Dump the beginning of the file, if it's text.
+          echo "Fetched file: $file_size bytes ("
+          cat "$FETCH_FILE" | head -n 100
+          echo ")"
+        else
+          # Otherwise dump the beginning of the file as hex.
+          echo "Fetched file: $file_size bytes, $file_mime begins ("
+          xxd -l 256 "$FETCH_FILE"
+          echo ")"
+        fi
         echo "TIMEOUT: $WGET_HERE $REQUESTURL output in $FETCH_FILE"
         handle_failure
       fi
