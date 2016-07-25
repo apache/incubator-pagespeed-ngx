@@ -37,6 +37,7 @@
 goog.provide('mob.Logo');
 goog.provide('mob.LogoCandidate');
 
+goog.require('goog.dom');
 goog.require('goog.dom.TagName');
 goog.require('goog.events.EventType');
 goog.require('goog.string');
@@ -268,7 +269,8 @@ mob.Logo.prototype.addImageToPendingList_ = function(img) {
  * @private
  */
 mob.Logo.prototype.newImage_ = function(imageSrc) {
-  var img = mob.util.getWindow().document.createElement(goog.dom.TagName.IMG);
+  var img =
+      mob.util.getWindow().document.createElement(String(goog.dom.TagName.IMG));
   this.addImageToPendingList_(img);
   img.src = imageSrc;
   return img;

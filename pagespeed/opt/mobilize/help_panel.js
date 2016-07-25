@@ -1,5 +1,6 @@
 goog.provide('mob.HelpPanel');
 
+goog.require('goog.dom');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('goog.events.EventType');
@@ -20,7 +21,7 @@ mob.HelpPanel = function(originalUrl) {
   /**
    * Help panel element.
    */
-  this.el = document.createElement(goog.dom.TagName.A);
+  this.el = goog.dom.createElement(goog.dom.TagName.A);
   this.el.id = mob.util.ElementId.HELP_PANEL;
 
   /**
@@ -127,33 +128,33 @@ mob.HelpPanel.HELP_PAGE_URL_ = 'https://support.google.com/ads/answer/7016176';
 mob.HelpPanel.prototype.createMenuItem_ = function(
     menuElement, itemId, menuText, iconImage, redirectUrl, forLearnMore) {
 
-  var li = document.createElement(goog.dom.TagName.LI);
+  var li = goog.dom.createElement(goog.dom.TagName.LI);
   menuElement.appendChild(li);
   li.id = itemId;
   var menuItem = li;
   if (!forLearnMore) {
-    var a = document.createElement(goog.dom.TagName.A);
+    var a = goog.dom.createElement(goog.dom.TagName.A);
     a.href = redirectUrl;
     li.appendChild(a);
     menuItem = a;
   }
 
-  var icon = document.createElement(goog.dom.TagName.SPAN);
+  var icon = goog.dom.createElement(goog.dom.TagName.SPAN);
   // We set the image using backgroundImage because if it's a foreground image
   // then dialing fails on a Samsung Galaxy Note 2.
   var imageUrl = 'data:image/gif;base64,' + iconImage;
   icon.style.backgroundImage = 'url(' + imageUrl + ')';
   menuItem.appendChild(icon);
-  var label = document.createElement(goog.dom.TagName.P);
+  var label = goog.dom.createElement(goog.dom.TagName.P);
   menuItem.appendChild(label);
 
   if (forLearnMore) {
     goog.dom.classlist.add(label, mob.util.ElementClass.LEARN_MORE);
-    var labelText = document.createElement(goog.dom.TagName.P);
+    var labelText = goog.dom.createElement(goog.dom.TagName.P);
     label.appendChild(labelText);
     goog.dom.classlist.add(labelText, mob.util.ElementClass.LEARN_MORE_TEXT);
     labelText.appendChild(document.createTextNode(menuText));
-    var a = document.createElement(goog.dom.TagName.A);
+    var a = goog.dom.createElement(goog.dom.TagName.A);
     a.href = redirectUrl;
     label.appendChild(a);
     goog.dom.classlist.add(a, mob.util.ElementClass.LEARN_MORE_LINK);
@@ -172,7 +173,7 @@ mob.HelpPanel.prototype.initialize_ = function() {
   document.body.appendChild(this.el);
 
   // Add menu items.
-  var ul = document.createElement(goog.dom.TagName.UL);
+  var ul = goog.dom.createElement(goog.dom.TagName.UL);
   this.el.appendChild(ul);
 
   // Create the first menu item to view original site.
@@ -276,7 +277,7 @@ mob.HelpPanel.prototype.redraw = function() {
  * @private
  */
 mob.HelpPanel.prototype.addClickDetectorDiv_ = function() {
-  this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
+  this.clickDetectorDiv_ = goog.dom.createElement(goog.dom.TagName.DIV);
   this.clickDetectorDiv_.id = mob.util.ElementId.CLICK_DETECTOR_DIV;
   document.body.insertBefore(this.clickDetectorDiv_, this.el);
 

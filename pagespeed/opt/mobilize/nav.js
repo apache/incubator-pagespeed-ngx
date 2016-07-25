@@ -396,7 +396,7 @@ mob.Nav.prototype.addThemeColor_ = function(themeData) {
       backgroundColor + '; }\n' +
       '#' + mob.util.ElementId.HEADER_BAR + ' * ' +
       ' { color: ' + color + '; }\n';
-  this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
+  this.styleTag_ = goog.dom.createElement(goog.dom.TagName.STYLE);
   this.styleTag_.type = 'text/css';
   this.styleTag_.appendChild(document.createTextNode(css));
   document.head.appendChild(this.styleTag_);
@@ -412,7 +412,7 @@ mob.Nav.prototype.addThemeColor_ = function(themeData) {
 mob.Nav.prototype.isMinimumFontSizeSet_ = function() {
   // TODO(jud): Insert this div in c++ to prevent forcing a style recalculation
   // here.
-  var testDiv = document.createElement(goog.dom.TagName.DIV);
+  var testDiv = goog.dom.createElement(goog.dom.TagName.DIV);
   document.body.appendChild(testDiv);
   testDiv.style.fontSize = '1px';
   var fontSize = window.getComputedStyle(testDiv).getPropertyValue('font-size');

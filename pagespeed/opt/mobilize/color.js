@@ -19,6 +19,7 @@
 goog.provide('mob.Color');
 
 goog.require('goog.color');
+goog.require('goog.dom');
 goog.require('goog.dom.TagName');
 goog.require('mob.util');
 
@@ -325,8 +326,8 @@ mob.Color.prototype.computeThemeColor_ = function(imageElement,
                                                   backgroundColor) {
   var width = imageElement.naturalWidth;
   var height = imageElement.naturalHeight;
-  var canvas =
-      mob.util.getWindow().document.createElement(goog.dom.TagName.CANVAS);
+  var canvas = mob.util.getWindow().document.createElement(
+      String(goog.dom.TagName.CANVAS));
   canvas.width = width;
   canvas.height = height;
   var context = canvas.getContext('2d');

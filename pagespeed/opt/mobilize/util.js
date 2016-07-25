@@ -725,7 +725,7 @@ mob.util.sendBeaconEvent = function(beaconEvent, opt_callback,
   if (opt_additionalParams) {
     pingUrl += opt_additionalParams;
   }
-  var img = win.document.createElement(goog.dom.TagName.IMG);
+  var img = win.document.createElement(String(goog.dom.TagName.IMG));
   img.src = pingUrl;
 
   // Ensure that the callback is only called once, even though it can be called

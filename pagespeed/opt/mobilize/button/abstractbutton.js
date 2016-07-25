@@ -18,6 +18,7 @@
 
 goog.provide('mob.button.AbstractButton');
 
+goog.require('goog.dom');
 goog.require('goog.dom.TagName');
 goog.require('goog.dom.classlist');
 goog.require('mob.util');
@@ -38,7 +39,7 @@ mob.button.AbstractButton = function(id, iconImage, color, labelText) {
    * Top level element.
    * @type {!Element}
    */
-  this.el = document.createElement(goog.dom.TagName.A);
+  this.el = goog.dom.createElement(goog.dom.TagName.A);
 
   /**
    * @private {!mob.util.ElementId}
@@ -78,7 +79,7 @@ mob.button.AbstractButton.prototype.createButton = function() {
   goog.dom.classlist.add(this.el, mob.util.ElementClass.BUTTON);
   this.el.onclick = goog.bind(this.clickHandler, this);
 
-  var icon = document.createElement(goog.dom.TagName.DIV);
+  var icon = goog.dom.createElement(goog.dom.TagName.DIV);
   goog.dom.classlist.add(icon, mob.util.ElementClass.BUTTON_ICON);
   // We set the image using backgroundImage because if it's a foreground image
   // then dialing fails on a Samsung Galaxy Note 2.
@@ -87,7 +88,7 @@ mob.button.AbstractButton.prototype.createButton = function() {
   this.el.appendChild(icon);
 
   if (this.labelText_) {
-    var label = document.createElement(goog.dom.TagName.P);
+    var label = goog.dom.createElement(goog.dom.TagName.P);
     goog.dom.classlist.add(label, mob.util.ElementClass.BUTTON_TEXT);
     this.el.appendChild(label);
     label.appendChild(document.createTextNode(this.labelText_));

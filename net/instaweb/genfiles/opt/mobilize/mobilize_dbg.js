@@ -4464,7 +4464,7 @@ mob.util.consoleLog = function(a) {
 mob.util.BeaconEvents = {CALL_CONVERSION_RESPONSE:"call-conversion-response", CALL_FALLBACK_NUMBER:"call-fallback-number", CALL_GV_NUMBER:"call-gv-number", INITIAL_EVENT:"initial-event", LOAD_EVENT:"load-event", MAP_BUTTON:"psmob-map-button", MENU_BUTTON_CLOSE:"psmob-menu-button-close", MENU_BUTTON_OPEN:"psmob-menu-button-open", SUBMENU_CLOSE:"psmob-submenu-close", SUBMENU_OPEN:"psmob-submenu-open", MENU_NAV_CLICK:"psmob-menu-nav-click", NAV_DONE:"nav-done", PHONE_BUTTON:"psmob-phone-dialer"};
 mob.util.sendBeaconEvent = function(a, b, c) {
   var d = mob.util.getWindow();
-  !d.psMobBeaconUrl && b ? b() : (a = d.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(d.document.URL) + "&el=" + a, d.psMobBeaconCategory && (a += "&category=" + d.psMobBeaconCategory), c && (a += c), c = d.document.createElement(goog.dom.TagName.IMG), c.src = a, b && (b = mob.util.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), d.setTimeout(b, 500)));
+  !d.psMobBeaconUrl && b ? b() : (a = d.psMobBeaconUrl + "?id=psmob&url=" + encodeURIComponent(d.document.URL) + "&el=" + a, d.psMobBeaconCategory && (a += "&category=" + d.psMobBeaconCategory), c && (a += c), c = d.document.createElement(String(goog.dom.TagName.IMG)), c.src = a, b && (b = mob.util.runCallbackOnce_(b), c.addEventListener(goog.events.EventType.LOAD, b), c.addEventListener(goog.events.EventType.ERROR, b), d.setTimeout(b, 500)));
 };
 mob.util.runCallbackOnce_ = function(a) {
   var b = !1;
@@ -4547,7 +4547,7 @@ goog.dom.classlist.addRemove = function(a, b, c) {
 };
 mob.button = {};
 mob.button.AbstractButton = function(a, b, c, d) {
-  this.el = document.createElement(goog.dom.TagName.A);
+  this.el = goog.dom.createElement(goog.dom.TagName.A);
   this.id_ = a;
   this.iconImage_ = b;
   this.color_ = c;
@@ -4558,11 +4558,11 @@ mob.button.AbstractButton.prototype.createButton = function() {
   this.el.id = this.id_;
   goog.dom.classlist.add(this.el, mob.util.ElementClass.BUTTON);
   this.el.onclick = goog.bind(this.clickHandler, this);
-  var a = document.createElement(goog.dom.TagName.DIV);
+  var a = goog.dom.createElement(goog.dom.TagName.DIV);
   goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_ICON);
   a.style.backgroundImage = "url(" + mob.util.synthesizeImage(this.iconImage_, this.color_) + ")";
   this.el.appendChild(a);
-  this.labelText_ && (a = document.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
+  this.labelText_ && (a = goog.dom.createElement(goog.dom.TagName.P), goog.dom.classlist.add(a, mob.util.ElementClass.BUTTON_TEXT), this.el.appendChild(a), a.appendChild(document.createTextNode(this.labelText_)));
 };
 mob.button.Menu = function(a, b) {
   this.clickHandlerFn_ = b;
@@ -7851,7 +7851,7 @@ goog.style.getCssTranslation = function(a) {
   return a ? (a = a.match(goog.style.MATRIX_TRANSLATION_REGEX_)) ? new goog.math.Coordinate(parseFloat(a[1]), parseFloat(a[2])) : new goog.math.Coordinate(0, 0) : new goog.math.Coordinate(0, 0);
 };
 mob.HelpPanel = function(a) {
-  this.el = document.createElement(goog.dom.TagName.A);
+  this.el = goog.dom.createElement(goog.dom.TagName.A);
   this.el.id = mob.util.ElementId.HELP_PANEL;
   this.clickDetectorDiv_ = null;
   this.lastScrollY_ = 0;
@@ -7866,21 +7866,21 @@ mob.HelpPanel.CONTACT_BAR_BY_GOOGLE_TEXT_ = "Contact bar by Google";
 mob.HelpPanel.LEARN_MORE_TEXT_ = "Learn more";
 mob.HelpPanel.HELP_PAGE_URL_ = "https://support.google.com/ads/answer/7016176";
 mob.HelpPanel.prototype.createMenuItem_ = function(a, b, c, d, e, f) {
-  var g = document.createElement(goog.dom.TagName.LI);
+  var g = goog.dom.createElement(goog.dom.TagName.LI);
   a.appendChild(g);
   g.id = b;
   a = g;
-  f || (a = document.createElement(goog.dom.TagName.A), a.href = e, g.appendChild(a));
-  g = document.createElement(goog.dom.TagName.SPAN);
+  f || (a = goog.dom.createElement(goog.dom.TagName.A), a.href = e, g.appendChild(a));
+  g = goog.dom.createElement(goog.dom.TagName.SPAN);
   g.style.backgroundImage = "url(data:image/gif;base64," + d + ")";
   a.appendChild(g);
-  d = document.createElement(goog.dom.TagName.P);
+  d = goog.dom.createElement(goog.dom.TagName.P);
   a.appendChild(d);
-  f ? (goog.dom.classlist.add(d, mob.util.ElementClass.LEARN_MORE), f = document.createElement(goog.dom.TagName.P), d.appendChild(f), goog.dom.classlist.add(f, mob.util.ElementClass.LEARN_MORE_TEXT), f.appendChild(document.createTextNode(c)), a = document.createElement(goog.dom.TagName.A), a.href = e, d.appendChild(a), goog.dom.classlist.add(a, mob.util.ElementClass.LEARN_MORE_LINK), a.appendChild(document.createTextNode(mob.HelpPanel.LEARN_MORE_TEXT_))) : d.appendChild(document.createTextNode(c));
+  f ? (goog.dom.classlist.add(d, mob.util.ElementClass.LEARN_MORE), f = goog.dom.createElement(goog.dom.TagName.P), d.appendChild(f), goog.dom.classlist.add(f, mob.util.ElementClass.LEARN_MORE_TEXT), f.appendChild(document.createTextNode(c)), a = goog.dom.createElement(goog.dom.TagName.A), a.href = e, d.appendChild(a), goog.dom.classlist.add(a, mob.util.ElementClass.LEARN_MORE_LINK), a.appendChild(document.createTextNode(mob.HelpPanel.LEARN_MORE_TEXT_))) : d.appendChild(document.createTextNode(c));
 };
 mob.HelpPanel.prototype.initialize_ = function() {
   document.body.appendChild(this.el);
-  var a = document.createElement(goog.dom.TagName.UL);
+  var a = goog.dom.createElement(goog.dom.TagName.UL);
   this.el.appendChild(a);
   this.createMenuItem_(a, "psmob-help-panel-0", mob.HelpPanel.VIEW_ORIGINAL_SITE_TEXT_, mob.HelpPanel.VIEW_ORIGINAL_SITE_ICON_, this.originalUrl_, !1);
   this.createMenuItem_(a, "psmob-help-panel-1", mob.HelpPanel.CONTACT_BAR_BY_GOOGLE_TEXT_, mob.HelpPanel.CONTACT_BAR_BY_GOOGLE_ICON_, mob.HelpPanel.HELP_PAGE_URL_, !0);
@@ -7916,7 +7916,7 @@ mob.HelpPanel.prototype.redraw = function() {
   this.el.style.right = b - window.scrollX - c + 10 * a + "px";
 };
 mob.HelpPanel.prototype.addClickDetectorDiv_ = function() {
-  this.clickDetectorDiv_ = document.createElement(goog.dom.TagName.DIV);
+  this.clickDetectorDiv_ = goog.dom.createElement(goog.dom.TagName.DIV);
   this.clickDetectorDiv_.id = mob.util.ElementId.CLICK_DETECTOR_DIV;
   document.body.insertBefore(this.clickDetectorDiv_, this.el);
   this.clickDetectorDiv_.addEventListener(goog.events.EventType.CLICK, goog.bind(function(a) {
@@ -8053,13 +8053,13 @@ mob.Nav.prototype.addThemeColor_ = function(a) {
   var b = mob.util.colorNumbersToString(a.menuBackColor);
   a = mob.util.colorNumbersToString(a.menuFrontColor);
   b = "#" + mob.util.ElementId.HEADER_BAR + " { background-color: " + b + "; }\n#" + mob.util.ElementId.HEADER_BAR + " *  { color: " + a + "; }\n";
-  this.styleTag_ = document.createElement(goog.dom.TagName.STYLE);
+  this.styleTag_ = goog.dom.createElement(goog.dom.TagName.STYLE);
   this.styleTag_.type = "text/css";
   this.styleTag_.appendChild(document.createTextNode(b));
   document.head.appendChild(this.styleTag_);
 };
 mob.Nav.prototype.isMinimumFontSizeSet_ = function() {
-  var a = document.createElement(goog.dom.TagName.DIV);
+  var a = goog.dom.createElement(goog.dom.TagName.DIV);
   document.body.appendChild(a);
   a.style.fontSize = "1px";
   var b = window.getComputedStyle(a).getPropertyValue("font-size"), b = mob.util.pixelValue(b);
