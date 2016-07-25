@@ -47,6 +47,7 @@
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 #include "net/instaweb/rewriter/public/collect_dependencies_filter.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
@@ -825,6 +826,7 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
     slots_.clear();
     inline_slots_.clear();
     inline_attribute_slots_.clear();
+    srcset_collections_.clear();
   }
 
   // Notify all enabled pre-render filters that rendering is done.
@@ -3036,6 +3038,32 @@ InlineAttributeSlotPtr RewriteDriver::GetInlineAttributeSlot(
     slot.reset(*iter);
   }
   return slot;
+}
+
+SrcSetSlotCollectionPtr RewriteDriver::GetSrcSetSlotCollection(
+    CommonFilter* filter, HtmlElement* element, HtmlElement::Attribute* attr) {
+  SrcSetSlotCollectionPtr collection(
+      new SrcSetSlotCollection(this, element, attr));
+  std::pair<SrcSetSlotCollectionSet::iterator, bool> iter_inserted =
+      srcset_collections_.insert(collection);
+  if (iter_inserted.second) {
+    // Inserted successfully, we are first here, so actually parse the
+    // attribute, create resources, slots, etc.
+    collection->Initialize(filter);
+  } else {
+    // The slot was already in the set.  Release the one we just
+    // allocated and use the one already in. Sanity check policy stuff,
+    // though --- all filters sharing this slot must have a consistent
+    // policy on what resources can be created.
+    SrcSetSlotCollectionSet::iterator iter = iter_inserted.first;
+    CHECK_EQ(filter->AllowUnauthorizedDomain(),
+             (*iter)->filter()->AllowUnauthorizedDomain());
+    CHECK_EQ(filter->IntendedForInlining(),
+             (*iter)->filter()->IntendedForInlining());
+
+    collection.reset(*iter);
+  }
+  return collection;
 }
 
 bool RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {

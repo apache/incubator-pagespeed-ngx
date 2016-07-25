@@ -26,7 +26,6 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -36,14 +35,20 @@
 namespace net_instaweb {
 
 SrcSetSlotCollection::SrcSetSlotCollection(
-    RewriteDriver* driver, CommonFilter* filter, HtmlElement* element,
+    RewriteDriver* driver, HtmlElement* element,
     HtmlElement::Attribute* attribute)
     : driver_(driver), element_(element), attribute_(attribute),
+      filter_(nullptr),
       // Note: these need to be deep-copied in case we run as a detached
       // rewrite, in which case element_ may be dead.
       begin_line_number_(element->begin_line_number()),
       end_line_number_(element->end_line_number()) {
-  StringPiece input(attribute->DecodedValueOrNull());
+}
+
+void SrcSetSlotCollection::Initialize(CommonFilter* filter) {
+  filter_ = filter;
+
+  StringPiece input(attribute_->DecodedValueOrNull());
   ParseSrcSet(input, &candidates_);
 
   for (int i = 0, n = candidates_.size(); i < n; ++i) {
@@ -53,7 +58,7 @@ SrcSetSlotCollection::SrcSetSlotCollection(
       // inlining unknown; make it explicit somewhere that this relies on
       // them being consistent about it if shared between filters.
       ResourcePtr resource(filter->CreateInputResourceOrInsertDebugComment(
-                               candidates_[i].url, element));
+                               candidates_[i].url, element_));
       if (resource.get() != nullptr) {
         candidates_[i].slot = new SrcSetSlot(resource, this, i);
       }
@@ -175,6 +180,18 @@ GoogleString SrcSetSlot::LocationString() const {
 
   StrAppend(&loc, " srcset entry for ", parent_->descriptor(index_));
   return loc;
+}
+
+bool SrcSetSlotCollectionComparator::operator()(
+    const SrcSetSlotCollectionPtr& p, const SrcSetSlotCollectionPtr& q) const {
+  // Note: The ordering depends on pointer comparison and so is arbitrary
+  // and non-deterministic.
+  if (p->element() < q->element()) {
+    return true;
+  } else if (p->element() > q->element()) {
+    return false;
+  }
+  return (p->attribute() < q->attribute());
 }
 
 }  // namespace net_instaweb

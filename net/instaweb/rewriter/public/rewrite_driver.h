@@ -43,6 +43,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/srcset_slot.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -75,6 +76,7 @@ namespace net_instaweb {
 
 class AbstractLogRecord;
 class AsyncFetch;
+class CommonFilter;
 class DebugFilter;
 class DependencyTracker;
 class DomStatsFilter;
@@ -719,6 +721,18 @@ class RewriteDriver : public HtmlParse {
   InlineAttributeSlotPtr GetInlineAttributeSlot(
       const ResourcePtr& resource, HtmlElement* element,
       HtmlElement::Attribute* attribute);
+
+  // Create and and registers a source set slot collection for rewriting
+  // all the images in the srcset attribute of an <img>. Also creates the
+  // neccessary resources using the provided filter's policy.
+  //
+  // If this is the first time called for this element + attr, a new
+  // collection will be returned. On subsequent calls, the original collection
+  // will be returned so that rewrites are propagated between filters. All
+  // filters using this call are expected to have the same values for
+  // AllowUnauthorizedDomain() and IntendedForInlining().
+  SrcSetSlotCollectionPtr GetSrcSetSlotCollection(
+      CommonFilter* filter, HtmlElement* element, HtmlElement::Attribute* attr);
 
   // Method to start a resource rewrite.  This is called by a filter during
   // parsing, although the Rewrite might continue after deadlines expire
@@ -1678,6 +1692,7 @@ class RewriteDriver : public HtmlParse {
   HtmlResourceSlotSet slots_;
   InlineResourceSlotSet inline_slots_;
   InlineAttributeSlotSet inline_attribute_slots_;
+  SrcSetSlotCollectionSet srcset_collections_;
 
   scoped_ptr<RewriteOptions> options_;
 

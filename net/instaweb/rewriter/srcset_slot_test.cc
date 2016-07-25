@@ -123,9 +123,9 @@ TEST_F(SrcSetSlotTest, BasicOperation) {
   SetupWriter();
   RefCountedPtr<SrcSetSlotCollection> collection(new SrcSetSlotCollection(
       rewrite_driver(),
-      rewrite_driver()->FindFilter("ic"),
       element_,
       attribute_));
+  collection->Initialize(rewrite_driver()->FindFilter("ic"));
   ASSERT_EQ(3, collection->num_image_candidates());
   EXPECT_EQ("a.jpg", collection->url(0));
   EXPECT_EQ("", collection->descriptor(0));

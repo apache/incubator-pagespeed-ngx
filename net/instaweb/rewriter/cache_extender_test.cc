@@ -1126,6 +1126,20 @@ TEST_F(CacheExtenderTest, ContentTypeValidation) {
   ValidateFallbackHeaderSanitization("ce");
 }
 
+TEST_F(CacheExtenderTest, SrcSet) {
+  InitTest(100);
+  InitResource("a.jpg", kContentTypeJpeg, kImageData, 100);
+  InitResource("b.jpg", kContentTypeJpeg, kImageData, 100);
+
+  const GoogleString a_url = Encode("", kFilterId, "0", "a.jpg", "jpg");
+  const GoogleString b_url = Encode("", kFilterId, "0", "b.jpg", "jpg");
+
+  ValidateExpected("srcset",
+                   "<img src=a.jpg srcset=\"a.jpg 1x, b.jpg 2x\">",
+                   StrCat("<img src=", a_url, " srcset=\"",
+                          a_url, " 1x, ", b_url, " 2x\">"));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

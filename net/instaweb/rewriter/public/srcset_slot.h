@@ -21,6 +21,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_SRCSET_SLOT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_SRCSET_SLOT_H_
 
+#include <memory>
+#include <set>
 #include <vector>
 
 #include "net/instaweb/rewriter/public/resource.h"
@@ -53,12 +55,16 @@ class SrcSetSlotCollection : public RefCounted<SrcSetSlotCollection> {
     SrcSetSlot* slot;
   };
 
+  // Note: you need to separately call Initialize() to actually create all the
+  // slots and the like. This sets up just enough to be able to compare
+  // slots.
+  SrcSetSlotCollection(RewriteDriver* driver,
+                       HtmlElement* element,
+                       HtmlElement::Attribute* attribute);
+
   // This will parse the passed in srcset attribute, and create all the slots,
   // and all their resources.
-  explicit SrcSetSlotCollection(RewriteDriver* driver,
-                                CommonFilter* filter,
-                                HtmlElement* element,
-                                HtmlElement::Attribute* attribute);
+  void Initialize(CommonFilter* filter);
 
   int num_image_candidates() { return candidates_.size(); }
 
@@ -72,7 +78,11 @@ class SrcSetSlotCollection : public RefCounted<SrcSetSlotCollection> {
     return candidates_[idx].descriptor;
   }
 
-  HtmlElement* element() { return element_; }
+  HtmlElement* element() const { return element_; }
+  HtmlElement::Attribute* attribute() const { return attribute_; }
+
+  // The first filter that created this slot collection. There may be others.
+  CommonFilter* filter() const { return filter_; }
   RewriteDriver* driver() { return driver_; }
 
   int begin_line_number() const { return begin_line_number_; }
@@ -99,11 +109,25 @@ class SrcSetSlotCollection : public RefCounted<SrcSetSlotCollection> {
   RewriteDriver* driver_;
   HtmlElement* element_;
   HtmlElement::Attribute* attribute_;
+  CommonFilter* filter_;
   int begin_line_number_;
   int end_line_number_;
 
   DISALLOW_COPY_AND_ASSIGN(SrcSetSlotCollection);
 };
+
+typedef RefCountedPtr<SrcSetSlotCollection> SrcSetSlotCollectionPtr;
+
+// Note: this is non-deterministic between executions.
+class SrcSetSlotCollectionComparator {
+ public:
+  bool operator()(const SrcSetSlotCollectionPtr& p,
+                  const SrcSetSlotCollectionPtr& q) const;
+};
+
+typedef std::set<SrcSetSlotCollectionPtr,
+                 SrcSetSlotCollectionComparator> SrcSetSlotCollectionSet;
+
 
 class SrcSetSlot : public ResourceSlot {
  public:
@@ -127,9 +151,6 @@ class SrcSetSlot : public ResourceSlot {
 
   DISALLOW_COPY_AND_ASSIGN(SrcSetSlot);
 };
-
-// TODO(morlovich): Comparison helpers, so we can reuse SrcSetSlotCollections,
-// and have multiple filters support it?
 
 }  // namespace net_instaweb
 

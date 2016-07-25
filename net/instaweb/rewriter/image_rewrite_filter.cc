@@ -1505,11 +1505,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
 
 void ImageRewriteFilter::BeginRewriteSrcSet(HtmlElement* element,
                                             HtmlElement::Attribute* srcset) {
-  // TODO(morlovich): This needs to go through a factory method like other
-  // slots do, once more than one filter uses it, so they share, otherwise
-  // they would randomly overwrite each other.
   RefCountedPtr<SrcSetSlotCollection> slot_collection(
-      new SrcSetSlotCollection(driver(), this, element, srcset));
+      driver()->GetSrcSetSlotCollection(this, element, srcset));
 
   for (int i = 0; i < slot_collection->num_image_candidates(); ++i) {
     SrcSetSlot* slot = slot_collection->slot(i);

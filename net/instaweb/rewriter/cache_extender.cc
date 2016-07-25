@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/rewriter/public/srcset_slot.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/statistics.h"
@@ -43,6 +44,7 @@
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/response_headers.h"
@@ -51,7 +53,6 @@
 
 namespace net_instaweb {
 class MessageHandler;
-class RewriteContext;
 
 // names for Statistics variables.
 const char CacheExtender::kCacheExtensions[] = "cache_extensions";
@@ -215,6 +216,26 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
       Context* context = new Context(this, driver(), NULL /* not nested */);
       context->AddSlot(slot);
       driver()->InitiateRewrite(context);
+    }
+  }
+
+  if (element->keyword() == HtmlName::kImg &&
+      driver()->MayCacheExtendImages()) {
+    HtmlElement::Attribute* srcset = element->FindAttribute(HtmlName::kSrcset);
+    if (srcset != nullptr) {
+      SrcSetSlotCollectionPtr slot_collection(
+          driver()->GetSrcSetSlotCollection(this, element, srcset));
+      for (int i = 0; i < slot_collection->num_image_candidates(); ++i) {
+        SrcSetSlot* slot = slot_collection->slot(i);
+        // slot will be null if resource could not be created due to URL parsing
+        // or being against our policy (not authorized domain, etc).
+        if (slot == nullptr) {
+          continue;
+        }
+        Context* context = new Context(this, driver(), nullptr /* !nested */);
+        context->AddSlot(RefCountedPtr<ResourceSlot>(slot));
+        driver()->InitiateRewrite(context);
+      }
     }
   }
 }
