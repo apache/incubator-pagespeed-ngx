@@ -666,7 +666,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{-webkit-transition-property:opacity , -webkit-transform}",
 
     // Parameterized pseudo-selector.
-    "div:nth-child(1n){color:red}",
+    "div:nth-child(1n) {color:red}",
 
     // IE8 Hack \0/
     // See http://dimox.net/personal-css-hacks-for-ie6-ie7-ie8/
@@ -741,8 +741,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Selector list ends in comma
     ".hp .col ul, {display:inline}",
     // Parameters for pseudoclass
-    "body:not(:target){color:red}",
-    "a:not(.button):hover{color:red}",
+    "body:not(:target) {color:red}",
+    "a:not(.button):hover {color:red}",
     // Typos
     "# new_results_notification{font-size:12px}",
     ".bold: {font-weight:bold}",
@@ -1363,7 +1363,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "from(#FFFFFF), to(#F0F0F0));\n"
       "}\n",
 
-      "body:not(:target) .sh_heading_main_b,body:not(:target) "
+      "body:not(:target) .sh_heading_main_b, body:not(:target) "
       ".sh_heading_main_b_wide{background:url(data:image/png;base64,"
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAoCAYAAAA/tpB3AAAAQ0lEQVR42k3EMQLAIAg"
       "EMP//WkRQVMB2YLgMae/XMhOLCMzdq3svds7B9t6VmWFrLWzOWakqJiLYGKNiZqz3jh"

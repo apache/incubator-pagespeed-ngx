@@ -531,32 +531,7 @@ class Parser {
   // anything and returns NULL if no simple selector found or parse error.
   // This method does not skip spaces like most other methods do.
   // See comment above.
-  SimpleSelector* ParseSimpleSelector(bool inside_not);
-
-  // Tries to parse until end of a :lang pseudo. Expects in_ to point after
-  // the opening (. Returns NULL on parse error, or the condition otherwise.
-  SimpleSelector* ParseLang();
-
-  // Tries to parse until the end of an nth-child or a similar n-th pseudo.
-  // Expects in_ to point after the opening (. Returns NULL on parse error, or
-  // the entire pseudo otherwise.
-  SimpleSelector* ParseNthPseudo(const UnicodeText& pseudoclass);
-
-  // Tries to match the portion of 'nth' production starting from the {N}
-  // token, and returns true if successful. Assumes *in_ points to the N.
-  bool SkipNthPseudoTail();
-
-  // Tries to parse until the end of :not pseudo-class.
-  // Expects in_ to point after the opening (. Returns NULL on parse error, or
-  // the entire pseudo otherwise.
-  SimpleSelector* ParseNot();
-
-  // Tries to skip over a INTEGER, return true if successful.
-  bool SkipInteger();
-
-  // Checks to see if there is a proper ) closing sel. If yes, return sel,
-  // otherwise issues a parse error and deletes it, returning NULL.
-  SimpleSelector* ParseFunctionalSimpleSelectorClosing(SimpleSelector* sel);
+  SimpleSelector* ParseSimpleSelector();
 
   // Checks if the parser stops at a character (or characters) that will
   // legally terminate a SimpleSelectors. The checked characters are not eaten.
@@ -669,9 +644,6 @@ class Parser {
   FRIEND_TEST(ParserTest, SkippedTokenError);
   FRIEND_TEST(ParserTest, ValueError);
   FRIEND_TEST(ParserTest, ParseAnyParens);
-  FRIEND_TEST(ParserTest, ParseNot);
-  FRIEND_TEST(ParserTest, ParseNthPseudo);
-  FRIEND_TEST(ParserTest, SkipInteger);
   friend void ParseFontFamily(Parser* parser);
   friend class MediaAppliesToScreenTest;
 

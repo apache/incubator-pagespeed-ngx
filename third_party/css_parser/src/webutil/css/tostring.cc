@@ -280,8 +280,6 @@ string FunctionParameters::ToString() const {
 }
 
 string SimpleSelector::ToString() const {
-  // TODO(morlovich): Most of these should probably be done with StrCat,
-  // but it's not in the OSS glue.
   switch (type()) {
     case ELEMENT_TYPE:
       return Css::EscapeIdentifier(element_text());
@@ -333,13 +331,6 @@ string SimpleSelector::ToString() const {
     case LANG:
       return StringPrintf(":lang(%s)",
                           Css::EscapeIdentifier(lang()).c_str());
-    case FUNCTIONAL_PSEUDO:
-      return StringPrintf(
-          ":%s(%s)",
-          UnicodeTextToUTF8(functional_pseudo_function()).c_str(),
-          UnicodeTextToUTF8(functional_pseudo_content()).c_str());
-    case NOT:
-      return StringPrintf(":not(%s)", not_nested()->ToString().c_str());
   }
   LOG(FATAL) << "Invalid type";
 }

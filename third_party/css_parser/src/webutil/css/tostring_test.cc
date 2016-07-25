@@ -83,8 +83,6 @@ TEST_F(ToStringTest, selectors) {
                  "[class^=\"icon-\"], [class*=\" icon-\"] {top: 1}\n");
   TESTSTYLESHEET("/* AUTHOR */\n\n\n\n"
                  "a > b, a + b, a b + c > d > e f {top: 1}\n");
-  TESTSTYLESHEET("/* AUTHOR */\n\n\n\n"
-                 "div:lang(fr), span:nth-of-type(even), b:not(#foo) {}\n");
 }
 
 TEST_F(ToStringTest, misc) {

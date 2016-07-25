@@ -1838,7 +1838,6 @@ SimpleSelector* Parser::ParseAttributeSelector() {
         FALLTHROUGH_INTENDED;
       case '=': {
         in_++;
-        // TODO(morlovich): This doesn't accept ="" and similar.
         UnicodeText value = ParseStringOrIdent();
         if (!value.empty())
           newcond.reset(SimpleSelector::NewBinaryAttribute(
@@ -1862,7 +1861,7 @@ SimpleSelector* Parser::ParseAttributeSelector() {
     return NULL;
 }
 
-SimpleSelector* Parser::ParseSimpleSelector(bool inside_not) {
+SimpleSelector* Parser::ParseSimpleSelector() {
   Tracer trace(__func__, this);
 
   if (Done()) return NULL;
@@ -1898,34 +1897,13 @@ SimpleSelector* Parser::ParseSimpleSelector(bool inside_not) {
         sep.CopyUTF8(":", 1);
       }
       UnicodeText pseudoclass = ParseIdent();
+      // FIXME(yian): skip constructs "(en)" in lang(en) for now.
       if (!Done() && *in_ == '(') {
-        in_++;
-        if (StringCaseEquals(pseudoclass, "lang")) {
-          return ParseLang();
-        }
-
-        // https://www.w3.org/TR/css3-selectors, see sections 6.6.5.2 through
-        // 6.6.5.5.
-        if (StringCaseEquals(pseudoclass, "nth-child") ||
-            StringCaseEquals(pseudoclass, "nth-last-child") ||
-            StringCaseEquals(pseudoclass, "nth-of-type") ||
-            StringCaseEquals(pseudoclass, "nth-last-of-type")) {
-          return ParseNthPseudo(pseudoclass);
-        }
-
-        if (StringCaseEquals(pseudoclass, "not")) {
-          if (inside_not) {
-            ReportParsingError(
-                kSelectorError, "Nested :not not permitted in CSS3.");
-            // Might as well return the parse, though.
-          }
-          SimpleSelector* inside = ParseNot();
-          return (inside == nullptr) ? nullptr : SimpleSelector::NewNot(inside);
-        }
-
         ReportParsingError(kSelectorError,
-                           "Unrecognized pseudo-class with parameters.");
-        return nullptr;
+                           "Cannot parse parameters for pseudoclass.");
+        in_++;
+        if (!SkipPastDelimiter(')'))
+          break;
       }
       if (!pseudoclass.empty())
         return SimpleSelector::NewPseudoclass(pseudoclass, sep);
@@ -1950,189 +1928,6 @@ SimpleSelector* Parser::ParseSimpleSelector(bool inside_not) {
   }
   // We did not parse anything or we parsed something incorrectly.
   return NULL;
-}
-
-SimpleSelector* Parser::ParseLang() {
-  SkipSpace();
-  UnicodeText lang = ParseIdent();
-
-  scoped_ptr<SimpleSelector> lang_sel;
-  if (!lang.empty()) {
-    lang_sel.reset(SimpleSelector::NewLang(lang));
-  } else {
-    ReportParsingError(kSelectorError,
-                       "Missing argument to :lang pseudo-class.");
-    return nullptr;
-  }
-
-  return ParseFunctionalSimpleSelectorClosing(lang_sel.release());
-}
-
-SimpleSelector* Parser::ParseNthPseudo(const UnicodeText& pseudoclass) {
-  // From the spec:
-  // nth
-  // : S* [ ['-'|'+']? INTEGER? {N} [ S* ['-'|'+'] S* INTEGER ]? |
-  //        ['-'|'+']? INTEGER | {O}{D}{D} | {E}{V}{E}{N} ] S*
-  // ;
-  //
-  // Perhaps worth pointing out: the syntax before n and after n is slightly
-  // different; in particular one can have -n or +n, and can have space between
-  // sign and number after the n but not before.
-
-  SkipSpace();
-  const char* begin = in_;
-  if (Done()) {
-    ReportParsingError(
-        kSelectorError,
-        "Unexpected end of input expecting nth- pseudo-class argument.");
-    return nullptr;
-  }
-
-  char c = *in_;
-  bool ok = false;
-  // As the rules are a little complicated, this is written rather mechanically,
-  // by keeping track of what possible productions one might be in after
-  // shifting each input character, the way one would do during LR parser
-  // automaton construction.
-  switch (c) {
-    case '+':
-    case '-':
-      ++in_;
-      // We shifted the -, so now we are expecting to be upcoming:
-      // INTEGER? {N} [ S* ['-'|'+'] S* INTEGER ] or INTEGER
-      // (Neither of which can be empty).
-      if (!Done()) {
-        if (*in_ == 'n' || *in_ == 'N') {
-          ok = SkipNthPseudoTail();
-        } else {
-          // Now it's just INTEGER {N} [ S* ['-'|'+'] S* INTEGER ] or INTEGER
-          // --- the integer can't be optional.
-          if (SkipInteger() && !Done()) {
-            if (*in_ == 'n' || *in_ == 'N') {
-              ok = SkipNthPseudoTail();
-            } else {
-              ok = true;
-            }
-          }
-        }
-      }
-      break;
-
-    case 'n':
-    case 'N':
-      // Expecting {N} [ S* ['-'|'+'] S* INTEGER ]?
-      ok = SkipNthPseudoTail();
-      break;
-
-    case 'o':
-    case 'O':
-      // Expecting {O}{D}{D}
-      ok = StringCaseEquals(ParseIdent(), "odd");
-      break;
-
-    case 'e':
-    case 'E':
-      // Expecting {E}{V}{E}{N}
-      ok = StringCaseEquals(ParseIdent(), "even");
-      break;
-
-    case '0': case '1': case '2': case '3': case '4':
-    case '5': case '6': case '7': case '8': case '9':
-      // Expecting INTEGER {N} [ S* ['-'|'+'] S* INTEGER ]? or INTEGER,
-      // So must eat an INTEGER.
-      if (SkipInteger() && !Done()) {
-        // {N} [ S* ['-'|'+'] S* INTEGER ]? or nothing (well, or rather the
-        // closing parenthesis we will need to eat after this).
-        if (*in_ == 'n' || *in_ == 'N') {
-          ok = SkipNthPseudoTail();
-        } else {
-          ok = true;
-        }
-      }
-      break;
-  }
-
-  if (!ok) {
-    ReportParsingError(
-        kSelectorError, "Parse error in argument of nth- pseudo-class.");
-    return nullptr;
-  }
-
-  return ParseFunctionalSimpleSelectorClosing(
-    SimpleSelector::NewFunctionalPseudo(
-        UTF8ToUnicodeText(begin, in_ - begin), pseudoclass));
-}
-
-// {N} [ S* ['-'|'+'] S* INTEGER ]?
-bool Parser::SkipNthPseudoTail() {
-  if (Done() || (*in_ != 'n' && *in_ != 'N')) {
-    LOG(DFATAL) << "SkipNthPseudoTail called while not pointing at 'n'";
-    return false;
-  }
-
-  ++in_;
-  SkipSpace();
-
-  // While this production can just end after N, it must be followed by
-  // something.
-  if (Done()) {
-    return false;
-  }
-
-  // Notice that here +/- is mandatory if there is a number.
-  if (*in_ == '-' || *in_ == '+') {
-    ++in_;
-    SkipSpace();
-    return SkipInteger();
-  } else {
-    return true;
-  }
-}
-
-SimpleSelector* Parser::ParseNot() {
-  SkipSpace();
-  scoped_ptr<SimpleSelector> condition(
-      ParseSimpleSelector(true /*inside :not*/));
-  SkipSpace();
-
-  if (condition == nullptr) {
-    return nullptr;
-  }
-
-  return ParseFunctionalSimpleSelectorClosing(condition.release());
-}
-
-bool Parser::SkipInteger() {
-  if (Done() || !isdigit(*in_)) {
-    return false;
-  }
-
-  while (!Done() && isdigit(*in_)) {
-    ++in_;
-  }
-
-  return true;
-}
-
-SimpleSelector* Parser::ParseFunctionalSimpleSelectorClosing(
-    SimpleSelector* sel) {
-  scoped_ptr<SimpleSelector> own_sel(sel);
-  SkipSpace();
-  if (Done()) {
-    ReportParsingError(
-        kSelectorError,
-        "End of file before closing ) for a pseuo-class argument.");
-    return nullptr;
-  }
-
-  if (*in_ == ')') {
-    ++in_;
-    return own_sel.release();
-  }
-
-  ReportParsingError(
-      kSelectorError, "Invalid token after pseudo-class argument, expected ).");
-  return nullptr;
 }
 
 bool Parser::AtValidSimpleSelectorsTerminator() const {
@@ -2180,8 +1975,7 @@ SimpleSelectors* Parser::ParseSimpleSelectors(bool expecting_combinator) {
   if (Done()) return NULL;
 
   const char* oldin = in_;
-  while (SimpleSelector* simpleselector =
-             ParseSimpleSelector(false /*not inside_not*/)) {
+  while (SimpleSelector* simpleselector = ParseSimpleSelector()) {
     selectors->push_back(simpleselector);
     oldin = in_;
   }
