@@ -27,15 +27,17 @@
 
 namespace net_instaweb {
 
-RedisCache::RedisCache(const StringPiece& host, int port,
+RedisCache::RedisCache(const StringPiece& host, int port, AbstractMutex* mutex,
                        MessageHandler* message_handler)
     : host_(host.as_string()),
       port_(port),
       redis_(nullptr),
+      mutex_(mutex),
       message_handler_(message_handler) {}
 
 bool RedisCache::Connect() {
-  ShutDown();
+  ScopedMutex lock(mutex_.get());
+  FreeRedisContext();
 
   redis_ = redisConnect(host_.c_str(), port_);
   if (redis_ == nullptr) {
@@ -52,21 +54,32 @@ bool RedisCache::Connect() {
 }
 
 bool RedisCache::IsHealthy() const {
+  ScopedMutex lock(mutex_.get());
+  return IsHealthyLockHeld();
+}
+
+bool RedisCache::IsHealthyLockHeld() const {
   // Quoting hireds documentation: "once an error is returned the context cannot
   // be reused and you should set up a new connection"
   return redis_ != nullptr && redis_->err == 0;
 }
 
 void RedisCache::ShutDown() {
-  if (redis_ == nullptr) {
-    return;
-  }
-  redisFree(redis_);
+  ScopedMutex lock(mutex_.get());
+  FreeRedisContext();
+}
+
+void RedisCache::FreeRedisContext() {
+  // TODO(yeputons): be careful when adding async requests: ShutDown can be
+  // called while there are some unfinished requests, they should return.
+  redisFree(redis_);  // handles nullptr correctly
   redis_ = nullptr;
 }
 
 void RedisCache::Get(const GoogleString& key, Callback* callback) {
-  if (!IsHealthy()) {
+  mutex_->Lock();
+  if (!IsHealthyLockHeld()) {
+    mutex_->Unlock();
     // TODO(yeputons): return kNetworkError instead?
     ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
     return;
@@ -74,7 +87,10 @@ void RedisCache::Get(const GoogleString& key, Callback* callback) {
 
   RedisReply reply = redisCommand("GET %b", key.data(), key.length());
   KeyState keyState = CacheInterface::kNotFound;
-  if (ValidateRedisReply(reply, {REDIS_REPLY_STRING, REDIS_REPLY_NIL}, "GET")) {
+  bool reply_valid =
+      ValidateRedisReply(reply, {REDIS_REPLY_STRING, REDIS_REPLY_NIL}, "GET");
+  mutex_->Unlock();
+  if (reply_valid) {
     if (reply->type == REDIS_REPLY_STRING) {
       // The only type of values that we store in Redis is string
       *callback->value() = SharedString(StringPiece(reply->str, reply->len));
@@ -87,7 +103,8 @@ void RedisCache::Get(const GoogleString& key, Callback* callback) {
 }
 
 void RedisCache::Put(const GoogleString& key, SharedString* value) {
-  if (!IsHealthy()) {
+  ScopedMutex lock(mutex_.get());
+  if (!IsHealthyLockHeld()) {
     return;
   }
 
@@ -110,7 +127,8 @@ void RedisCache::Put(const GoogleString& key, SharedString* value) {
 }
 
 void RedisCache::Delete(const GoogleString& key) {
-  if (!IsHealthy()) {
+  ScopedMutex lock(mutex_.get());
+  if (!IsHealthyLockHeld()) {
     return;
   }
 
@@ -121,7 +139,8 @@ void RedisCache::Delete(const GoogleString& key) {
 }
 
 bool RedisCache::FlushAll() {
-  if (!IsHealthy()) {
+  ScopedMutex lock(mutex_.get());
+  if (!IsHealthyLockHeld()) {
     return false;
   }
 

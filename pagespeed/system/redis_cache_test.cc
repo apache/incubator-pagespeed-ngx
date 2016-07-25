@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/util/platform.h"
 
 namespace net_instaweb {
 
@@ -47,7 +48,7 @@ class RedisCacheTest : public CacheTestBase {
       return false;
     }
 
-    cache_.reset(new RedisCache("localhost", port, &handler_));
+    cache_.reset(new RedisCache("localhost", port, new NullMutex, &handler_));
     return cache_->Connect() && cache_->FlushAll();
   }
 
