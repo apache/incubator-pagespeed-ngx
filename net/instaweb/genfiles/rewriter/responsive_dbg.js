@@ -3808,7 +3808,7 @@ pagespeed.Responsive.prototype.parseSrcset = function(a, b, c) {
   return a;
 };
 pagespeed.Responsive.prototype.init = function() {
-  for (var a = document.getElementsByTagName(goog.dom.TagName.IMG), b = 0, c;c = a[b];++b) {
+  for (var a = goog.dom.getElementsByTagName(goog.dom.TagName.IMG), b = 0, c;c = a[b];++b) {
     var d = c.getAttribute("src"), e = c.getAttribute("srcset");
     e && (c = this.parseSrcset(c, d, e), null != c && this.allImages_.push(c));
   }

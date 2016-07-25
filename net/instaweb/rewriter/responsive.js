@@ -308,7 +308,7 @@ pagespeed.Responsive.prototype.parseSrcset = function(img, src, srcset) {
  */
 pagespeed.Responsive.prototype.init = function() {
   // Initialize responsive images.
-  var images = document.getElementsByTagName(goog.dom.TagName.IMG);
+  var images = goog.dom.getElementsByTagName(goog.dom.TagName.IMG);
   for (var i = 0, img; img = images[i]; ++i) {
     var src = img.getAttribute('src');
     var srcset = img.getAttribute('srcset');
