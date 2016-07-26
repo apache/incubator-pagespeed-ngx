@@ -55,9 +55,16 @@ int CentralControllerRpcServer::Setup() {
 int CentralControllerRpcServer::Run() {
   LOG(INFO) << "CentralControllerRpcServer waiting for events";
 
+  MainLoop(queue_.get());
+
+  LOG(INFO) << "CentralControllerRpcServer terminated.";
+  return 0;
+}
+
+void CentralControllerRpcServer::MainLoop(::grpc::CompletionQueue* queue) {
   void* tag;
   bool succeeded;
-  while (queue_->Next(&tag, &succeeded)) {
+  while (queue->Next(&tag, &succeeded)) {
     Function* function = static_cast<Function*>(tag);
     if (succeeded) {
       function->CallRun();
@@ -65,9 +72,6 @@ int CentralControllerRpcServer::Run() {
       function->CallCancel();
     }
   }
-
-  LOG(INFO) << "CentralControllerRpcServer terminated.";
-  return 0;
 }
 
 void CentralControllerRpcServer::Stop() {

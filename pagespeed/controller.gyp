@@ -35,6 +35,19 @@
       ],
     },
     {
+      'target_name': 'pagespeed_grpc_test_proto',
+      'variables': {
+        'instaweb_protoc_subdir': 'pagespeed/controller',
+        'has_services': 1,
+      },
+      'sources': [
+        'controller/grpc_test.proto',
+      ],
+      'includes': [
+        '../net/instaweb/protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'pagespeed_controller',
       # xcode build names libraries just based on the target_name, so
       # if this were merely base then its libbase.a would clash with

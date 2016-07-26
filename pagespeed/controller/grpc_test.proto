@@ -14,14 +14,22 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#ifndef PAGESPEED_KERNEL_UTIL_GRPC_H_
-#define PAGESPEED_KERNEL_UTIL_GRPC_H_
+syntax = "proto3";
 
-#ifdef OK
-#error You must include include httpd.h via apache_httpd_includes.h
-#endif
+package net_instaweb;
 
-#include <grpc++/alarm.h>
-#include <grpc++/grpc++.h>
+option cc_generic_services = false;
 
-#endif  // PAGESPEED_KERNEL_UTIL_GRPC_H_
+// Test service for user in rpc_handler_test.cc.
+service GrpcTestService {
+  // Simple streaming rpc target for testing.
+  rpc Test (stream TestRequest) returns (stream TestResponse) {}
+}
+
+message TestRequest {
+  int32 id = 1;
+}
+
+message TestResponse {
+  int32 id = 1;
+}

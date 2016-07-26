@@ -39,6 +39,9 @@ class CentralControllerRpcServer : public ControllerProcess {
   int Run() override;
   void Stop() override;
 
+  // Pulled out into a static function so it can also be used in tests.
+  static void MainLoop(::grpc::CompletionQueue* queue);
+
  private:
   const int listen_port_;
   std::unique_ptr<::grpc::Server> server_;
