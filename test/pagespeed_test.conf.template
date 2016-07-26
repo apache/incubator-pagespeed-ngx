@@ -30,7 +30,7 @@ http {
   proxy_cache_path "@@PROXY_CACHE@@"  levels=1:2   keys_zone=htmlcache:60m inactive=90m  max_size=50m;
   proxy_temp_path "@@TMP_PROXY_CACHE@@";
 
-  pagespeed ProcessScriptVariables on;
+  pagespeed ProcessScriptVariables all;
   pagespeed StatisticsPath /ngx_pagespeed_statistics;
   pagespeed GlobalStatisticsPath /ngx_pagespeed_global_statistics;
   pagespeed ConsolePath /pagespeed_console;
@@ -1905,7 +1905,9 @@ http {
     }
 
     location /mod_pagespeed_test/ipro/instant/deadline/ {
-      pagespeed InPlaceRewriteDeadlineMs -1;
+      set $ps_deadline -1;
+      pagespeed ImageRecompressionQuality $ps_deadline;
+      pagespeed InPlaceRewriteDeadlineMs $ps_deadline;
     }
 
     # Test to make sure that user-authenticated resources do not get cached and
@@ -1953,9 +1955,10 @@ http {
     pagespeed FetchHttps enable;
     location /mod_pagespeed_test/https_fetch/ {
       pagespeed DisableFilters inline_images;
+      set $ps_gstatic "https://www.gstatic.com/psa/static";
       pagespeed MapProxyDomain
           http://localhost:@@PRIMARY_PORT@@/https_gstatic_dot_com
-          https://www.gstatic.com/psa/static;
+          $ps_gstatic;
     }
 
     location /mod_pagespeed_test/strip_subresource_hints/default/ {
@@ -2002,7 +2005,6 @@ http {
       "@@SERVER_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/";
     pagespeed LoadFromFileRuleMatch Disallow \.ssp.css$ps_dollar;
     pagespeed LoadFromFileRuleMatch Allow exception\.ssp\.css$ps_dollar;
-
     #charset koi8-r;
 
     #access_log  logs/host.access.log  main;
