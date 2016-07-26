@@ -21,7 +21,7 @@
 
 # If the version of the compiler is updated, the closure library verison in DEPS
 # should be updated as well.
-VERSION=20160208
+VERSION=20160713
 ZIP=compiler-$VERSION.zip
 DIR=src/tools/closure
 JAR=$DIR/compiler.jar
