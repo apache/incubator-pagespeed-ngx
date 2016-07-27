@@ -24,6 +24,7 @@
 VERSION=20160713
 ZIP=compiler-$VERSION.zip
 DIR=src/tools/closure
+JAR_IN=$DIR/closure-compiler-v$VERSION.jar
 JAR=$DIR/compiler.jar
 
 # Download and unzip the compiler if we haven't before or if it is the wrong
@@ -32,4 +33,5 @@ if [[ ! -e $JAR || -z "$(java -jar $JAR --version | grep $VERSION)" ]]
 then
   curl https://dl.google.com/closure-compiler/$ZIP --create-dirs -o $DIR/$ZIP
   unzip -o $DIR/$ZIP -d $DIR
+  cp $JAR_IN $JAR
 fi
