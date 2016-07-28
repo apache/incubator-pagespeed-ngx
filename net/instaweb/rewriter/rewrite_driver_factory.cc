@@ -532,8 +532,6 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   fetch_options.implicit_cache_ttl_ms =
       server_context->global_options()->implicit_cache_ttl_ms();
   fetch_options.respect_vary = false;
-  // Minimum TTL for cachable resources, -1 for no minimum.
-  fetch_options.min_cache_ttl_ms = -1;
   RequestContextPtr request_ctx(new RequestContext(
       fetch_options, server_context->thread_system()->NewMutex(),
       server_context->timer()));

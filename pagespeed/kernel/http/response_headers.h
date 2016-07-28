@@ -223,12 +223,6 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void set_implicit_cache_ttl_ms(const int64 ttl) {
     http_options_.implicit_cache_ttl_ms = ttl;
   }
-  int64 min_cache_ttl_ms() const {
-    return http_options_.min_cache_ttl_ms;
-  }
-  void set_min_cache_ttl_ms(const int64 ttl) {
-    http_options_.min_cache_ttl_ms = ttl;
-  }
 
   int64 last_modified_time_ms() const;
   int64 date_ms() const;  // Timestamp from Date header.
@@ -422,7 +416,6 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   int64 force_cache_ttl_ms_;
   // Indicates if the response was force cached.
   bool force_cached_;
-  bool min_cache_ttl_applied_;
 
   // Allow copy and assign.
 };

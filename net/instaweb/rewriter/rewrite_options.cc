@@ -228,7 +228,6 @@ const char RewriteOptions::kMaxUrlSegmentSize[] = "MaxSegmentLength";
 const char RewriteOptions::kMaxUrlSize[] = "MaxUrlSize";
 const char RewriteOptions::kMetadataCacheStalenessThresholdMs[] =
     "MetadataCacheStalenessThresholdMs";
-const char RewriteOptions::kMinCacheTtlMs[] = "MinCacheTtlMs";
 const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
     "MinImageSizeLowResolutionBytes";
 const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
@@ -449,7 +448,6 @@ const int64 RewriteOptions::kDefaultIdleFlushTimeMs = 10;
 const int64 RewriteOptions::kDefaultImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
 const int64 RewriteOptions::kDefaultLoadFromFileCacheTtlMs =
     5 * Timer::kMinuteMs;
-const int64 RewriteOptions::kDefaultMinCacheTtlMs = -1;
 const int64 RewriteOptions::kDefaultMetadataInputErrorsCacheTtlMs =
     5 * Timer::kMinuteMs;
 
@@ -2076,12 +2074,6 @@ void RewriteOptions::AddProperties() {
       kOverrideCachingTtlMs,
       kDirectoryScope,
       NULL, true);  // TODO(jmarantz): write help & doc for mod_pagespeed.
-  AddBaseProperty(
-      kDefaultMinCacheTtlMs,
-      &RewriteOptions::min_cache_ttl_ms_, "mctm",
-      kMinCacheTtlMs,
-      kDirectoryScope,
-      NULL, true);
   AddBaseProperty(
       5 * Timer::kSecondMs, &RewriteOptions::blocking_fetch_timeout_ms_,
       "bfto", RewriteOptions::kFetcherTimeOutMs,
@@ -5244,7 +5236,6 @@ HttpOptions RewriteOptions::ComputeHttpOptions() const {
   HttpOptions options;
   options.respect_vary = respect_vary();
   options.implicit_cache_ttl_ms = implicit_cache_ttl_ms();
-  options.min_cache_ttl_ms = min_cache_ttl_ms();
   return options;
 }
 

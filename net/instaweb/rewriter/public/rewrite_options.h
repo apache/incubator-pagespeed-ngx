@@ -335,7 +335,6 @@ class RewriteOptions {
   static const char kMaxUrlSegmentSize[];
   static const char kMaxUrlSize[];
   static const char kMetadataCacheStalenessThresholdMs[];
-  static const char kMinCacheTtlMs[];
   static const char kMinImageSizeLowResolutionBytes[];
   static const char kMinResourceCacheTimeToRewriteMs[];
   static const char kMobBeaconCategory[];
@@ -784,7 +783,6 @@ class RewriteOptions {
   static const int64 kDefaultIdleFlushTimeMs;
   static const int64 kDefaultFlushBufferLimitBytes;
   static const int64 kDefaultImplicitCacheTtlMs;
-  static const int64 kDefaultMinCacheTtlMs;
   static const int64 kDefaultPrioritizeVisibleContentCacheTimeMs;
   static const char kDefaultBeaconUrl[];
   static const int64 kDefaultImageRecompressQuality;
@@ -2934,13 +2932,6 @@ class RewriteOptions {
     insert_result.first->second->Allow(wildcard);
   }
 
-  void set_min_cache_ttl_ms(int64 x) {
-    set_option(x, &min_cache_ttl_ms_);
-  }
-  int64 min_cache_ttl_ms() const {
-    return min_cache_ttl_ms_.value();
-  }
-
   // Determine if the request url needs to be declined based on the url,
   // request headers and rewrite options.
   bool IsRequestDeclined(const GoogleString& url,
@@ -4160,11 +4151,6 @@ class RewriteOptions {
   // urls that match override_caching_wildcard_.
   Option<int64> override_caching_ttl_ms_;
   CopyOnWrite<FastWildcardGroup> override_caching_wildcard_;
-
-  // The minimum milliseconds of cache TTL for all resources that are
-  // explicitly cacheable. This overrides the max-age even when it is set on
-  // Cache-Control headers.
-  Option<int64> min_cache_ttl_ms_;
 
   // Whether to allow logging urls as part of LogRecord.
   Option<bool> allow_logging_urls_in_log_record_;

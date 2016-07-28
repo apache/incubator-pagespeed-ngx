@@ -3165,7 +3165,6 @@ OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
 
   response_headers()->set_implicit_cache_ttl_ms(
       rewrite_options->implicit_cache_ttl_ms());
-  response_headers()->set_min_cache_ttl_ms(rewrite_options->min_cache_ttl_ms());
 }
 
 OptionsAwareHTTPCacheCallback::~OptionsAwareHTTPCacheCallback() {}

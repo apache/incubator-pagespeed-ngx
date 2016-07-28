@@ -142,8 +142,8 @@ bool ProxyInterface::UrlAndPortMatchThisServer(const GoogleUrl& url) {
     // pagespeed only queries.
     //
     // Allow for exact hostname matches, as well as a URL typed into the
-    // browser window like "exeda.cam", which should match
-    // "exeda.cam.corp.google.com".
+    // browser window like "box.localsite", which should match
+    // "box.localsite.example.com".
     StringPiece host = url.Host();
     if (IsLocalhost(host, hostname_) ||
         StringPiece(hostname_).starts_with(StrCat(host, "."))) {

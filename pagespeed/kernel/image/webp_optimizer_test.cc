@@ -365,52 +365,42 @@ TEST_F(AnimatedWebpTest, ConvertGifs) {
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // Fails because of b/15484578                                 [google]
   CheckGifVsWebP("gif/completely_transparent.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // animdiff bug: canvas reporting issue: b/15755291            [google]
   CheckGifVsWebP("gif/square2loop.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // animdiff bug: loop count mismatch: b/15758805               [google]
   CheckGifVsWebP("gif/full2loop.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // animdiff bug: loop count mismatch: b/15758805               [google]
   CheckGifVsWebP("gif/interlaced.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // animdiff bug: SEGV: b/15758908                              [google]
   CheckGifVsWebP("gif/red_empty_screen.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // animdiff bug: loop count mismatch: b/15758805               [google]
   CheckGifVsWebP("gif/red_unused_invalid_background.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // animdiff bug: loop count mismatch: b/15758805               [google]
   CheckGifVsWebP("gif/transparent.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // animdiff bug: SEGV: b/15758908                              [google]
   CheckGifVsWebP("gif/zero_size_animation.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // animdiff bug: canvas reporting issue: b/15755291            [google]
   CheckGifVsWebP("webp/multiple_frame_opaque.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  // animdiff bug: canvas reporting issue: b/15755291            [google]
   CheckGifVsWebP("webp/multiple_frame_opaque_gray.gif", &webp_config, false);
   EXPECT_LT(3, progress_data.times_called);
 }

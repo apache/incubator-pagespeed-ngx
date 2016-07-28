@@ -900,8 +900,6 @@ void ServerContext::GetRemoteOptions(RewriteOptions* remote_options,
   fetch_options.implicit_cache_ttl_ms =
       remote_options->implicit_cache_ttl_ms();
   fetch_options.respect_vary = false;
-  // Minimum TTL for cachable resources, -1 for no minimum.
-  fetch_options.min_cache_ttl_ms = -1;
   if (!remote_options->remote_configuration_url().empty()) {
     RequestContextPtr request_ctx(new RequestContext(
         fetch_options, thread_system()->NewMutex(), timer()));

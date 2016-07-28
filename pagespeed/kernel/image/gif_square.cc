@@ -49,8 +49,6 @@ const GifColorType GifSquare::kGifYellow = {0xFF, 0xFF, 0x00};
 namespace {
 // Later versions of gif_lib use a Gif prefix for these functions.
 
-// In particular, the google3 version has the prefix but the    // [google3]
-// open-source pagespeed version does not.                      // [google3]
 ColorMapObject* (*GifMakeMapObject)(int, const GifColorType*) =
     MakeMapObject;
 void (*GifFreeMapObject)(ColorMapObject*) = FreeMapObject;

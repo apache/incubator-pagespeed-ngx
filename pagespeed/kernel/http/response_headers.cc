@@ -197,7 +197,6 @@ void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
   cache_fields_dirty_ = other.cache_fields_dirty_;
   force_cache_ttl_ms_ = other.force_cache_ttl_ms_;
   force_cached_ = other.force_cached_;
-  min_cache_ttl_applied_ = other.min_cache_ttl_applied_;
   http_options_ = other.http_options_;
 }
 
@@ -218,7 +217,6 @@ void ResponseHeaders::Clear() {
   cache_fields_dirty_ = false;
   force_cache_ttl_ms_ = -1;
   force_cached_ = false;
-  min_cache_ttl_applied_ = false;
 
   // Note: http_options_ are not cleared here!
   // Those should only be set at construction time and never mutated.
@@ -767,14 +765,6 @@ void ResponseHeaders::ComputeCaching() {
     if (computer.IsExplicitlyCacheable()) {
       // TODO(sligocki): Do we care about the return value.
       computer.GetFreshnessLifetimeMillis(&cache_ttl_ms);
-      // If min_cache_ttl_ms is set, this overrides cache TTL hints even if
-      // explicitly set in the header. Use the max of min_cache_ttl_ms and
-      // the cache_ttl computed so far. Do this only for non HTML.
-      if (type != NULL && !type->IsHtmlLike() &&
-          http_options_.min_cache_ttl_ms > cache_ttl_ms) {
-        cache_ttl_ms = http_options_.min_cache_ttl_ms;
-        min_cache_ttl_applied_ = true;
-      }
     }
     if (force_caching_enabled &&
         (force_cache_ttl_ms_ > cache_ttl_ms || !is_proxy_cacheable)) {
@@ -798,22 +788,16 @@ void ResponseHeaders::ComputeCaching() {
       proto->set_proxy_cacheable(false);
     }
 
-    if (proto->proxy_cacheable() && !force_cached_) {
-      if (!computer.IsExplicitlyCacheable()) {
-        // If the resource is proxy cacheable but it does not have explicit
-        // caching headers and is not force cached, explicitly set the caching
-        // headers.
-        DCHECK(has_date);
-        DCHECK(cache_ttl_ms == http_options_.implicit_cache_ttl_ms);
-        proto->set_is_implicitly_cacheable(true);
-        SetDateAndCaching(date_ms, cache_ttl_ms,
-                          CacheControlValuesToPreserve());
-      } else if (min_cache_ttl_applied_) {
-        DCHECK(has_date);
-        DCHECK(cache_ttl_ms == http_options_.min_cache_ttl_ms);
-        SetDateAndCaching(date_ms, cache_ttl_ms,
-                          CacheControlValuesToPreserve());
-      }
+    if (proto->proxy_cacheable() && !force_cached_ &&
+        !computer.IsExplicitlyCacheable()) {
+      // If the resource is proxy cacheable but it does not have explicit
+      // caching headers and is not force cached, explicitly set the caching
+      // headers.
+      DCHECK(has_date);
+      DCHECK(cache_ttl_ms == http_options_.implicit_cache_ttl_ms);
+      proto->set_is_implicitly_cacheable(true);
+      SetDateAndCaching(date_ms, cache_ttl_ms,
+                        CacheControlValuesToPreserve());
     }
   } else {
     proto->set_expiration_time_ms(0);
@@ -1006,10 +990,6 @@ void ResponseHeaders::DebugPrint() const {
   fputs(BoolToString(proto()->is_implicitly_cacheable()), stderr);
   fputs("\nhttp_options_.implicit_cache_ttl_ms = ", stderr);
   fputs(Integer64ToString(http_options_.implicit_cache_ttl_ms).c_str(), stderr);
-  fputs("\nhttp_options_.min_cache_ttl_ms = ", stderr);
-  fputs(Integer64ToString(http_options_.min_cache_ttl_ms).c_str(), stderr);
-  fputs("\nmin_cache_ttl_applied_ = ", stderr);
-  fputs(BoolToString(min_cache_ttl_applied_), stderr);
   if (!cache_fields_dirty_) {
     fputs("\nexpiration_time_ms_ = ", stderr);
     fputs(Integer64ToString(proto()->expiration_time_ms()).c_str(), stderr);

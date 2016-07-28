@@ -1041,7 +1041,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMaxUrlSegmentSize,
     RewriteOptions::kMaxUrlSize,
     RewriteOptions::kMetadataCacheStalenessThresholdMs,
-    RewriteOptions::kMinCacheTtlMs,
     RewriteOptions::kMinImageSizeLowResolutionBytes,
     RewriteOptions::kMinResourceCacheTimeToRewriteMs,
     RewriteOptions::kMobBeaconCategory,
