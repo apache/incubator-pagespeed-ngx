@@ -362,9 +362,9 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/insta
   ModPagespeedRewriteLevel PassThrough
 </Directory>
 
-# Establish a proxy mapping where the current server proxies an image
-# stored on ref.pssdemos.com.  We use ref.pssdemos.com rather than
-# modpagespeed.com so that we use a single html file both for:
+# Establish a proxy mapping where the current server proxies an image stored on
+# gstatic.com.  We use gstatic.com rather than modpagespeed.com so that we use a
+# single html file both for:
 #   1. a demo of the feature on modpagespeed.com.  It would
 #      be confusing to demo a Proxying when the origin was the
 #      same as the proxy.
