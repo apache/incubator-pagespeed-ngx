@@ -1255,6 +1255,17 @@ http {
     add_header 'X-Accel-Redirect' 'blablabla';
   }
 
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name map-static-domain.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed MapRewriteDomain http://static-cdn.example.com
+                               http://map-static-domain.example.com;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters defer_javascript,rewrite_domains;
+  }
+
   # Proxy + IPRO a gzip'd file for testing Issue 896.
   server {
     listen @@SECONDARY_PORT@@;
