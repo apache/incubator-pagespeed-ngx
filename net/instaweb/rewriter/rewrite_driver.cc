@@ -1259,30 +1259,6 @@ void RewriteDriver::AddPreRenderFilters() {
 
 void RewriteDriver::AddPostRenderFilters() {
   const RewriteOptions* rewrite_options = options();
-  if (rewrite_options->domain_lawyer()->can_rewrite_domains() &&
-      (rewrite_options->Enabled(RewriteOptions::kRewriteDomains) ||
-       rewrite_options->mob_iframe())) {
-    // Rewrite mapped domains and shard any resources not otherwise rewritten.
-    // We want do do this after all the content-changing rewrites, because they
-    // will map & shard as part of their execution.
-    //
-    // TODO(jmarantz): Consider removing all the domain-mapping functionality
-    // from other rewrites and do it exclusively in this filter.  Before we
-    // do that we'll need to validate this filter so we can turn it on by
-    // default.
-    //
-    // Note that the "domain_lawyer" filter controls whether we rewrite
-    // domains for resources in HTML files.  However, when we cache-extend
-    // CSS files, we rewrite the domains in them whether this filter is
-    // specified or not.
-    AddUnownedPostRenderFilter(domain_rewriter_.get());
-  }
-  if (rewrite_options->Enabled(RewriteOptions::kLeftTrimUrls)) {
-    // Trim extraneous prefixes from urls in attribute values.
-    // Happens before RemoveQuotes but after everything else.  Note:
-    // we Must left trim urls BEFORE quote removal.
-    AddUnownedPostRenderFilter(url_trim_filter_.get());
-  }
   if (rewrite_options->Enabled(RewriteOptions::kFlushSubresources) &&
       !options()->pre_connect_url().empty()) {
     AddOwnedPostRenderFilter(new RewrittenContentScanningFilter(this));
@@ -1358,7 +1334,32 @@ void RewriteDriver::AddPostRenderFilters() {
     PedanticFilter* filter = new PedanticFilter(this);
     AddOwnedPostRenderFilter(filter);
   }
-
+  // All filters that might add urls should come before the domain rewriter,
+  // so they'll get rewritten.
+  if (rewrite_options->domain_lawyer()->can_rewrite_domains() &&
+      (rewrite_options->Enabled(RewriteOptions::kRewriteDomains) ||
+       rewrite_options->mob_iframe())) {
+    // Rewrite mapped domains and shard any resources not otherwise rewritten.
+    // We want do do this after all the content-changing rewrites, because they
+    // will map & shard as part of their execution.
+    //
+    // TODO(jmarantz): Consider removing all the domain-mapping functionality
+    // from other rewrites and do it exclusively in this filter.  Before we
+    // do that we'll need to validate this filter so we can turn it on by
+    // default.
+    //
+    // Note that the "domain_lawyer" filter controls whether we rewrite
+    // domains for resources in HTML files.  However, when we cache-extend
+    // CSS files, we rewrite the domains in them whether this filter is
+    // specified or not.
+    AddUnownedPostRenderFilter(domain_rewriter_.get());
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kLeftTrimUrls)) {
+    // Trim extraneous prefixes from urls in attribute values.
+    // Happens before RemoveQuotes but after everything else.  Note:
+    // we Must left trim urls BEFORE quote removal.
+    AddUnownedPostRenderFilter(url_trim_filter_.get());
+  }
   // Remove quotes and collapse whitespace at the very end for maximum effect.
   if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.

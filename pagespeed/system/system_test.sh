@@ -707,6 +707,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
   check [ $MATCHES -eq 4 ]
 
+  start_test static asset urls are mapped/sharded
+
+  HOST_NAME="http://map-static-domain.example.com"
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      $HOST_NAME/mod_pagespeed_example/rewrite_javascript.html)
+  check_from "$OUT" fgrep \
+    "http://static-cdn.example.com/$PSA_JS_LIBRARY_URL_PREFIX/js_defer"
+
   # Test to make sure dynamically defined url-valued attributes are rewritten by
   # rewrite_domains.  See mod_pagespeed_test/rewrite_domains.html: in addition
   # to having one <img> URL, one <form> URL, and one <a> url it also has one

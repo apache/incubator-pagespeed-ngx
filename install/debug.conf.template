@@ -931,6 +931,18 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedEnableFilters rewrite_javascript
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName map-static-domain.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+
+  ModPagespeedMapRewriteDomain http://static-cdn.example.com \
+                               http://map-static-domain.example.com
+
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters defer_javascript,rewrite_domains
+</VirtualHost>
+
 # For testing ipro + load from file + unknown extensions.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName lff-ipro.example.com
