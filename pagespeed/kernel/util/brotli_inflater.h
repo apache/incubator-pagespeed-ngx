@@ -24,7 +24,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string_util.h"
 
-struct BrotliStateStruct;
+struct BrotliDecoderStateStruct;
 
 namespace net_instaweb {
 
@@ -65,7 +65,8 @@ class BrotliInflater {
   // Keep track of if the internal state is "dirty", if so, refreshed by
   // ResetState() before Decompression.
   bool state_used_;
-  std::unique_ptr<BrotliStateStruct, void(*)(BrotliStateStruct*)> brotli_state_;
+  std::unique_ptr<BrotliDecoderStateStruct, void(*)(BrotliDecoderStateStruct*)>
+      brotli_state_;
 
   DISALLOW_COPY_AND_ASSIGN(BrotliInflater);
 };

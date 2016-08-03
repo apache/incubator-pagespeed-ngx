@@ -19,13 +19,11 @@
 #include "pagespeed/kernel/util/brotli_inflater.h"
 
 #include <cstddef>
-#include <limits>
 
 #include "base/logging.h"
 #include "third_party/brotli/src/dec/decode.h"
 #include "third_party/brotli/src/enc/encode.h"
 #include "pagespeed/kernel/base/message_handler.h"
-#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/writer.h"
 
@@ -33,14 +31,14 @@ namespace net_instaweb {
 
 BrotliInflater::BrotliInflater()
     : state_used_(false),
-      brotli_state_(BrotliCreateState(nullptr, nullptr, nullptr),
-                    &BrotliDestroyState) { }
+      brotli_state_(BrotliDecoderCreateInstance(nullptr, nullptr, nullptr),
+                    &BrotliDecoderDestroyInstance) { }
 
 BrotliInflater::~BrotliInflater() { }
 
 void BrotliInflater::ResetState() {
   if (state_used_) {
-    brotli_state_.reset(BrotliCreateState(nullptr, nullptr, nullptr));
+    brotli_state_.reset(BrotliDecoderCreateInstance(nullptr, nullptr, nullptr));
   }
   state_used_ = true;
 }
@@ -73,39 +71,37 @@ bool BrotliInflater::DecompressHelper(StringPiece in, MessageHandler* handler,
   // Mostly taken from BrotliDecompress in the tool "bro".
   // https://raw.githubusercontent.com/google/brotli/v0.2.0/tools/bro.cc
   char output[kStackBufferSize];
-  size_t total_out = 0;
   size_t available_in = in.length();
   const char* next_in = in.data();
-  BrotliResult result = BROTLI_RESULT_NEEDS_MORE_INPUT;
+  BrotliDecoderResult result = BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT;
   ResetState();
   if (!brotli_state_.get()) {
     return false;  // Memory allocation failed.
   }
-  while (result != BROTLI_RESULT_SUCCESS) {
+  while (result != BROTLI_DECODER_RESULT_SUCCESS) {
     size_t available_out = sizeof(output);
     char* next_out = output;
-    result = BrotliDecompressStream(
+    result = BrotliDecoderDecompressStream(brotli_state_.get(),
         &available_in, reinterpret_cast<const unsigned char**>(&next_in),
-        &available_out, reinterpret_cast<unsigned char**>(&next_out),
-        &total_out, brotli_state_.get());
+        &available_out, reinterpret_cast<unsigned char**>(&next_out), nullptr);
     CHECK(next_in >= in.data());
     CHECK_LE(available_out, sizeof(output));
     in.remove_prefix(next_in - in.data());
     switch (result) {
-      case BROTLI_RESULT_NEEDS_MORE_INPUT:
+      case BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT:
         // We should never hit this case because the compressed input isn't
         // streamed.
-        handler->Message(kWarning, "BROTLI_RESULT_NEEDS_MORE_INPUT");
+        handler->Message(kWarning, "BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT");
         return false;
-      case BROTLI_RESULT_NEEDS_MORE_OUTPUT:
+      case BROTLI_DECODER_RESULT_NEEDS_MORE_OUTPUT:
         // Need to flush the output buffer to the writer.
         break;
-      case BROTLI_RESULT_SUCCESS:
+      case BROTLI_DECODER_RESULT_SUCCESS:
         // Decompression succeeded, write out the last chunk if needed.
         break;
-      case BROTLI_RESULT_ERROR:
-        handler->Message(kError, "%s",
-            BrotliErrorString(BrotliGetErrorCode(brotli_state_.get())));
+      case BROTLI_DECODER_RESULT_ERROR:
+        handler->Message(kError, "%s", BrotliDecoderErrorString(
+            BrotliDecoderGetErrorCode(brotli_state_.get())));
         return false;
     }
     StringPiece chunk(output, sizeof(output) - available_out);
@@ -113,7 +109,7 @@ bool BrotliInflater::DecompressHelper(StringPiece in, MessageHandler* handler,
       return false;
     }
   }
-  return true;  // BROTLI_RESULT_SUCCESS
+  return true;  // BROTLI_DECODER_RESULT_SUCCESS
 }
 
 bool BrotliInflater::Decompress(StringPiece in, MessageHandler* handler,

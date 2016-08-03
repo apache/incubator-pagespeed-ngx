@@ -85,7 +85,7 @@ TEST(BrotliInflater, TestCorruptInputBrotliDecompress) {
   ASSERT_GE(handler.messages().size(), 1);
   const GoogleString& message = handler.messages()[0];
   EXPECT_TRUE(message.find("PADDING_1") != GoogleString::npos ||
-              message == "Error: BROTLI_RESULT_ERROR")
+              message == "Error: BROTLI_DECODER_RESULT_ERROR")
       << message;
 }
 
@@ -98,7 +98,7 @@ TEST(BrotliInflater, TestTruncatedInputBrotliDecompress) {
   StringPiece compressed(kHelloBrotliCorrupt, sizeof(kHelloBrotliCorrupt));
   EXPECT_FALSE(
       BrotliInflater::Decompress(compressed, &handler, &decompress_writer));
-  EXPECT_STREQ("Warning: BROTLI_RESULT_NEEDS_MORE_INPUT",
+  EXPECT_STREQ("Warning: BROTLI_DECODER_RESULT_NEEDS_MORE_INPUT",
                handler.messages()[0]);
 }
 

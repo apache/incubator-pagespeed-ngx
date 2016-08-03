@@ -91,7 +91,7 @@ vars = {
 
   # Brotli v0.5.0-snapshot
   "brotli_src": "https://github.com/google/brotli.git",
-  "brotli_revision": "@e4c891420c004581cba43d918e73f446affdbbbb",
+  "brotli_revision": "@882f41850b679c1ff4a3804d5515d142a5807376",
 
   "proto_src": "https://github.com/google/protobuf.git",
   "protobuf_revision": "v3.0.0-beta-2",
