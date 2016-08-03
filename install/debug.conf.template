@@ -1006,6 +1006,28 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   AddOutputFilterByType DEFLATE text/css
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName compressedcache.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeed on
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_css
+  ModPagespeedHttpCacheCompressionLevel 9
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName uncompressedcache.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeed on
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_css
+  ModPagespeedHttpCacheCompressionLevel 0
+  AddOutputFilterByType DEFLATE text/css
+  DeflateCompressionLevel 1
+</VirtualHost>
+
 # Backend for ipro-proxy.example.com
 Listen 127.0.0.1:@@APACHE_TERTIARY_PORT@@
 NameVirtualHost 127.0.0.1:@@APACHE_TERTIARY_PORT@@

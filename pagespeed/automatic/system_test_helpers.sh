@@ -787,7 +787,7 @@ function scrape_header {
   # Extracts the value from wget's emitted headers.  We use " " as a delimeter
   # here to avoid a leading space on the returned string.  Note also that wget
   # always generates "name: value\r", never "name:value\r".
-  grep -i "^$1:" | cut -d' ' -f2- | tr -d '\r'
+  tr -s '\r\n' '\n'| egrep -ia "^.?$1:" | rev | cut -d' ' -f 1 | rev
 }
 
 # Scrapes HTTP headers from stdin for Content-Length and returns the value.

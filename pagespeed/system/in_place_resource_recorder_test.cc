@@ -108,20 +108,11 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
                                &value_out, &headers_out));
     StringPiece contents;
     EXPECT_TRUE(value_out.ExtractContents(&contents));
-
-    // gzip in prelim headers will cause us to decompress, gzip in final_headers
-    // will not.
-    EXPECT_EQ(header_time == kPrelimGzipHeader ? kUncompressedData : gzipped,
-              contents);
+    EXPECT_EQ(headers_out.IsGzipped() ? gzipped : kUncompressedData, contents);
 
     // We should not have a content-encoding header since we either decompressed
     // data ourselves or captured it before data was saved.
     EXPECT_FALSE(headers_out.Has(HttpAttributes::kContentEncoding));
-
-    // We get content-length iff the cache was compressed.
-    bool is_compressed_cache = (http_cache()->compression_level() != 0);
-    int64 length;
-    EXPECT_EQ(is_compressed_cache, headers_out.FindContentLength(&length));
     EXPECT_TRUE(headers_out.DetermineContentType()->IsCompressible());
 
     // TODO(jcrowell): Add test for non-compressible type.

@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/util/gzip_inflater.h"
 
 namespace net_instaweb {
 
@@ -249,12 +250,20 @@ void InPlaceResourceRecorder::DoneAndSetHeaders(
   if (failure_) {
     num_failed_->Add(1);
   } else {
-    // We don't consider content-encoding to be valid here, since it can
-    // be captured post-mod_deflate with pre-deflate content. Also note
-    // that content-length doesn't have to be accurate either, since it can be
-    // due to compression; we do still use it for quickly reject since
-    // if gzip'd is too large uncompressed is likely too large, too.
-    response_headers->RemoveAll(HttpAttributes::kContentEncoding);
+    // We are skeptical of the correctness of the  content-encoding here,
+    // since it can  be captured post-mod_deflate with pre-deflate content.
+    // Also note that content-length doesn't have to be accurate either, since
+    // it can be due to compression; we do still use it for quickly reject since
+    // if gzip'd is too large uncompressed is likely too large, too. We sniff
+    // the content to make sure that the headers match the Content-Encoding.
+    StringPiece contents;
+    resource_value_.ExtractContents(&contents);
+    // TODO(jcrowell): remove this sniffing fix, and do a proper fix by merging
+    // the IPRO filters in mod_instaweb.cc and in ngx_pagespeed.
+    if (!GzipInflater::HasGzipMagicBytes(contents)) {
+      // Only remove these headers if the content is not gzipped.
+      response_headers->RemoveAll(HttpAttributes::kContentEncoding);
+    }
     response_headers->RemoveAll(HttpAttributes::kContentLength);
 
     if (cache_control_set_) {
