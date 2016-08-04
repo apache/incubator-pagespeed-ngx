@@ -80,7 +80,7 @@ const char kInlinedScriptFormat[] =
     "<script type=\"text/javascript\""
     " id=\"pagespeed_script_%d\" data-pagespeed-no-defer>"
     "pagespeed.dedupInlinedImages.inlineImg("
-    "'pagespeed_img_0','pagespeed_img_0','pagespeed_script_%d'"
+    "'pagespeed_img_0%d','pagespeed_img_0%d','pagespeed_script_%d'"
     ");</script>";
 
 const char kHtmlWrapperFormat[] =
@@ -162,7 +162,7 @@ TEST_F(DedupInlinedImagesTest, InlineSingleSmallImage) {
   TestDedupImages("inline_single_small_image", "", "",
                   StrCat("<img src='", kCuppaPngFilename, "'>"),
                   StrCat("<img src='", kCuppaPngInlineData,
-                         "' id=\"pagespeed_img_0\">"));
+                         "' id=\"pagespeed_img_01\">"));
 }
 
 TEST_F(DedupInlinedImagesTest, DontInlineLargeImage) {
@@ -178,10 +178,10 @@ TEST_F(DedupInlinedImagesTest, DedupSecondSmallImage) {
       StrCat("<img src='", kCuppaPngFilename, "'>\n",
              "<img src='", kCuppaPngFilename, "'>"),
       StrCat("<img src='", kCuppaPngInlineData,
-             "' id=\"pagespeed_img_0\">\n",
+             "' id=\"pagespeed_img_01\">\n",
              InsertScriptBefore(
-                 StrCat("<img id=\"pagespeed_img_0\">",
-                        StringPrintf(kInlinedScriptFormat, 1, 1)))));
+                 StrCat("<img id=\"pagespeed_img_02\">",
+                        StringPrintf(kInlinedScriptFormat, 3, 1, 2, 3)))));
 }
 
 TEST_F(DedupInlinedImagesTest, DedupManySmallImages) {
@@ -190,12 +190,12 @@ TEST_F(DedupInlinedImagesTest, DedupManySmallImages) {
   TestDedupImages(
       "dedup_many_small_images", "", "",
       StrCat(image, "\n", image, "\n", image),
-      StrCat("<img src='", kCuppaPngInlineData, "' id=\"pagespeed_img_0\">\n",
+      StrCat("<img src='", kCuppaPngInlineData, "' id=\"pagespeed_img_01\">\n",
              InsertScriptBefore(
-                 StrCat("<img id=\"pagespeed_img_0\">",
-                        StringPrintf(kInlinedScriptFormat, 1, 1), "\n",
-                        "<img id=\"pagespeed_img_0\">",
-                        StringPrintf(kInlinedScriptFormat, 2, 2)))));
+                 StrCat("<img id=\"pagespeed_img_02\">",
+                        StringPrintf(kInlinedScriptFormat, 3, 1, 2, 3), "\n",
+                        "<img id=\"pagespeed_img_04\">",
+                        StringPrintf(kInlinedScriptFormat, 5, 1, 4, 5)))));
 }
 
 TEST_F(DedupInlinedImagesTest, DedupSecondSmallImageWithId) {
@@ -205,14 +205,14 @@ TEST_F(DedupInlinedImagesTest, DedupSecondSmallImageWithId) {
                          "<img src='", kCuppaPngFilename, "'>"),
                   StrCat("<img src='", kCuppaPngInlineData, "' id='xyzzy'>\n",
                          InsertScriptBefore(
-                             "<img id=\"pagespeed_img_0\">"
+                             "<img id=\"pagespeed_img_01\">"
                              "<script type=\"text/javascript\""
-                             " id=\"pagespeed_script_1\""
+                             " id=\"pagespeed_script_2\""
                              " data-pagespeed-no-defer>"
                              "pagespeed.dedupInlinedImages.inlineImg("
                              "'xyzzy',"
-                             "'pagespeed_img_0',"
-                             "'pagespeed_script_1');"
+                             "'pagespeed_img_01',"
+                             "'pagespeed_script_2');"
                              "</script>")));
 }
 
@@ -223,16 +223,16 @@ TEST_F(DedupInlinedImagesTest, DedupSecondSmallImageWithAttributes) {
                          "<img src='", kCuppaPngFilename,
                          "' alt='xyzzy' id='plugh'>"),
                   StrCat("<img src='", kCuppaPngInlineData,
-                         "' id=\"pagespeed_img_0\">\n",
+                         "' id=\"pagespeed_img_01\">\n",
                          InsertScriptBefore(
                              "<img alt='xyzzy' id='plugh'>"
                              "<script type=\"text/javascript\""
-                             " id=\"pagespeed_script_1\""
+                             " id=\"pagespeed_script_2\""
                              " data-pagespeed-no-defer>"
                              "pagespeed.dedupInlinedImages.inlineImg("
-                             "'pagespeed_img_0',"
+                             "'pagespeed_img_01',"
                              "'plugh',"
-                             "'pagespeed_script_1');"
+                             "'pagespeed_script_2');"
                              "</script>")));
 }
 
@@ -293,15 +293,17 @@ TEST_F(DedupInlinePreviewImagesTest, DedupInlinePreviewImages) {
              "\" onload=\"", DelayImagesFilter::kImageOnloadCode,
              "\" onerror=\"this.onerror=null;",
              DelayImagesFilter::kImageOnloadCode,
-             "\" id=\"pagespeed_img_0\"/>");
-  GoogleString scripted_img =
+             "\" id=\"pagespeed_img_01\"/>");
+  GoogleString scripted_img_fmt =
       StrCat("<img data-pagespeed-high-res-src='", image_filename,
              "' onload=\"", DelayImagesFilter::kImageOnloadCode,
              "\" onerror=\"this.onerror=null;",
              DelayImagesFilter::kImageOnloadCode,
-             "\" id=\"pagespeed_img_0\"/>");
-  GoogleString script_1 = StringPrintf(kInlinedScriptFormat, 1, 1);
-  GoogleString script_2 = StringPrintf(kInlinedScriptFormat, 2, 2);
+             "\" id=\"pagespeed_img_0%d\"/>");
+  GoogleString scripted_img_1 = StringPrintf(scripted_img_fmt.c_str(), 2);
+  GoogleString scripted_img_2 = StringPrintf(scripted_img_fmt.c_str(), 4);
+  GoogleString script_1 = StringPrintf(kInlinedScriptFormat, 3, 1, 2, 3);
+  GoogleString script_2 = StringPrintf(kInlinedScriptFormat, 5, 1, 4, 5);
   GoogleString input_html = StrCat("<head></head>"
                                    "<body>",
                                    input_img, input_img, input_img,
@@ -312,8 +314,8 @@ TEST_F(DedupInlinePreviewImagesTest, DedupInlinePreviewImages) {
                                     GetImageOnloadScriptBlock(),
                                     inlined_img,
                                     InsertScriptBefore(
-                                        StrCat(scripted_img, script_1,
-                                               scripted_img, script_2)),
+                                        StrCat(scripted_img_1, script_1,
+                                               scripted_img_2, script_2)),
                                     "</body>");
 
   // Since the preview image has been resized use a wildcard to match it.

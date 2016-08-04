@@ -116,7 +116,8 @@ void DedupInlinedImagesFilter::EndElementImpl(HtmlElement* element) {
     GoogleString element_id;
     const char* id = element->AttributeValue(HtmlName::kId);
     if (id == NULL || id[0] == '\0') {
-      element_id = StrCat("pagespeed_img_", hash);
+      element_id = StrCat("pagespeed_img_", hash,
+                          IntegerToString(++snippet_id_));
       driver()->AddAttribute(element, HtmlName::kId, element_id);
     } else {
       element_id = id;
