@@ -889,3 +889,17 @@ function check_flushing() {
   done < <($command)
   check 0
 }
+
+# Given the output of a page with ?PageSpeedFilters=+debug, print the section of
+# the page where it lists what filters are enabled.
+function extract_filters_from_debug_html() {
+  local debug_output="$1"
+
+  # Pull out the non-blank lines between "Filters:" and Options:".  First
+  # convert newlines to % so sed can operate on the whole file, then put them
+  # back again.
+  check_from -q "$debug_output" grep -q "^Filters:$"
+  check_from -q "$debug_output" grep -q "^Options:$"
+  echo "$debug_output" | tr '\n' '%' | sed 's~.*%Filters:%~~' \
+                       | sed "s~%Options:.*~~" | tr '%' '\n'
+}

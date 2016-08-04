@@ -1509,6 +1509,14 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeedGlobalAdminDomains Allow everything-explicitly-allowed.example.com
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName debug-filters.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters debug
+</VirtualHost>
+
 #STATS_LOGGING ModPagespeedStatistics on
 #STATS_LOGGING ModPagespeedStatisticsLogging on
 #STATS_LOGGING ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"
