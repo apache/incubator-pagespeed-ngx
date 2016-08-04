@@ -63,8 +63,9 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual NamedLockManager* DefaultLockManager();
   // Create a new RewriteOptions.  In this implementation it will be an
-  // NgxRewriteOptions.
+  // NgxRewriteOptions, and it will have CoreFilters explicitly set.
   virtual RewriteOptions* NewRewriteOptions();
+  virtual RewriteOptions* NewRewriteOptionsForQuery();
   virtual ServerContext* NewDecodingServerContext();
   // Check resolver configured or not.
   bool CheckResolver();
