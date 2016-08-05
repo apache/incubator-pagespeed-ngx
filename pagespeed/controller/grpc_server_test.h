@@ -173,8 +173,6 @@ class GrpcServerTest : public testing::Test {
   std::unique_ptr<::grpc::Server> server_;
 };
 
-int GrpcServerTest::listen_port_;
-
 }  // namespace net_instaweb
 
 #endif  // PAGESPEED_CONTROLLER_GRPC_SERVER_TEST_H_

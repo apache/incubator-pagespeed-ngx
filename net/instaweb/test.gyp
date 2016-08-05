@@ -231,6 +231,7 @@
         '<(DEPTH)/pagespeed/system/admin_site_test.cc',
         '<(DEPTH)/pagespeed/system/system_message_handler_test.cc',
         '<(DEPTH)/pagespeed/controller/central_controller_callback_test.cc',
+        '<(DEPTH)/pagespeed/controller/grpc_server_test.cc',
         '<(DEPTH)/pagespeed/controller/named_lock_schedule_rewrite_controller_test.cc',
         '<(DEPTH)/pagespeed/controller/popularity_contest_schedule_rewrite_controller_test.cc',
         '<(DEPTH)/pagespeed/controller/priority_queue_test.cc',
