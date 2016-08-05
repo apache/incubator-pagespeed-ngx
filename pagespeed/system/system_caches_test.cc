@@ -110,36 +110,6 @@ class SystemServerContextNoProxyHtml : public SystemServerContext {
 };
 
 class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
- public:
-  void PurgeDone(bool success) {
-    purge_done_ = true;
-    purge_success_ = success;
-  }
-
-  void MemCacheStressTestHelper(bool do_deletes) {
-    options_->set_file_cache_path(kCachePath);
-    options_->set_use_shared_mem_locking(false);
-    options_->set_lru_cache_kb_per_process(0);
-    options_->set_memcached_servers(MemCachedServerSpec());
-    options_->set_memcached_threads(1);
-    options_->set_default_shared_memory_cache_kb(0);
-    options_->set_compress_metadata_cache(false);
-    PrepareWithConfig(options_.get());
-    scoped_ptr<ServerContext> server_context(
-        SetupServerContext(options_.release()));
-    CacheInterface* cache = server_context->metadata_cache();
-    SimpleRandom random(new NullMutex);
-    GoogleString value = random.GenerateHighEntropyString(20000);
-    CacheSpammer::RunTests(4 /* num_threads */,
-                           200 /* iters */,
-                           200 /* inserts */,
-                           false /* expecting_evictions */,
-                           do_deletes,
-                           value.c_str(),
-                           cache,
-                           thread_system_.get());
-  }
-
  protected:
   static const int kThreadLimit = 3;
   static const int kUsableMetadataCacheSize = 8 * 1024;
@@ -211,26 +181,6 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     GoogleString value_;
   };
 
-  class FakeMemcacheServerThread : public TcpServerThreadForTesting {
-   public:
-    FakeMemcacheServerThread(apr_port_t fake_memcache_listen_port,
-                             ThreadSystem* thread_system)
-        : TcpServerThreadForTesting(fake_memcache_listen_port, "fake_memcache",
-                                    thread_system) {}
-    virtual ~FakeMemcacheServerThread() {}
-
-   private:
-    void HandleClientConnection(apr_socket_t* sock) override {
-      static const char kMessage[] = "blah\n";
-      apr_size_t message_size = STATIC_STRLEN(kMessage);
-      char buf[kStackBufferSize];
-      apr_size_t size = sizeof(buf) - 1;
-      apr_socket_recv(sock, buf, &size);
-      apr_socket_send(sock, kMessage, &message_size);
-      apr_socket_close(sock);
-    }
-  };
-
   SystemCachesTest()
       : thread_system_(Platform::CreateThreadSystem()),
         options_(new SystemRewriteOptions(thread_system_.get())),
@@ -253,18 +203,27 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
         stats);
   }
 
-  static void SetUpTestCase() {
-    TcpServerThreadForTesting::PickListenPortOnce(&fake_memcache_listen_port_);
-  }
-
   virtual void SetUp() {
     // TODO(jcrowell) factor out apr_initialize/terminate to share in static
     // constructor similar to rewrite_test_base.cc.
     apr_initialize();
     atexit(apr_terminate);
+    SetUpSystemCaches();
+    CustomRewriteTestBase<SystemRewriteOptions>::SetUp();
+  }
+
+  void SetUpSystemCaches() {
     system_caches_.reset(
         new SystemCaches(factory(), shared_mem_.get(), kThreadLimit));
-    CustomRewriteTestBase<SystemRewriteOptions>::SetUp();
+  }
+
+  void BreakShm() {
+    // system_caches_ wants to be shut down in destructor
+    system_caches_->StopCacheActivity();
+    system_caches_->ShutDown(factory()->message_handler());
+
+    shared_mem_.reset(new NullSharedMem());
+    SetUpSystemCaches();
   }
 
   virtual void TearDown() {
@@ -341,24 +300,6 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     EXPECT_EQ(expected_value, callback.value());
   }
 
-  // Returns empty string if not enabled. Tests should exit in that case.
-  GoogleString MemCachedServerSpec() {
-    if (server_spec_.empty()) {
-      // This matches the logic in apr_mem_cache_test.
-      const char* port_string = getenv("MEMCACHED_PORT");
-      if (port_string == NULL) {
-        LOG(ERROR) << "AprMemCache tests are skipped because env var "
-                   << "$MEMCACHED_PORT is not set.  Set that to the port "
-                   << "number where memcached is running to enable the "
-                   << "tests.  See install/run_program_with_memcached.sh";
-        // Does not fail the test.
-        return "";
-      }
-      server_spec_ = StrCat("localhost:", port_string);
-    }
-    return server_spec_;
-  }
-
   // Unwraps any wrapper cache objects.
   CacheInterface* SkipWrappers(CacheInterface* in) {
     CacheInterface* backend = in->Backend();
@@ -366,49 +307,6 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
       return SkipWrappers(backend);
     }
     return in;
-  }
-
-  void TestBasicMemCacheAndNoLru(int num_threads_specified,
-                                 int num_threads_expected) {
-    if (MemCachedServerSpec().empty()) {
-      return;
-    }
-
-    options_->set_file_cache_path(kCachePath);
-    options_->set_use_shared_mem_locking(false);
-    options_->set_lru_cache_kb_per_process(0);
-    options_->set_memcached_servers(MemCachedServerSpec());
-    options_->set_memcached_threads(num_threads_specified);
-    options_->set_default_shared_memory_cache_kb(0);
-    PrepareWithConfig(options_.get());
-
-    scoped_ptr<ServerContext> server_context(
-        SetupServerContext(options_.release()));
-
-    GoogleString mem_cache;
-    if (num_threads_expected == 0) {
-      mem_cache = Batcher(Stats(SystemCaches::kMemcachedAsync,
-                                AprMemCache::FormatName()),
-                          1, 1000);
-    } else {
-      mem_cache = Batcher(AsyncMemCacheWithStats(), num_threads_expected, 1000);
-    }
-
-    EXPECT_STREQ(
-        Compressed(Fallback(mem_cache, Stats("file_cache", FileCacheName()))),
-        server_context->metadata_cache()->Name());
-    EXPECT_STREQ(
-        HttpCache(
-            Fallback(mem_cache, Stats("file_cache", FileCacheName()))),
-        server_context->http_cache()->Name());
-    ASSERT_TRUE(server_context->filesystem_metadata_cache() != NULL);
-
-    // That the code that queries the FSMDC from the validator in RewriteContext
-    // does a Get and needs the response to be available inline.
-    EXPECT_TRUE(server_context->filesystem_metadata_cache()->IsBlocking());
-    EXPECT_STREQ(
-        Fallback(BlockingMemCacheWithStats(), FileCacheWithStats()),
-        server_context->filesystem_metadata_cache()->Name());
   }
 
   // Wrapper functions to format expected cache descriptor strings with
@@ -440,14 +338,6 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
 
   GoogleString FileCacheName() { return FileCache::FormatName(); }
 
-  GoogleString AsyncMemCacheWithStats() {
-    return Stats(SystemCaches::kMemcachedAsync,
-                 AsyncCache::FormatName(AprMemCache::FormatName()));
-  }
-
-  GoogleString BlockingMemCacheWithStats() {
-    return Stats(SystemCaches::kMemcachedBlocking, AprMemCache::FormatName());
-  }
 
   GoogleString FileCacheWithStats() {
     return Stats("file_cache", FileCacheName());
@@ -504,14 +394,7 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   scoped_ptr<SystemServerContext> system_server_context_;
   bool purge_done_;
   bool purge_success_;
-  static apr_port_t fake_memcache_listen_port_;
-
- private:
-  GoogleString server_spec_;  // Set lazily by MemCachedServerSpec()
 };
-
-apr_port_t SystemCachesTest::fake_memcache_listen_port_ = 0;
-
 
 TEST_F(SystemCachesTest, BasicFileAndLruCache) {
   options_->set_file_cache_path(kCachePath);
@@ -657,52 +540,191 @@ TEST_F(SystemCachesTest, DoubleShmCreate) {
   EXPECT_TRUE(server_context->filesystem_metadata_cache() == NULL);
 }
 
-TEST_F(SystemCachesTest, BasicMemCachedAndLru) {
-  if (MemCachedServerSpec().empty()) {
+// This class is not template for several reasons:
+// 1. There is currently no need in having different types depending on what
+//    external cache are we testing.
+// 2. Templates add complexity and boilerplate when defining functions outside
+//    of the class.
+// 3. When you have a class derived from template class, you cannot access
+//    member functions and fields without explicitly writing `this->` or
+//    something similar. It's explained in Google Test documentation and here:
+//    http://stackoverflow.com/questions/1120833/derived-template-class-access-to-base-class-member-data
+class SystemCachesExternalCacheTestBase : public SystemCachesTest {
+ protected:
+  virtual bool SkipExternalCacheTests() = 0;
+
+  virtual GoogleString AssembledAsyncCacheWithStats() = 0;
+
+  virtual GoogleString AssembledBlockingCacheWithStats() = 0;
+
+  virtual void SetUpExternalCache(SystemRewriteOptions* options) = 0;
+
+  // Test helpers
+  void TestBasicCacheAndLru();
+
+  void TestBasicCacheLruShm();
+
+  void TestBasicCacheShmNoLru();
+
+  void StressTestHelper(bool do_deletes) {
+    if (SkipExternalCacheTests()) {
+      return;
+    }
+
+    options_->set_file_cache_path(kCachePath);
+    options_->set_use_shared_mem_locking(false);
+    options_->set_lru_cache_kb_per_process(0);
+    options_->set_default_shared_memory_cache_kb(0);
+    options_->set_compress_metadata_cache(false);
+    SetUpExternalCache(options_.get());
+    PrepareWithConfig(options_.get());
+    scoped_ptr<ServerContext> server_context(
+        SetupServerContext(options_.release()));
+    CacheInterface* cache = server_context->metadata_cache();
+    SimpleRandom random(new NullMutex);
+    GoogleString value = random.GenerateHighEntropyString(20000);
+    CacheSpammer::RunTests(4 /* num_threads */,
+                           200 /* iters */,
+                           200 /* inserts */,
+                           false /* expecting_evictions */,
+                           do_deletes,
+                           value.c_str(),
+                           cache,
+                           thread_system_.get());
+  }
+
+  void TestCacheShare();
+
+  void TestStatsStringMinimal();
+
+  void TestBrokenShmFallbackCacheLruShm();
+
+  void TestBrokenShmFallbackCacheShmNoLru();
+};
+
+#define ADD_EXTERNAL_CACHE_TESTS(CacheTestClass)                              \
+  TEST_F(CacheTestClass, BasicCacheAndLru) { TestBasicCacheAndLru(); }        \
+  TEST_F(CacheTestClass, BasicCacheLruShm) { TestBasicCacheLruShm(); }        \
+  TEST_F(CacheTestClass, BasicCacheShmNoLru) { TestBasicCacheShmNoLru(); }    \
+  TEST_F(CacheTestClass, CacheShare) { TestCacheShare(); }                    \
+  TEST_F(CacheTestClass, StatsStringMinimal) { TestStatsStringMinimal(); }    \
+  TEST_F(CacheTestClass, StressTest) { StressTestHelper(false); }             \
+  TEST_F(CacheTestClass, StressTestWithDeletions) { StressTestHelper(true); } \
+  TEST_F(CacheTestClass, BrokenShmFallbackCacheLruShm) {                      \
+    TestBrokenShmFallbackCacheLruShm();                                       \
+  }                                                                           \
+  TEST_F(CacheTestClass, BrokenShmFallbackCacheShmNoLru) {                    \
+    TestBrokenShmFallbackCacheShmNoLru();                                     \
+  }
+
+class SystemCachesMemCacheTest : public SystemCachesExternalCacheTestBase {
+ protected:
+  bool SkipExternalCacheTests() override {
+    return ServerSpec().empty();
+  }
+
+  GoogleString ServerSpec() {
+    if (server_spec_.empty()) {
+      // This matches the logic in apr_mem_cache_test.
+      const char* port_string = getenv("MEMCACHED_PORT");
+      if (port_string == NULL) {
+        LOG(ERROR) << "SystemCachesMemCacheTest is skipped because env var "
+                   << "$MEMCACHED_PORT is not set.  Set that to the port "
+                   << "number where memcached is running to enable the "
+                   << "tests.  See install/run_program_with_memcached.sh";
+        return "";
+      }
+      server_spec_ = StrCat("localhost:", port_string);
+    }
+    return server_spec_;
+  }
+
+  GoogleString AssembledAsyncCacheWithStats() override {
+    return Fallback(
+        Batcher(Stats(SystemCaches::kMemcachedAsync,
+                      AsyncCache::FormatName(AprMemCache::FormatName())),
+                1, 1000),
+        FileCacheWithStats());
+  }
+
+  GoogleString AssembledBlockingCacheWithStats() override {
+    return Fallback(
+        Stats(SystemCaches::kMemcachedBlocking, AprMemCache::FormatName()),
+        FileCacheWithStats());
+  }
+
+  void SetUpExternalCache(SystemRewriteOptions* options) override {
+    options->set_memcached_servers(ServerSpec());
+  }
+
+  class FakeMemcacheServerThread : public TcpServerThreadForTesting {
+   public:
+    FakeMemcacheServerThread(apr_port_t fake_memcache_listen_port,
+                             ThreadSystem* thread_system)
+        : TcpServerThreadForTesting(fake_memcache_listen_port, "fake_memcache",
+                                    thread_system) {}
+    virtual ~FakeMemcacheServerThread() {}
+
+   private:
+    void HandleClientConnection(apr_socket_t* sock) override {
+      static const char kMessage[] = "blah\n";
+      apr_size_t message_size = STATIC_STRLEN(kMessage);
+      char buf[kStackBufferSize];
+      apr_size_t size = sizeof(buf) - 1;
+      apr_socket_recv(sock, buf, &size);
+      apr_socket_send(sock, kMessage, &message_size);
+      apr_socket_close(sock);
+    }
+  };
+
+  static void SetUpTestCase() {
+    TcpServerThreadForTesting::PickListenPortOnce(&fake_memcache_listen_port_);
+  }
+
+  void TestBasicMemCacheAndNoLru(int num_threads_specified,
+                                 int num_threads_expected);
+
+  static apr_port_t fake_memcache_listen_port_;
+
+ private:
+  GoogleString server_spec_;
+};
+
+apr_port_t SystemCachesMemCacheTest::fake_memcache_listen_port_ = 0;
+
+ADD_EXTERNAL_CACHE_TESTS(SystemCachesMemCacheTest)
+
+void SystemCachesExternalCacheTestBase::TestBasicCacheAndLru() {
+  if (SkipExternalCacheTests()) {
     return;
   }
 
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(100);
-  options_->set_memcached_servers(MemCachedServerSpec());
   options_->set_default_shared_memory_cache_kb(0);
+  SetUpExternalCache(options_.get());
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
       SetupServerContext(options_.release()));
-  EXPECT_STREQ(Compressed(
-      WriteThrough(Stats("lru_cache", ThreadsafeLRU()),
-                   Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                            FileCacheWithStats()))),
+  EXPECT_STREQ(Compressed(WriteThrough(Stats("lru_cache", ThreadsafeLRU()),
+                                       AssembledAsyncCacheWithStats())),
                server_context->metadata_cache()->Name());
   EXPECT_STREQ(
       HttpCache(WriteThrough(
           Stats("lru_cache", ThreadsafeLRU()),
-          Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                           FileCacheWithStats()))),
+          AssembledAsyncCacheWithStats())),
       server_context->http_cache()->Name());
   ASSERT_TRUE(server_context->filesystem_metadata_cache() != NULL);
   EXPECT_TRUE(server_context->filesystem_metadata_cache()->IsBlocking());
   EXPECT_STREQ(
-      Fallback(BlockingMemCacheWithStats(), FileCacheWithStats()),
+      AssembledBlockingCacheWithStats(),
       server_context->filesystem_metadata_cache()->Name());
 }
 
-TEST_F(SystemCachesTest, BasicMemCachedAndNoLru_0_Threads) {
-  TestBasicMemCacheAndNoLru(0, 0);
-}
-
-TEST_F(SystemCachesTest, BasicMemCachedAndNoLru_1_Thread) {
-  TestBasicMemCacheAndNoLru(1, 1);
-}
-
-TEST_F(SystemCachesTest, BasicMemCachedAndNoLru_2_Threads) {
-  TestBasicMemCacheAndNoLru(2, 1);  // Clamp to 1.
-}
-
-TEST_F(SystemCachesTest, BasicMemCachedLruShm) {
-  if (MemCachedServerSpec().empty()) {
+void SystemCachesExternalCacheTestBase::TestBasicCacheLruShm() {
+  if (SkipExternalCacheTests()) {
     return;
   }
 
@@ -713,28 +735,26 @@ TEST_F(SystemCachesTest, BasicMemCachedLruShm) {
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(100);
-  options_->set_memcached_servers(MemCachedServerSpec());
+  SetUpExternalCache(options_.get());
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
       SetupServerContext(options_.release()));
-  // For metadata, we fallback to memcached behind shmcache.
+  // For metadata, we fallback to external cache behind shmcache.
   EXPECT_STREQ(
       Compressed(WriteThrough(
           Stats("shm_cache", SharedMemCache<64>::FormatName()),
-          Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                   FileCacheWithStats()))),
+          AssembledAsyncCacheWithStats())),
       server_context->metadata_cache()->Name());
   EXPECT_STREQ(
       HttpCache(WriteThrough(
           Stats("lru_cache", ThreadsafeLRU()),
-          Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                             FileCacheWithStats()))),
+          AssembledAsyncCacheWithStats())),
       server_context->http_cache()->Name());
 }
 
-TEST_F(SystemCachesTest, BasicMemCachedShmNoLru) {
-  if (MemCachedServerSpec().empty()) {
+void SystemCachesExternalCacheTestBase::TestBasicCacheShmNoLru() {
+  if (SkipExternalCacheTests()) {
     return;
   }
 
@@ -745,7 +765,7 @@ TEST_F(SystemCachesTest, BasicMemCachedShmNoLru) {
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(0);
-  options_->set_memcached_servers(MemCachedServerSpec());
+  SetUpExternalCache(options_.get());
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
@@ -754,19 +774,73 @@ TEST_F(SystemCachesTest, BasicMemCachedShmNoLru) {
       Compressed(
           WriteThrough(
               Stats("shm_cache", "SharedMemCache<64>"),
-              Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                       FileCacheWithStats()))),
+              AssembledAsyncCacheWithStats())),
       server_context->metadata_cache()->Name());
   EXPECT_STREQ(
-      HttpCache(
-          Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                   FileCacheWithStats())),
+      HttpCache(AssembledAsyncCacheWithStats()),
       server_context->http_cache()->Name());
   ASSERT_TRUE(server_context->filesystem_metadata_cache() != NULL);
   EXPECT_TRUE(server_context->filesystem_metadata_cache()->IsBlocking());
   EXPECT_STREQ(
       Stats("shm_cache", "SharedMemCache<64>"),
       server_context->filesystem_metadata_cache()->Name());
+}
+
+void SystemCachesMemCacheTest::TestBasicMemCacheAndNoLru(
+    int num_threads_specified, int num_threads_expected) {
+  if (ServerSpec().empty()) {
+    return;
+  }
+
+  options_->set_file_cache_path(kCachePath);
+  options_->set_use_shared_mem_locking(false);
+  options_->set_lru_cache_kb_per_process(0);
+  options_->set_memcached_servers(ServerSpec());
+  options_->set_memcached_threads(num_threads_specified);
+  options_->set_default_shared_memory_cache_kb(0);
+  PrepareWithConfig(options_.get());
+
+  scoped_ptr<ServerContext> server_context(
+      SetupServerContext(options_.release()));
+
+  GoogleString mem_cache;
+  if (num_threads_expected == 0) {
+    mem_cache = Batcher(Stats(SystemCaches::kMemcachedAsync,
+                              AprMemCache::FormatName()),
+                        1, 1000);
+  } else {
+    mem_cache =
+        Batcher(Stats(SystemCaches::kMemcachedAsync,
+                      AsyncCache::FormatName(AprMemCache::FormatName())),
+                num_threads_expected, 1000);
+  }
+
+  EXPECT_STREQ(
+      Compressed(Fallback(mem_cache, Stats("file_cache", FileCacheName()))),
+      server_context->metadata_cache()->Name());
+  EXPECT_STREQ(
+      HttpCache(
+          Fallback(mem_cache, Stats("file_cache", FileCacheName()))),
+      server_context->http_cache()->Name());
+  ASSERT_TRUE(server_context->filesystem_metadata_cache() != NULL);
+
+  // That the code that queries the FSMDC from the validator in RewriteContext
+  // does a Get and needs the response to be available inline.
+  EXPECT_TRUE(server_context->filesystem_metadata_cache()->IsBlocking());
+  EXPECT_STREQ(AssembledBlockingCacheWithStats(),
+               server_context->filesystem_metadata_cache()->Name());
+}
+
+TEST_F(SystemCachesMemCacheTest, BasicMemCachedAndNoLru_0_Threads) {
+  TestBasicMemCacheAndNoLru(0, 0);
+}
+
+TEST_F(SystemCachesMemCacheTest, BasicMemCachedAndNoLru_1_Thread) {
+  TestBasicMemCacheAndNoLru(1, 1);
+}
+
+TEST_F(SystemCachesMemCacheTest, BasicMemCachedAndNoLru_2_Threads) {
+  TestBasicMemCacheAndNoLru(2, 1);  // Clamp to 1.
 }
 
 TEST_F(SystemCachesTest, BasicFileLockManager) {
@@ -938,20 +1012,20 @@ TEST_F(SystemCachesTest, ShmDefault) {
   STLDeleteElements(&servers);
 }
 
-TEST_F(SystemCachesTest, MemCachedShare) {
-  if (MemCachedServerSpec().empty()) {
+void SystemCachesExternalCacheTestBase::TestCacheShare() {
+  if (SkipExternalCacheTests()) {
     return;
   }
 
-  // Just share 3 memcached clients for the same server (so we don't
+  // Just share 3 clients for the same server (so we don't
   // need 2 servers for the test)
 
   std::vector<SystemRewriteOptions*> configs;
   for (int i = 0; i < 3; ++i) {
     SystemRewriteOptions* config = options_->NewOptions();
     config->set_file_cache_path(kCachePath);
-    config->set_memcached_servers(MemCachedServerSpec());
     config->set_default_shared_memory_cache_kb(0);
+    SetUpExternalCache(config);
     system_caches_->RegisterConfig(config);
     configs.push_back(config);
   }
@@ -964,12 +1038,10 @@ TEST_F(SystemCachesTest, MemCachedShare) {
   for (int i = 0; i < 3; ++i) {
     servers.push_back(SetupServerContext(configs[i]));
     EXPECT_STREQ(
-        Compressed(Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                            FileCacheWithStats())),
+        Compressed(AssembledAsyncCacheWithStats()),
         servers[i]->metadata_cache()->Name());
 
-    EXPECT_STREQ(Pcache(Compressed(Fallback(BlockingMemCacheWithStats(),
-                                            FileCacheWithStats()))),
+    EXPECT_STREQ(Pcache(Compressed(AssembledBlockingCacheWithStats())),
                  servers[i]->page_property_cache()->property_store()->Name());
   }
 
@@ -1051,7 +1123,7 @@ TEST_F(SystemCachesTest, LruCacheSettings) {
   EXPECT_EQ(500, http_write_through->cache1_limit());
 }
 
-TEST_F(SystemCachesTest, HangingMultigetTest) {
+TEST_F(SystemCachesMemCacheTest, HangingMultigetTest) {
   // Test that we do not hang in the case of corrupted responses from memcached,
   // as seen in bug report 1048
   // https://github.com/pagespeed/mod_pagespeed/issues/1048
@@ -1098,14 +1170,14 @@ TEST_F(SystemCachesTest, HangingMultigetTest) {
       output.starts_with("Caught potential spin in apr_memcache multiget!"));
 }
 
-TEST_F(SystemCachesTest, StatsStringMinimal) {
-  // The format is rather dependent on the implementation so we don't check it,
-  // but we do care that it at least doesn't crash.
-  GoogleString out;
-
-  if (MemCachedServerSpec().empty()) {
+void SystemCachesExternalCacheTestBase::TestStatsStringMinimal() {
+  if (SkipExternalCacheTests()) {
     return;
   }
+
+  // The format is rather dependent on the implementation so we don't check
+  // it, but we do care that it at least doesn't crash.
+  GoogleString out;
 
   GoogleString error_msg;
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
@@ -1114,7 +1186,7 @@ TEST_F(SystemCachesTest, StatsStringMinimal) {
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(0);
-  options_->set_memcached_servers(MemCachedServerSpec());
+  SetUpExternalCache(options_.get());
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
@@ -1316,23 +1388,8 @@ TEST_F(SystemCachesTest, InvalidateWithPurgeDisabled) {
       options, kUrl2, server_context->http_cache(), &value, &headers));
 }
 
-TEST_F(SystemCachesTest, StressTest) {
-  MemCacheStressTestHelper(false);
-}
-
-TEST_F(SystemCachesTest, StressTestWithDeletions) {
-  MemCacheStressTestHelper(true);
-}
-
-// Tests for how we fallback when SHM setup ops fail.
-class BrokenShmSystemCachesTest : public SystemCachesTest {
- protected:
-  BrokenShmSystemCachesTest() {
-    shared_mem_.reset(new NullSharedMem());
-  }
-};
-
-TEST_F(BrokenShmSystemCachesTest, FallbackShmLockManager) {
+TEST_F(SystemCachesTest, BrokenShmFallbackShmLockManager) {
+  BreakShm();
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(true);
   options_->set_lru_cache_kb_per_process(100);
@@ -1345,7 +1402,8 @@ TEST_F(BrokenShmSystemCachesTest, FallbackShmLockManager) {
   EXPECT_TRUE(dynamic_cast<FileSystemLockManager*>(named_locks) != NULL);
 }
 
-TEST_F(BrokenShmSystemCachesTest, FallbackShmAndLru) {
+TEST_F(SystemCachesTest, BrokenShmFallbackShmAndLru) {
+  BreakShm();
   GoogleString error_msg;
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
@@ -1369,7 +1427,8 @@ TEST_F(BrokenShmSystemCachesTest, FallbackShmAndLru) {
       server_context->http_cache()->Name());
 }
 
-TEST_F(BrokenShmSystemCachesTest, FallbackShmAndNoLru) {
+TEST_F(SystemCachesTest, BrokenShmFallbackShmAndNoLru) {
+  BreakShm();
   GoogleString error_msg;
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
@@ -1389,11 +1448,12 @@ TEST_F(BrokenShmSystemCachesTest, FallbackShmAndNoLru) {
                server_context->http_cache()->Name());
 }
 
-TEST_F(BrokenShmSystemCachesTest, FallbackMemCachedLruShm) {
-  if (MemCachedServerSpec().empty()) {
+void SystemCachesExternalCacheTestBase::TestBrokenShmFallbackCacheLruShm() {
+  if (SkipExternalCacheTests()) {
     return;
   }
 
+  BreakShm();
   GoogleString error_msg;
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
@@ -1401,35 +1461,33 @@ TEST_F(BrokenShmSystemCachesTest, FallbackMemCachedLruShm) {
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(100);
-  options_->set_memcached_servers(MemCachedServerSpec());
+  SetUpExternalCache(options_.get());
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
       SetupServerContext(options_.release()));
-  // For metadata, we fallback to memcached behind shmcache.
+  // For metadata, we fallback to external cache behind shmcache.
   EXPECT_STREQ(
       Compressed(
           WriteThrough(
               Stats("lru_cache", ThreadsafeLRU()),
-              Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                       FileCacheWithStats()))),
+              AssembledAsyncCacheWithStats())),
       server_context->metadata_cache()->Name());
   EXPECT_STREQ(
       HttpCache(WriteThrough(
           Stats("lru_cache", ThreadsafeLRU()),
-          Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                   FileCacheWithStats()))),
+          AssembledAsyncCacheWithStats())),
       server_context->http_cache()->Name());
-  EXPECT_STREQ(Pcache(Compressed(Fallback(BlockingMemCacheWithStats(),
-                                          FileCacheWithStats()))),
+  EXPECT_STREQ(Pcache(Compressed(AssembledBlockingCacheWithStats())),
                server_context->page_property_cache()->property_store()->Name());
 }
 
-TEST_F(BrokenShmSystemCachesTest, FallbackMemCachedShmNoLru) {
-  if (MemCachedServerSpec().empty()) {
+void SystemCachesExternalCacheTestBase::TestBrokenShmFallbackCacheShmNoLru() {
+  if (SkipExternalCacheTests()) {
     return;
   }
 
+  BreakShm();
   GoogleString error_msg;
   EXPECT_TRUE(system_caches_->CreateShmMetadataCache(
       kCachePath, kUsableMetadataCacheSize, &error_msg));
@@ -1437,19 +1495,16 @@ TEST_F(BrokenShmSystemCachesTest, FallbackMemCachedShmNoLru) {
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);
   options_->set_lru_cache_kb_per_process(0);
-  options_->set_memcached_servers(MemCachedServerSpec());
+  SetUpExternalCache(options_.get());
   PrepareWithConfig(options_.get());
 
   scoped_ptr<ServerContext> server_context(
       SetupServerContext(options_.release()));
   EXPECT_STREQ(
-      Compressed(Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                          FileCacheWithStats())),
+      Compressed(AssembledAsyncCacheWithStats()),
       server_context->metadata_cache()->Name());
   EXPECT_STREQ(
-      HttpCache(
-          Fallback(Batcher(AsyncMemCacheWithStats(), 1, 1000),
-                   FileCacheWithStats())),
+      HttpCache(AssembledAsyncCacheWithStats()),
       server_context->http_cache()->Name());
 }
 
