@@ -79,7 +79,7 @@ vars = {
   # TODO(jmarantz): create an easy way to choose this option from the
   # 'gclient' command, without having to edit the gyp & DEPS files.
   "boringssl_src": "https://boringssl.googlesource.com/boringssl.git",
-  "boringssl_git_revision": "@chromium-stable",
+  "boringssl_git_revision": "@1b5bcb59f40993de836e40bf4190f6ac6fbc9309",
 
   "domain_registry_provider_src":
      "https://github.com/pagespeed/domain-registry-provider.git",
