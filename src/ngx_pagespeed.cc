@@ -288,7 +288,8 @@ ngx_int_t ps_base_fetch_handler(ngx_http_request_t* r) {
     if (!status_ok && (ctx->base_fetch->base_fetch_type() != kHtmlTransform
                        && ctx->base_fetch->base_fetch_type() != kIproLookup)) {
       ps_release_base_fetch(ctx);
-      return ngx_http_filter_finalize_request(r, NULL, status_code);
+      ngx_http_filter_finalize_request(r, NULL, status_code);
+      return NGX_DONE;
     }
 
     if (ctx->preserve_caching_headers != kDontPreserveHeaders) {

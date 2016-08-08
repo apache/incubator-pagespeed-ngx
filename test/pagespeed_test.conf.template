@@ -1620,6 +1620,22 @@ http {
     pagespeed on;
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
+    server_name special-response.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    error_page 404 /mod_pagespeed_test/php_withflush.php;
+    location ~ \.php$ {
+      fastcgi_param SCRIPT_FILENAME $request_filename;
+      fastcgi_param QUERY_STRING $query_string;
+      fastcgi_param REQUEST_METHOD $request_method;
+      fastcgi_param CONTENT_TYPE $content_type;
+      fastcgi_param CONTENT_LENGTH $content_length;
+      fastcgi_pass 127.0.0.1:9000;
+    }
+  }
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name debug-filters.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
     pagespeed RewriteLevel PassThrough;
