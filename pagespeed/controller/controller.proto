@@ -21,4 +21,27 @@ package net_instaweb;
 option cc_generic_services = false;
 
 service CentralControllerRpcService {
+  // RPC bridge for ScheduleRewriteController.
+  // Send a ScheduleRewriteRequest with only a key, then wait for a
+  // ScheduleRewriteResponse letting you know if it's OK to proceed. If true,
+  // send another Request with only a status to indicate success/failure.
+  // See schedule_rewrite_rpc_handler.h and schedule_rewrite_controller.h
+  rpc ScheduleRewrite(stream ScheduleRewriteRequest)
+      returns (stream ScheduleRewriteResponse) {
+  }
+}
+
+message ScheduleRewriteRequest {
+  enum RewriteStatus {
+    PENDING = 0;
+    SUCCESS = 1;
+    FAILED = 2;
+  };
+
+  string key = 1;
+  RewriteStatus status = 2;
+}
+
+message ScheduleRewriteResponse {
+  bool ok_to_rewrite = 1;
 }

@@ -236,6 +236,7 @@
         '<(DEPTH)/pagespeed/controller/popularity_contest_schedule_rewrite_controller_test.cc',
         '<(DEPTH)/pagespeed/controller/priority_queue_test.cc',
         '<(DEPTH)/pagespeed/controller/rpc_handler_test.cc',
+        '<(DEPTH)/pagespeed/controller/schedule_rewrite_rpc_handler_test.cc',
         '<(DEPTH)/pagespeed/controller/queued_expensive_operation_controller_test.cc',
         '<(DEPTH)/pagespeed/controller/work_bound_expensive_operation_controller_test.cc',
         '<(DEPTH)/pagespeed/kernel/base/annotated_message_handler_test.cc',

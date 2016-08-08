@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "pagespeed/controller/central_controller_rpc_server.h"
+#include "pagespeed/controller/popularity_contest_schedule_rewrite_controller.h"
 #include "pagespeed/system/controller_manager.h"
 #include "pagespeed/system/controller_process.h"
 #include "pagespeed/system/in_place_resource_recorder.h"
@@ -273,8 +274,13 @@ void SystemRewriteDriverFactory::PrepareControllerProcess() {
 void SystemRewriteDriverFactory::StartController(
     const SystemRewriteOptions& options) {
   if (options.controller_port() != 0) {
+    // TODO(cheesy): Replace constants below with options in a follow-up CL.
     std::unique_ptr<CentralControllerRpcServer> controller(
-        new CentralControllerRpcServer(options.controller_port()));
+        new CentralControllerRpcServer(
+            options.controller_port(),
+            new PopularityContestScheduleRewriteController(
+                thread_system(), statistics(), timer(), 10 /* max_in_flight */,
+                1000 /* max_in_queue */)));
     // In the forked process, this call starts a new event loop and never
     // returns.
     ControllerManager::ForkControllerProcess(

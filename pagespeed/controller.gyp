@@ -63,6 +63,7 @@
         'controller/popularity_contest_schedule_rewrite_controller.cc',
         'controller/queued_expensive_operation_controller.cc',
         'controller/schedule_rewrite_callback.cc',
+        'controller/schedule_rewrite_rpc_handler.cc',
         'controller/work_bound_expensive_operation_controller.cc',
       ],
       'include_dirs': [
