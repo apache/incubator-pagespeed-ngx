@@ -21,7 +21,9 @@
 #error You must include include httpd.h via apache_httpd_includes.h
 #endif
 
-#include <grpc++/alarm.h>
+// If you are considering adding another gRPC header to this file, see:
+// https://github.com/pagespeed/ngx_pagespeed/issues/1237
+
 #include <grpc++/grpc++.h>
 
 #endif  // PAGESPEED_KERNEL_UTIL_GRPC_H_
