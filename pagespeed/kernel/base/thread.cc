@@ -39,6 +39,7 @@ ThreadSystem::Thread::~Thread() {
 }
 
 bool ThreadSystem::Thread::Start() {
+  DCHECK(!started_) << "Threads cannot be restarted, create a new instance";
   started_ = impl_->StartImpl();
   return started_;
 }

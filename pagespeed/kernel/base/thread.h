@@ -54,6 +54,8 @@ class ThreadSystem::Thread {
   virtual ~Thread();
 
   // Invokes Run() in a separate thread. Returns if successful or not.
+  // Threads are not re-startable, you should create new instance of Thread if
+  // you want to create another thread.
   bool Start();
 
   // Waits for the thread executing Run() to exit. This must be called on
