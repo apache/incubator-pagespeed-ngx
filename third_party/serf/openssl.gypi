@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium Authors. All rights reserved.
+# Copyright (c) 2016 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -145,8 +145,6 @@
       '<(openssl_root)/crypto/dh/params.c',
       '<(openssl_root)/crypto/digest/digest.c',
       '<(openssl_root)/crypto/digest/digests.c',
-      '<(openssl_root)/crypto/directory_posix.c',
-      '<(openssl_root)/crypto/directory_win.c',
       '<(openssl_root)/crypto/dsa/dsa.c',
       '<(openssl_root)/crypto/dsa/dsa_asn1.c',
       '<(openssl_root)/crypto/ec/ec.c',
@@ -189,6 +187,12 @@
       '<(openssl_root)/crypto/modes/ctr.c',
       '<(openssl_root)/crypto/modes/gcm.c',
       '<(openssl_root)/crypto/modes/ofb.c',
+      '<(openssl_root)/crypto/newhope/error_correction.c',
+      '<(openssl_root)/crypto/newhope/newhope.c',
+      '<(openssl_root)/crypto/newhope/ntt.c',
+      '<(openssl_root)/crypto/newhope/poly.c',
+      '<(openssl_root)/crypto/newhope/precomp.c',
+      '<(openssl_root)/crypto/newhope/reduce.c',
       '<(openssl_root)/crypto/obj/obj.c',
       '<(openssl_root)/crypto/obj/obj_xref.c',
       '<(openssl_root)/crypto/pem/pem_all.c',
