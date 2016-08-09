@@ -2293,7 +2293,7 @@ goog.events.BrowserEvent = function(a, b) {
   this.goog_events_BrowserEvent$relatedTarget = this.goog_events_Event$currentTarget = this.target = null;
   this.goog_events_BrowserEvent$charCode = this.goog_events_BrowserEvent$keyCode = this.goog_events_BrowserEvent$button = this.goog_events_BrowserEvent$screenY = this.goog_events_BrowserEvent$screenX = this.goog_events_BrowserEvent$clientY = this.goog_events_BrowserEvent$clientX = this.goog_events_BrowserEvent$offsetY = this.goog_events_BrowserEvent$offsetX = 0;
   this.goog_events_BrowserEvent$metaKey = this.goog_events_BrowserEvent$shiftKey = this.goog_events_BrowserEvent$altKey = this.goog_events_BrowserEvent$ctrlKey = !1;
-  this.goog_events_BrowserEvent$state = null;
+  this.state = null;
   this.platformModifierKey = !1;
   this.event_ = null;
   a && this.init(a, b);
@@ -2318,7 +2318,7 @@ goog.events.BrowserEvent.prototype.init = function(a, b) {
   this.goog_events_BrowserEvent$shiftKey = a.shiftKey;
   this.goog_events_BrowserEvent$metaKey = a.metaKey;
   this.platformModifierKey = goog.userAgent.MAC ? a.metaKey : a.ctrlKey;
-  this.goog_events_BrowserEvent$state = a.state;
+  this.state = a.state;
   this.event_ = a;
   a.defaultPrevented && this.goog_events_Event_prototype$preventDefault();
 };
