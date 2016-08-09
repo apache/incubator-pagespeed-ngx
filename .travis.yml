@@ -34,5 +34,9 @@ compiler:
   - gcc
 notifications:
   email:
-    - pagespeed-dev@googlegroups.com
+    - cheesy@google.com
+    - jefftk@google.com
+    - morlovich@google.com
+    - jmarantz@google.com
+    - huibao@google.com
     - crowell@bu.edu
