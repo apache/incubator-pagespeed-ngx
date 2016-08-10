@@ -142,17 +142,6 @@ function keepalive_test() {
   check [ -z "$OUT" ]
 }
 
-function fire_ab_load() {
-  AB_PID="0"
-  if hash ab 2>/dev/null; then
-    ab -n 10000 -k -c 100 http://$PRIMARY_HOSTNAME/ &>/dev/null & AB_PID=$!
-    # Sleep to allow some queueing up of requests
-  else
-    echo "ab is not available, not able to test stressed shutdown and reload."
-  fi
-  sleep 2
- }
-
 # stop nginx/valgrind
 killall -s KILL nginx
 killall -s KILL memcheck-amd64-
@@ -356,6 +345,14 @@ if $USE_VALGRIND; then
 ~inline_unauthorized_resources allows unauthorized css selectors~
 "
 fi
+
+# Define functions that system/system_tests.sh expects to exist.
+function reload_configuration() {
+  check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
+}
+
+# We can't use "nginx" because the grep will match this.
+SERVER_PROCESS_NAME_REGEXP="ngin[x]"
 
 # The existing system test takes its arguments as positional parameters, and
 # wants different ones than we want, so we need to reset our positional args.
@@ -591,96 +588,6 @@ start_test scrape stats works
 
 # This needs to be before reload, when we clear the stats.
 check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
-
-# Test that ngx_pagespeed keeps working after nginx gets a signal to reload the
-# configuration.  This is in the middle of tests so that significant work
-# happens both before and after.
-start_test "Reload config"
-
-function find_exactly_once {
-  test $(grep -c "$1") -eq 1
-}
-
-function check_process_names() {
-  if ! $USE_VALGRIND; then
-    # There should be one babysitter and controller running.  Under valgrind
-    # process labels are confused, so skip the check then.
-
-    running=$(ps auxww | grep 'ngin[x]')
-    check_from "$running" find_exactly_once "nginx: pagespeed babysitter"
-    check_from "$running" find_exactly_once "nginx: pagespeed controller"
-  fi
-}
-
-check_process_names
-
-# Fire up some heavy load if ab is available to test a stressed reload.
-# TODO(oschaaf): make sure we wait for the new worker to get ready to accept
-# requests.
-fire_ab_load
-
-check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
-  -O /dev/null
-check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
-
-# Wait for the new worker process with the new configuration to get ready, or
-# else the sudden reset of the shared mem statistics/cache might catch upcoming
-# tests unaware.
-function wait_for_new_worker() {
-  while [ $(scrape_stat image_rewrite_total_original_bytes) -gt 0 ]; do
-    echo "Waiting for new worker to get ready..."
-    sleep .1
-  done
-}
-wait_for_new_worker
-check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
-  -O /dev/null
-if [ "$AB_PID" != "0" ]; then
-    echo "Kill ab (pid: $AB_PID)"
-    kill -s KILL $AB_PID &>/dev/null || true
-fi
-
-# There should still be just one babysitter and controller running.
-check_process_names
-
-check grep "Writing a byte to a pipe to tell the old controller to exit." \
-  $ERROR_LOG
-check grep "Root process is starting a new controller; shutting down." \
-  $ERROR_LOG
-
-start_test "Shared memory checkpointing"
-
-# We do two tests here:
-# 1. Metadata cache: check that an IPRO'd image is still fully optimized after a
-#    restart.
-# 2. Property cache: prioritize critical CSS persists beacon results across
-#    restarts.
-
-IPRO_URL="$EXAMPLE_ROOT/images/Cuppa.png"
-
-# Checkpoint beacon results to disk if we haven't already.
-check wget "$IPRO_URL" -O /dev/null
-test_prioritize_critical_css
-sleep 2
-check wget "$IPRO_URL" -O /dev/null
-test_prioritize_critical_css
-
-# Reload nginx again.
-check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
-wait_for_new_worker
-
-# The image should be fully optimized.
-OUT=$($CURL -sS -D- -o/dev/null "$IPRO_URL")
-check_from "$OUT" grep ^X-Original-Content-Length:
-check_from "$OUT" grep ^Content-Length:
-content_length=$(echo "$OUT" | grep ^Content-Length: | grep -o [0-9]*)
-original_content_length=$(echo "$OUT" | grep ^X-Original-Content-Length: \
-  | grep -o [0-9]*)
-check [ "$original_content_length" -gt "$content_length" ]
-
-# The beacon responses are stored in the metadata cache, so this can only pass
-# if we persisted the metadata across restarts.
-test_prioritize_critical_css_final
 
 # This is dependent upon having a beacon handler.
 test_filter add_instrumentation beacons load.
@@ -1354,7 +1261,7 @@ check_flushing "curl -N --raw --silent --proxy $SECONDARY_HOSTNAME $URL" \
 start_test Shutting down.
 
 # Fire up some heavy load if ab is available to test a stressed shutdown
-fire_ab_load
+start_ab_load
 
 if $USE_VALGRIND; then
     # SIGQUIT requests a graceful shutdown.
