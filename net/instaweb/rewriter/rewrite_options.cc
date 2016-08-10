@@ -3293,6 +3293,10 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName2(
   // Assume all goes well; if not, set result accordingly.
   OptionSettingResult result = RewriteOptions::kOptionOk;
 
+  // Avoid adding more options like this.  All new options should be
+  // set via RewriteOptions::AddProperty.  If you have to add
+  // one here, also add it to `compile_scripts` in
+  // `ngx_rewrite_options.cc`.
   // TODO(matterbury): use a hash map for faster lookup/switching.
   if (StringCaseEqual(name, kAddResourceHeader)) {
     if (!ValidateAndAddResourceHeader(arg1, arg2, msg)) {
