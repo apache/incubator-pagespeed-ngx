@@ -48,6 +48,12 @@ class SlowWorker;
 class Statistics;
 class SystemThreadSystem;
 
+enum ProcessScriptVariablesMode {
+  kOff,
+  kLegacyRestricted,
+  kAll
+};
+
 class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
   // We take ownership of the thread system.
@@ -112,8 +118,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   void set_native_fetcher_max_keepalive_requests(int x) {
     native_fetcher_max_keepalive_requests_ = x;
   }
-  bool process_script_variables() {
-    return process_script_variables_;
+  ProcessScriptVariablesMode process_script_variables() {
+    return process_script_variables_mode_;
   }
 
   void LoggingInit(ngx_log_t* log, bool may_install_crash_handler);
@@ -122,9 +128,9 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   virtual void SetCircularBuffer(SharedCircularBuffer* buffer);
 
-  bool SetProcessScriptVariables(bool process_script_variables) {
+  bool SetProcessScriptVariables(ProcessScriptVariablesMode mode) {
     if (!process_script_variables_set_) {
-      process_script_variables_ = process_script_variables;
+      process_script_variables_mode_ = mode;
       process_script_variables_set_ = true;
       return true;
     }
@@ -158,7 +164,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   GoogleString hostname_;
   int port_;
-  bool process_script_variables_;
+  ProcessScriptVariablesMode process_script_variables_mode_;
   bool process_script_variables_set_;
   bool shut_down_;
 

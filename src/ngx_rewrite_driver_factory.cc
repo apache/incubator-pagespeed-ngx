@@ -82,7 +82,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       ngx_shared_circular_buffer_(NULL),
       hostname_(hostname.as_string()),
       port_(port),
-      process_script_variables_(false),
+      process_script_variables_mode_(ProcessScriptVariablesMode::kOff),
       process_script_variables_set_(false),
       shut_down_(false) {
   InitializeDefaultOptions();

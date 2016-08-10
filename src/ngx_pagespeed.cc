@@ -884,14 +884,14 @@ char* ps_configure(ngx_conf_t* cf,
         cfg_m->driver_factory->thread_system());
   }
 
-  bool process_script_variables = dynamic_cast<NgxRewriteDriverFactory*>(
-      cfg_m->driver_factory)->process_script_variables();
-
-  if (process_script_variables) {
+  ProcessScriptVariablesMode script_mode =
+      dynamic_cast<NgxRewriteDriverFactory*>(cfg_m->driver_factory)
+          ->process_script_variables();
+  if (script_mode != ProcessScriptVariablesMode::kOff) {
     // To be able to use '$', we map '$ps_dollar' to '$' via a script variable.
     ngx_str_t name = ngx_string("ps_dollar");
-    ngx_http_variable_t* var = ngx_http_add_variable(
-        cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+    ngx_http_variable_t* var =
+        ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
 
     if (var == NULL) {
       return const_cast<char*>(
@@ -902,7 +902,7 @@ char* ps_configure(ngx_conf_t* cf,
 
   const char* status = (*options)->ParseAndSetOptions(
       args, n_args, cf->pool, handler, cfg_m->driver_factory, option_scope, cf,
-      process_script_variables);
+      script_mode);
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);

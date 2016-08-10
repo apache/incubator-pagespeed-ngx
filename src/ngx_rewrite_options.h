@@ -29,6 +29,8 @@ extern "C" {
 
 #include <vector>
 
+#include "ngx_rewrite_driver_factory.h"
+
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
@@ -131,7 +133,7 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   const char* ParseAndSetOptions(
       StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
       NgxRewriteDriverFactory* driver_factory, OptionScope scope,
-      ngx_conf_t* cf, bool compile_scripts);
+      ngx_conf_t* cf, ProcessScriptVariablesMode script_mode);
   bool ExecuteScriptVariables(
       ngx_http_request_t* r, MessageHandler* handler,
       NgxRewriteDriverFactory* driver_factory);

@@ -259,7 +259,8 @@ const char* ps_error_string_for_option(
 const char* NgxRewriteOptions::ParseAndSetOptions(
     StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
     NgxRewriteDriverFactory* driver_factory,
-    RewriteOptions::OptionScope scope, ngx_conf_t* cf, bool compile_scripts) {
+    RewriteOptions::OptionScope scope, ngx_conf_t* cf,
+    ProcessScriptVariablesMode script_mode) {
   CHECK_GE(n_args, 1);
 
   StringPiece directive = args[0];
@@ -275,20 +276,43 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
         pool, directive, "cannot be set at this scope.");
   }
 
+  bool compile_scripts = false;
+
+  if (script_mode != ProcessScriptVariablesMode::kOff) {
+    // In the old mode we only allowed a few, so restrict to those.
+    compile_scripts =
+        StringCaseStartsWith(directive, "LoadFromFile") ||
+        StringCaseEqual(directive, "EnableFilters") ||
+        StringCaseEqual(directive, "DisableFilters") ||
+        StringCaseEqual(directive, "DownstreamCachePurgeLocationPrefix") ||
+        StringCaseEqual(directive, "DownstreamCachePurgeMethod") ||
+        StringCaseEqual(directive,
+                        "DownstreamCacheRewrittenPercentageThreshold") ||
+        StringCaseEqual(directive, "ShardDomain");
+    // In the new behaviour we also allow scripting of query- and directory-
+    // scoped options.
+    compile_scripts |=
+        script_mode == ProcessScriptVariablesMode::kAll &&
+        (GetOptionScope(directive) <= RewriteOptions::kDirectoryScope ||
+         (StringCaseEqual(directive, "Allow") ||
+          StringCaseEqual(directive, "BlockingRewriteRefererUrls") ||
+          StringCaseEqual(directive, "Disallow") ||
+          StringCaseEqual(directive, "DistributableFilters") ||
+          StringCaseEqual(directive, "Domain") ||
+          StringCaseEqual(directive, "ExperimentVariable") ||
+          StringCaseEqual(directive, "ExperimentSpec") ||
+          StringCaseEqual(directive, "ForbidFilters") ||
+          StringCaseEqual(directive, "RetainComment") ||
+          StringCaseEqual(directive, "CustomFetchHeader") ||
+          StringCaseEqual(directive, "MapOriginDomain") ||
+          StringCaseEqual(directive, "MapProxyDomain") ||
+          StringCaseEqual(directive, "MapRewriteDomain") ||
+          StringCaseEqual(directive, "UrlValuedAttribute") ||
+          StringCaseEqual(directive, "Library")));
+  }
+
   ScriptLine* script_line;
   script_line = NULL;
-  // Note that LoadFromFile should not be scriptable on wildcard hosts,
-  // as browsers might be able to manipulate its natural use-case: $http_host.
-  if (!StringCaseStartsWith(directive, "LoadFromFile") &&
-      !StringCaseEqual(directive, "EnableFilters") &&
-      !StringCaseEqual(directive, "DisableFilters") &&
-      !StringCaseEqual(directive, "DownstreamCachePurgeLocationPrefix") &&
-      !StringCaseEqual(directive, "DownstreamCachePurgeMethod") &&
-      !StringCaseEqual(directive,
-                       "DownstreamCacheRewrittenPercentageThreshold") &&
-      !StringCaseEqual(directive, "ShardDomain")){
-    compile_scripts = false;
-  }
 
   if (n_args == 1 && StringCaseEqual(directive, "ClearInheritedScripts")) {
     clear_inherited_scripts_ = true;
@@ -364,23 +388,22 @@ const char* NgxRewriteOptions::ParseAndSetOptions(
       }
     } else if (StringCaseEqual("ProcessScriptVariables", args[0])) {
       if (scope == RewriteOptions::kProcessScopeStrict) {
-        if (StringCaseEqual(arg, "on")) {
-          if (driver_factory->SetProcessScriptVariables(true)) {
-            result = RewriteOptions::kOptionOk;
-          } else {
-            return const_cast<char*>(
-                "pagespeed ProcessScriptVariables: can only be set once");
-          }
+        ProcessScriptVariablesMode mode;
+        if (StringCaseEqual(arg, "all")) {
+          mode = ProcessScriptVariablesMode::kAll;
+        } else if (StringCaseEqual(arg, "on")) {
+          mode = ProcessScriptVariablesMode::kLegacyRestricted;
         } else if (StringCaseEqual(arg, "off")) {
-          if (driver_factory->SetProcessScriptVariables(false)) {
-            result = RewriteOptions::kOptionOk;
-          } else {
-            return const_cast<char*>(
-                "pagespeed ProcessScriptVariables: can only be set once");
-          }
+          mode = ProcessScriptVariablesMode::kOff;
         } else {
           return const_cast<char*>(
               "pagespeed ProcessScriptVariables: invalid value");
+        }
+        if (driver_factory->SetProcessScriptVariables(mode)) {
+          result = RewriteOptions::kOptionOk;
+        } else {
+          return const_cast<char*>(
+              "pagespeed ProcessScriptVariables: can only be set once");
         }
       } else {
         return const_cast<char*>(
@@ -477,7 +500,7 @@ bool NgxRewriteOptions::ExecuteScriptVariables(
 
       const char* status = ParseAndSetOptions(args, script_line->n_args(),
           r->pool, handler, driver_factory, script_line->scope(), NULL /*cf*/,
-          false /*compile scripts*/);
+          ProcessScriptVariablesMode::kOff);
 
       if (status != NULL) {
         script_error = true;
