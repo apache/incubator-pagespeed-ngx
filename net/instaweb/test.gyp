@@ -53,6 +53,7 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_image_test_util',
         '<(DEPTH)/pagespeed/kernel.gyp:pthread_system',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_proto_matcher_test_proto',
+        '<(DEPTH)/pagespeed/kernel.gyp:tcp_server_thread_for_testing',
         '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
         '<(DEPTH)/third_party/apr/apr.gyp:apr',

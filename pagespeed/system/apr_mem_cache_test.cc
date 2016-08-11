@@ -20,32 +20,37 @@
 
 #include "pagespeed/system/apr_mem_cache.h"
 
+#include <unistd.h>
+#include <cstdio>
+#include <cstdlib>
 #include <cstddef>
 
-#include "apr_pools.h"
-
-#include "pagespeed/apache/apr_timer.h"
-#include "pagespeed/kernel/base/basictypes.h"
+#include "apr_network_io.h"  // NOLINT
+#include "apr_pools.h"  // NOLINT
+#include "base/logging.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/hasher.h"
+#include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/mock_hasher.h"
 #include "pagespeed/kernel/base/mock_timer.h"
-#include "pagespeed/kernel/base/null_mutex.h"
-#include "pagespeed/kernel/base/null_statistics.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
-#include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
-#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/cache/cache_key_prepender.h"
 #include "pagespeed/kernel/cache/cache_spammer.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/cache/fallback_cache.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
+#include "pagespeed/kernel/thread/blocking_callback.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/system/tcp_server_thread_for_testing.h"
 
 namespace net_instaweb {
 
@@ -72,6 +77,7 @@ class AprMemCacheTest : public CacheTestBase {
   static void SetUpTestCase() {
     apr_initialize();
     atexit(apr_terminate);
+    TcpServerThreadForTesting::PickListenPortOnce(&fake_memcache_listen_port_);
   }
 
   // Establishes a connection to a memcached instance; either one
@@ -158,7 +164,10 @@ class AprMemCacheTest : public CacheTestBase {
   scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats statistics_;
   GoogleString server_spec_;
+  static apr_port_t fake_memcache_listen_port_;
 };
+
+apr_port_t AprMemCacheTest::fake_memcache_listen_port_ = 0;
 
 // Simple flow of putting in an item, getting it, deleting it.
 TEST_F(AprMemCacheTest, PutGetDelete) {
@@ -525,4 +534,78 @@ TEST_F(AprMemCacheTest, TestsAreIsolated2) {
   CheckNotFound("SomeKey");
   CheckPut("SomeKey", "SomeValue");
 }
+
+namespace {
+// Used in HangingMultigetTest.
+class FakeMemcacheServerThread : public TcpServerThreadForTesting {
+ public:
+  FakeMemcacheServerThread(apr_port_t fake_memcache_listen_port,
+                           ThreadSystem* thread_system)
+      : TcpServerThreadForTesting(fake_memcache_listen_port, "fake_memcache",
+                                  thread_system) {}
+  virtual ~FakeMemcacheServerThread() {}
+
+ private:
+  void HandleClientConnection(apr_socket_t* sock) override {
+    static const char kMessage[] = "blah\n";
+    apr_size_t message_size = STATIC_STRLEN(kMessage);
+    char buf[kStackBufferSize];
+    apr_size_t size = sizeof(buf) - 1;
+    apr_socket_recv(sock, buf, &size);
+    apr_socket_send(sock, kMessage, &message_size);
+    apr_socket_close(sock);
+  }
+};
+}  // namespace
+
+TEST_F(AprMemCacheTest, HangingMultigetTest) {
+  // Test that we do not hang in the case of corrupted responses from memcached,
+  // as seen in bug report 1048
+  // https://github.com/pagespeed/mod_pagespeed/issues/1048
+  scoped_ptr<FakeMemcacheServerThread> thread(new FakeMemcacheServerThread(
+      fake_memcache_listen_port_, thread_system_.get()));
+  ASSERT_TRUE(thread->Start());
+  apr_port_t port = thread->GetListeningPort();
+  GoogleString apr_str = StrCat("localhost:", Integer64ToString(port));
+  scoped_ptr<AprMemCache> cache(
+      new AprMemCache(apr_str, 3 /* maximal number of client connections */,
+                      &mock_hasher_, &statistics_, &timer_, &handler_));
+  static const char k1[] = "hello";
+  static const char k2[] = "hi";
+  BlockingCallback cb1(thread_system_.get());
+  BlockingCallback cb2(thread_system_.get());
+  CacheInterface::MultiGetRequest* request =
+      new CacheInterface::MultiGetRequest;  // will be owned by MultiGet()
+  request->push_back(CacheInterface::KeyCallback(k1, &cb1));
+  request->push_back(CacheInterface::KeyCallback(k2, &cb2));
+  cache->Connect();
+  // Capture stderr, make sure we get the proper string.
+  // This test depends on a custom fprintf in apr_memcache2.
+  // TODO(jcrowell) do this more nicely, don't depend on the print from
+  // multiget, as the real test is that this should not hang.
+  int stderr_backup;
+  char buffer[4096];
+  fflush(stderr);
+  int err_pipe[2];
+  stderr_backup = dup(STDERR_FILENO);
+  ASSERT_NE(-1, stderr_backup);
+  ASSERT_EQ(0, pipe(err_pipe));
+  ASSERT_NE(-1, dup2(err_pipe[1], STDERR_FILENO));
+  close(err_pipe[1]);
+  // Make the multiget request.
+  cache->MultiGet(request);
+  cb1.Block();
+  cb2.Block();
+  fflush(stderr);
+  int bytes_read = read(err_pipe[0], buffer, sizeof(buffer));
+  ASSERT_NE(-1, bytes_read);
+  // And give back stderr.
+  ASSERT_NE(-1, dup2(stderr_backup, STDERR_FILENO));
+  // Now check to make sure that we had the proper output.
+  StringPiece output(buffer, bytes_read);
+  EXPECT_TRUE(
+      output.starts_with("Caught potential spin in apr_memcache multiget!"));
+}
+
+
 }  // namespace net_instaweb

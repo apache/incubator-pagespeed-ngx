@@ -20,11 +20,8 @@
 #include "pagespeed/system/system_caches.h"
 
 #include <cstdlib>
-#include <cstdio>
-#include <unistd.h>
 #include <vector>
 
-#include "apr_network_io.h"
 #include "apr_poll.h"
 #include "apr_pools.h"
 #include "apr_thread_proc.h"
@@ -61,7 +58,6 @@
 #include "pagespeed/kernel/base/null_shared_mem.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
-#include "pagespeed/kernel/base/stack_buffer.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -81,11 +77,11 @@
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/sharedmem/inprocess_shared_mem.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_lock_manager.h"
+#include "pagespeed/kernel/thread/blocking_callback.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_random.h"
-#include "pagespeed/system/tcp_server_thread_for_testing.h"
 
 namespace net_instaweb {
 
@@ -113,32 +109,6 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
  protected:
   static const int kThreadLimit = 3;
   static const int kUsableMetadataCacheSize = 8 * 1024;
-
-  // Helper that blocks for async cache lookups.
-  class BlockingCallback : public CacheInterface::Callback {
-   public:
-    explicit BlockingCallback(ThreadSystem* threads)
-        : sync_(threads), result_(CacheInterface::kNotFound) {}
-
-    CacheInterface::KeyState result() const { return result_; }
-    GoogleString value() const { return value_; }
-
-    void Block() {
-      sync_.Wait();
-    }
-
-   protected:
-    virtual void Done(CacheInterface::KeyState state) {
-      result_ = state;
-      CacheInterface::Callback::value()->Value().CopyToString(&value_);
-      sync_.Notify();
-    }
-
-   private:
-    WorkerTestBase::SyncPoint sync_;
-    CacheInterface::KeyState result_;
-    GoogleString value_;
-  };
 
   // Helper that blocks for async HTTP cache lookups.
   class HTTPBlockingCallback : public HTTPCache::Callback {
@@ -657,40 +627,12 @@ class SystemCachesMemCacheTest : public SystemCachesExternalCacheTestBase {
     options->set_memcached_servers(ServerSpec());
   }
 
-  class FakeMemcacheServerThread : public TcpServerThreadForTesting {
-   public:
-    FakeMemcacheServerThread(apr_port_t fake_memcache_listen_port,
-                             ThreadSystem* thread_system)
-        : TcpServerThreadForTesting(fake_memcache_listen_port, "fake_memcache",
-                                    thread_system) {}
-    virtual ~FakeMemcacheServerThread() {}
-
-   private:
-    void HandleClientConnection(apr_socket_t* sock) override {
-      static const char kMessage[] = "blah\n";
-      apr_size_t message_size = STATIC_STRLEN(kMessage);
-      char buf[kStackBufferSize];
-      apr_size_t size = sizeof(buf) - 1;
-      apr_socket_recv(sock, buf, &size);
-      apr_socket_send(sock, kMessage, &message_size);
-      apr_socket_close(sock);
-    }
-  };
-
-  static void SetUpTestCase() {
-    TcpServerThreadForTesting::PickListenPortOnce(&fake_memcache_listen_port_);
-  }
-
   void TestBasicMemCacheAndNoLru(int num_threads_specified,
                                  int num_threads_expected);
-
-  static apr_port_t fake_memcache_listen_port_;
 
  private:
   GoogleString server_spec_;
 };
-
-apr_port_t SystemCachesMemCacheTest::fake_memcache_listen_port_ = 0;
 
 ADD_EXTERNAL_CACHE_TESTS(SystemCachesMemCacheTest)
 
@@ -1121,53 +1063,6 @@ TEST_F(SystemCachesTest, LruCacheSettings) {
       dynamic_cast<WriteThroughCache*>(server_context->http_cache()->cache());
   ASSERT_TRUE(http_write_through != NULL);
   EXPECT_EQ(500, http_write_through->cache1_limit());
-}
-
-TEST_F(SystemCachesMemCacheTest, HangingMultigetTest) {
-  // Test that we do not hang in the case of corrupted responses from memcached,
-  // as seen in bug report 1048
-  // https://github.com/pagespeed/mod_pagespeed/issues/1048
-  scoped_ptr<FakeMemcacheServerThread> thread(new FakeMemcacheServerThread(
-      fake_memcache_listen_port_, thread_system_.get()));
-  ASSERT_TRUE(thread->Start());
-  apr_port_t port = thread->GetListeningPort();
-  GoogleString apr_str = StrCat("localhost:", Integer64ToString(port));
-  AprMemCache* cache = system_caches_->NewAprMemCache(apr_str);
-  static const char k1[] = "hello";
-  static const char k2[] = "hi";
-  BlockingCallback cb1(thread_system_.get());
-  BlockingCallback cb2(thread_system_.get());
-  CacheInterface::MultiGetRequest* request =
-      new CacheInterface::MultiGetRequest;
-  request->push_back(CacheInterface::KeyCallback(k1, &cb1));
-  request->push_back(CacheInterface::KeyCallback(k2, &cb2));
-  cache->Connect();
-  // Capture stderr, make sure we get the proper string.
-  // This test depends on a custom fprintf in apr_memcache2.
-  // TODO(jcrowell) do this more nicely, don't depend on the print from
-  // multiget, as the real test is that this should not hang.
-  int stderr_backup;
-  char buffer[4096];
-  fflush(stderr);
-  int err_pipe[2];
-  stderr_backup = dup(STDERR_FILENO);
-  ASSERT_NE(-1, stderr_backup);
-  ASSERT_EQ(0, pipe(err_pipe));
-  ASSERT_NE(-1, dup2(err_pipe[1], STDERR_FILENO));
-  close(err_pipe[1]);
-  // Make the multiget request.
-  cache->MultiGet(request);
-  cb1.Block();
-  cb2.Block();
-  fflush(stderr);
-  int bytes_read = read(err_pipe[0], buffer, sizeof(buffer));
-  ASSERT_NE(-1, bytes_read);
-  // And give back stderr.
-  ASSERT_NE(-1, dup2(stderr_backup, STDERR_FILENO));
-  // Now check to make sure that we had the proper output.
-  StringPiece output(buffer, bytes_read);
-  EXPECT_TRUE(
-      output.starts_with("Caught potential spin in apr_memcache multiget!"));
 }
 
 void SystemCachesExternalCacheTestBase::TestStatsStringMinimal() {
