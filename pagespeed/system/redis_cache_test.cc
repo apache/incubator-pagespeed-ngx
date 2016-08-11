@@ -20,22 +20,36 @@
 
 #include "pagespeed/system/redis_cache.h"
 
-#include <cstddef>
+#include <cstdlib>
 
+#include "apr_network_io.h"  // NOLINT
+#include "base/logging.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
-#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/system/tcp_server_thread_for_testing.h"
+
+namespace {
+  static const int kReconnectionDelayMs = 10;
+  static const char kSomeKey[] = "SomeKey";
+  static const char kSomeValue[] = "SomeValue";
+}
 
 namespace net_instaweb {
+
 
 // TODO(yeputons): refactor this class with AprMemCacheTest, see details in
 // apr_mem_cache_test.cc
 class RedisCacheTest : public CacheTestBase {
  protected:
-  RedisCacheTest() {}
+  RedisCacheTest()
+      : thread_system_(Platform::CreateThreadSystem()),
+        timer_(new NullMutex, 0) {}
 
   bool InitRedisOrSkip() {
     const char* portString = getenv("REDIS_PORT");
@@ -48,14 +62,17 @@ class RedisCacheTest : public CacheTestBase {
       return false;
     }
 
-    cache_.reset(new RedisCache("localhost", port, new NullMutex, &handler_));
-    return cache_->Connect() && cache_->FlushAll();
+    cache_.reset(new RedisCache("localhost", port, new NullMutex, &handler_,
+                                &timer_, kReconnectionDelayMs));
+    cache_->StartUp();
+    return cache_->FlushAll();
   }
 
   CacheInterface* Cache() override { return cache_.get(); }
 
   scoped_ptr<RedisCache> cache_;
- private:
+  scoped_ptr<ThreadSystem> thread_system_;
+  MockTimer timer_;
   GoogleMessageHandler handler_;
 };
 
@@ -79,7 +96,7 @@ TEST_F(RedisCacheTest, MultiGet) {
   if (!InitRedisOrSkip()) {
     return;
   }
-  TestMultiGet();  // test from CacheTestBase is just fine
+  TestMultiGet();  // Test from CacheTestBase is just fine.
 }
 
 TEST_F(RedisCacheTest, BasicInvalid) {
@@ -117,8 +134,8 @@ TEST_F(RedisCacheTest, TestsAreIsolated1) {
     return;
   }
 
-  CheckNotFound("SomeKey");
-  CheckPut("SomeKey", "SomeValue");
+  CheckNotFound(kSomeKey);
+  CheckPut(kSomeKey, kSomeValue);
 }
 
 TEST_F(RedisCacheTest, TestsAreIsolated2) {
@@ -126,8 +143,153 @@ TEST_F(RedisCacheTest, TestsAreIsolated2) {
     return;
   }
 
-  CheckNotFound("SomeKey");
-  CheckPut("SomeKey", "SomeValue");
+  CheckNotFound(kSomeKey);
+  CheckPut(kSomeKey, kSomeValue);
+}
+
+class RedisGetRespondingServerThread : public TcpServerThreadForTesting {
+ public:
+  RedisGetRespondingServerThread(apr_port_t listen_port,
+                                 ThreadSystem* thread_system)
+      : TcpServerThreadForTesting(listen_port, "redis_get_answering_server",
+                                  thread_system) {}
+
+ private:
+  void HandleClientConnection(apr_socket_t* sock) override {
+    // See http://redis.io/topics/protocol for details. Request is an array of
+    // two bulk strings, answer for GET is a single bulk string.
+    static const char kRequest[] =
+        "*2\r\n"
+        "$3\r\nGET\r\n"
+        "$7\r\nSomeKey\r\n";
+    static const char kAnswer[] = "$9\r\nSomeValue\r\n";
+    apr_size_t answer_size  = STATIC_STRLEN(kAnswer);
+
+    char buf[STATIC_STRLEN(kRequest) + 1];
+    apr_size_t size = sizeof(buf) - 1;
+
+    apr_socket_recv(sock, buf, &size);
+    EXPECT_EQ(STATIC_STRLEN(kRequest), size);
+    buf[size] = 0;
+    EXPECT_STREQ(kRequest, buf);
+
+    apr_socket_send(sock, kAnswer, &answer_size);
+    apr_socket_close(sock);
+  }
+};
+
+class RedisCacheReconnectTest : public RedisCacheTest {
+ public:
+  void SetUp() {
+    TcpServerThreadForTesting::PickListenPortOnce(&port_);
+    CHECK_NE(port_, 0);
+
+    cache_.reset(new RedisCache("localhost", port_, new NullMutex, &handler_,
+                                &timer_, kReconnectionDelayMs));
+  }
+
+ protected:
+  void ProcessOneMoreConnection() {
+    // If there was an old server, we wait till it finishes as
+    // TcpServerThreadForTesting calls Join in destructor.
+    server_.reset(
+        new RedisGetRespondingServerThread(port_, thread_system_.get()));
+    ASSERT_TRUE(server_->Start());
+    // Wait while server starts and check its port
+    ASSERT_EQ(port_, server_->GetListeningPort());
+  }
+
+  void WaitForServerShutdown() {
+    server_.reset();
+  }
+
+ private:
+  apr_port_t port_;
+  scoped_ptr<RedisGetRespondingServerThread> server_;
+};
+
+TEST_F(RedisCacheReconnectTest, ReconnectsInstantly) {
+  ProcessOneMoreConnection();
+  cache_->StartUp();
+
+  CheckGet(kSomeKey, kSomeValue);
+  // Server closes connection after processing one request, but cache does not
+  // know about that yet.
+  WaitForServerShutdown();
+  EXPECT_TRUE(Cache()->IsHealthy());
+
+  // Client should not reconnect as it learns about disconnection only when it
+  // tries to run the command.
+  ProcessOneMoreConnection();  // Should not receive connection right now.
+  CheckNotFound(kSomeKey);
+
+  // First reconnection attempt should happen right away.
+  EXPECT_TRUE(Cache()->IsHealthy());  // Allow reconnection.
+  CheckGet(kSomeKey, kSomeValue);
+}
+
+TEST_F(RedisCacheReconnectTest, ReconnectsUntilSuccessWithTimeout) {
+  ProcessOneMoreConnection();
+  cache_->StartUp();
+
+  CheckGet(kSomeKey, kSomeValue);
+  // Server closes connection after processing one request, but cache does not
+  // know about that yet.
+  WaitForServerShutdown();
+  EXPECT_TRUE(Cache()->IsHealthy());
+
+  // Let client know that we're disconnected by trying to read.
+  CheckNotFound(kSomeKey);
+
+  // Try to reconnect right away after failure.
+  EXPECT_TRUE(Cache()->IsHealthy());  // Reconnection is allowed...
+  CheckNotFound(kSomeKey);  // ...but it fails.
+
+  // Second attempt, should not reconnect before timeout.
+  ProcessOneMoreConnection();  // Should not receive connection right now.
+  timer_.AdvanceMs(kReconnectionDelayMs - 1);
+  EXPECT_FALSE(Cache()->IsHealthy());  // Reconnection is not allowed.
+  CheckNotFound(kSomeKey);
+
+  // Should reconnect after timeout passes.
+  timer_.AdvanceMs(1);
+  EXPECT_TRUE(Cache()->IsHealthy());  // Reconnection is allowed.
+  CheckGet(kSomeKey, kSomeValue);
+}
+
+TEST_F(RedisCacheReconnectTest, ReconnectsIfStartUpFailed) {
+  cache_->StartUp();
+
+  // Client already knows that connection failed.
+  EXPECT_FALSE(Cache()->IsHealthy());
+  CheckNotFound(kSomeKey);
+
+  // Should not reconnect before timeout.
+  ProcessOneMoreConnection();  // Should not receive connection right now.
+  timer_.AdvanceMs(kReconnectionDelayMs - 1);
+  EXPECT_FALSE(Cache()->IsHealthy());  // Reconnection is not allowed.
+  CheckNotFound(kSomeKey);
+
+  // Should reconnect after timeout passes.
+  timer_.AdvanceMs(1);
+  EXPECT_TRUE(Cache()->IsHealthy());  // Reconnection is allowed.
+  CheckGet(kSomeKey, kSomeValue);
+}
+
+TEST_F(RedisCacheTest, DoesNotReconnectAfterShutdown) {
+  if (!InitRedisOrSkip()) {
+    return;
+  }
+
+  CheckPut(kSomeKey, kSomeValue);
+  CheckGet(kSomeKey, kSomeValue);
+  EXPECT_TRUE(Cache()->IsHealthy());
+
+  Cache()->ShutDown();
+  timer_.AdvanceMs(kReconnectionDelayMs);
+
+  EXPECT_FALSE(Cache()->IsHealthy());  // Reconnection is not allowed.
+  CheckNotFound(kSomeKey);
 }
 
 }  // namespace net_instaweb

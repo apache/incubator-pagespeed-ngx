@@ -29,6 +29,7 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
+#include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 #include "third_party/hiredis/src/hiredis.h"
 
@@ -38,23 +39,31 @@ namespace net_instaweb {
 // Details are changing rapidly.
 // Right now this implementation uses sync API of hiredis and is blocking.
 // This class is thread-safe.
-// TODO(yeputons): use async API
-// TODO(yeputons): add auto-reconnection
 // TODO(yeputons): add statistics
 // TODO(yeputons): consider making Redis-reported errors treated as failures
+// TODO(yeputons): add timeouts for connecting and all individual operations
 class RedisCache : public CacheInterface {
  public:
   // Takes ownership of mutex. This mutex protects inner calls to hiredis only.
   // Does not take ownership of MessageHandler, and assumes the pointer is valid
   // throughout full lifetime of RedisCache
-  RedisCache(const StringPiece& host, int port,
-             AbstractMutex* mutex,
-             MessageHandler* message_handler);
+  RedisCache(const StringPiece& host, int port, AbstractMutex* mutex,
+             MessageHandler* message_handler, Timer* timer,
+             int64 reconnection_delay_ms_);
   ~RedisCache() override { ShutDown(); }
 
-  bool Connect() LOCKS_EXCLUDED(mutex_);
-  // TODO(yeputons): add connect&authenticate method (redis AUTH command)
-  // TODO(yeputons): add ConnectWithTimeout method
+  // Enables cache and tries to connect to Redis, automatically reconnecting in
+  // case of failures until ShutDown() is called. Reconnection strategy is:
+  // 1. If (re-)connection attempt is unsuccessfull, try again on next
+  //    Get/Put/Delete operation, but not until at least reconnection_delay_ms_
+  //    have passed from the previous attempt.
+  // 2. If an operation fails because of communication or protocol error, try
+  //    reconnecting on next Get/Put/Delete (without delay).
+  // That ensures that we do not try to connect to unreachable server a lot, but
+  // still allows us to reconnect quickly in case of network glitches.
+  void StartUp() LOCKS_EXCLUDED(mutex_);
+  // TODO(yeputons): add redis AUTH command support
+  // TODO(yeputons): add connection timeout
 
   // CacheInterface implementations
   void Get(const GoogleString& key, Callback* callback) override
@@ -73,15 +82,9 @@ class RedisCache : public CacheInterface {
   bool FlushAll();
 
  private:
-  const GoogleString host_;
-  const int port_;
-  redisContext* redis_ GUARDED_BY(mutex_);
-  scoped_ptr<AbstractMutex> mutex_;
-
+  bool Reconnect() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
   bool IsHealthyLockHeld() const EXCLUSIVE_LOCKS_REQUIRED(mutex_);
   void FreeRedisContext() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
-
-  MessageHandler *message_handler_;
 
   struct RedisReplyDeleter {
     void operator()(redisReply* ptr) {
@@ -90,7 +93,7 @@ class RedisCache : public CacheInterface {
   };
   typedef std::unique_ptr<redisReply, RedisReplyDeleter> RedisReply;
 
-  RedisReply redisCommand(const char* format, ...)
+  RedisReply RedisCommand(const char* format, ...)
       EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   void LogRedisContextError(const char* cause) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
@@ -98,6 +101,17 @@ class RedisCache : public CacheInterface {
                           std::initializer_list<int> valid_types,
                           const char* command_executed)
       EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
+  const GoogleString host_;
+  const int port_;
+  redisContext *redis_ GUARDED_BY(mutex_);
+  scoped_ptr<AbstractMutex> mutex_;
+
+  MessageHandler *message_handler_;
+  Timer *timer_;
+  const int64 reconnection_delay_ms_;
+  int64 next_reconnect_at_ms_ GUARDED_BY(mutex_);
+  bool is_started_up_ GUARDED_BY(mutex_);
 
   DISALLOW_COPY_AND_ASSIGN(RedisCache);
 };

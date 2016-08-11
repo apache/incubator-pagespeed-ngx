@@ -31,6 +31,9 @@ namespace net_instaweb {
 // Implementation of Thread that uses APR to listen on a TCP port and then
 // delegates to a virtual function to handle single connection. This code is
 // absolutely not suitable for use outside of tests.
+// Please note that even though server stops after processing a single
+// connection, several connections could be established depending on the way
+// OS handles TCP backlog.
 
 class TcpServerThreadForTesting : public ThreadSystem::Thread {
  public:
@@ -60,6 +63,10 @@ class TcpServerThreadForTesting : public ThreadSystem::Thread {
   // Returns a socket bound to requested_listen_port_ if non-zero, otherwise
   // whatever the system picked. Updates actual_listening_port_.
   apr_socket_t* CreateAndBindSocket();
+
+  // Static alternative of CreateAndBindSocket(), used in PickListenPortOnce.
+  static void CreateAndBindSocket(apr_pool_t* apr_pool, apr_socket_t** socket,
+                                  apr_port_t* port);
 
   // Thread implementation.
   void Run() override;
