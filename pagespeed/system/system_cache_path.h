@@ -151,11 +151,6 @@ class SystemCachePath {
   ServerContextSet server_context_set_ GUARDED_BY(mutex_);
 };
 
-// CACHE_STATISTICS is #ifdef'd to facilitate experiments with whether
-// tracking the detailed stats & histograms has a QPS impact.  Set it
-// to 0 to turn it off.
-#define CACHE_STATISTICS 1
-
 }  // namespace net_instaweb
 
 #endif  // PAGESPEED_SYSTEM_SYSTEM_CACHE_PATH_H_

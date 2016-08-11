@@ -186,13 +186,11 @@ SystemCaches::MemcachedInterfaces SystemCaches::GetMemcached(
 
     // Put the batcher above the stats so that the stats sees the MultiGets
     // and can show us the histogram of how they are sized.
-#if CACHE_STATISTICS
     memcached.async = new CacheStats(kMemcachedAsync,
                                      memcached.async,
                                      factory_->timer(),
                                      factory_->statistics());
     factory_->TakeOwnership(memcached.async);
-#endif
 
     CacheBatcher* batcher = new CacheBatcher(
         memcached.async, factory_->thread_system()->NewMutex(),
@@ -205,14 +203,10 @@ SystemCaches::MemcachedInterfaces SystemCaches::GetMemcached(
 
     // Populate the blocking memcached interface, giving it its own
     // statistics wrapper.
-#if CACHE_STATISTICS
     memcached.blocking = new CacheStats(kMemcachedBlocking, mem_cache,
                                         factory_->timer(),
                                         factory_->statistics());
     factory_->TakeOwnership(memcached.blocking);
-#else
-    memcached.blocking = mem_cache;
-#endif
   }
   return memcached;
 }

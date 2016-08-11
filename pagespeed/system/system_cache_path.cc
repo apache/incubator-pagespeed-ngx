@@ -131,13 +131,9 @@ SystemCachePath::SystemCachePath(const StringPiece& path,
     ThreadsafeCache* ts_cache =
         new ThreadsafeCache(lru_cache, factory->thread_system()->NewMutex());
     factory->TakeOwnership(ts_cache);
-#if CACHE_STATISTICS
     lru_cache_ = new CacheStats(kLruCache, ts_cache, factory->timer(),
                                 factory->statistics());
     factory->TakeOwnership(lru_cache_);
-#else
-    lru_cache_ = ts_cache;
-#endif
   }
 }
 
