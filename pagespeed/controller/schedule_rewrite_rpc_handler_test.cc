@@ -121,7 +121,7 @@ class ScheduleRewriteRpcHandlerTest : public GrpcServerTest {
   void ExpectRewritePermission(bool expected_ok) {
     ScheduleRewriteResponse resp;
     ASSERT_THAT(client_->reader_writer_->Read(&resp), Eq(true));
-    EXPECT_THAT(resp.ok_to_rewrite(), Eq(expected_ok));
+    EXPECT_THAT(resp.ok_to_proceed(), Eq(expected_ok));
   }
 
   void ExpectFinalStatus(const ::grpc::StatusCode& expected_code) {

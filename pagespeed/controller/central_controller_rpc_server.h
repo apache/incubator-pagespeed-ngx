@@ -21,6 +21,7 @@
 
 #include "base/macros.h"
 #include "pagespeed/controller/controller.grpc.pb.h"
+#include "pagespeed/controller/expensive_operation_controller.h"
 #include "pagespeed/controller/schedule_rewrite_controller.h"
 #include "pagespeed/kernel/util/grpc.h"
 #include "pagespeed/system/controller_process.h"
@@ -33,8 +34,10 @@ namespace net_instaweb {
 class CentralControllerRpcServer : public ControllerProcess {
  public:
   // Takes ownership of rewrite_controller.
-  CentralControllerRpcServer(int listen_port,
-                             ScheduleRewriteController* rewrite_controller);
+  CentralControllerRpcServer(
+      int listen_port,
+      ExpensiveOperationController* expensive_operation_controller,
+      ScheduleRewriteController* rewrite_controller);
   virtual ~CentralControllerRpcServer() { }
 
   // ControllerProcess implementation.
@@ -51,6 +54,7 @@ class CentralControllerRpcServer : public ControllerProcess {
   std::unique_ptr<::grpc::ServerCompletionQueue> queue_;
   grpc::CentralControllerRpcService::AsyncService service_;
 
+  std::unique_ptr<ExpensiveOperationController> expensive_operation_controller_;
   std::unique_ptr<ScheduleRewriteController> rewrite_controller_;
 
   DISALLOW_COPY_AND_ASSIGN(CentralControllerRpcServer);

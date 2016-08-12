@@ -58,6 +58,7 @@
         'controller/central_controller_rpc_server.cc',
         'controller/compatible_central_controller.cc',
         'controller/expensive_operation_callback.cc',
+        'controller/expensive_operation_rpc_handler.cc',
         'controller/in_process_central_controller.cc',
         'controller/named_lock_schedule_rewrite_controller.cc',
         'controller/popularity_contest_schedule_rewrite_controller.cc',

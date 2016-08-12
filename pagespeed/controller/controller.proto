@@ -29,6 +29,16 @@ service CentralControllerRpcService {
   rpc ScheduleRewrite(stream ScheduleRewriteRequest)
       returns (stream ScheduleRewriteResponse) {
   }
+
+  // RPC bridge for ExpensiveOperationController.
+  // Send a ScheduleExpensiveOperationRequest, then wait for a
+  // ScheduleRewriteResponse letting you know if it's OK to proceed. If true,
+  // send another Request when you are done. There is no payload in the request
+  // since they are just used for synchronization.
+  // See expensive_operation_rpc_handler.h and expensive_operation_controller.h
+  rpc ScheduleExpensiveOperation(stream ScheduleExpensiveOperationRequest)
+      returns (stream ScheduleExpensiveOperationResponse) {
+  }
 }
 
 message ScheduleRewriteRequest {
@@ -43,5 +53,12 @@ message ScheduleRewriteRequest {
 }
 
 message ScheduleRewriteResponse {
-  bool ok_to_rewrite = 1;
+  bool ok_to_proceed = 1;
+}
+
+message ScheduleExpensiveOperationRequest {
+}
+
+message ScheduleExpensiveOperationResponse {
+  bool ok_to_proceed = 1;
 }

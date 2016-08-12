@@ -20,7 +20,7 @@
 
 #include "base/logging.h"
 #include "pagespeed/controller/controller.grpc.pb.h"
-#include "pagespeed/controller/schedule_rewrite_controller.h"
+#include "pagespeed/controller/expensive_operation_rpc_handler.h"
 #include "pagespeed/controller/schedule_rewrite_rpc_handler.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/string.h"
@@ -29,8 +29,12 @@
 namespace net_instaweb {
 
 CentralControllerRpcServer::CentralControllerRpcServer(
-    int listen_port, ScheduleRewriteController* rewrite_controller)
-    : listen_port_(listen_port), rewrite_controller_(rewrite_controller) {}
+    int listen_port,
+    ExpensiveOperationController* expensive_operation_controller,
+    ScheduleRewriteController* rewrite_controller)
+    : listen_port_(listen_port),
+      expensive_operation_controller_(expensive_operation_controller),
+      rewrite_controller_(rewrite_controller) {}
 
 int CentralControllerRpcServer::Setup() {
   ::grpc::ServerBuilder builder;
@@ -48,6 +52,9 @@ int CentralControllerRpcServer::Setup() {
     LOG(ERROR) << "CentralControllerRpcServer failed to start";
     return 1;
   }
+
+  ExpensiveOperationRpcHandler::CreateAndStart(
+      &service_, queue_.get(), expensive_operation_controller_.get());
 
   ScheduleRewriteRpcHandler::CreateAndStart(&service_, queue_.get(),
                                             rewrite_controller_.get());

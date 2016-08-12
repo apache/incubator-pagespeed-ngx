@@ -14,8 +14,8 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#ifndef PAGESPEED_CONTROLLER_SCHEDULE_REWRITE_RPC_HANDLER_H_
-#define PAGESPEED_CONTROLLER_SCHEDULE_REWRITE_RPC_HANDLER_H_
+#ifndef PAGESPEED_CONTROLLER_EXPENSIVE_OPERATION_RPC_HANDLER_H_
+#define PAGESPEED_CONTROLLER_EXPENSIVE_OPERATION_RPC_HANDLER_H_
 
 #include "pagespeed/controller/controller.pb.h"
 #include "pagespeed/controller/controller.grpc.pb.h"
@@ -23,41 +23,44 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/util/grpc.h"
-#include "pagespeed/kernel/base/string.h"
-#include "pagespeed/controller/schedule_rewrite_controller.h"
+#include "pagespeed/controller/expensive_operation_controller.h"
 #include "pagespeed/controller/request_result_rpc_handler.h"
 
 namespace net_instaweb {
 
 // RpcHandler for ExpensiveOperationController.
 //
-// The request message on the RPC contains the key that the client wants to
-// rewrite. This will trigger a call to HandleClientRequest() which we use to
-// call ScheduleRewrite(). When the controller decides if it will allow the
-// rewrite to proceed, RequestResultRpcHandler returns that decision to the
-// client. Once the client completes, it sends another Request message
-// indicating success or failure, which will trigger a call to
-// HandleClientResult() which we then dispatch to NotifyRewriteComplete()
-// or NotifyRewriteFailed().
+// The request message on the RPC contains no payload, it's just the client
+// saying "I have something expensive to do now, let me know when". This
+// will trigger a call to HandleClientRequest() which we use to call
+// ScheduleExpensiveOperation(). When the controller decides if it will allow
+// the rewrite to proceed, RequestResultRpcHandler returns that decision to
+// the client. Once the client completes, it sends another Request message,
+// which will trigger a call to HandleClientResult() and we in-turn call
+// NotifyExpensiveOperationComplete().
 //
-// If the client disconnects after requesting an rewrite but before sending a
+// If the client disconnects after requesting an operation but before sending a
 // second "completed" message, we receive a call to HandleOperationFailed() and
-// will call NotifyRewriteFailed() on the controller, so it can release "locks".
+// will call NotifyExpensiveOperationComplete() on the controller, so it can
+// release "locks".
 
-class ScheduleRewriteRpcHandler
+class ExpensiveOperationRpcHandler
     : public RequestResultRpcHandler<
-          ScheduleRewriteRpcHandler, ScheduleRewriteController,
+          ExpensiveOperationRpcHandler, ExpensiveOperationController,
           grpc::CentralControllerRpcService::AsyncService,
-          ScheduleRewriteRequest, ScheduleRewriteResponse> {
+          ScheduleExpensiveOperationRequest,
+          ScheduleExpensiveOperationResponse> {
  protected:
-  ScheduleRewriteRpcHandler(
+  ExpensiveOperationRpcHandler(
       grpc::CentralControllerRpcService::AsyncService* service,
-      ::grpc::ServerCompletionQueue* cq, ScheduleRewriteController* controller);
+      ::grpc::ServerCompletionQueue* cq,
+      ExpensiveOperationController* controller);
 
   // RequestResultRpcHandler implementation.
-  void HandleClientRequest(const ScheduleRewriteRequest& req,
-                           Function* cb) override;
-  void HandleClientResult(const ScheduleRewriteRequest& req) override;
+  void HandleClientRequest(
+      const ScheduleExpensiveOperationRequest& req, Function* cb) override;
+  void HandleClientResult(
+      const ScheduleExpensiveOperationRequest& req) override;
   void HandleOperationFailed() override;
 
   void InitResponder(grpc::CentralControllerRpcService::AsyncService* service,
@@ -66,15 +69,13 @@ class ScheduleRewriteRpcHandler
                      void* callback) override;
 
  private:
-  GoogleString key_;  // What we told the controller that we're rewriting.
-
   // Allow access to protected constructor.
   friend class RequestResultRpcHandler;
-  friend class ScheduleRewriteRpcHandlerTest;
+  friend class ExpensiveOperationRpcHandlerTest;
 
-  DISALLOW_COPY_AND_ASSIGN(ScheduleRewriteRpcHandler);
+  DISALLOW_COPY_AND_ASSIGN(ExpensiveOperationRpcHandler);
 };
 
 }  // namespace net_instaweb
 
-#endif  // PAGESPEED_CONTROLLER_SCHEDULE_REWRITE_RPC_HANDLER_H_
+#endif  // PAGESPEED_CONTROLLER_EXPENSIVE_OPERATION_RPC_HANDLER_H_
