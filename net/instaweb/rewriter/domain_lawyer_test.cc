@@ -1740,4 +1740,18 @@ TEST_F(DomainLawyerTest, AddProxySuffix) {
   EXPECT_STREQ("https://www.example.com.suffix/absolute.html", url);
 }
 
+TEST_F(DomainLawyerTest, MapNewUrlDomain) {
+  StringPiece from_host("www.foo.com/123/www.xyz.com/");
+  StringPiece origin_host("www.xyz.com");
+  ASSERT_TRUE(domain_lawyer_.AddTwoProtocolOriginDomainMapping(
+      origin_host, from_host, "", &message_handler_));
+  GoogleString origin_url;
+  ASSERT_TRUE(MapOrigin("http://www.foo.com/123/www.xyz.com/a/b", &origin_url));
+  EXPECT_STREQ("http://www.xyz.com/a/b", origin_url);
+
+  ASSERT_TRUE(
+      MapOrigin("https://www.foo.com/123/www.xyz.com/a/b", &origin_url));
+  EXPECT_STREQ("https://www.xyz.com/a/b", origin_url);
+}
+
 }  // namespace net_instaweb
