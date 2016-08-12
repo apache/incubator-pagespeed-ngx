@@ -319,7 +319,8 @@ if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
 fi
 
 PSA_JS_LIBRARY_URL_PREFIX="pagespeed_custom_static"
-BEACON_HANDLER="ngx_pagespeed_beacon"
+BEACON_HANDLER="nps-timing-beacon"
+CRITICAL_IMAGES_BEACON_HANDLER="nps-image-beacon"
 STATISTICS_HANDLER="ngx_pagespeed_statistics"
 GLOBAL_STATISTICS_HANDLER="ngx_pagespeed_global_statistics"
 MESSAGES_HANDLER="ngx_pagespeed_message"

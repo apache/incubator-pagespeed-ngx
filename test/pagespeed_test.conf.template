@@ -40,6 +40,9 @@ http {
 
   pagespeed StaticAssetPrefix /pagespeed_custom_static/;
 
+  pagespeed BeaconUrl /nps-timing-beacon;
+  pagespeed CriticalImagesBeaconUrl /nps-image-beacon;
+
   pagespeed MessageBufferSize 200000;
   # Increase the default fetcher timeout to resolve sporadic flakeyness when
   # the native fetcher uses 8.8.8.8 to resolve.

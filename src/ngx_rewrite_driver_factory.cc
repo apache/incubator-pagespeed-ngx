@@ -87,6 +87,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       shut_down_(false) {
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
+  default_options()->set_critical_images_beacon_url("/ngx_pagespeed_beacon");
   SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
       default_options());
   system_options->set_file_cache_clean_inode_limit(500000);

@@ -1763,13 +1763,17 @@ RequestRouting::Response ps_route_request(ngx_http_request_t* r) {
   }
 
   const GoogleString* beacon_url;
+  const GoogleString* critical_images_beacon_url;
   if (ps_is_https(r)) {
     beacon_url = &(global_options->beacon_url().https);
+    critical_images_beacon_url = &(global_options->critical_images_beacon_url().https);
   } else {
     beacon_url = &(global_options->beacon_url().http);
+    critical_images_beacon_url = &(global_options->critical_images_beacon_url().http);
   }
 
-  if (url.PathSansQuery() == StringPiece(*beacon_url)) {
+  if (url.PathSansQuery() == StringPiece(*beacon_url) ||
+     url.PathSansQuery() == StringPiece(*critical_images_beacon_url)) {
     return RequestRouting::kBeacon;
   }
 
