@@ -252,6 +252,14 @@ else
   MEMCACHED_TEST_SED_PATTERN=^\#MEMCACHED.*\n
 endif
 
+ifeq ($(REDIS_TEST),1)
+  # remove prefix
+  REDIS_TEST_SED_PATTERN=^\#REDIS
+else
+  # remove whole line
+  REDIS_TEST_SED_PATTERN=^\#REDIS.*\n
+endif
+
 ifeq ($(IPRO_PRESERVE_LOADTEST_TEST),1)
   # remove prefix
   IPRO_PRESERVE_LOADTEST_TEST_SED_PATTERN=^\#IPRO_PRESERVE_LOADTEST
@@ -397,6 +405,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
 	    -e "s|@@TMP_SLURP_DIR@@|$(TMP_SLURP_DIR)|g" \
 	    -e "s|@@MEMCACHED_PORT@@|$(MEMCACHED_PORT)|g" \
+	    -e "s|@@REDIS_PORT@@|$(REDIS_PORT)|g" \
 	    -e "s@$(STRESS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(REWRITE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(LOADTEST_TEST_SED_PATTERN)@@" \
@@ -405,6 +414,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(SHARED_MEM_LOCK_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SPELING_TEST_SED_PATTERN)@@" \
 	    -e "s@$(MEMCACHED_TEST_SED_PATTERN)@@" \
+	    -e "s@$(REDIS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(IPRO_PRESERVE_LOADTEST_TEST_SED_PATTERN)@@" \
 	    -e "s@$(MEMCACHE_LOADTEST_TEST_SED_PATTERN)@@" \
 	    -e "s@$(PURGING_LOADTEST_TEST_SED_PATTERN)@@" \
@@ -524,6 +534,7 @@ apache_install_conf :
 	    $(OPT_PROXY_TEST) \
 	    $(OPT_SLURP_TEST) \
 	    $(OPT_MEMCACHED_TEST) \
+	    $(OPT_REDIS_TEST) \
 	    $(OPT_IPRO_PRESERVE_LOADTEST_TEST) \
 	    $(OPT_MEMCACHE_LOADTEST_TEST) \
 	    $(OPT_PURGING_LOADTEST_TEST) \
@@ -545,6 +556,7 @@ apache_install_conf :
 	    $(OPT_PROXY_TEST) \
 	    $(OPT_SLURP_TEST) \
 	    $(OPT_MEMCACHED_TEST) \
+	    $(OPT_REDIS_TEST) \
 	    $(OPT_IPRO_PRESERVE_LOADTEST_TEST) \
 	    $(OPT_MEMCACHE_LOADTEST_TEST) \
 	    $(OPT_PURGING_LOADTEST_TEST) \

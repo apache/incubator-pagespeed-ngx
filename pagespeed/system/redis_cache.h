@@ -73,10 +73,12 @@ class RedisCache : public CacheInterface {
   void Delete(const GoogleString& key) override LOCKS_EXCLUDED(mutex_);
 
   // CacheInterface implementations
-  GoogleString Name() const override { return "RedisCache"; }
+  GoogleString Name() const override { return FormatName(); }
   bool IsBlocking() const override { return true; }
   bool IsHealthy() const override LOCKS_EXCLUDED(mutex_);
   void ShutDown() override LOCKS_EXCLUDED(mutex_);
+
+  static GoogleString FormatName() { return "RedisCache"; }
 
   // Flushes ALL DATA IN REDIS in blocking mode. Used in tests
   bool FlushAll();

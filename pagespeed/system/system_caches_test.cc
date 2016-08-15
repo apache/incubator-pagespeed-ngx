@@ -785,6 +785,53 @@ TEST_F(SystemCachesMemCacheTest, BasicMemCachedAndNoLru_2_Threads) {
   TestBasicMemCacheAndNoLru(2, 1);  // Clamp to 1.
 }
 
+class SystemCachesRedisCacheTest : public SystemCachesExternalCacheTestBase {
+ protected:
+  // TODO(yeputons): share this code with SystemCachesMemCacheTest or move it to
+  // the base class.
+  bool SkipExternalCacheTests() override {
+    return ServerSpec().empty();
+  }
+
+  // TODO(yeputons): share this code with SystemCachesMemCacheTest or move it to
+  // the base class.
+  SystemRewriteOptions::RedisServerSpec ServerSpec() {
+    if (server_spec_.empty()) {
+      // This matches the logic in apr_mem_cache_test.
+      const char* port_string = getenv("REDIS_PORT");
+      int port;
+      if (port_string == NULL || !StringToInt(port_string, &port)) {
+        LOG(ERROR) << "SystemCachesRedisCacheTest is skipped because env var "
+                   << "$REDIS_PORT is not set to a valid integer. Set that to "
+                   << "the port number where redis is running to enable the "
+                   << "tests.  See install/run_program_with_redis.sh";
+        return SystemRewriteOptions::RedisServerSpec();
+      }
+      server_spec_ = SystemRewriteOptions::RedisServerSpec("localhost", port);
+    }
+    return server_spec_;
+  }
+
+  GoogleString AssembledAsyncCacheWithStats() override {
+    return Batcher(Stats(SystemCaches::kRedisAsync,
+                         AsyncCache::FormatName(RedisCache::FormatName())),
+                   1, 1000);
+  }
+
+  GoogleString AssembledBlockingCacheWithStats() override {
+    return Stats(SystemCaches::kRedisBlocking, RedisCache::FormatName());
+  }
+
+  void SetUpExternalCache(SystemRewriteOptions* options) override {
+    options->set_redis_server(ServerSpec());
+  }
+
+ private:
+  SystemRewriteOptions::RedisServerSpec server_spec_;
+};
+
+ADD_EXTERNAL_CACHE_TESTS(SystemCachesRedisCacheTest)
+
 TEST_F(SystemCachesTest, BasicFileLockManager) {
   options_->set_file_cache_path(kCachePath);
   options_->set_use_shared_mem_locking(false);

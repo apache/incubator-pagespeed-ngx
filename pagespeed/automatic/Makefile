@@ -165,6 +165,7 @@ BASE_LIBS = \
   third_party/grpc/libgpr.a \
   third_party/grpc/libgrpc_core.a \
   third_party/grpc/libgrpc_cpp.a \
+  third_party/hiredis/libhiredis.a \
   third_party/icu/libicudata.a \
   third_party/icu/libicuuc.a \
   third_party/jsoncpp/libjsoncpp.a \

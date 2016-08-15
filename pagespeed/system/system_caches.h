@@ -23,17 +23,19 @@
 
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/cache_interface.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_cache.h"
+#include "pagespeed/system/redis_cache.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 namespace net_instaweb {
 
 class AbstractSharedMem;
 class AprMemCache;
-class MessageHandler;
 class NamedLockManager;
 class QueuedWorkerPool;
 class RewriteDriverFactory;
@@ -41,7 +43,6 @@ class ServerContext;
 class SlowWorker;
 class Statistics;
 class SystemCachePath;
-class SystemRewriteOptions;
 
 // Helps manage setup of cache backends provided by the PSOL library
 // (LRU, File, Memcached, and shared memory metadata), as well as named lock
@@ -61,6 +62,8 @@ class SystemCaches {
   // CacheStats prefixes.
   static const char kMemcachedAsync[];
   static const char kMemcachedBlocking[];
+  static const char kRedisAsync[];
+  static const char kRedisBlocking[];
   static const char kShmCache[];
 
   static const char kDefaultSharedMemoryPath[];
@@ -135,9 +138,6 @@ class SystemCaches {
   //      administrator.
   SystemCachePath* GetCache(SystemRewriteOptions* config);
 
-  // Create a new AprMemCache from the given hostname[:port] specification.
-  AprMemCache* NewAprMemCache(const GoogleString& spec);
-
  private:
   typedef SharedMemCache<64> MetadataShmCache;
   struct MetadataShmCacheInfo {
@@ -153,22 +153,43 @@ class SystemCaches {
                        // we get shutdown.
   };
 
-  struct MemcachedInterfaces {
-    MemcachedInterfaces() : async(NULL), blocking(NULL) {}
+  struct ExternalCacheInterfaces {
+    ExternalCacheInterfaces() : async(NULL), blocking(NULL) {}
     CacheInterface* async;
     CacheInterface* blocking;
   };
 
-  // Looks up and, if necessary, constructs memcached interfaces for a
-  // configuration.  Both blocking and (potentially) non-blocking
-  // interfaces are constructed, and given separate stats.  Returns
-  // false if memcached is not enabled for this configuration.  The
-  // returned interfaces are owned by SystemCaches, and must not be
-  // freed by the caller.
+  // Given a blocking cache, prepares a fully functional ExternalCacheInterfaces
+  // with both blocking and async versions. Async version is obtained by
+  // wrapping blocking cache in AsyncCache with given worker pool.
+  // If pool is NULL, this wrapping is omitted, effictively yielding a blocking
+  // cache instead of async (this is used for compatibility with
+  // MemcachedThreads 0 config option). Async version is then wrapped in
+  // CacheBatcher. The value of batcher_max_parallel_lookups will be used to
+  // override the batcher's max_parallel_lookups. If you don't want to override
+  // it, pass in -1.
   //
-  // If memcached is not enabled for the config, both the pointers in
-  // the pair will be NULL.
-  MemcachedInterfaces GetMemcached(SystemRewriteOptions* config);
+  // Each cache is also wrapped in CacheStatistics with given name. All newly
+  // created wrappers are owned by SystemCaches.
+  ExternalCacheInterfaces ConstructExternalCacheInterfacesFromBlocking(
+      CacheInterface* backend, QueuedWorkerPool* pool,
+      int batcher_max_parallel_lookups, const char* async_stats_name,
+      const char* blocking_stats_name);
+
+  // Constructs external cache interfaces for a configuration. Both blocking
+  // and (potentially) non-blocking interfaces are constructed, and given
+  // separate stats. The returned interfaces are owned by SystemCaches, and must
+  // not be freed by the caller.
+  //
+  // The corresponding external cache should be enabled in the config.
+  ExternalCacheInterfaces NewMemcached(SystemRewriteOptions* config);
+  ExternalCacheInterfaces NewRedis(SystemRewriteOptions* config);
+
+  // Either constructs a new external cache (memcached/redis) based on
+  // configuration or retrieves it from external_caches_map_ if it was already
+  // constructed. Note that not all objects are stored in the map, some may be
+  // created on each individual run (see impl for details).
+  ExternalCacheInterfaces NewExternalCache(SystemRewriteOptions* config);
 
   // Returns any shared memory metadata cache configured for the given name, or
   // NULL.
@@ -205,25 +226,32 @@ class SystemCaches {
   typedef std::map<GoogleString, SystemCachePath*> PathCacheMap;
   PathCacheMap path_cache_map_;
 
-  // memcache connections are expensive.  Just allocate one per
-  // distinct server-list.  At the moment there is no consistency
-  // checking for other parameters.  Note that each memcached
-  // interface share the thread allocation, based on the
-  // ModPagespeedMemcachedThreads settings first encountered for
-  // a particular server-set.
-  //
-  // The QueuedWorkerPool for async cache-gets is shared among all
-  // memcached connections.
-  //
-  // The CacheInterface* value in the MemcachedMap now includes,
-  // depending on options, instances of CacheBatcher, AsyncCache,
-  // and CacheStats.  Explicit lists of AprMemCache instances and
-  // AsyncCache objects are also included, as they require extra
-  // treatment during startup and shutdown.
-  typedef std::map<GoogleString, MemcachedInterfaces> MemcachedMap;
-  MemcachedMap memcached_map_;
+  // The QueuedWorkerPool for async cache-gets is shared among all memcached
+  // connections. We have similar pool for Redis.
+  // TODO(yeputons): consider reducing to a single pool. Potential problem: if
+  // both memcached and Redis are enabled and one of them goes down, it blocks
+  // requests to both servers. Actually, we have that problem already if there
+  // different vhosts use different external cache servers.
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
+  scoped_ptr<QueuedWorkerPool> redis_pool_;
+
+  // Explicit lists of AprMemCache/RedisCache instances are stored individually,
+  // as they require extra treatment during startup and shutdown.
+  // TODO(yeputons): consider reducing to a single vector when these classes
+  // have common base class. Potential problem: users may want to enable
+  // statistics for only memcached or only Redis (see kIncludeMemcached flag).
   std::vector<AprMemCache*> memcache_servers_;
+  std::vector<RedisCache*> redis_servers_;
+
+  // As each external cache object typically holds a TCP connection, we do not
+  // want to allocate one per vhost (there can be tens of thousands of vhosts).
+  // So, we create only one object per each external cache configuration and
+  // store them in a map. See GetExternalCache() for details.
+  //
+  // All ExternalCacheInterfaces pairs stored already include (depending on
+  // options) instances of CacheBatcher, AsyncCache and CacheStats.
+  typedef std::map<GoogleString, ExternalCacheInterfaces> ExternalCachesMap;
+  ExternalCachesMap external_caches_map_;
 
   // Map of any shared memory metadata caches we have + their CacheStats
   // wrappers. These are named explicitly to make configuration comprehensible.

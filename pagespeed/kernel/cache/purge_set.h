@@ -164,8 +164,8 @@ class PurgeSet {
   //         for a few minutes.
   //   2. Time moves backward by a large amount (>10 minutes):
   //      a. Purge requests: rejected until time is corrected.  The only
-  //         sure-fire remedy is to delete all caches, restart memcached
-  //         and pagespeed servers.
+  //         sure-fire remedy is to delete all caches, flush data on external
+  //         cache servers (e.g. restart memcached), restart pagespeed servers.
   //      b. IsValid: returns false, disabling PageSpeed until the situation
   //         is corrected.  We view it as unacceptable to bring purged cache
   //         entries back from the dead.

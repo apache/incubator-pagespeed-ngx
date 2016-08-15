@@ -19,10 +19,14 @@ AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 # Do testing using memcached in lieu of the file cache.
 #MEMCACHED ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 
-# When testing memcached in system tests, let's make sure we are really
-# hitting it and not servicing the lookups in-memory.  Note that we will
-# cover having a non-zero lru-cache with  memcached in load tests.
+# When testing with an external cache in system tests, let's make sure we are
+# really hitting it and not servicing the lookups in-memory.  Note that we will
+# cover having a non-zero lru-cache with an external cache in load tests.
 #MEMCACHED ModPagespeedLRUCacheKbPerProcess 0
+#REDIS ModPagespeedLRUCacheKbPerProcess 0
+
+# Do testing using redis instead of file cache
+#REDIS ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
 
 # If X-PSA-Blocking-Rewrite request header is present and its value matches the
 # value of ModPagespeedBlockingRewriteKey below, the response will be fully
@@ -534,9 +538,10 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedMapProxyDomain secondary.example.com/gstatic_images \
                              http://www.gstatic.com/psa/static
 
-  # This is the same memcached instance as the root configuration,
+  # This is the same external cache instance as the root configuration,
   # but with a different file-cache path.
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
+#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedCacheFlushFilename cache.flush
   # If you uncomment this, the test will fail, proving we can disable
@@ -1263,8 +1268,8 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
 
 
 # Test hosts to cover all possible cache configurations.  L1 will be filecache
-# or memcache depending on the setting of MEMCACHED_TEST.  These four hosts are
-# for the four settings for the L2 cache.
+# or an external cache depending on the setting of MEMCACHED_TEST.  These four
+# hosts are for the four settings for the L2 cache.
 
 # 1. L2_d=LRU, L2_m=LRU
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
@@ -1272,6 +1277,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_lrud_lrum"
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
+#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedLRUCacheKbPerProcess 1024
   ModPagespeedLRUCacheByteLimit 2000
@@ -1286,6 +1292,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_lrud_shmm" 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_lrud_shmm"
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
+#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedLRUCacheKbPerProcess 1024
   ModPagespeedLRUCacheByteLimit 2000
@@ -1300,6 +1307,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
+#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedEnableFilters rewrite_images
   ModPagespeedCriticalImagesBeaconEnabled false
@@ -1311,6 +1319,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_noned_nonem"
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
+#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedEnableFilters rewrite_images
   ModPagespeedCriticalImagesBeaconEnabled false
@@ -2082,6 +2091,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedPreserveUrlRelativity on
 #ALL_DIRECTIVES ModPagespeedProgressiveJpegMinBytes 1000
 #ALL_DIRECTIVES ModPagespeedRateLimitBackgroundFetches true
+#ALL_DIRECTIVES ModPagespeedExperimentalRedisServer localhost:55555
 #ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
 #ALL_DIRECTIVES ModPagespeedReportUnloadTime true
 #ALL_DIRECTIVES ModPagespeedRespectVary true

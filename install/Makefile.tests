@@ -8,7 +8,9 @@
 # Imports:
 #  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_MEMCACHED_TEST,
-#                       OPT_MEMCACHE_LOADTEST_TEST, OPT_PURGING_LOADTEST_TEST,
+#                       OPT_MEMCACHE_LOADTEST_TEST,
+#                       OPT_REDIS_TEST,
+#                       OPT_PURGING_LOADTEST_TEST,
 #                       OPT_IUR_LOADTEST_TEST, OPT_IPRO_PRESERVE_LOADTEST_TEST,
 #                       OPT_HTTPS_TEST,
 #                       OPT_LOADTEST_TRACE_TEST, OPT_STRESS_TEST,
@@ -45,6 +47,7 @@ apache_vm_system_tests : setup_doc_root
 	$(MAKE) FAST_RESTART=1 apache_debug_downstream_caching_test
 	$(MAKE) FAST_RESTART=1 apache_debug_per_vhost_stats_test
 	$(MAKE) FAST_RESTART=1 apache_debug_memcached_test
+	$(MAKE) FAST_RESTART=1 apache_debug_redis_test
 	$(MAKE) FAST_RESTART=1 apache_debug_leak_test
 	$(MAKE) FAST_RESTART=1 apache_debug_rewrite_test
 	$(MAKE) FAST_RESTART=1 apache_debug_proxy_test
@@ -236,6 +239,36 @@ apache_debug_memcached_test :
 
 apache_debug_memcached_test_run :
 	$(MAKE) apache_install_conf OPT_MEMCACHED_TEST="MEMCACHED_TEST=1"
+	$(MAKE) apache_debug_restart
+	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	CACHE_FLUSH_TEST=on \
+	RCPORT1=$(RCPORT1) \
+	RCPORT2=$(RCPORT2) \
+	RCPORT3=$(RCPORT3) \
+	RCPORT4=$(RCPORT4) \
+	RCPORT5=$(RCPORT5) \
+	RCPORT6=$(RCPORT6) \
+	RCPORT7=$(RCPORT7) \
+	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
+	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+
+apache_debug_redis_test :
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
+	# run_program_with_redis.sh exports $REDIS_PORT which is
+	# needed by apache_install_conf so pagespeed.conf gets the
+	# right redis server config.  REDIS_PORT will be different
+	# on each run, which makes it easier for people to run
+	# system-tests and unit-tests in parallel with one another.
+	env APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
+		$(INSTALL_DATA_DIR)/run_program_with_redis.sh \
+			$(MAKE) apache_debug_redis_test_run
+	$(MAKE) apache_debug_stop
+	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
+	@echo PASS
+
+apache_debug_redis_test_run :
+	$(MAKE) apache_install_conf OPT_REDIS_TEST="REDIS_TEST=1"
 	$(MAKE) apache_debug_restart
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	CACHE_FLUSH_TEST=on \

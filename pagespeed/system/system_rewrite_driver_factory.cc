@@ -295,7 +295,7 @@ void SystemRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
 
   // Let SystemCaches know about the various paths we have in configuration
-  // first, as well as the memcached instances.
+  // first, as well as external cache instances.
   for (SystemServerContextSet::iterator
            p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {

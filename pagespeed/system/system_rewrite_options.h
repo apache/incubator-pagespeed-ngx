@@ -40,8 +40,27 @@ class SystemRewriteOptions : public RewriteOptions {
  public:
   typedef std::set<StaticAssetEnum::StaticAsset> StaticAssetSet;
 
+  // TODO(yeputons): this structure will be drastically changed when we add
+  // support for Redis Cluster.
+  struct RedisServerSpec {
+    static const int kDefaultPort;
+
+    RedisServerSpec() : host(), port(0) {}
+    RedisServerSpec(GoogleString host_, int port_) : host(host_), port(port_) {}
+    bool empty() const { return host.empty() && port == 0; }
+    GoogleString ToString() const {
+      // Should be 1:1 representation of value held, see
+      // RedisServerOption::Signature
+      return empty() ? "" : StrCat(host, ":", IntegerToString(port));
+    }
+
+    GoogleString host;
+    int port;
+  };
+
   static const char kCentralControllerPort[];
   static const char kStaticAssetCDN[];
+  static const char kRedisServer[];
 
   static void Initialize();
   static void Terminate();
@@ -165,6 +184,12 @@ class SystemRewriteOptions : public RewriteOptions {
   }
   void set_memcached_timeout_us(int x) {
     set_option(x, &memcached_timeout_us_);
+  }
+  const RedisServerSpec& redis_server() const {
+    return redis_server_.value();
+  }
+  void set_redis_server(const RedisServerSpec& x) {
+    set_option(x, &redis_server_);
   }
   int64 slow_file_latency_threshold_us() const {
     return slow_file_latency_threshold_us_.value();
@@ -372,6 +397,14 @@ class SystemRewriteOptions : public RewriteOptions {
     CopyOnWrite<StaticAssetSet> static_assets_to_cdn_;
   };
 
+  class RedisServerOption : public OptionTemplateBase<RedisServerSpec> {
+   public:
+    bool SetFromString(StringPiece value_string,
+                       GoogleString* error_detail) override;
+    GoogleString ToString() const override;
+    GoogleString Signature(const Hasher* hasher) const override;
+  };
+
   // Keeps the properties added by this subclass.  These are merged into
   // RewriteOptions::all_properties_ during Initialize().
   static Properties* system_properties_;
@@ -413,6 +446,7 @@ class SystemRewriteOptions : public RewriteOptions {
   // comma-separated list of host[:port].  See AprMemCache::AprMemCache
   // for code that parses it.
   Option<GoogleString> memcached_servers_;
+  RedisServerOption redis_server_;
   Option<GoogleString> statistics_logging_charts_css_;
   Option<GoogleString> statistics_logging_charts_js_;
   Option<GoogleString> cache_flush_filename_;

@@ -159,4 +159,68 @@ TEST_F(SystemRewriteOptionsTest, CentralController) {
   EXPECT_NE("", msg);
 }
 
+TEST_F(SystemRewriteOptionsTest, RedisServerEmptyByDefault) {
+  EXPECT_TRUE(options_.redis_server().empty());
+}
+
+TEST_F(SystemRewriteOptionsTest, RedisServerHostPort) {
+  GoogleString msg;
+  RewriteOptions::OptionSettingResult result =
+      options_.ParseAndSetOptionFromName1(
+          SystemRewriteOptions::kRedisServer, "example.com:1234", &msg,
+          &handler_);
+  EXPECT_EQ(result, RewriteOptions::kOptionOk);
+  EXPECT_EQ("example.com", options_.redis_server().host);
+  EXPECT_EQ(1234, options_.redis_server().port);
+  EXPECT_EQ("", msg);
+}
+
+TEST_F(SystemRewriteOptionsTest, RedisServerHostOnly) {
+  GoogleString msg;
+  RewriteOptions::OptionSettingResult result =
+      options_.ParseAndSetOptionFromName1(
+          SystemRewriteOptions::kRedisServer, "example.com", &msg,
+          &handler_);
+  EXPECT_EQ(result, RewriteOptions::kOptionOk);
+  EXPECT_EQ("example.com", options_.redis_server().host);
+  EXPECT_EQ(SystemRewriteOptions::RedisServerSpec::kDefaultPort,
+            options_.redis_server().port);
+  EXPECT_EQ("", msg);
+}
+
+class SystemRewriteOptionsInvalidRedisServerTest
+    : public SystemRewriteOptionsTest {
+ public:
+  void TestInvalidSpec(const GoogleString &spec) {
+    GoogleString msg;
+    options_.ParseAndSetOptionFromName1(SystemRewriteOptions::kRedisServer,
+                                        "example.com:1234", &msg, &handler_);
+
+    RewriteOptions::OptionSettingResult result =
+        options_.ParseAndSetOptionFromName1(
+            SystemRewriteOptions::kRedisServer, spec, &msg,
+            &handler_);
+    EXPECT_EQ(result, RewriteOptions::kOptionValueInvalid);
+    EXPECT_EQ("example.com", options_.redis_server().host);
+    EXPECT_EQ(1234, options_.redis_server().port);
+    EXPECT_NE("", msg);
+  }
+};
+
+TEST_F(SystemRewriteOptionsInvalidRedisServerTest, NonNumericPort) {
+  TestInvalidSpec("host:1port");
+}
+
+TEST_F(SystemRewriteOptionsInvalidRedisServerTest, InvalidPortNumber1) {
+  TestInvalidSpec("host:0");
+}
+
+TEST_F(SystemRewriteOptionsInvalidRedisServerTest, InvalidPortNumber2) {
+  TestInvalidSpec("host:100000");
+}
+
+TEST_F(SystemRewriteOptionsInvalidRedisServerTest, MultipleColons) {
+  TestInvalidSpec("host:10:20");
+}
+
 }  // namespace net_instaweb
