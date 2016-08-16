@@ -1,0 +1,77 @@
+<title>Optimize for Bandwidth</title>
+<h1>Optimize for Bandwidth</h1>
+
+This page
+demonstrates <a href="https://developers.google.com/speed/pagespeed/module/optimize-for-bandwidth">OptimizeForBandwidth</a>
+mode.  The resources at the bottom of the page are optimized in-place,
+making them smaller but without changing their urls.
+
+<p>
+
+The Apache config file has:
+
+<pre>
+  &lt;Location /optimize_for_bandwidth.html&gt;
+    # Optimize resources in-place, without changing their urls.
+    ModPagespeedRewriteLevel OptimizeForBandwidth
+  &lt;/Location&gt;
+  &lt;Location /in_place_optimize_for_browser&gt;
+    # Serve WebP to browsers that support it, and add the response
+    # header "Vary: Accept".
+    ModPagespeedEnableFilters in_place_optimize_for_browser
+  &lt;/Location&gt;
+</pre>
+
+<p>
+
+Links to optimized and unoptimized resources:
+
+<p>
+
+<table border="1" cellpadding=5>
+  <tr>
+    <th>Original Resource</th><th>Optimized Resource</th>
+  <tr>
+    <td><a href="inline_javascript.js?PageSpeed=off"
+       ><tt>inline_javascript.js?PageSpeed=off</tt></a></td>
+    <td><a href="inline_javascript.js"
+       ><tt>inline_javascript.js</tt></a></td>
+  <tr>
+    <td><a href="styles/blue.css?PageSpeed=off"
+       ><tt>blue.css?PageSpeed=off</tt></a></td>
+    <td><a href="styles/blue.css"
+      ><tt>styles/blue.css</tt></a></td>
+  <tr>
+    <td><a href="in_place_optimize_for_browser/Puzzle.jpg?PageSpeed=off"
+       ><tt>Puzzle.jpg?PageSpeed=off</tt></a></td>
+    <td><a href="in_place_optimize_for_browser/Puzzle.jpg"
+       ><tt>Puzzle.jpg</tt></a></td>
+</table>
+
+<hr>
+
+<!-- this script is external, and will be optimized without changing
+     its url -->
+<script src="rewrite_javascript.js"></script>
+
+<!-- this script is inline, and will be optimized in place -->
+<script>
+    document.write    (    "world"    )    ;
+</script>
+
+<!-- this stylesheet is external, and will be optimized without
+     changing its url -->
+<link rel="stylesheet" href="styles/blue.css">
+
+<!-- this stylesheet is inline, and will be optimized in place -->
+<style>
+  #unused    {    background-color:    red   }
+</style>
+
+<p>
+
+<!-- This image will be converted to WebP in supporting browsers, and
+     optimized regardless.  The url won't change, but the response will be
+     served with 'Vary: Accept' so it will work with proxy caches in all
+     browsers. -->
+<img src="in_place_optimize_for_browser/Puzzle.jpg">
