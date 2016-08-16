@@ -212,14 +212,6 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
     // failed flattening, so that later RollUps do the right thing (nothing).
     // This is not something we need to log in the statistics or in debug.
     hierarchy->set_flattening_succeeded(false);
-    if (options->NeedsDependenciesCohort()) {
-      // If we're collecting dependencies, and aren't flattening, we want
-      // to call ExpandChildren so it can record all our child stylesheets and
-      // whether their media is comparable. Since we marked
-      // flattening_succeeded(false) above, we will only look inside it for
-      // dependency collection and not do any flattening work.
-      hierarchy->ExpandChildren();
-    }
   } else if (hierarchy->flattening_succeeded()) {
     // Flattening of this hierarchy might have already failed because of a
     // problem detected with the containing charset or media, in particular

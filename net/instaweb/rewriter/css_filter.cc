@@ -27,7 +27,6 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/dependencies.pb.h"
 #include "net/instaweb/rewriter/public/association_transformer.h"
 #include "net/instaweb/rewriter/public/css_absolutify.h"
 #include "net/instaweb/rewriter/public/css_flatten_imports_context.h"
@@ -38,7 +37,6 @@
 #include "net/instaweb/rewriter/public/css_url_counter.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
-#include "net/instaweb/rewriter/public/dependency_tracker.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/inline_attribute_slot.h"
@@ -72,6 +70,7 @@
 #include "pagespeed/kernel/http/data_url.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 #include "pagespeed/kernel/util/simple_random.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 #include "webutil/css/parser.h"
@@ -105,30 +104,6 @@ class SimpleAbsolutifyTransformer : public CssTagScanner::Transformer {
   const GoogleUrl* base_url_;
   DISALLOW_COPY_AND_ASSIGN(SimpleAbsolutifyTransformer);
 };
-
-// Returns true if the stylesheet included in *child will be needed to
-// display its parent.
-bool ContainsImportThatWillBeNeeded(const CssHierarchy* child) {
-  // Some kinds of errors (media we can't understand, broken URLs)
-  // gets marked as !flattening_succeeded.
-  if (!child->flattening_succeeded()) {
-    return false;
-  }
-
-  // Now check the media.
-  if (child->media().empty()) {
-    // Denotes "all".
-    return true;
-  }
-
-  for (const GoogleString& medium : child->media()) {
-    if (StringCaseEqual(medium, "screen")) {
-      return true;
-    }
-  }
-
-  return false;
-}
 
 // All of the options that can affect image optimization can also affect
 // CSS rewriting, due to embedded images.  We will merge those in during
@@ -208,16 +183,13 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       rewrite_inline_char_node_(NULL),
       rewrite_inline_attribute_(NULL),
       rewrite_inline_css_kind_(kInsideStyleTag),
-      in_text_size_(-1),
-      dummy_dep_id_(-1),
-      deps_reported_(false) {
+      in_text_size_(-1) {
   initial_css_base_gurl_.Reset(filter_->decoded_base_url());
   DCHECK(initial_css_base_gurl_.IsWebValid());
   initial_css_trim_gurl_.Reset(initial_css_base_gurl_);
 }
 
 CssFilter::Context::~Context() {
-  DCHECK(deps_reported_ || dummy_dep_id_ == -1);
 }
 
 // The base URL used when absolutifying sub-resources must be the input
@@ -316,8 +288,6 @@ bool CssFilter::Context::SendFallbackResponse(
 }
 
 void CssFilter::Context::Render() {
-  ReportDeps();
-
   if (num_output_partitions() == 0) {
     return;
   }
@@ -343,44 +313,6 @@ void CssFilter::Context::Render() {
       image_rewrite_filter_->RegisterImageInfo(result.associated_image_info(i));
     }
   }
-}
-
-void CssFilter::Context::WillNotRender() {
-  ReportDeps();
-}
-
-void CssFilter::Context::Cancel() {
-  ReportDeps();
-}
-
-void CssFilter::Context::ReportDeps() {
-  if (deps_reported_ || dummy_dep_id_ == -1) {
-    return;
-  }
-
-  deps_reported_ = true;
-
-  DependencyTracker* dep_tracker = Driver()->dependency_tracker();
-
-  // Report actual dependencies we noticed.
-  if (num_output_partitions() == 1) {
-    CachedResult* result = output_partition(0);
-    for (int i = 0, n = result->collected_dependency_size(); i < n; ++i) {
-      int dep_id = dep_tracker->RegisterDependencyCandidate();
-      dep_tracker->ReportDependencyCandidate(
-          dep_id, &result->collected_dependency(i));
-    }
-  }
-
-  // Now drop the refcount one.
-  dep_tracker->ReportDependencyCandidate(dummy_dep_id_, nullptr);
-}
-
-void CssFilter::Context::Initiated() {
-  // Grab a dummy dependency ID to let dependency tracker we may have some stuff
-  // to report; we don't know exact number of them yet so we will just abuse
-  // this one as a refcount.
-  dummy_dep_id_ = Driver()->dependency_tracker()->RegisterDependencyCandidate();
 }
 
 void CssFilter::Context::SetupInlineRewrite(HtmlElement* style_element,
@@ -659,19 +591,6 @@ void CssFilter::Context::Harvest() {
     if (hierarchy_.flattening_succeeded() &&
       hierarchy_.flattened_result_limit() > 0) {
       hierarchy_.RollUpContents();
-    } else if (Options()->NeedsDependenciesCohort()) {
-      // If we are not flattening, we may want to push/prefetch the nested
-      // stylesheets.
-      for (CssHierarchy* child : hierarchy_.children()) {
-        if (ContainsImportThatWillBeNeeded(child)) {
-          Dependency* dep =
-              output_partition(0)->add_collected_dependency();
-          dep->set_url(child->url().as_string());
-          dep->set_content_type(DEP_CSS);
-          // TODO(morlovich): Set validity_info, which should be based on
-          // the containing CSS.
-        }
-      }
     }
 
     // If CSS was successfully parsed.
@@ -1179,9 +1098,7 @@ CssFilter::Context* CssFilter::StartRewriting(const ResourceSlotPtr& slot) {
   if (driver()->options()->css_preserve_urls()) {
     slot->set_preserve_urls(true);
   }
-  if (driver()->InitiateRewrite(rewriter)) {
-    rewriter->Initiated();
-  } else {
+  if (!driver()->InitiateRewrite(rewriter)) {
     rewriter = NULL;
   }
   return rewriter;

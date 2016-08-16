@@ -281,13 +281,8 @@ class CssFilter::Context : public SingleRewriteContext {
 
   CssHierarchy* mutable_hierarchy() { return &hierarchy_; }
 
-  void Initiated();
-
  protected:
   void Render() override;
-  void WillNotRender() override;
-  void Cancel() override;
-
   virtual void Harvest();
   virtual bool Partition(OutputPartitions* partitions,
                          OutputResourceVector* outputs);
@@ -303,8 +298,6 @@ class CssFilter::Context : public SingleRewriteContext {
       const ResourceContext* resource_context) const;
 
  private:
-  void ReportDeps();
-
   void GetCssBaseUrlToUse(const ResourcePtr& input_resource,
                           GoogleUrl* css_base_gurl_to_use);
 
@@ -411,11 +404,6 @@ class CssFilter::Context : public SingleRewriteContext {
   scoped_ptr<GoogleUrl> trim_gurl_for_fallback_;
   ResourcePtr input_resource_;
   OutputResourcePtr output_resource_;
-
-  // We use this as a refcount in advance of knowing how many nested CSS
-  // resources there are.
-  int dummy_dep_id_;
-  bool deps_reported_;
 
   DISALLOW_COPY_AND_ASSIGN(Context);
 };

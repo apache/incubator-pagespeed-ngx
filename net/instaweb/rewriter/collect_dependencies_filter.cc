@@ -22,6 +22,7 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/dependencies.pb.h"
+#include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/dependency_tracker.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -31,13 +32,16 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/http/data_url.h"
+#include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/semantic_type.h"
+#include "util/utf8/public/unicodetext.h"
+#include "webutil/css/parser.h"
 
 namespace net_instaweb {
-
 
 class CollectDependenciesFilter::Context : public RewriteContext {
  public:
@@ -65,12 +69,68 @@ class CollectDependenciesFilter::Context : public RewriteContext {
     return true;
   }
 
+  bool DefinitelyNeededToRender(const std::unique_ptr<Css::Import>& import) {
+    StringVector media_types;
+    if (!css_util::ConvertMediaQueriesToStringVector(
+            import->media_queries(), &media_types)) {
+      // Something we don't understand. This includes things specifying
+      // media queries, which we can't evaluate, and therefore conservatively
+      // assume to be potentially unneeded.
+      return false;
+    }
+
+    if (media_types.empty()) {
+      return true;  // @import "foo", without media specified.
+    }
+
+    for (auto& medium : media_types) {
+      if (StringCaseEqual(medium, "all") || StringCaseEqual(medium, "screen")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void ExtractNestedCssDependencies(const ResourcePtr& resource,
+                                    CachedResult* partition) {
+    Css::Parser parser(resource->ExtractUncompressedContents());
+    parser.set_preservation_mode(true);
+    // We avoid quirks-mode so that we do not "fix" something we shouldn't have.
+    parser.set_quirks_mode(false);
+
+    while (true) {
+      std::unique_ptr<Css::Import> import(parser.ParseNextImport());
+      if (import == nullptr ||
+          parser.errors_seen_mask() != Css::Parser::kNoError) {
+        break;
+      }
+
+      if (DefinitelyNeededToRender(import)) {
+        GoogleString rel_url(
+            import->link().utf8_data(), import->link().utf8_length());
+        GoogleUrl full_url(GoogleUrl(resource->url()), rel_url);
+        if (full_url.IsWebValid()) {
+          Dependency* dep = partition->add_collected_dependency();
+          dep->set_url(full_url.Spec().as_string());
+          dep->set_content_type(DEP_CSS);
+          // TODO(morlovich): Set validity_info, which should be based on
+          // the containing CSS. (Could also have some sort of mechanism
+          // to be conditional on it)
+        }
+      }
+    }
+  }
+
   void Rewrite(int partition_index,
                CachedResult* partition,
                const OutputResourcePtr& output_resource) override {
     Dependency* dep = partition->add_collected_dependency();
     dep->set_url(slot(0)->resource()->url());
     dep->set_content_type(dep_type_);
+
+    if (dep_type_ == DEP_CSS) {
+      ExtractNestedCssDependencies(slot(0)->resource(), partition);
+    }
 
     // TODO(morlovich): Set validity_info.
     // This is surprisingly complicated, since essentially we have to get info
@@ -113,16 +173,26 @@ class CollectDependenciesFilter::Context : public RewriteContext {
       return;
     }
 
-    if (num_output_partitions() == 1) {
+    DependencyTracker* dep_tracker = Driver()->dependency_tracker();
+
+    // We already allocated dep_id_, so we should report on it, with either
+    // the first dependency we collected, or nullptr.
+    if (num_output_partitions() == 1 &&
+        output_partition(0)->collected_dependency_size() > 0) {
       CachedResult* result = output_partition(0);
 
-      Driver()->dependency_tracker()->ReportDependencyCandidate(
-          dep_id_,
-          result->collected_dependency_size() > 0 ?
-              &result->collected_dependency(0) : nullptr);
+      dep_tracker->ReportDependencyCandidate(dep_id_,
+                                             &result->collected_dependency(0));
+      // Any other dependencies get their brand new IDs.
+      // TODO(morlovich): They actually should be hinted right after dependency
+      // dep_id_.
+      for (int c = 1; c < result->collected_dependency_size(); ++c) {
+        int additional_dep_id = dep_tracker->RegisterDependencyCandidate();
+        dep_tracker->ReportDependencyCandidate(
+            additional_dep_id, &result->collected_dependency(c));
+      }
     } else {
-      Driver()->dependency_tracker()->ReportDependencyCandidate(
-          dep_id_, nullptr);
+      dep_tracker->ReportDependencyCandidate(dep_id_, nullptr);
     }
     reported_ = true;
   }
