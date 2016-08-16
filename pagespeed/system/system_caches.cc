@@ -239,11 +239,10 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewRedis(
     SystemRewriteOptions* config) {
   const SystemRewriteOptions::RedisServerSpec& server_spec =
     config->redis_server();
-  // TODO(yeputons): make reconnection timeout configurable.
   RedisCache* redis_server = new RedisCache(
       server_spec.host, server_spec.port, factory_->thread_system()->NewMutex(),
       factory_->message_handler(), factory_->timer(),
-      Timer::kSecondMs);
+      config->redis_reconnection_delay_ms());
   factory_->TakeOwnership(redis_server);
   redis_servers_.push_back(redis_server);
   if (redis_pool_.get() == NULL) {
@@ -278,7 +277,9 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewExternalCache(
   // Some unique signature to distinguish server configurations.
   GoogleString spec_signature;
   if (use_redis) {
-    spec_signature = StrCat("r;", config->redis_server().ToString());
+    spec_signature =
+        StrCat("r;", config->redis_server().ToString(), ";",
+               IntegerToString(config->redis_reconnection_delay_ms()));
   } else if (use_memcached) {
     spec_signature = StrCat("m;", config->memcached_servers(), ";",
                             IntegerToString(config->memcached_threads()), ";",

@@ -61,6 +61,7 @@ class SystemRewriteOptions : public RewriteOptions {
   static const char kCentralControllerPort[];
   static const char kStaticAssetCDN[];
   static const char kRedisServer[];
+  static const char kRedisReconnectionDelayMs[];
 
   static void Initialize();
   static void Terminate();
@@ -190,6 +191,9 @@ class SystemRewriteOptions : public RewriteOptions {
   }
   void set_redis_server(const RedisServerSpec& x) {
     set_option(x, &redis_server_);
+  }
+  int64 redis_reconnection_delay_ms() const {
+    return redis_reconnection_delay_ms_.value();
   }
   int64 slow_file_latency_threshold_us() const {
     return slow_file_latency_threshold_us_.value();
@@ -478,6 +482,7 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<int> controller_port_;
   Option<int> memcached_threads_;
   Option<int> memcached_timeout_us_;
+  Option<int64> redis_reconnection_delay_ms_;
 
   Option<int64> slow_file_latency_threshold_us_;
   Option<int64> file_cache_clean_inode_limit_;

@@ -223,4 +223,23 @@ TEST_F(SystemRewriteOptionsInvalidRedisServerTest, MultipleColons) {
   TestInvalidSpec("host:10:20");
 }
 
+TEST_F(SystemRewriteOptionsTest, RedisReconnectionDelay) {
+  EXPECT_LT(0, options_.redis_reconnection_delay_ms());
+
+  GoogleString msg;
+  RewriteOptions::OptionSettingResult result =
+      options_.ParseAndSetOptionFromName1(
+          SystemRewriteOptions::kRedisReconnectionDelayMs, "12000", &msg,
+          &handler_);
+  EXPECT_EQ(result, RewriteOptions::kOptionOk);
+  EXPECT_EQ(12000, options_.redis_reconnection_delay_ms());
+  EXPECT_EQ("", msg);
+
+  result = options_.ParseAndSetOptionFromName1(
+      SystemRewriteOptions::kRedisReconnectionDelayMs, "1a", &msg, &handler_);
+  EXPECT_EQ(result, RewriteOptions::kOptionValueInvalid);
+  EXPECT_EQ(12000, options_.redis_reconnection_delay_ms());
+  EXPECT_NE("", msg);
+}
+
 }  // namespace net_instaweb
