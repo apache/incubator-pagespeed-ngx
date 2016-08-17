@@ -131,7 +131,7 @@ class NgxBaseFetch : public AsyncFetch {
   ngx_http_request_t* request() { return request_; }
   NgxBaseFetchType base_fetch_type() { return base_fetch_type_; }
 
-  bool IsCachedResultValid(const ResponseHeaders& headers) override;
+  virtual bool IsCachedResultValid(const ResponseHeaders& headers);
 
  private:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
