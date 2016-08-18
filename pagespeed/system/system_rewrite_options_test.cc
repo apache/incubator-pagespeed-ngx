@@ -18,6 +18,8 @@
 
 #include "pagespeed/system/system_rewrite_options.h"
 
+#include <functional>
+
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
@@ -30,6 +32,27 @@ class SystemRewriteOptionsTest
     : public RewriteOptionsTestBase<SystemRewriteOptions> {
  protected:
   SystemRewriteOptionsTest() : options_("test", &thread_system_) {
+  }
+
+  // Helper for testing options consisting of single integer. Validates that
+  // setting an option with option_name changes return value of getter and that
+  // errors are reported on incorrect values.
+  void TestIntOption(const char* option_name,
+                     std::function<int(SystemRewriteOptions*)> getter) {
+    GoogleString msg;
+    RewriteOptions::OptionSettingResult result =
+        options_.ParseAndSetOptionFromName1(
+            option_name, "1234", &msg,
+            &handler_);
+    EXPECT_EQ(result, RewriteOptions::kOptionOk);
+    EXPECT_EQ(1234, getter(&options_));
+    EXPECT_EQ("", msg);
+
+    result = options_.ParseAndSetOptionFromName1(
+        option_name, "1a", &msg, &handler_);
+    EXPECT_EQ(result, RewriteOptions::kOptionValueInvalid);
+    EXPECT_EQ(1234, getter(&options_));
+    EXPECT_NE("", msg);
   }
 
   NullThreadSystem thread_system_;
@@ -140,23 +163,13 @@ TEST_F(SystemRewriteOptionsTest, StaticAssetCdn) {
   EXPECT_TRUE(assets4.find(StaticAssetEnum::MOBILIZE_JS) != assets4.end());
 }
 
-TEST_F(SystemRewriteOptionsTest, CentralController) {
+TEST_F(SystemRewriteOptionsTest, CentralControllerInitValue) {
   EXPECT_EQ(0, options_.controller_port());
+}
 
-  GoogleString msg;
-  RewriteOptions::OptionSettingResult result =
-      options_.ParseAndSetOptionFromName1(
-          SystemRewriteOptions::kCentralControllerPort, "1234", &msg,
-          &handler_);
-  EXPECT_EQ(result, RewriteOptions::kOptionOk);
-  EXPECT_EQ(1234, options_.controller_port());
-  EXPECT_EQ("", msg);
-
-  result = options_.ParseAndSetOptionFromName1(
-      SystemRewriteOptions::kCentralControllerPort, "1a", &msg, &handler_);
-  EXPECT_EQ(result, RewriteOptions::kOptionValueInvalid);
-  EXPECT_EQ(1234, options_.controller_port());
-  EXPECT_NE("", msg);
+TEST_F(SystemRewriteOptionsTest, CentralController) {
+  TestIntOption(SystemRewriteOptions::kCentralControllerPort,
+                &SystemRewriteOptions::controller_port);
 }
 
 TEST_F(SystemRewriteOptionsTest, RedisServerEmptyByDefault) {
@@ -223,23 +236,13 @@ TEST_F(SystemRewriteOptionsInvalidRedisServerTest, MultipleColons) {
   TestInvalidSpec("host:10:20");
 }
 
+TEST_F(SystemRewriteOptionsTest, RedisReconnectionDelayInitValue) {
+  EXPECT_GT(options_.redis_reconnection_delay_ms(), 0);
+}
+
 TEST_F(SystemRewriteOptionsTest, RedisReconnectionDelay) {
-  EXPECT_LT(0, options_.redis_reconnection_delay_ms());
-
-  GoogleString msg;
-  RewriteOptions::OptionSettingResult result =
-      options_.ParseAndSetOptionFromName1(
-          SystemRewriteOptions::kRedisReconnectionDelayMs, "12000", &msg,
-          &handler_);
-  EXPECT_EQ(result, RewriteOptions::kOptionOk);
-  EXPECT_EQ(12000, options_.redis_reconnection_delay_ms());
-  EXPECT_EQ("", msg);
-
-  result = options_.ParseAndSetOptionFromName1(
-      SystemRewriteOptions::kRedisReconnectionDelayMs, "1a", &msg, &handler_);
-  EXPECT_EQ(result, RewriteOptions::kOptionValueInvalid);
-  EXPECT_EQ(12000, options_.redis_reconnection_delay_ms());
-  EXPECT_NE("", msg);
+  TestIntOption(SystemRewriteOptions::kRedisReconnectionDelayMs,
+                &SystemRewriteOptions::redis_reconnection_delay_ms);
 }
 
 }  // namespace net_instaweb
