@@ -93,6 +93,11 @@ class CollectDependenciesFilter::Context : public RewriteContext {
 
   void ExtractNestedCssDependencies(const ResourcePtr& resource,
                                     CachedResult* partition) {
+    // Don't crash out on resources without anything loaded, and don't try to
+    // parse error pages for CSS imports.
+    if (!resource->HttpStatusOk()) {
+      return;
+    }
     Css::Parser parser(resource->ExtractUncompressedContents());
     parser.set_preservation_mode(true);
     // We avoid quirks-mode so that we do not "fix" something we shouldn't have.

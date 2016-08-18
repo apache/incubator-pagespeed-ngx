@@ -27,10 +27,13 @@
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_cache_failure.h"
 #include "pagespeed/opt/http/request_context.h"
 
 namespace net_instaweb {
@@ -103,6 +106,41 @@ TEST_F(CollectDependenciesFilterTest, BasicOperation) {
             tracker->read_in_info()->dependency(0).url());
   EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(0).content_type());
   EXPECT_EQ(StrCat(kTestDomain, "b.js.pagespeed.jm.0.js"),
+            tracker->read_in_info()->dependency(1).url());
+  EXPECT_EQ(DEP_JAVASCRIPT,
+            tracker->read_in_info()->dependency(1).content_type());
+
+  rewrite_driver()->FinishParse();
+}
+
+TEST_F(CollectDependenciesFilterTest, HandleEmptyResources) {
+  // We expect failures to still be hinted (since the browser will try to fetch
+  // them), but we need to be careful not to crash. (We used to).
+
+  // Using RememberFailure seems like the easiest way of getting empty
+  // Resource objects.
+  http_cache()->RememberFailure(
+      StrCat(kTestDomain, "e.css"), rewrite_driver()->CacheFragment(),
+      kFetchStatusOtherError, message_handler());
+
+  http_cache()->RememberFailure(
+      StrCat(kTestDomain, "f.js"), rewrite_driver()->CacheFragment(),
+      kFetchStatusOtherError, message_handler());
+
+  const char kInput[] = "<link rel=stylesheet href=e.css>"
+                        "<script src=f.js></script>";
+  ValidateNoChanges("unoptimized", kInput);
+
+  // Read stuff back in from pcache.
+  ResetDriver();
+  DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
+  rewrite_driver()->StartParse(kTestDomain);
+  ASSERT_TRUE(tracker->read_in_info() != nullptr);
+  ASSERT_EQ(2, tracker->read_in_info()->dependency_size());
+  EXPECT_EQ(StrCat(kTestDomain, "e.css"),
+            tracker->read_in_info()->dependency(0).url());
+  EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(0).content_type());
+  EXPECT_EQ(StrCat(kTestDomain, "f.js"),
             tracker->read_in_info()->dependency(1).url());
   EXPECT_EQ(DEP_JAVASCRIPT,
             tracker->read_in_info()->dependency(1).content_type());
