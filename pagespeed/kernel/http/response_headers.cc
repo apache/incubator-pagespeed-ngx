@@ -246,6 +246,12 @@ void ResponseHeaders::set_reason_phrase(const StringPiece& reason_phrase) {
                                      reason_phrase.size());
 }
 
+bool ResponseHeaders::has_last_modified_time_ms() const {
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before last_modified_time_ms()";
+  return proto()->has_last_modified_time_ms();
+}
+
 int64 ResponseHeaders::last_modified_time_ms() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before last_modified_time_ms()";

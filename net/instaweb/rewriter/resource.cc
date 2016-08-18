@@ -207,7 +207,9 @@ void Resource::FillInPartitionInputInfo(HashHint include_content_hash,
 void Resource::FillInPartitionInputInfoFromResponseHeaders(
       const ResponseHeaders& headers,
       InputInfo* input) {
-  input->set_last_modified_time_ms(headers.last_modified_time_ms());
+  if (headers.has_last_modified_time_ms()) {
+    input->set_last_modified_time_ms(headers.last_modified_time_ms());
+  }
   input->set_expiration_time_ms(headers.CacheExpirationTimeMs());
   input->set_date_ms(headers.date_ms());
 }

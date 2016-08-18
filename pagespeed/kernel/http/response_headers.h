@@ -224,6 +224,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
     http_options_.implicit_cache_ttl_ms = ttl;
   }
 
+  bool has_last_modified_time_ms() const;
   int64 last_modified_time_ms() const;
   int64 date_ms() const;  // Timestamp from Date header.
   bool has_date_ms() const;

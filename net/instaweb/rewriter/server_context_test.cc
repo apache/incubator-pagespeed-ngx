@@ -1745,7 +1745,8 @@ void CheckMatchesHeaders(const ResponseHeaders& headers,
   ASSERT_TRUE(input.has_type());
   EXPECT_EQ(InputInfo::CACHED, input.type());
 
-  ASSERT_TRUE(input.has_last_modified_time_ms());
+  EXPECT_EQ(headers.has_last_modified_time_ms(),
+            input.has_last_modified_time_ms());
   EXPECT_EQ(headers.last_modified_time_ms(), input.last_modified_time_ms());
 
   ASSERT_TRUE(input.has_expiration_time_ms());
@@ -1785,6 +1786,14 @@ TEST_F(ServerContextTest, FillInPartitionInputInfo) {
   ASSERT_TRUE(with_hash.has_input_content_hash());
   EXPECT_STREQ("zEEebBNnDlISRim4rIP30", with_hash.input_content_hash());
   EXPECT_FALSE(without_hash.has_input_content_hash());
+
+  resource->response_headers()->RemoveAll(HttpAttributes::kLastModified);
+  resource->response_headers()->ComputeCaching();
+  EXPECT_FALSE(resource->response_headers()->has_last_modified_time_ms());
+  InputInfo without_last_modified;
+  resource->FillInPartitionInputInfo(Resource::kOmitInputHash,
+                                     &without_last_modified);
+  CheckMatchesHeaders(*resource->response_headers(), without_last_modified);
 }
 
 // Test of referer for BackgroundFetch: When the resource fetching request
