@@ -23,8 +23,7 @@ install:
   - sudo dpkg -i out/Release/mod-pagespeed*.deb
 script:
   - cd ~/build_directory/src
-  - ./out/Release/mod_pagespeed_test
-  - ./out/Release/pagespeed_automatic_test
+  - ./install/run_program_with_ext_caches.sh ./out/Release/mod_pagespeed_test \; ./out/Release/pagespeed_automatic_test
   - find . -name "*.sh" | xargs chmod +x
   - cd install
   - sudo -E ./ubuntu.sh apache_debug_restart
