@@ -26,8 +26,10 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
+#include "pagespeed/kernel/base/proto_matcher.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
@@ -101,15 +103,15 @@ TEST_F(CollectDependenciesFilterTest, BasicOperation) {
   DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
   rewrite_driver()->StartParse(kTestDomain);
   ASSERT_TRUE(tracker->read_in_info() != nullptr);
-  ASSERT_EQ(2, tracker->read_in_info()->dependency_size());
-  EXPECT_EQ(StrCat(kTestDomain, "A.a.css.pagespeed.cf.0.css"),
-            tracker->read_in_info()->dependency(0).url());
-  EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(0).content_type());
-  EXPECT_EQ(StrCat(kTestDomain, "b.js.pagespeed.jm.0.js"),
-            tracker->read_in_info()->dependency(1).url());
-  EXPECT_EQ(DEP_JAVASCRIPT,
-            tracker->read_in_info()->dependency(1).content_type());
-
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
+      "dependency {"
+        "url: 'http://test.com/A.a.css.pagespeed.cf.0.css'"
+        "content_type: DEP_CSS"
+      "}"
+      "dependency {"
+        "url: 'http://test.com/b.js.pagespeed.jm.0.js'"
+        "content_type: DEP_JAVASCRIPT"
+      "}"));
   rewrite_driver()->FinishParse();
 }
 
@@ -131,14 +133,15 @@ TEST_F(CollectDependenciesFilterTest, MediaTopLevel) {
   DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
   rewrite_driver()->StartParse(kTestDomain);
   ASSERT_TRUE(tracker->read_in_info() != nullptr);
-  ASSERT_EQ(2, tracker->read_in_info()->dependency_size());
-  EXPECT_EQ(StrCat(kTestDomain, "a.css"),
-            tracker->read_in_info()->dependency(0).url());
-  EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(0).content_type());
-
-  EXPECT_EQ(StrCat(kTestDomain, "e.css"),
-            tracker->read_in_info()->dependency(1).url());
-  EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(1).content_type());
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
+      "dependency {"
+        "url: 'http://test.com/a.css'"
+        "content_type: DEP_CSS"
+      "}"
+      "dependency {"
+        "url: 'http://test.com/e.css'"
+        "content_type: DEP_CSS"
+      "}"));
 
   rewrite_driver()->FinishParse();
 }
@@ -166,14 +169,15 @@ TEST_F(CollectDependenciesFilterTest, HandleEmptyResources) {
   DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
   rewrite_driver()->StartParse(kTestDomain);
   ASSERT_TRUE(tracker->read_in_info() != nullptr);
-  ASSERT_EQ(2, tracker->read_in_info()->dependency_size());
-  EXPECT_EQ(StrCat(kTestDomain, "e.css"),
-            tracker->read_in_info()->dependency(0).url());
-  EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(0).content_type());
-  EXPECT_EQ(StrCat(kTestDomain, "f.js"),
-            tracker->read_in_info()->dependency(1).url());
-  EXPECT_EQ(DEP_JAVASCRIPT,
-            tracker->read_in_info()->dependency(1).content_type());
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
+      "dependency {"
+        "url: 'http://test.com/e.css'"
+        "content_type: DEP_CSS"
+      "}"
+      "dependency {"
+        "url: 'http://test.com/f.js'"
+        "content_type: DEP_JAVASCRIPT"
+      "}"));
 
   rewrite_driver()->FinishParse();
 }
@@ -231,10 +235,11 @@ TEST_F(CollectDependenciesFilterTest, Combiners) {
   DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
   rewrite_driver()->StartParse(kTestDomain);
   ASSERT_TRUE(tracker->read_in_info() != nullptr);
-  ASSERT_EQ(1, tracker->read_in_info()->dependency_size());
-  EXPECT_EQ(StrCat(kTestDomain, "a.css+c.css.pagespeed.cc.0.css"),
-            tracker->read_in_info()->dependency(0).url());
-  EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(0).content_type());
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
+      "dependency {"
+        "url: 'http://test.com/a.css+c.css.pagespeed.cc.0.css'"
+        "content_type: DEP_CSS"
+      "}"));
   rewrite_driver()->FinishParse();
 }
 
@@ -263,22 +268,22 @@ TEST_F(CollectDependenciesFilterTest, Chain) {
   DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
   rewrite_driver()->StartParse(kTestDomain);
   ASSERT_TRUE(tracker->read_in_info() != nullptr);
-  ASSERT_EQ(3, tracker->read_in_info()->dependency_size());
-  EXPECT_EQ(StrCat(kTestDomain, "A.a.css+c.css,Mcc.0.css.pagespeed.cf.0.css"),
-            tracker->read_in_info()->dependency(0).url());
-  EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(0).content_type());
-  EXPECT_EQ(StrCat(kTestDomain, "b.js.pagespeed.jm.0.js"),
-            tracker->read_in_info()->dependency(1).url());
-  EXPECT_EQ(DEP_JAVASCRIPT,
-            tracker->read_in_info()->dependency(1).content_type());
-  EXPECT_EQ(StrCat(kTestDomain, "d.js.pagespeed.jm.0.js"),
-            tracker->read_in_info()->dependency(2).url());
-  EXPECT_EQ(DEP_JAVASCRIPT,
-            tracker->read_in_info()->dependency(2).content_type());
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
+      "dependency {"
+        "url: 'http://test.com/A.a.css+c.css,Mcc.0.css.pagespeed.cf.0.css'"
+        "content_type: DEP_CSS"
+      "}"
+      "dependency {"
+        "url: 'http://test.com/b.js.pagespeed.jm.0.js'"
+        "content_type: DEP_JAVASCRIPT"
+      "}"
+      "dependency {"
+        "url: 'http://test.com/d.js.pagespeed.jm.0.js'"
+        "content_type: DEP_JAVASCRIPT"
+      "}"));
   rewrite_driver()->FinishParse();
 }
 
 }  // namespace
 
 }  // namespace net_instaweb
-
