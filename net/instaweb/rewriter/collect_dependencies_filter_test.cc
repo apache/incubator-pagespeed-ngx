@@ -113,6 +113,36 @@ TEST_F(CollectDependenciesFilterTest, BasicOperation) {
   rewrite_driver()->FinishParse();
 }
 
+TEST_F(CollectDependenciesFilterTest, MediaTopLevel) {
+  SetResponseWithDefaultHeaders("e.css", kContentTypeCss,
+                                " *  { display: inline-block }", 100);
+
+  rewrite_driver()->AddFilters();
+
+  const char kInput[] =
+      "<link rel=stylesheet href=a.css media=\"screen,print\">"
+      "<link rel=stylesheet href=c.css media=print>"
+      "<link rel=stylesheet href=e.css media=all>";
+
+  ValidateNoChanges("media_top_level", kInput);
+
+  // Read stuff back in from pcache.
+  ResetDriver();
+  DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
+  rewrite_driver()->StartParse(kTestDomain);
+  ASSERT_TRUE(tracker->read_in_info() != nullptr);
+  ASSERT_EQ(2, tracker->read_in_info()->dependency_size());
+  EXPECT_EQ(StrCat(kTestDomain, "a.css"),
+            tracker->read_in_info()->dependency(0).url());
+  EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(0).content_type());
+
+  EXPECT_EQ(StrCat(kTestDomain, "e.css"),
+            tracker->read_in_info()->dependency(1).url());
+  EXPECT_EQ(DEP_CSS, tracker->read_in_info()->dependency(1).content_type());
+
+  rewrite_driver()->FinishParse();
+}
+
 TEST_F(CollectDependenciesFilterTest, HandleEmptyResources) {
   // We expect failures to still be hinted (since the browser will try to fetch
   // them), but we need to be careful not to crash. (We used to).

@@ -60,7 +60,6 @@ class CollectDependenciesFilter::Context : public RewriteContext {
     CHECK(reported_ || dep_id_ == -1);
   }
 
- protected:
   bool Partition(OutputPartitions* partitions,
                  OutputResourceVector* outputs) override {
     // We will never produce output, but always want to do stuff.
@@ -69,7 +68,8 @@ class CollectDependenciesFilter::Context : public RewriteContext {
     return true;
   }
 
-  bool DefinitelyNeededToRender(const std::unique_ptr<Css::Import>& import) {
+  static bool DefinitelyNeededToRender(
+      const std::unique_ptr<Css::Import>& import) {
     StringVector media_types;
     if (!css_util::ConvertMediaQueriesToStringVector(
             import->media_queries(), &media_types)) {
@@ -78,7 +78,10 @@ class CollectDependenciesFilter::Context : public RewriteContext {
       // assume to be potentially unneeded.
       return false;
     }
+    return DefinitelyNeededToRender(media_types);
+  }
 
+  static bool DefinitelyNeededToRender(const StringVector& media_types) {
     if (media_types.empty()) {
       return true;  // @import "foo", without media specified.
     }
@@ -91,8 +94,12 @@ class CollectDependenciesFilter::Context : public RewriteContext {
     return false;
   }
 
+ protected:
   void ExtractNestedCssDependencies(const ResourcePtr& resource,
                                     CachedResult* partition) {
+    // TODO(morlovich): We should probably look inside <style> blocks like this,
+    // too?
+
     // Don't crash out on resources without anything loaded, and don't try to
     // parse error pages for CSS imports.
     if (!resource->HttpStatusOk()) {
@@ -237,9 +244,25 @@ void CollectDependenciesFilter::StartElementImpl(HtmlElement* element) {
         continue;
       }
 
-      // TODO(morlovich): This should probably pay attention to things like
-      // media= on CSS. We don't want to prioritize loading of the print
-      // stylesheet.
+      // Check media on standard stylesheets.
+      if (attributes[i].category == semantic_type::kStylesheet &&
+          element->keyword() == HtmlName::kLink &&
+          attr->keyword() == HtmlName::kHref) {
+        HtmlElement::Attribute* media =
+            element->FindAttribute(HtmlName::kMedia);
+        if (media != nullptr) {
+          if (media->DecodedValueOrNull() == nullptr) {
+            // Encoding weirdness with media attribute -> don't push
+            continue;
+          }
+          StringVector media_vector;
+          css_util::VectorizeMediaAttribute(media->DecodedValueOrNull(),
+                                            &media_vector);
+          if (!Context::DefinitelyNeededToRender(media_vector)) {
+            continue;
+          }
+        }
+      }
 
       ResourcePtr resource(
           CreateInputResourceOrInsertDebugComment(url, element));
