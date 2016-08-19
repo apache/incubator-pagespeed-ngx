@@ -464,6 +464,7 @@
       ],
       'dependencies': [
         'pagespeed_base',
+        'kernel_test_util',
         '<(DEPTH)/third_party/apr/apr.gyp:apr',
       ],
     },

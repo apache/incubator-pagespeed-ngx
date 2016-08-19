@@ -22,6 +22,7 @@
 #include "apr_network_io.h"
 #include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/system/apr_thread_compatible_pool.h"
 
 namespace net_instaweb {
@@ -33,10 +34,29 @@ TcpServerThreadForTesting::TcpServerThreadForTesting(
       ready_notify_(mutex_->NewCondvar()),
       pool_(AprCreateThreadCompatiblePool(nullptr)),
       requested_listen_port_(listen_port),
-      actual_listening_port_(0) {
-}
+      actual_listening_port_(0),
+      listen_sock_(nullptr),
+      terminating_(false) {}
 
 TcpServerThreadForTesting::~TcpServerThreadForTesting() {
+  // We want to ensure that the thread is terminated and it has accepted exactly
+  // one connection. Consider several scenarios:
+  // 1. Thread was not started before destructor is called. Then the Join()
+  //    below will fail as expected.
+  // 2. Thread was started and our mutex-guarded block happened after creation
+  //    of listen_sock_. Then we will shut down the socket so accept() in the
+  //    thread will fail and the thread will close the socket and terminate.
+  // 3. Thread was started and our mutex-guarded block happened before creation
+  //    of listen_sock_. It's extremely unlikely race as it requires the
+  //    destructor to be called right after Start(). If it ever happens, CHECK()
+  //    in the thread will fail.
+  {
+    ScopedMutex lock(mutex_.get());
+    terminating_ = true;
+    if (listen_sock_) {
+      apr_socket_shutdown(listen_sock_, APR_SHUTDOWN_READWRITE);
+    }
+  }
   this->Join();
   if (pool_ != nullptr) {
     apr_pool_destroy(pool_);
@@ -59,13 +79,27 @@ void TcpServerThreadForTesting::PickListenPortOnce(
 }
 
 void TcpServerThreadForTesting::Run() {
-  apr_socket_t* listen_sock = CreateAndBindSocket();
+  // We do not want to hold mutex during accept(), hence the local copy.
+  apr_socket_t* local_listen_sock;
+  {
+    ScopedMutex lock(mutex_.get());
+    CHECK(!terminating_);
+    local_listen_sock = listen_sock_ = CreateAndBindSocket();
+  }
   apr_socket_t* accepted_socket;
-  apr_status_t status = apr_socket_accept(&accepted_socket, listen_sock, pool_);
-  CHECK_EQ(status, APR_SUCCESS)
-      << "TcpServerThreadForTesting apr_socket_accept";
-  HandleClientConnection(accepted_socket);
-  apr_socket_close(listen_sock);
+  apr_status_t status =
+      apr_socket_accept(&accepted_socket, local_listen_sock, pool_);
+  EXPECT_EQ(APR_SUCCESS, status)
+      << "TcpServerThreadForTesting: "
+         "apr_socket_accept failed (did not receive a connection?)";
+  if (status == APR_SUCCESS) {
+    HandleClientConnection(accepted_socket);
+  }
+  {
+    ScopedMutex lock(mutex_.get());
+    apr_socket_close(listen_sock_);
+    listen_sock_ = nullptr;
+  }
 }
 
 apr_port_t TcpServerThreadForTesting::GetListeningPort() {
@@ -114,11 +148,8 @@ apr_socket_t* TcpServerThreadForTesting::CreateAndBindSocket() {
   apr_port_t port = requested_listen_port_;
   CreateAndBindSocket(pool_, &sock, &port);
 
-  {
-    ScopedMutex lock(mutex_.get());
-    actual_listening_port_ = port;
-    ready_notify_->Broadcast();
-  }
+  actual_listening_port_ = port;
+  ready_notify_->Broadcast();
 
   return sock;
 }

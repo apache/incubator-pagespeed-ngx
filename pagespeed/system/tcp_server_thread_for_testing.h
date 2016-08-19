@@ -41,7 +41,7 @@ class TcpServerThreadForTesting : public ThreadSystem::Thread {
   // The socket isn't actually created until the thread is Start()ed.
   TcpServerThreadForTesting(apr_port_t listen_port, StringPiece thread_name,
                             ThreadSystem* thread_system);
-  // Calls this->Join() which will hang if a connection has not been handled.
+  // Ensure that server has received a connection and terminate the thread.
   virtual ~TcpServerThreadForTesting();
 
   // Wait for thread to successfully start listening and then return the actual
@@ -62,7 +62,7 @@ class TcpServerThreadForTesting : public ThreadSystem::Thread {
 
   // Returns a socket bound to requested_listen_port_ if non-zero, otherwise
   // whatever the system picked. Updates actual_listening_port_.
-  apr_socket_t* CreateAndBindSocket();
+  apr_socket_t* CreateAndBindSocket() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
   // Static alternative of CreateAndBindSocket(), used in PickListenPortOnce.
   static void CreateAndBindSocket(apr_pool_t* apr_pool, apr_socket_t** socket,
@@ -72,10 +72,12 @@ class TcpServerThreadForTesting : public ThreadSystem::Thread {
   void Run() override;
 
   scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
-  scoped_ptr<ThreadSystem::Condvar> ready_notify_;
+  scoped_ptr<ThreadSystem::Condvar> ready_notify_ GUARDED_BY(mutex_);
   apr_pool_t* pool_;
   const apr_port_t requested_listen_port_;
   apr_port_t actual_listening_port_ GUARDED_BY(mutex_);
+  apr_socket_t* listen_sock_ GUARDED_BY(mutex_);
+  bool terminating_ GUARDED_BY(mutex_);
 };
 
 }  // namespace net_instaweb
