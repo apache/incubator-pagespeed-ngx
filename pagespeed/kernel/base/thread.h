@@ -78,6 +78,7 @@ class ThreadSystem::Thread {
 
   ThreadFlags flags_;
   bool started_;
+  bool join_called_;
 
   DISALLOW_COPY_AND_ASSIGN(Thread);
 };
