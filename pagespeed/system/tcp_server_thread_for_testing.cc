@@ -36,9 +36,10 @@ TcpServerThreadForTesting::TcpServerThreadForTesting(
       requested_listen_port_(listen_port),
       actual_listening_port_(0),
       listen_sock_(nullptr),
-      terminating_(false) {}
+      terminating_(false),
+      is_shut_down_(false) {}
 
-TcpServerThreadForTesting::~TcpServerThreadForTesting() {
+void TcpServerThreadForTesting::ShutDown() {
   // We want to ensure that the thread is terminated and it has accepted exactly
   // one connection. Consider several scenarios:
   // 1. Thread was not started before destructor is called. Then the Join()
@@ -60,7 +61,14 @@ TcpServerThreadForTesting::~TcpServerThreadForTesting() {
   this->Join();
   if (pool_ != nullptr) {
     apr_pool_destroy(pool_);
+    pool_ = nullptr;
   }
+  is_shut_down_ = true;
+}
+
+TcpServerThreadForTesting::~TcpServerThreadForTesting() {
+  CHECK(is_shut_down_)
+      << "TcpServerThreadForTesting::ShutDown() was not called";
 }
 
 // static

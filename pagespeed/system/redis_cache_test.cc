@@ -154,6 +154,8 @@ class RedisGetRespondingServerThread : public TcpServerThreadForTesting {
       : TcpServerThreadForTesting(listen_port, "redis_get_answering_server",
                                   thread_system) {}
 
+  virtual ~RedisGetRespondingServerThread() { ShutDown(); }
+
  private:
   void HandleClientConnection(apr_socket_t* sock) override {
     // See http://redis.io/topics/protocol for details. Request is an array of

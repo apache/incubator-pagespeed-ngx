@@ -972,7 +972,7 @@ class SerfUrlAsyncFetcherTestFakeWebServer : public SerfUrlAsyncFetcherTest {
                         ThreadSystem* thread_system)
         : TcpServerThreadForTesting(desired_listen_port_, "fake_webserver",
                                     thread_system) {}
-    virtual ~FakeWebServerThread() {}
+    virtual ~FakeWebServerThread() { ShutDown(); }
 
     void HandleClientConnection(apr_socket_t* sock) override {
       char request_buffer[kStackBufferSize];

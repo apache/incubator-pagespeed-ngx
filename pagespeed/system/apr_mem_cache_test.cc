@@ -543,7 +543,8 @@ class FakeMemcacheServerThread : public TcpServerThreadForTesting {
                            ThreadSystem* thread_system)
       : TcpServerThreadForTesting(fake_memcache_listen_port, "fake_memcache",
                                   thread_system) {}
-  virtual ~FakeMemcacheServerThread() {}
+
+  virtual ~FakeMemcacheServerThread() { ShutDown(); }
 
  private:
   void HandleClientConnection(apr_socket_t* sock) override {

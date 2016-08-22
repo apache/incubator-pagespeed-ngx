@@ -41,7 +41,17 @@ class TcpServerThreadForTesting : public ThreadSystem::Thread {
   // The socket isn't actually created until the thread is Start()ed.
   TcpServerThreadForTesting(apr_port_t listen_port, StringPiece thread_name,
                             ThreadSystem* thread_system);
-  // Ensure that server has received a connection and terminate the thread.
+
+  // Blocks until the server thread has exited. If the server has not received a
+  // connection yet, aborts accept() call, causing the thread to terminate and
+  // log an error. This function should be called in subclass' destructor.
+  //
+  // It cannot be called in ~TcpServerThreadForTesting() because that
+  // results in race over vptr between destructor (which modifies vptr
+  // to TcpServerThreadForTesting before executing body) and call to
+  // HandleClientConnection() in the server thread.
+  void ShutDown();
+
   virtual ~TcpServerThreadForTesting();
 
   // Wait for thread to successfully start listening and then return the actual
@@ -78,6 +88,7 @@ class TcpServerThreadForTesting : public ThreadSystem::Thread {
   apr_port_t actual_listening_port_ GUARDED_BY(mutex_);
   apr_socket_t* listen_sock_ GUARDED_BY(mutex_);
   bool terminating_ GUARDED_BY(mutex_);
+  bool is_shut_down_;
 };
 
 }  // namespace net_instaweb
