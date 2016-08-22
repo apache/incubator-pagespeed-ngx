@@ -574,46 +574,69 @@ if [ $statistics_enabled = "1" ]; then
   URL=""
 fi
 
+# The prioritize_critical_css test is split into two functions so
+# nginx_system_test.sh can verify that beacon data is preserved across restarts
+# via shm-cache checkpointing.  Specifically, the nginx system test first does a
+# run of test_prioritize_critical_css, restarts nginx, and then runs
+# test_prioritize_critical_css_final.  Because beacon responses are saved in the
+# metadata cache this can only pass if the metadata cache is being persisted
+# across restarts.
+#
+# That means this test is run twice when testing, both here and then again later
+# on either side of a restart, but it's pretty fast so that's not a problem.
+function test_prioritize_critical_css() {
+  if [ "$SECONDARY_HOSTNAME" != "" ]; then
+    # Test critical CSS beacon injection, beacon return, and computation.  This
+    # requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
+    # NOTE: must occur after cache flush, which is why it's in this embedded
+    # block.  The flush removes pre-existing beacon results from the pcache.
+    test_filter prioritize_critical_css
+    fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
+    check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
+    CALL_PAT=".*criticalCssBeaconInit("
+    SKIP_ARG="[^,]*,"
+    CAPTURE_ARG="'\([^']*\)'.*"
+    BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+    ESCAPED_URL=$(sed -n \
+      "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+    OPTIONS_HASH=$(sed -n \
+      "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
+    NONCE=$(sed -n \
+      "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" \
+      $FETCH_FILE)
+    BEACON_URL="http://${HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
+    BEACON_DATA="oh=${OPTIONS_HASH}&n=${NONCE}&cs=.big,.blue,.bold,.foo"
+
+    OUT=$($CURL -sSi -d "$BEACON_DATA" "$BEACON_URL")
+    check_from "$OUT" grep '^HTTP/1.1 204'
+
+    test_prioritize_critical_css_final
+  fi
+}
+
+function test_prioritize_critical_css_final() {
+  if [ "$SECONDARY_HOSTNAME" != "" ]; then
+    # Now make sure we see the correct critical css rules.
+    fetch_until $URL \
+      'grep -c <style>[.]blue{[^}]*}</style>' 1
+    fetch_until $URL \
+      'grep -c <style>[.]big{[^}]*}</style>' 1
+    fetch_until $URL \
+      'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
+    fetch_until -save $URL \
+      'grep -c <style>[.]foo{[^}]*}</style>' 1
+    # The last one should also have the other 3, too.
+    check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+    check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+    check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
+      $FETCH_UNTIL_OUTFILE` = 1 ]
+  fi
+}
+
+start_test prioritize critical css
+test_prioritize_critical_css
+
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
-  # Test critical CSS beacon injection, beacon return, and computation.  This
-  # requires UseBeaconResultsInFilters() to be true in rewrite_driver_factory.
-  # NOTE: must occur after cache flush, which is why it's in this embedded
-  # block.  The flush removes pre-existing beacon results from the pcache.
-  test_filter prioritize_critical_css
-  fetch_until -save $URL 'fgrep -c pagespeed.criticalCssBeaconInit' 1
-  check [ $(fgrep -o ".very_large_class_name_" $FETCH_FILE | wc -l) -eq 36 ]
-  CALL_PAT=".*criticalCssBeaconInit("
-  SKIP_ARG="[^,]*,"
-  CAPTURE_ARG="'\([^']*\)'.*"
-  BEACON_PATH=$(sed -n "s/${CALL_PAT}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-  ESCAPED_URL=$( \
-    sed -n "s/${CALL_PAT}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-  OPTIONS_HASH=$( \
-    sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" $FETCH_FILE)
-  NONCE=$( \
-    sed -n "s/${CALL_PAT}${SKIP_ARG}${SKIP_ARG}${SKIP_ARG}${CAPTURE_ARG}/\1/p" \
-    $FETCH_FILE)
-  BEACON_URL="http://${HOSTNAME}${BEACON_PATH}?url=${ESCAPED_URL}"
-  BEACON_DATA="oh=${OPTIONS_HASH}&n=${NONCE}&cs=.big,.blue,.bold,.foo"
-
-  OUT=$($CURL -sSi -d "$BEACON_DATA" "$BEACON_URL")
-  check_from "$OUT" grep '^HTTP/1.1 204'
-
-  # Now make sure we see the correct critical css rules.
-  fetch_until $URL \
-    'grep -c <style>[.]blue{[^}]*}</style>' 1
-  fetch_until $URL \
-    'grep -c <style>[.]big{[^}]*}</style>' 1
-  fetch_until $URL \
-    'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
-  fetch_until -save $URL \
-    'grep -c <style>[.]foo{[^}]*}</style>' 1
-  # The last one should also have the other 3, too.
-  check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
-  check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
-  check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
-    $FETCH_UNTIL_OUTFILE` = 1 ]
-
   start_test query params dont turn on core filters
   # See https://github.com/pagespeed/ngx_pagespeed/issues/1190
   URL="debug-filters.example.com/mod_pagespeed_example/"

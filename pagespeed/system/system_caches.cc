@@ -540,42 +540,24 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
       // InputInfo in ../rewriter/cached_result.proto).
       server_context->set_filesystem_metadata_cache(shm_metadata_cache);
     } else {
-      // We can either write through to the file cache or not.  Not writing
-      // through is nice in that we can save a lot of disk writes, but if
-      // someone restarts the server they have to repeat all cached
-      // optimizations.  If someone has explicitly configured a shared memory
-      // cache, assume they've considered the tradeoffs and want to avoid the
-      // disk writes.  Otherwise, if they're just using a shared memory cache
-      // because it's on by default, assume having to reoptimize everything
-      // would be worse.
-      // TODO(jefftk): add support for checkpointing the state of the shm cache
-      // which would remove the need to write through to the file cache.
-      MetadataShmCacheInfo* default_cache_info =
-          LookupShmMetadataCache(kDefaultSharedMemoryPath);
-      if (default_cache_info != NULL &&
-          shm_metadata_cache == default_cache_info->cache_to_use) {
-        // They're running the SHM cache because it's the default.  Go L1/L2 to
-        // be conservative.
-        metadata_l1 = shm_metadata_cache;
-        metadata_l2 = file_cache;
-      } else {
-        // They've explicitly configured an SHM cache; the file cache will only
-        // be used as a fallback for very large objects.
-        FallbackCache* metadata_fallback =
-            new FallbackCache(
-                shm_metadata_cache, file_cache,
-                shm_metadata_cache_info->cache_backend->MaxValueSize(),
-                factory_->message_handler());
-        // SharedMemCache uses hash-produced fixed size keys internally, so its
-        // value size limit isn't affected by key length changes.
-        metadata_fallback->set_account_for_key_size(false);
-        server_context->DeleteCacheOnDestruction(metadata_fallback);
-        metadata_l2 = metadata_fallback;
+      // For persistence across restarts, we checkpoint the shm_metadata_cache
+      // to disk every so often, and restore it on restart. This means we don't
+      // need to write most objects through to the file cache, just ones too big
+      // to store in the SHM cache.
+      FallbackCache* metadata_fallback =
+          new FallbackCache(
+              shm_metadata_cache, file_cache,
+              shm_metadata_cache_info->cache_backend->MaxValueSize(),
+              factory_->message_handler());
+      // SharedMemCache uses hash-produced fixed size keys internally, so its
+      // value size limit isn't affected by key length changes.
+      metadata_fallback->set_account_for_key_size(false);
+      server_context->DeleteCacheOnDestruction(metadata_fallback);
+      metadata_l2 = metadata_fallback;
 
-        // TODO(jmarantz): do we really want to use the shm-cache as a
-        // pcache?  The potential for inconsistent data across a
-        // multi-server setup seems like it could give confusing results.
-      }
+      // TODO(jmarantz): do we really want to use the shm-cache as a
+      // pcache?  The potential for inconsistent data across a
+      // multi-server setup seems like it could give confusing results.
     }
   } else {
     l1_size_limit = config->lru_cache_byte_limit();
@@ -631,9 +613,40 @@ void SystemCaches::RegisterConfig(SystemRewriteOptions* config) {
 }
 
 void SystemCaches::RootInit() {
+  const SystemRewriteOptions* global_options =
+      SystemRewriteOptions::DynamicCast(factory_->default_options());
   for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
            e = metadata_shm_caches_.end(); p != e; ++p) {
     MetadataShmCacheInfo* cache_info = p->second;
+
+    // If we're using the default shared memory cache and different vhosts have
+    // set the FileCachePath differently, then where should we store the
+    // snapshots?  There's no good answer here, because the FileCachePath is the
+    // only path like this we require people to specify.  To handle this,
+    // SetPathForSnapshots expects to be called multiple times and uses the file
+    // cache matching its configured path, or if none match then whichever value
+    // comes first alphabetically.
+    //
+    // We don't need separate directories here for explicit and default shm
+    // caches, because if you set an explicit shm cache for a file cache path we
+    // don't create a default one for vhosts using that path.
+    //
+    // Note: we couldn't set the FileCache when constructing the shm cache
+    // because at the time we parsed the directive to construct the shm cache
+    // we might not have seen the file cache directive yet.
+    //
+    // Tell the shm cache about file caches and let it pick one to use for
+    // checkpointing.
+    for (PathCacheMap::iterator q = path_cache_map_.begin(),
+             f = path_cache_map_.end(); q != f; ++q) {
+      FileCache* file_cache = q->second->file_cache_backend();
+      // It's fine to call RegisterSnapshotFileCache multiple times: it
+      // considers all the inputs and picks the best one.
+      cache_info->cache_backend->RegisterSnapshotFileCache(
+          file_cache,
+          global_options->shm_metadata_cache_checkpoint_interval_sec());
+    }
+
     if (cache_info->cache_backend->Initialize()) {
       cache_info->initialized = true;
       cache_info->cache_to_use =

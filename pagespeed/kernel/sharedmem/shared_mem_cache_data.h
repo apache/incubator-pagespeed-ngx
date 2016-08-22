@@ -66,6 +66,7 @@ struct SectorStats {
   int64 num_put_spins;  // # of times writers had to sleep behind readers
   int64 num_get;    // # of calls to get
   int64 num_get_hit;
+  int64 last_checkpoint_ms;  // When this sector was last checkpointed to disk.
 
   // Current state stats --- updated by SharedMemCacheData
   int64 used_entries;

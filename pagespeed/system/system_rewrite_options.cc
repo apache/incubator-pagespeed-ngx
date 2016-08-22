@@ -254,6 +254,13 @@ void SystemRewriteOptions::AddProperties() {
                     "CreateSharedMemoryMetadataCache. "
                     "Set to 0 to turn off the default shared memory cache.",
                     false);
+  AddSystemProperty(60 * 5, /* 5 minutes in seconds */
+                    &SystemRewriteOptions::
+                    shm_metadata_cache_checkpoint_interval_sec_,
+                    "smci", "ShmMetadataCacheCheckpointIntervalSec",
+                    kProcessScopeStrict,
+                    "How often to checkpoint the shared memory metadata cache "
+                    "to disk.  Set to 0 to turn off checkpointing.", true);
   AddSystemProperty("",
                     &SystemRewriteOptions::purge_method_,
                     "pm", "PurgeMethod", kServerScope,

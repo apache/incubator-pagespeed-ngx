@@ -21,6 +21,7 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
+#include "pagespeed/kernel/base/mem_file_system.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -28,6 +29,8 @@
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_cache.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_test_base.h"
+#include "pagespeed/kernel/thread/slow_worker.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 
 namespace net_instaweb {
 
@@ -53,6 +56,8 @@ class SharedMemCacheTestBase : public CacheTestBase {
   void TestConflict();
   void TestEvict();
   void TestSnapshot();
+  void TestRegisterSnapshotFileCache();
+  void TestCheckpointAndRestore();
 
   void ResetCache();
 
@@ -81,6 +86,42 @@ class SharedMemCacheTestBase : public CacheTestBase {
   bool sanity_checks_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemCacheTestBase);
+};
+
+class FileCacheTestWrapper {
+ public:
+  FileCacheTestWrapper(const GoogleString& path,
+                       ThreadSystem* thread_system,
+                       Timer* timer,
+                       MessageHandler* handler) {
+    filesystem_.reset(new MemFileSystem(thread_system, timer));
+    worker_.reset(new SlowWorker("slow worker", thread_system));
+    stats_.reset(new SimpleStats(thread_system));
+    FileCache::InitStats(stats_.get());
+    hasher_.reset(new MD5Hasher());
+    file_cache_.reset(new FileCache(
+        path, filesystem_.get(), thread_system, worker_.get(),
+        new FileCache::CachePolicy(timer, hasher_.get(),
+                                   20*60*1000,  // Clean every 20min.
+                                   10*1024*1024,  // 10Mb max size.
+                                   1024*1024),  // Allow 1M files.
+        stats_.get(), handler));
+  }
+  ~FileCacheTestWrapper() {}
+
+  FileCache* file_cache() {
+    return file_cache_.get();
+  }
+  MemFileSystem* filesystem() {
+    return filesystem_.get();
+  }
+
+ private:
+  scoped_ptr<MemFileSystem> filesystem_;
+  scoped_ptr<SlowWorker> worker_;
+  scoped_ptr<SimpleStats> stats_;
+  scoped_ptr<MD5Hasher> hasher_;
+  scoped_ptr<FileCache> file_cache_;
 };
 
 template<typename ConcreteTestEnv>
@@ -121,9 +162,19 @@ TYPED_TEST_P(SharedMemCacheTestTemplate, TestSnapshot) {
   SharedMemCacheTestBase::TestSnapshot();
 }
 
+TYPED_TEST_P(SharedMemCacheTestTemplate, TestRegisterSnapshotFileCache) {
+  SharedMemCacheTestBase::TestRegisterSnapshotFileCache();
+}
+
+TYPED_TEST_P(SharedMemCacheTestTemplate, TestCheckpointAndRestore) {
+  SharedMemCacheTestBase::TestCheckpointAndRestore();
+}
+
 REGISTER_TYPED_TEST_CASE_P(SharedMemCacheTestTemplate, TestBasic, TestReinsert,
                            TestReplacement, TestReaderWriter, TestConflict,
-                           TestEvict, TestSnapshot);
+                           TestEvict, TestSnapshot,
+                           TestRegisterSnapshotFileCache,
+                           TestCheckpointAndRestore);
 
 }  // namespace net_instaweb
 

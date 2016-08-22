@@ -19,6 +19,9 @@ syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
+// If you need to make backwards incompatible changes to this proto, increase
+// kSnapshotVersion in shared_mem_cache.cc.
+
 package net_instaweb;
 
 // NEXT ID: 4

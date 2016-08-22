@@ -49,7 +49,7 @@ struct Sector<kBlockSize>::MemLayout {
     // Check out alignment assumptions -- everything must be of a size
     // that's multiple of 8. The exact sizes don't matter too much, but
     // we check it anyway to avoid surprises.
-    CHECK_EQ(96u, sizeof(SectorHeader));
+    CHECK_EQ(104u, sizeof(SectorHeader));
     CHECK_EQ(48u, sizeof(CacheEntry));
 
     header_bytes = AlignTo(8, sizeof(SectorHeader) + mutex_size);
@@ -251,6 +251,7 @@ SectorStats::SectorStats()
       num_put_spins(0),
       num_get(0),
       num_get_hit(0),
+      last_checkpoint_ms(0),
       used_entries(0),
       used_blocks(0) {
 }

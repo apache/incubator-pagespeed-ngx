@@ -280,6 +280,9 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_default_shared_memory_cache_kb(int64 x) {
     set_option(x, &default_shared_memory_cache_kb_);
   }
+  int shm_metadata_cache_checkpoint_interval_sec() const {
+    return shm_metadata_cache_checkpoint_interval_sec_.value();
+  }
   void set_purge_method(const GoogleString& x) {
     set_option(x, &purge_method_);
   }
@@ -499,6 +502,7 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<int64> ipro_max_response_bytes_;
   Option<int64> ipro_max_concurrent_recordings_;
   Option<int64> default_shared_memory_cache_kb_;
+  Option<int> shm_metadata_cache_checkpoint_interval_sec_;
   Option<GoogleString> purge_method_;
 
   StaticAssetCDNOptions static_assets_to_cdn_;

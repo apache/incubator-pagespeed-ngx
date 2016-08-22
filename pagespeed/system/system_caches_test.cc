@@ -948,9 +948,8 @@ TEST_F(SystemCachesTest, ShmShare) {
 
 TEST_F(SystemCachesTest, ShmDefault) {
   // Unless a cache is explicitly defined or the default is disabled with
-  // set_default_shared_memory_cache_kb(0), use the default.  Unlike explicitly
-  // configured shared memory caches, default ones write through to an L2 (file
-  // or memcache).
+  // set_default_shared_memory_cache_kb(0), use the default.  Shared memory
+  // caches only write through to memcache, which we're not using here.
   //
   // [0] and [1] share the default, [2] has one separately configured.  All
   // three have different file cache paths.
@@ -979,11 +978,11 @@ TEST_F(SystemCachesTest, ShmDefault) {
   for (int i = 0; i < 3; ++i) {
     servers.push_back(SetupServerContext(configs[i]));
   }
-  EXPECT_STREQ(Compressed(WriteThrough(Stats("shm_cache", "SharedMemCache<64>"),
-                                       FileCacheWithStats())),
+  EXPECT_STREQ(Compressed(Fallback(Stats("shm_cache", "SharedMemCache<64>"),
+                                   FileCacheWithStats())),
                servers[0]->metadata_cache()->Name());
-  EXPECT_STREQ(Compressed(WriteThrough(Stats("shm_cache", "SharedMemCache<64>"),
-                                       FileCacheWithStats())),
+  EXPECT_STREQ(Compressed(Fallback(Stats("shm_cache", "SharedMemCache<64>"),
+                                   FileCacheWithStats())),
                servers[1]->metadata_cache()->Name());
   EXPECT_STREQ(Compressed(Fallback(Stats("shm_cache", "SharedMemCache<64>"),
                                    FileCacheWithStats())),
