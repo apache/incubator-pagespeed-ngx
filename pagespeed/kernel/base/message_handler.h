@@ -138,13 +138,13 @@ class MessageHandler {
 
 // Macros for logging messages.
 #define PS_LOG_INFO(handler, ...) \
-    handler->Info(__FILE__, __LINE__, __VA_ARGS__)
+    (handler)->Info(__FILE__, __LINE__, __VA_ARGS__)
 #define PS_LOG_WARN(handler, ...) \
-    handler->Warning(__FILE__, __LINE__, __VA_ARGS__)
+    (handler)->Warning(__FILE__, __LINE__, __VA_ARGS__)
 #define PS_LOG_ERROR(handler, ...) \
-    handler->Error(__FILE__, __LINE__, __VA_ARGS__)
+    (handler)->Error(__FILE__, __LINE__, __VA_ARGS__)
 #define PS_LOG_FATAL(handler, ...) \
-    handler->FatalError(__FILE__, __LINE__, __VA_ARGS__)
+    (handler)->FatalError(__FILE__, __LINE__, __VA_ARGS__)
 
 #ifndef NDEBUG
 #define PS_LOG_DFATAL(handler, ...) \
