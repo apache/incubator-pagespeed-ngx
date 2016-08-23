@@ -63,6 +63,12 @@ http {
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
   pagespeed BlockingRewriteKey psatest;
 
+  # We need to checkpoint more frequently than usual so that our checkpointing
+  # test will definitly have seen one of these intervals and so not be flaky.
+  # This needs to have a 1s interval because the checkpointing test has a 2s
+  # sleep.
+  pagespeed ShmMetadataCacheCheckpointIntervalSec 1;
+
   # CriticalImagesBeaconEnabled is now on by default, but we disable in testing.
   # With this option enabled, the inline image system test will currently fail.
   # When critical image beaconing is enabled, only critical images are inlined.
