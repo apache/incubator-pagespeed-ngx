@@ -1579,6 +1579,7 @@ ModPagespeedMessagesDomains Allow localhost
 #IPRO_PRESERVE_LOADTEST ModPagespeedJsPreserveURLS on
 #LOADTEST
 #MEMCACHE_LOADTEST   ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
+#RED_LOADTEST      ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
 #PURGING_LOADTEST    ModPagespeedEnableCachePurge on
 #PURGING_LOADTEST    ModPagespeedCompressMetadataCache on
 #LOADTEST   ModPagespeedFileCachePath       "@@MOD_PAGESPEED_CACHE@@_load_test"

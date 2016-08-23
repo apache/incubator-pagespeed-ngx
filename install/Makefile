@@ -276,6 +276,14 @@ else
   MEMCACHE_LOADTEST_TEST_SED_PATTERN=^\#MEMCACHE_LOADTEST.*\n
 endif
 
+ifeq ($(RED_LOADTEST_TEST),1)
+  # remove prefix
+  RED_LOADTEST_TEST_SED_PATTERN=^\#RED_LOADTEST
+else
+  # remove whole line
+  RED_LOADTEST_TEST_SED_PATTERN=^\#RED_LOADTEST.*\n
+endif
+
 ifeq ($(PURGING_LOADTEST_TEST),1)
   # remove prefix
   PURGING_LOADTEST_TEST_SED_PATTERN=^\#PURGING_LOADTEST
@@ -417,6 +425,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(REDIS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(IPRO_PRESERVE_LOADTEST_TEST_SED_PATTERN)@@" \
 	    -e "s@$(MEMCACHE_LOADTEST_TEST_SED_PATTERN)@@" \
+	    -e "s@$(RED_LOADTEST_TEST_SED_PATTERN)@@" \
 	    -e "s@$(PURGING_LOADTEST_TEST_SED_PATTERN)@@" \
 	    -e "s@$(IUR_LOADTEST_TEST_SED_PATTERN)@@" \
 	    -e "s@$(DOMAIN_AUTH_SED_PATTERN)@@" \
@@ -537,6 +546,7 @@ apache_install_conf :
 	    $(OPT_REDIS_TEST) \
 	    $(OPT_IPRO_PRESERVE_LOADTEST_TEST) \
 	    $(OPT_MEMCACHE_LOADTEST_TEST) \
+	    $(OPT_RED_LOADTEST_TEST) \
 	    $(OPT_PURGING_LOADTEST_TEST) \
 	    $(OPT_IUR_LOADTEST_TEST) \
 	    $(OPT_SPELING_TEST) \
@@ -559,6 +569,7 @@ apache_install_conf :
 	    $(OPT_REDIS_TEST) \
 	    $(OPT_IPRO_PRESERVE_LOADTEST_TEST) \
 	    $(OPT_MEMCACHE_LOADTEST_TEST) \
+	    $(OPT_RED_LOADTEST_TEST) \
 	    $(OPT_PURGING_LOADTEST_TEST) \
 	    $(OPT_IUR_LOADTEST_TEST) \
 	    $(OPT_SPELING_TEST) \

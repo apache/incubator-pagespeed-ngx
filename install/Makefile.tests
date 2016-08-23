@@ -10,6 +10,7 @@
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_MEMCACHED_TEST,
 #                       OPT_MEMCACHE_LOADTEST_TEST,
 #                       OPT_REDIS_TEST,
+#                       OPT_RED_LOADTEST_TEST,
 #                       OPT_PURGING_LOADTEST_TEST,
 #                       OPT_IUR_LOADTEST_TEST, OPT_IPRO_PRESERVE_LOADTEST_TEST,
 #                       OPT_HTTPS_TEST,
