@@ -124,7 +124,7 @@ char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
 // (potentially) longer string to nginx and want it to take ownership.
 ngx_int_t string_piece_to_buffer_chain(
     ngx_pool_t* pool, StringPiece sp, ngx_chain_t** link_ptr,
-    bool send_last_buf) {
+    bool send_last_buf, bool send_flush) {
   // Below, *link_ptr will be NULL if we're starting the chain, and the head
   // chain link.
   *link_ptr = NULL;
@@ -198,6 +198,9 @@ ngx_int_t string_piece_to_buffer_chain(
 
 
   CHECK(tail_link != NULL);
+  if (send_flush) {
+    tail_link->buf->flush = true;
+  }
   if (send_last_buf) {
     tail_link->buf->last_buf = true;
   }
@@ -881,14 +884,14 @@ char* ps_configure(ngx_conf_t* cf,
         cfg_m->driver_factory->thread_system());
   }
 
-  bool process_script_variables = dynamic_cast<NgxRewriteDriverFactory*>(
-      cfg_m->driver_factory)->process_script_variables();
-
-  if (process_script_variables) {
+  ProcessScriptVariablesMode script_mode =
+      dynamic_cast<NgxRewriteDriverFactory*>(cfg_m->driver_factory)
+          ->process_script_variables();
+  if (script_mode != ProcessScriptVariablesMode::kOff) {
     // To be able to use '$', we map '$ps_dollar' to '$' via a script variable.
     ngx_str_t name = ngx_string("ps_dollar");
-    ngx_http_variable_t* var = ngx_http_add_variable(
-        cf, &name, NGX_HTTP_VAR_CHANGEABLE);
+    ngx_http_variable_t* var =
+        ngx_http_add_variable(cf, &name, NGX_HTTP_VAR_CHANGEABLE);
 
     if (var == NULL) {
       return const_cast<char*>(
@@ -899,7 +902,7 @@ char* ps_configure(ngx_conf_t* cf,
 
   const char* status = (*options)->ParseAndSetOptions(
       args, n_args, cf->pool, handler, cfg_m->driver_factory, option_scope, cf,
-      process_script_variables);
+      script_mode);
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
@@ -1875,6 +1878,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     ctx->r = r;
     ctx->html_rewrite = false;
     ctx->in_place = false;
+    ctx->follow_flushes = options->follow_flushes();
     ctx->preserve_caching_headers = kDontPreserveHeaders;
 
     // See build_context_for_request() in mod_instaweb.cc
@@ -2000,7 +2004,7 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
 
   }
 
-  if (html_rewrite) {
+  if (html_rewrite && options->IsAllowed(url.Spec())) {
     ps_create_base_fetch(url.Spec(), ctx, request_context,
                          request_headers.release(), kHtmlTransform, options);
     // Do not store driver in request_context, it's not safe.
@@ -2095,7 +2099,6 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
   int last_buf = 0;
   for (cur = in; cur != NULL; cur = cur->next) {
     last_buf = cur->buf->last_buf;
-
     // Buffers are not really the last buffer until they've been through
     // pagespeed.
     cur->buf->last_buf = 0;
@@ -2120,6 +2123,19 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
         }
       }
     }
+    if (cur->buf->flush && ctx->follow_flushes) {
+      // Calling ctx->proxy_fetch->Flush(cfg_s->handler) will be a no-op here,
+      // unless we have follow_flushes or flush_html enabled. Note that PSOL
+      // might aggregate multiple flushes into 1, and actually flush a little bit
+      // later due to html parser state and earlier scheduled operations.
+      // Also, unless we also set the flush flag on the nginx buffers we won't
+      // actually flush.
+      // Note that too many flushes could harm optimization over larger html
+      // fragments as PSOL gets less context to work with, e.g. it can't combine
+      // two css files if a flush happens in between.
+      ctx->proxy_fetch->Flush(cfg_s->handler);
+    }
+
     // We're done with buffers as we pass them through, so mark them as sent as
     // we go.
     cur->buf->pos = cur->buf->last;
@@ -2128,9 +2144,6 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
   if (last_buf) {
     ctx->proxy_fetch->Done(true /* success */);
     ctx->proxy_fetch = NULL;  // ProxyFetch deletes itself on Done().
-  } else {
-    // TODO(jefftk): Decide whether Flush() is warranted here.
-    ctx->proxy_fetch->Flush(cfg_s->handler);
   }
 }
 
@@ -2583,7 +2596,7 @@ ngx_int_t send_out_headers_and_body(
   // Send the body.
   ngx_chain_t* out;
   rc = string_piece_to_buffer_chain(
-      r->pool, output, &out, true /* send_last_buf */);
+      r->pool, output, &out, true /* send_last_buf */, false);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
   }
@@ -3014,7 +3027,7 @@ ngx_int_t ps_preaccess_handler(ngx_http_request_t* r) {
 ngx_int_t ps_etag_filter_init(ngx_conf_t* cf) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
-  if (cfg_m->driver_factory != NULL) {
+  if (cfg_m != NULL && cfg_m->driver_factory != NULL) {
     ngx_http_ef_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ps_etag_header_filter;
   }
@@ -3096,6 +3109,11 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
 
+  // See https://github.com/pagespeed/ngx_pagespeed/issues/1220
+  if (cfg_m == NULL) {
+    return NGX_OK;
+  }
+
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
   ngx_http_core_srv_conf_t** cscfp = static_cast<ngx_http_core_srv_conf_t**>(
@@ -3163,7 +3181,7 @@ void ps_exit_child_process(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
   NgxBaseFetch::Terminate();
-  if (cfg_m->driver_factory != NULL) {
+  if (cfg_m != NULL && cfg_m->driver_factory != NULL) {
     cfg_m->driver_factory->ShutDown();
   }
 }
@@ -3173,7 +3191,7 @@ void ps_exit_child_process(ngx_cycle_t* cycle) {
 ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
-  if (cfg_m->driver_factory == NULL) {
+  if (cfg_m == NULL || cfg_m->driver_factory == NULL) {
     return NGX_OK;
   }
 

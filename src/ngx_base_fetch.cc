@@ -53,6 +53,7 @@ NgxBaseFetch::NgxBaseFetch(StringPiece url,
       request_(r),
       server_context_(server_context),
       options_(options),
+      need_flush_(false),
       done_called_(false),
       last_buf_sent_(false),
       references_(2),
@@ -227,8 +228,11 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
     return NGX_AGAIN;
   }
 
-  int rc = string_piece_to_buffer_chain(
-      request_->pool, buffer_, link_ptr, done_called_ /* send_last_buf */);
+  int rc = string_piece_to_buffer_chain(request_->pool, buffer_, link_ptr,
+                                        done_called_ /* send_last_buf */,
+                                        need_flush_);
+  need_flush_ = false;
+
   if (rc != NGX_OK) {
     return rc;
   }
@@ -313,6 +317,9 @@ void NgxBaseFetch::HandleHeadersComplete() {
 }
 
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
+  Lock();
+  need_flush_ = true;
+  Unlock();
   RequestCollection(kFlush);  // A new part of the response body is available
   return true;
 }

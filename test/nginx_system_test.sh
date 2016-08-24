@@ -622,15 +622,17 @@ fire_ab_load
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
 check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
+
 # Wait for the new worker process with the new configuration to get ready, or
 # else the sudden reset of the shared mem statistics/cache might catch upcoming
 # tests unaware.
-while [ $(scrape_stat image_rewrite_total_original_bytes) -gt 0 ]
-do
+function wait_for_new_worker() {
+  while [ $(scrape_stat image_rewrite_total_original_bytes) -gt 0 ]; do
     echo "Waiting for new worker to get ready..."
     sleep .1
-done
-
+  done
+}
+wait_for_new_worker
 check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
   -O /dev/null
 if [ "$AB_PID" != "0" ]; then
@@ -645,6 +647,40 @@ check grep "Writing a byte to a pipe to tell the old controller to exit." \
   $ERROR_LOG
 check grep "Root process is starting a new controller; shutting down." \
   $ERROR_LOG
+
+start_test "Shared memory checkpointing"
+
+# We do two tests here:
+# 1. Metadata cache: check that an IPRO'd image is still fully optimized after a
+#    restart.
+# 2. Property cache: prioritize critical CSS persists beacon results across
+#    restarts.
+
+IPRO_URL="$EXAMPLE_ROOT/images/Cuppa.png"
+
+# Checkpoint beacon results to disk if we haven't already.
+check wget "$IPRO_URL" -O /dev/null
+test_prioritize_critical_css
+sleep 2
+check wget "$IPRO_URL" -O /dev/null
+test_prioritize_critical_css
+
+# Reload nginx again.
+check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
+wait_for_new_worker
+
+# The image should be fully optimized.
+OUT=$($CURL -sS -D- -o/dev/null "$IPRO_URL")
+check_from "$OUT" grep ^X-Original-Content-Length:
+check_from "$OUT" grep ^Content-Length:
+content_length=$(echo "$OUT" | grep ^Content-Length: | grep -o [0-9]*)
+original_content_length=$(echo "$OUT" | grep ^X-Original-Content-Length: \
+  | grep -o [0-9]*)
+check [ "$original_content_length" -gt "$content_length" ]
+
+# The beacon responses are stored in the metadata cache, so this can only pass
+# if we persisted the metadata across restarts.
+test_prioritize_critical_css_final
 
 # This is dependent upon having a beacon handler.
 test_filter add_instrumentation beacons load.
@@ -1308,6 +1344,12 @@ http_proxy=$SECONDARY_HOSTNAME \
 OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP -O /dev/null -S $URL 2>&1)
 MATCHES=$(echo "$OUT" | grep -c "Vary: Accept-Encoding") || true
 check [ $MATCHES -eq 1 ]
+
+start_test Follow flushes can be turned off.
+echo "Check that FollowFlushes off outputs a single chunk"
+URL="http://noflush.example.com/mod_pagespeed_test/slow_flushing_html_response.php"
+check_flushing "curl -N --raw --silent --proxy $SECONDARY_HOSTNAME $URL" \
+  5.4 1
 
 start_test Shutting down.
 

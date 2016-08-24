@@ -30,7 +30,7 @@ http {
   proxy_cache_path "@@PROXY_CACHE@@"  levels=1:2   keys_zone=htmlcache:60m inactive=90m  max_size=50m;
   proxy_temp_path "@@TMP_PROXY_CACHE@@";
 
-  pagespeed ProcessScriptVariables on;
+  pagespeed ProcessScriptVariables all;
   pagespeed StatisticsPath /ngx_pagespeed_statistics;
   pagespeed GlobalStatisticsPath /ngx_pagespeed_global_statistics;
   pagespeed ConsolePath /pagespeed_console;
@@ -62,6 +62,12 @@ http {
   pagespeed InPlaceResourceOptimization on;
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
   pagespeed BlockingRewriteKey psatest;
+
+  # We need to checkpoint more frequently than usual so that our checkpointing
+  # test will definitly have seen one of these intervals and so not be flaky.
+  # This needs to have a 1s interval because the checkpointing test has a 2s
+  # sleep.
+  pagespeed ShmMetadataCacheCheckpointIntervalSec 1;
 
   # CriticalImagesBeaconEnabled is now on by default, but we disable in testing.
   # With this option enabled, the inline image system test will currently fail.
@@ -566,6 +572,10 @@ http {
     pagespeed UrlValuedAttribute img alt-src Image;
     pagespeed UrlValuedAttribute video alt-a Image;
     pagespeed UrlValuedAttribute video alt-b Image;
+    pagespeed UrlValuedAttribute link data-stylesheet Stylesheet;
+    pagespeed UrlValuedAttribute span data-stylesheet-a Stylesheet;
+    pagespeed UrlValuedAttribute span data-stylesheet-b Stylesheet;
+    pagespeed UrlValuedAttribute span data-stylesheet-c Stylesheet;
 
     # Also test that we can redefine spec-defined attributes.
     pagespeed UrlValuedAttribute blockquote cite Image;
@@ -1251,6 +1261,17 @@ http {
     add_header 'X-Accel-Redirect' 'blablabla';
   }
 
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name map-static-domain.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed MapRewriteDomain http://static-cdn.example.com
+                               http://map-static-domain.example.com;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters defer_javascript,rewrite_domains;
+  }
+
   # Proxy + IPRO a gzip'd file for testing Issue 896.
   server {
     listen @@SECONDARY_PORT@@;
@@ -1265,6 +1286,44 @@ http {
     location / {
       proxy_pass
        "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/ipro/mod_deflate/";
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name compressedcache.example.com;
+    pagespeed on;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed EnableFilters rewrite_css;
+    pagespeed HttpCacheCompressionLevel 9;
+    location ~ \.php$ {
+      fastcgi_param SCRIPT_FILENAME $request_filename;
+      fastcgi_param QUERY_STRING $query_string;
+      fastcgi_param REQUEST_METHOD $request_method;
+      fastcgi_param CONTENT_TYPE $content_type;
+      fastcgi_param CONTENT_LENGTH $content_length;
+      fastcgi_pass 127.0.0.1:9000;
+      fastcgi_buffering off;
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name uncompressedcache.example.com;
+    pagespeed on;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed EnableFilters rewrite_css;
+    pagespeed HttpCacheCompressionLevel 0;
+    location ~ \.php$ {
+      fastcgi_param SCRIPT_FILENAME $request_filename;
+      fastcgi_param QUERY_STRING $query_string;
+      fastcgi_param REQUEST_METHOD $request_method;
+      fastcgi_param CONTENT_TYPE $content_type;
+      fastcgi_param CONTENT_LENGTH $content_length;
+      fastcgi_pass 127.0.0.1:9000;
+      fastcgi_buffering off;
     }
   }
 
@@ -1518,7 +1577,54 @@ http {
     pagespeed InPlaceResourceOptimization on;
     pagespeed FileCachePath "@@FILE_CACHE@@";
   }
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name flush.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed RewriteDeadlinePerFlushMs 1;
 
+    location ~ \.php$ {
+      fastcgi_param SCRIPT_FILENAME $request_filename;
+      fastcgi_param QUERY_STRING $query_string;
+      fastcgi_param REQUEST_METHOD $request_method;
+      fastcgi_param CONTENT_TYPE $content_type;
+      fastcgi_param CONTENT_LENGTH $content_length;
+      fastcgi_pass 127.0.0.1:9000;
+      fastcgi_buffering off;
+    }
+  }
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name noflush.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed RewriteDeadlinePerFlushMs 1;
+    pagespeed FollowFlushes off;
+
+    location ~ \.php$ {
+      fastcgi_param SCRIPT_FILENAME $request_filename;
+      fastcgi_param QUERY_STRING $query_string;
+      fastcgi_param REQUEST_METHOD $request_method;
+      fastcgi_param CONTENT_TYPE $content_type;
+      fastcgi_param CONTENT_LENGTH $content_length;
+      fastcgi_pass 127.0.0.1:9000;
+      fastcgi_buffering off;
+    }
+  }
+  server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name debug-filters.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters debug;
+  }
   server {
     listen @@PRIMARY_PORT@@;
     listen [::]:@@PRIMARY_PORT@@;
@@ -1718,6 +1824,10 @@ http {
       expires 5m;
     }
 
+    location /mod_pagespeed_test/example.json {
+      expires 10m;
+    }
+
     location /mod_pagespeed_test/ipro/cc200/ {
       add_header "Cache-Control" "max-age=200";
     }
@@ -1801,7 +1911,9 @@ http {
     }
 
     location /mod_pagespeed_test/ipro/instant/deadline/ {
-      pagespeed InPlaceRewriteDeadlineMs -1;
+      set $ps_deadline -1;
+      pagespeed ImageRecompressionQuality $ps_deadline;
+      pagespeed InPlaceRewriteDeadlineMs $ps_deadline;
     }
 
     # Test to make sure that user-authenticated resources do not get cached and
@@ -1849,9 +1961,10 @@ http {
     pagespeed FetchHttps enable;
     location /mod_pagespeed_test/https_fetch/ {
       pagespeed DisableFilters inline_images;
+      set $ps_gstatic "https://www.gstatic.com/psa/static";
       pagespeed MapProxyDomain
           http://localhost:@@PRIMARY_PORT@@/https_gstatic_dot_com
-          https://www.gstatic.com/psa/static;
+          $ps_gstatic;
     }
 
     location /mod_pagespeed_test/strip_subresource_hints/default/ {
@@ -1898,7 +2011,6 @@ http {
       "@@SERVER_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/";
     pagespeed LoadFromFileRuleMatch Disallow \.ssp.css$ps_dollar;
     pagespeed LoadFromFileRuleMatch Allow exception\.ssp\.css$ps_dollar;
-
     #charset koi8-r;
 
     #access_log  logs/host.access.log  main;
@@ -1945,6 +2057,7 @@ http {
     image/svg+xml                         svg svgz;
     image/webp                            webp;
 
+    application/json                      json;
     application/java-archive              jar war ear;
     application/mac-binhex40              hqx;
     application/msword                    doc;

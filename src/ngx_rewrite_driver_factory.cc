@@ -82,7 +82,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       ngx_shared_circular_buffer_(NULL),
       hostname_(hostname.as_string()),
       port_(port),
-      process_script_variables_(false),
+      process_script_variables_mode_(ProcessScriptVariablesMode::kOff),
       process_script_variables_set_(false),
       shut_down_(false) {
   InitializeDefaultOptions();
@@ -147,8 +147,17 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   NgxRewriteOptions* options = new NgxRewriteOptions(thread_system());
+  // TODO(jefftk): figure out why using SetDefaultRewriteLevel like
+  // mod_pagespeed does in mod_instaweb.cc:create_dir_config() isn't enough here
+  // -- if you use that instead then ngx_pagespeed doesn't actually end up
+  // defaulting CoreFilters.
+  // See: https://github.com/pagespeed/ngx_pagespeed/issues/1190
   options->SetRewriteLevel(RewriteOptions::kCoreFilters);
   return options;
+}
+
+RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptionsForQuery() {
+  return new NgxRewriteOptions(thread_system());
 }
 
 bool NgxRewriteDriverFactory::CheckResolver() {
@@ -210,7 +219,9 @@ void NgxRewriteDriverFactory::StartThreads() {
 void NgxRewriteDriverFactory::SetMainConf(NgxRewriteOptions* main_options) {
   // Propagate process-scope options from the copy we had during nginx option
   // parsing to our own.
-  default_options()->MergeOnlyProcessScopeOptions(*main_options);
+  if (main_options != NULL) {
+    default_options()->MergeOnlyProcessScopeOptions(*main_options);
+  }
 }
 
 void NgxRewriteDriverFactory::LoggingInit(
