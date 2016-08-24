@@ -8,6 +8,9 @@
 # invoking several commands under same server. It's useful if you want to run
 # tests twice: once with cold-cache and once with warm-cache.
 #
+# Redis is configured to store no more than 1GB of data and will evict some keys
+# when it needs more memory.
+#
 # Example (mind single quotes in the second command so substitution is
 # performed inside the script, not when you run it):
 #     ../run_program_with_redis.sh \
@@ -24,7 +27,8 @@ source $(dirname "$BASH_SOURCE")/start_background_server.sh \
   --port '$SERVER_PORT' \
   --dir '$SERVER_WORKDIR' \
   --logfile 'redis.log' \
-  --maxmemory 1000000000
+  --maxmemory 1gb \
+  --maxmemory-policy allkeys-lru
 # SERVER_PORT is set by start_background_server.sh, we now want to export it
 # under a better name
 export REDIS_PORT=$SERVER_PORT
