@@ -231,6 +231,36 @@ class MockCentralControllerRpcServiceStub
                         Return(rw)));
   }
 
+  void ExpectAsyncScheduleRewrite(
+      ::grpc::ClientAsyncReaderWriterInterface<
+          ::net_instaweb::ScheduleRewriteRequest,
+          ::net_instaweb::ScheduleRewriteResponse>* rw) {
+    // Configure the stub to invoke the callback and return rw in response to
+    // a client initiating a request.
+    EXPECT_CALL(*this,
+                AsyncScheduleRewriteRaw(_, nullptr /* queue */, _))
+        .WillOnce(DoAll(WithArgs<2>(Invoke([this](void* fv) {
+                          sequence_->Add(static_cast<Function*>(fv));
+                        })),
+                        Return(rw)));
+  }
+
+  void ExpectAsyncScheduleRewriteFailure(
+      ::grpc::ClientAsyncReaderWriterInterface<
+          ::net_instaweb::ScheduleRewriteRequest,
+          ::net_instaweb::ScheduleRewriteResponse>* rw) {
+    // Configure the stub to invoke the Cancel callback and return rw in
+    // response to a client initiating a request.
+    EXPECT_CALL(*this,
+                AsyncScheduleRewriteRaw(_, nullptr /* queue */, _))
+        .WillOnce(DoAll(WithArgs<2>(Invoke([this](void* fv) {
+                          sequence_->Add(
+                              MakeFunction(static_cast<Function*>(fv),
+                                           &Function::CallCancel));
+                        })),
+                        Return(rw)));
+  }
+
  private:
   Sequence* sequence_;
 };
