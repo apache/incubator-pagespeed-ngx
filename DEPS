@@ -96,13 +96,14 @@ vars = {
   "brotli_revision": "@882f41850b679c1ff4a3804d5515d142a5807376",
 
   "proto_src": "https://github.com/google/protobuf.git",
-  "protobuf_revision": "v3.0.0-beta-2",
+  "protobuf_revision": "v3.0.0",
 
   ## grpc uses nanopb as a git submodule, which gclient doesn't support.
   ## When updating grpc, you should check the nanopb submodule version
-  ## specified by your branch.
+  ## specified by your tag, by looking for it under:
+  ## https://github.com/grpc/grpc/tree/<TAG>/third_party
   "grpc_src": "https://github.com/grpc/grpc.git",
-  "grpc_revision": "release-0_15_0",
+  "grpc_revision": "v1.0.0",
   "nanopb_src": "https://github.com/nanopb/nanopb.git",
   "nanopb_revision": "f8ac463766281625ad710900479130c7fcb4d63b",
 
