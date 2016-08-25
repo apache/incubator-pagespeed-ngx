@@ -56,10 +56,11 @@ class SystemMessageHandler : public GoogleMessageHandler {
   virtual bool Dump(Writer* writer);
 
  protected:
-  // Add messages to the SharedCircularBuffer.  This is left virtual so that
-  // different servers can choose how to format the message window.
-  virtual void AddMessageToBuffer(MessageType type,
-                                  StringPiece formatted_message);
+  // Add messages to the SharedCircularBuffer.
+  void AddMessageToBuffer(MessageType type, StringPiece formatted_message);
+  void AddMessageToBuffer(MessageType type, const char* file, int line,
+                          StringPiece formatted_message);
+
   // Since we subclass GoogleMessageHandler but want to format messages
   // internally we must provide overrides of these two logging methods.
   virtual void MessageVImpl(MessageType type, const char* msg, va_list args);

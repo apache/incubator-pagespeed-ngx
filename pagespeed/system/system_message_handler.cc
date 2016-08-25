@@ -44,8 +44,14 @@ void SystemMessageHandler::set_buffer(Writer* buff) {
   buffer_ = buff;
 }
 
-void SystemMessageHandler::AddMessageToBuffer(
-    MessageType type, StringPiece formatted_message) {
+void SystemMessageHandler::AddMessageToBuffer(MessageType type,
+                                              StringPiece formatted_message) {
+  AddMessageToBuffer(type, nullptr, 0, formatted_message);
+}
+
+void SystemMessageHandler::AddMessageToBuffer(MessageType type,
+                                              const char* file, int line,
+                                              StringPiece formatted_message) {
   if (formatted_message.empty()) {
     return;
   }
@@ -59,7 +65,11 @@ void SystemMessageHandler::AddMessageToBuffer(
   StringPieceVector lines;
   SplitStringPieceToVector(formatted_message, "\n", &lines, false);
   StrAppend(&message, type_char, "[", time, "] [", type_str, "] ");
-  StrAppend(&message, pid_string_, " ", lines[0], "\n");
+  StrAppend(&message, pid_string_, " ");
+  if (file) {
+    StrAppend(&message, "[", file, ":", IntegerToString(line), "] ");
+  }
+  StrAppend(&message, lines[0], "\n");
   for (int i = 1, n = lines.size(); i < n; ++i) {
     StrAppend(&message, type_char, lines[i], "\n");
   }

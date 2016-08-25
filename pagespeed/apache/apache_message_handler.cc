@@ -123,6 +123,7 @@ void ApacheMessageHandler::FileMessageSImpl(
                "[%s %s @%ld] %s:%d: %s",
                kModuleName, version_.c_str(), static_cast<long>(getpid()),
                file, line, message.c_str());
+  AddMessageToBuffer(type, file, line, message);
 }
 
 }  // namespace net_instaweb

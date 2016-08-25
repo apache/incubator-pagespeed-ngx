@@ -44,6 +44,11 @@ class SystemMessageHandlerTest : public testing::Test {
     system_message_handler_.AddMessageToBuffer(type, msg);
   }
 
+  void AddMessage(MessageType type, const char* file, int line,
+                  StringPiece msg) {
+    system_message_handler_.AddMessageToBuffer(type, file, line, msg);
+  }
+
   scoped_ptr<ThreadSystem> thread_system_;
   MockTimer timer_;
   SystemMessageHandler system_message_handler_;
@@ -77,6 +82,23 @@ TEST_F(SystemMessageHandlerTest, WrapLongLinesWarning) {
       "W[Mon, 05 Apr 2010 18:51:26 GMT] [Warning] [1234] Now is the time\n"
       "Wfor all good men\n"
       "Wto come to the aid\n",
+      buffer_);
+}
+
+TEST_F(SystemMessageHandlerTest, AddsFileLineInfo) {
+  AddMessage(kInfo, "test_file.cc", 4321, "Test message");
+  EXPECT_STREQ(
+      "I[Mon, 05 Apr 2010 18:51:26 GMT] [Info] [1234] "
+      "[test_file.cc:4321] Test message\n",
+      buffer_);
+}
+
+TEST_F(SystemMessageHandlerTest, AddsFileLineInfoWrapLongLines) {
+  AddMessage(kInfo, "test_file.cc", 4321, "Test message with\nnew line.");
+  EXPECT_STREQ(
+      "I[Mon, 05 Apr 2010 18:51:26 GMT] [Info] [1234] "
+      "[test_file.cc:4321] Test message with\n"
+      "Inew line.\n",
       buffer_);
 }
 
