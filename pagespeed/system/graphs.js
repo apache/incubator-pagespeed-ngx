@@ -390,6 +390,8 @@ pagespeed.Graphs.prototype.drawVisualization = function() {
                     pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
   this.drawBarChart('memcached', 'Memcached',
                     pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart('redis', 'Redis',
+                    pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
   this.drawBarChart('lru_cache', 'LRU',
                     pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
   this.drawBarChart('shm_cache', 'Shared Memory',

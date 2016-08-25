@@ -579,6 +579,7 @@ void AdminSite::PrintCaches(bool is_global, AdminSource source,
       // either of these flags to limit the content when someone asks
       // for info about the cache.
       flags |= SystemCaches::kIncludeMemcached;
+      flags |= SystemCaches::kIncludeRedis;
       fetch->Write("<div id='cache_struct'>",
                    message_handler_);
       fetch->Write(kTableStart, message_handler_);

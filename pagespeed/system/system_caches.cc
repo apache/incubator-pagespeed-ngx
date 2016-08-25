@@ -772,6 +772,15 @@ void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {
       }
     }
   }
+
+  if (flags & kIncludeRedis) {
+    for (RedisCache* redis : redis_servers_) {
+      if (!redis->GetStatus(out)) {
+        StrAppend(out, "\nError getting redis server status for ",
+                  redis->ServerDescription());
+      }
+    }
+  }
 }
 
 }  // namespace net_instaweb

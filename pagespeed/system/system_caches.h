@@ -71,7 +71,8 @@ class SystemCaches {
   enum StatFlags {
     kDefaultStatFlags = 0,
     kGlobalView = 1,
-    kIncludeMemcached = 2
+    kIncludeMemcached = 2,
+    kIncludeRedis = 4
   };
 
   // Registers all statistics the cache backends may use.

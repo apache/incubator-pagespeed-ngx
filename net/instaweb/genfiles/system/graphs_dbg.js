@@ -6563,6 +6563,7 @@ pagespeed.Graphs.prototype.drawVisualization = function() {
   this.drawBarChart("cache", "Cache", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
   this.drawBarChart("file_cache", "File Cache", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
   this.drawBarChart("memcached", "Memcached", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
+  this.drawBarChart("redis", "Redis", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
   this.drawBarChart("lru_cache", "LRU", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
   this.drawBarChart("shm_cache", "Shared Memory", pagespeed.Graphs.DisplayDiv.CACHE_TYPE);
   this.drawBarChart("ipro", "In place resource optimization", pagespeed.Graphs.DisplayDiv.IPRO);

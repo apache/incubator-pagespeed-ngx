@@ -39,7 +39,7 @@ namespace net_instaweb {
 // Details are changing rapidly.
 // Right now this implementation uses sync API of hiredis and is blocking.
 // This class is thread-safe.
-// TODO(yeputons): add statistics
+// TODO(yeputons): consider extracting a common interface with AprMemCache
 // TODO(yeputons): consider making Redis-reported errors treated as failures
 // TODO(yeputons): add timeouts for connecting and all individual operations
 class RedisCache : public CacheInterface {
@@ -51,6 +51,8 @@ class RedisCache : public CacheInterface {
              MessageHandler* message_handler, Timer* timer,
              int64 reconnection_delay_ms_);
   ~RedisCache() override { ShutDown(); }
+
+  GoogleString ServerDescription() const;
 
   // Enables cache and tries to connect to Redis, automatically reconnecting in
   // case of failures until ShutDown() is called. Reconnection strategy is:
@@ -82,6 +84,10 @@ class RedisCache : public CacheInterface {
 
   // Flushes ALL DATA IN REDIS in blocking mode. Used in tests
   bool FlushAll();
+
+  // Appends detailed server status to a string, returning false if the server
+  // failed to return status.
+  bool GetStatus(GoogleString* status_string);
 
  private:
   bool Reconnect() EXCLUSIVE_LOCKS_REQUIRED(mutex_);

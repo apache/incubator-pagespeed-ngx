@@ -123,6 +123,11 @@ const char* const kGraphsVars[] = {
   "memcached_blocking_inserts", "memcached_blocking_misses", "cache_time_us",
   "cache_hits", "cache_backend_hits", "cache_backend_misses",
   "cache_extensions", "cache_batcher_dropped_gets", "cache_flush_count",
+  // Redis
+  "redis_async_hits", "redis_async_inserts", "redis_async_misses",
+  "redis_async_deletes",
+  "redis_blocking_hits", "redis_blocking_inserts", "redis_blocking_misses",
+  "redis_blocking_deletes",
 };
 
 }  // namespace

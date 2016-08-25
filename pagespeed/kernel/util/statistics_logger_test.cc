@@ -192,9 +192,9 @@ TEST_F(StatisticsLoggerTest, TestParseDataForGraphs) {
   VarMap parsed_var_data;
   ParseDataForGraphs(&reader, &list_of_timestamps, &parsed_var_data);
   // Though the fake log file only contains 4 variables, the method should
-  // still return all the 84 variables needed by the graphs page with 0 as
+  // still return all the variables needed by the graphs page with 0 as
   // place holders.
-  EXPECT_EQ(84, parsed_var_data.size());
+  EXPECT_EQ(92, parsed_var_data.size());
   EXPECT_EQ(4, list_of_timestamps.size());
   file_system_.Close(log_file, &handler_);
 }

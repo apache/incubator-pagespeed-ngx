@@ -40,6 +40,10 @@ RedisCache::RedisCache(const StringPiece& host, int port, AbstractMutex* mutex,
       next_reconnect_at_ms_(timer_->NowMs()),
       is_started_up_(false) {}
 
+GoogleString RedisCache::ServerDescription() const {
+  return StrCat(host_, ":", IntegerToString(port_));
+}
+
 void RedisCache::StartUp() {
   ScopedMutex lock(mutex_.get());
   DCHECK(!is_started_up_);
@@ -178,6 +182,21 @@ bool RedisCache::FlushAll() {
 
   RedisReply reply = RedisCommand("FLUSHALL");
   return ValidateRedisReply(reply, {REDIS_REPLY_STATUS}, "FLUSHALL");
+}
+
+bool RedisCache::GetStatus(GoogleString* buffer) {
+  ScopedMutex lock(mutex_.get());
+  if (!IsHealthyLockHeld()) {
+    return false;
+  }
+
+  RedisReply reply = RedisCommand("INFO");
+  if (!ValidateRedisReply(reply, {REDIS_REPLY_STRING}, "INFO")) {
+    return false;
+  }
+  StrAppend(buffer, "Statistics for Redis (", ServerDescription(), "):\n");
+  StrAppend(buffer, reply->str);
+  return true;
 }
 
 RedisCache::RedisReply RedisCache::RedisCommand(const char* format, ...) {

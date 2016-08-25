@@ -25,6 +25,7 @@
 #include "apr_network_io.h"  // NOLINT
 #include "base/logging.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/mock_timer.h"
@@ -41,6 +42,8 @@ namespace {
 }
 
 namespace net_instaweb {
+
+using testing::HasSubstr;
 
 
 // TODO(yeputons): refactor this class with AprMemCacheTest, see details in
@@ -114,6 +117,21 @@ TEST_F(RedisCacheTest, BasicInvalid) {
   CheckGet("nameB", "valueB");
 }
 
+TEST_F(RedisCacheTest, GetStatus) {
+  if (!InitRedisOrSkip()) {
+    return;
+  }
+
+  GoogleString status;
+  ASSERT_TRUE(cache_->GetStatus(&status));
+
+  // Check that some reasonable info is present.
+  EXPECT_THAT(status, HasSubstr(cache_->ServerDescription()));
+  EXPECT_THAT(status, HasSubstr("redis_version:"));
+  EXPECT_THAT(status, HasSubstr("connected_clients:"));
+  EXPECT_THAT(status, HasSubstr("tcp_port:"));
+  EXPECT_THAT(status, HasSubstr("used_memory:"));
+}
 
 TEST_F(RedisCacheTest, FlushAll) {
   if (!InitRedisOrSkip()) {

@@ -1135,7 +1135,8 @@ void SystemCachesExternalCacheTestBase::TestStatsStringMinimal() {
 
   system_caches_->PrintCacheStats(
       static_cast<SystemCaches::StatFlags>(SystemCaches::kGlobalView |
-                                           SystemCaches::kIncludeMemcached),
+                                           SystemCaches::kIncludeMemcached |
+                                           SystemCaches::kIncludeRedis),
       &out);
 }
 
