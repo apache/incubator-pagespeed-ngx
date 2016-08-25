@@ -196,195 +196,39 @@ else
   endif
 endif
 
-ifeq ($(STRESS_TEST),1)
-  # remove prefix
-  STRESS_TEST_SED_PATTERN=^\#STRESS
-else
-  # remove whole line
-  STRESS_TEST_SED_PATTERN=^\#STRESS.*\n
-endif
+TESTS=REDIS MEMCACHED STRESS REWRITE LOADTEST PROXY SLURP SHARED_MEM_LOCKS \
+      IPRO_PRESERVE_LOADTEST MEMCACHED_LOADTEST REDIS_LOADTEST \
+      PURGING_LOADTEST SPELING GZIP EXPERIMENT_GA EXPERIMENT_NO_GA HTTPS \
+      ALL_DIRECTIVES PER_VHOST_STATS NO_PER_VHOST_STATS STATS_LOGGING
 
-ifeq ($(REWRITE_TEST),1)
-  # remove prefix
-  REWRITE_TEST_SED_PATTERN=^\#REWRITE
-else
-  # remove whole line
-  REWRITE_TEST_SED_PATTERN=^\#REWRITE.*\n
-endif
+# Compute the lists of tests that we will retain, by removing the "#TEST"
+# substring, and will strip, by removing the entire line on which the #TEST
+# appears.
+CONFIG_RETAIN = $(foreach T, $(TESTS), $(if $(filter 1, $($T_TEST)), $T))
+CONFIG_STRIP  = $(foreach T, $(TESTS), $(if $(filter 1, $($T_TEST)),,$T))
 
-ifeq ($(LOADTEST_TRACE_TEST),1)
-  # remove coverage prefix
-  LOADTEST_TEST_SED_PATTERN=^\#LOADTEST
-else
-  # remove coverage lines
-  LOADTEST_TEST_SED_PATTERN=^\#LOADTEST.*\n
-endif
-
-ifeq ($(PROXY_TEST),1)
-  # remove prefix
-  PROXY_TEST_SED_PATTERN=^\#PROXY
-else
-  # remove whole line
-  PROXY_TEST_SED_PATTERN=^\#PROXY.*\n
-endif
-
-ifeq ($(SLURP_TEST),1)
-  # remove prefix
-  SLURP_TEST_SED_PATTERN=^\#SLURP
-else
-  # remove whole line
-  SLURP_TEST_SED_PATTERN=^\#SLURP.*\n
-endif
-
-ifeq ($(SHARED_MEM_LOCK_TEST),1)
-  # remove prefix
-  SHARED_MEM_LOCK_TEST_SED_PATTERN=^\#SHARED_MEM_LOCKS
-else
-  # remove whole line
-  SHARED_MEM_LOCK_TEST_SED_PATTERN=^\#SHARED_MEM_LOCKS.*\n
-endif
-
-ifeq ($(MEMCACHED_TEST),1)
-  # remove prefix
-  MEMCACHED_TEST_SED_PATTERN=^\#MEMCACHED
-else
-  # remove whole line
-  MEMCACHED_TEST_SED_PATTERN=^\#MEMCACHED.*\n
-endif
-
-ifeq ($(REDIS_TEST),1)
-  # remove prefix
-  REDIS_TEST_SED_PATTERN=^\#REDIS
-else
-  # remove whole line
-  REDIS_TEST_SED_PATTERN=^\#REDIS.*\n
-endif
-
-ifeq ($(IPRO_PRESERVE_LOADTEST_TEST),1)
-  # remove prefix
-  IPRO_PRESERVE_LOADTEST_TEST_SED_PATTERN=^\#IPRO_PRESERVE_LOADTEST
-else
-  # remove whole line
-  IPRO_PRESERVE_LOADTEST_TEST_SED_PATTERN=^\#IPRO_PRESERVE_LOADTEST.*\n
-endif
-
-ifeq ($(MEMCACHE_LOADTEST_TEST),1)
-  # remove prefix
-  MEMCACHE_LOADTEST_TEST_SED_PATTERN=^\#MEMCACHE_LOADTEST
-else
-  # remove whole line
-  MEMCACHE_LOADTEST_TEST_SED_PATTERN=^\#MEMCACHE_LOADTEST.*\n
-endif
-
-ifeq ($(RED_LOADTEST_TEST),1)
-  # remove prefix
-  RED_LOADTEST_TEST_SED_PATTERN=^\#RED_LOADTEST
-else
-  # remove whole line
-  RED_LOADTEST_TEST_SED_PATTERN=^\#RED_LOADTEST.*\n
-endif
-
-ifeq ($(PURGING_LOADTEST_TEST),1)
-  # remove prefix
-  PURGING_LOADTEST_TEST_SED_PATTERN=^\#PURGING_LOADTEST
-else
-  # remove whole line
-  PURGING_LOADTEST_TEST_SED_PATTERN=^\#PURGING_LOADTEST.*\n
-endif
-
+# Special logic for testing of inlining unauthorized resources, where the
+# sed substitutions are not exactly aligned with the control-variables.
 ifeq ($(IUR_LOADTEST_TEST),1)
-  # remove prefix
-  IUR_LOADTEST_TEST_SED_PATTERN=^\#IUR_LOADTEST
+  CONFIG_RETAIN += IUR_LOADTEST
   # remove whole explicit domain authorization line
-  DOMAIN_AUTH_SED_PATTERN=^\#DOMAIN_AUTH_LOADTEST.*\n
+  CONFIG_STRIP += DOMAIN_AUTH_LOADTEST
 else
-  # remove whole line
-  IUR_LOADTEST_TEST_SED_PATTERN=^\#IUR_LOADTEST.*\n
-  ifeq ($(LOADTEST_TRACE_TEST),1)
+  CONFIG_STRIP += IUR_LOADTEST
+  ifeq ($(LOADTEST_TEST),1)
     # remove prefix for explicit domain authorization line
-    DOMAIN_AUTH_SED_PATTERN=^\#DOMAIN_AUTH_LOADTEST
+    CONFIG_RETAIN += DOMAIN_AUTH_LOADTEST
+  else
+    CONFIG_STRIP += DOMAIN_AUTH_LOADTEST
   endif
 endif
 
-ifeq ($(SPELING_TEST),1)
-  # remove prefix
-  SPELING_TEST_SED_PATTERN=^\#SPELING
-else
-  # remove whole line
-  SPELING_TEST_SED_PATTERN=^\#SPELING.*\n
-endif
-
-ifeq ($(REWRITE_TEST),1)
-  # remove prefix
-  REWRITE_TEST_SED_PATTERN=^\#REWRITE
-else
-  # remove whole line
-  REWRITE_TEST_SED_PATTERN=^\#REWRITE.*\n
-endif
-
-ifeq ($(GZIP_TEST),1)
-  # remove prefix
-  GZIP_TEST_SED_PATTERN=^\#GZIP
-else
-  # remove whole line
-  GZIP_TEST_SED_PATTERN=^\#GZIP.*\n
-endif
-
-ifeq ($(EXPERIMENT_GA_TEST),1)
-  # remove prefix
-  EXPERIMENT_GA_TEST_SED_PATTERN=^\#EXPERIMENT_GA
-else
-  # remove whole line
-  EXPERIMENT_GA_TEST_SED_PATTERN=^\#EXPERIMENT_GA.*\n
-endif
-
-ifeq ($(EXPERIMENT_NO_GA_TEST),1)
-  # remove prefix
-  EXPERIMENT_NO_GA_TEST_SED_PATTERN=^\#EXPERIMENT_NO_GA
-else
-  # remove whole line
-  EXPERIMENT_NO_GA_TEST_SED_PATTERN=^\#EXPERIMENT_NO_GA.*\n
-endif
-
-ifeq ($(HTTPS_TEST),1)
-  # remove prefix
-  HTTPS_TEST_SED_PATTERN=^\#HTTPS
-else
-  # remove whole line
-  HTTPS_TEST_SED_PATTERN=^\#HTTPS.*\n
-endif
-
-ifeq ($(ALL_DIRECTIVES_TEST),1)
-  # remove prefix
-  ALL_DIRECTIVES_TEST_SED_PATTERN=^\#ALL_DIRECTIVES
-else
-  # remove whole line
-  ALL_DIRECTIVES_TEST_SED_PATTERN=^\#ALL_DIRECTIVES.*\n
-endif
-
-ifeq ($(PER_VHOST_STATS_TEST),1)
-  # remove prefix
-  PER_VHOST_STATS_TEST_SED_PATTERN=^\#PER_VHOST_STATS
-else
-  # remove whole line
-  PER_VHOST_STATS_TEST_SED_PATTERN=^\#PER_VHOST_STATS.*\n
-endif
-
-ifeq ($(NO_PER_VHOST_STATS_TEST),1)
-  # remove prefix
-  NO_PER_VHOST_STATS_TEST_SED_PATTERN=^\#NO_PER_VHOST_STATS
-else
-  # remove whole line
-  NO_PER_VHOST_STATS_TEST_SED_PATTERN=^\#NO_PER_VHOST_STATS.*\n
-endif
-
-ifeq ($(STATS_LOGGING_TEST),1)
-  # remove prefix
-  STATS_LOGGING_TEST_SED_PATTERN=^\#STATS_LOGGING
-else
-  # remove whole line
-  STATS_LOGGING_TEST_SED_PATTERN=^\#STATS_LOGGING.*\n
-endif
+# Compute the patterns to pass to 'sed' for enabling lines by stripping out the
+# comments, and to 'egrep -v' for stripping out entire lines.
+SED_PATTERNS = $(foreach T, $(CONFIG_RETAIN),-e "s@^\#$T\b@@")
+EGREP_V_PATTERN = \
+    ($(shell echo "$(strip $(foreach T,$(CONFIG_STRIP),^\#$T\b))" | \
+    tr '[:blank:]' '|'))
 
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
@@ -414,31 +258,11 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s|@@TMP_SLURP_DIR@@|$(TMP_SLURP_DIR)|g" \
 	    -e "s|@@MEMCACHED_PORT@@|$(MEMCACHED_PORT)|g" \
 	    -e "s|@@REDIS_PORT@@|$(REDIS_PORT)|g" \
-	    -e "s@$(STRESS_TEST_SED_PATTERN)@@" \
-	    -e "s@$(REWRITE_TEST_SED_PATTERN)@@" \
-	    -e "s@$(LOADTEST_TEST_SED_PATTERN)@@" \
-	    -e "s@$(PROXY_TEST_SED_PATTERN)@@" \
-	    -e "s@$(SLURP_TEST_SED_PATTERN)@@" \
-	    -e "s@$(SHARED_MEM_LOCK_TEST_SED_PATTERN)@@" \
-	    -e "s@$(SPELING_TEST_SED_PATTERN)@@" \
-	    -e "s@$(MEMCACHED_TEST_SED_PATTERN)@@" \
-	    -e "s@$(REDIS_TEST_SED_PATTERN)@@" \
-	    -e "s@$(IPRO_PRESERVE_LOADTEST_TEST_SED_PATTERN)@@" \
-	    -e "s@$(MEMCACHE_LOADTEST_TEST_SED_PATTERN)@@" \
-	    -e "s@$(RED_LOADTEST_TEST_SED_PATTERN)@@" \
-	    -e "s@$(PURGING_LOADTEST_TEST_SED_PATTERN)@@" \
-	    -e "s@$(IUR_LOADTEST_TEST_SED_PATTERN)@@" \
-	    -e "s@$(DOMAIN_AUTH_SED_PATTERN)@@" \
-	    -e "s@$(GZIP_TEST_SED_PATTERN)@@" \
-	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
-	    -e "s@$(EXPERIMENT_GA_TEST_SED_PATTERN)@@" \
-	    -e "s@$(EXPERIMENT_NO_GA_TEST_SED_PATTERN)@@" \
-	    -e "s@$(ALL_DIRECTIVES_TEST_SED_PATTERN)@@" \
-	    -e "s@$(PER_VHOST_STATS_TEST_SED_PATTERN)@@" \
-	    -e "s@$(NO_PER_VHOST_STATS_TEST_SED_PATTERN)@@" \
-	    -e "s@$(STATS_LOGGING_TEST_SED_PATTERN)@@" \
-		$^ > $@
-	! grep '@@' $@  # Make sure we don't have any remaining @@variables@@
+	    $(SED_PATTERNS) \
+		$^ \
+		| egrep -v "$(EGREP_V_PATTERN)" > $@
+	! grep '@@' $@     # Make sure we don't have any remaining @@variables@@
+	! grep '^#[^ ]' $@ # Make sure we don't have any remaining #variables
 
 $(STAGING_DIR)/proxy.conf : proxy.conf.template
 	sed -e s@APACHE_MODULES@$(APACHE_MODULES)@g \
@@ -537,6 +361,9 @@ test :
 
 # Now hook in the full integration test suite. It needs to be run as root.
 # Each test is on it's own line for better diff/merge support.
+#
+# TODO(jmarantz): combine all these OPT_ flags into a single OPTIONS to
+# make it less cumbersome to propagate them.
 apache_install_conf :
 	$(MAKE) staging_except_module \
 	    $(OPT_REWRITE_TEST) \
@@ -545,15 +372,15 @@ apache_install_conf :
 	    $(OPT_MEMCACHED_TEST) \
 	    $(OPT_REDIS_TEST) \
 	    $(OPT_IPRO_PRESERVE_LOADTEST_TEST) \
-	    $(OPT_MEMCACHE_LOADTEST_TEST) \
-	    $(OPT_RED_LOADTEST_TEST) \
+	    $(OPT_MEMCACHED_LOADTEST_TEST) \
+	    $(OPT_REDIS_LOADTEST_TEST) \
 	    $(OPT_PURGING_LOADTEST_TEST) \
 	    $(OPT_IUR_LOADTEST_TEST) \
 	    $(OPT_SPELING_TEST) \
-	    $(OPT_LOADTEST_TRACE_TEST) \
+	    $(OPT_LOADTEST_TEST) \
 	    $(OPT_STRESS_TEST) \
 	    $(OPT_HTTPS_TEST) \
-	    $(OPT_SHARED_MEM_LOCK_TEST) \
+	    $(OPT_SHARED_MEM_LOCKS_TEST) \
 	    $(OPT_GZIP_TEST) \
 	    $(OPT_EXPERIMENT_GA_TEST) \
 	    $(OPT_EXPERIMENT_NO_GA_TEST) \
@@ -568,15 +395,15 @@ apache_install_conf :
 	    $(OPT_MEMCACHED_TEST) \
 	    $(OPT_REDIS_TEST) \
 	    $(OPT_IPRO_PRESERVE_LOADTEST_TEST) \
-	    $(OPT_MEMCACHE_LOADTEST_TEST) \
-	    $(OPT_RED_LOADTEST_TEST) \
+	    $(OPT_MEMCACHED_LOADTEST_TEST) \
+	    $(OPT_REDIS_LOADTEST_TEST) \
 	    $(OPT_PURGING_LOADTEST_TEST) \
 	    $(OPT_IUR_LOADTEST_TEST) \
 	    $(OPT_SPELING_TEST) \
-	    $(OPT_LOADTEST_TRACE_TEST) \
+	    $(OPT_LOADTEST_TEST) \
 	    $(OPT_STRESS_TEST) \
 	    $(OPT_HTTPS_TEST) \
-	    $(OPT_SHARED_MEM_LOCK_TEST) \
+	    $(OPT_SHARED_MEM_LOCKS_TEST) \
 	    $(OPT_GZIP_TEST) \
 	    $(OPT_EXPERIMENT_GA_TEST) \
 	    $(OPT_EXPERIMENT_NO_GA_TEST) \

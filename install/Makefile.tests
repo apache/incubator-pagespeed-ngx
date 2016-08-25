@@ -8,14 +8,14 @@
 # Imports:
 #  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_MEMCACHED_TEST,
-#                       OPT_MEMCACHE_LOADTEST_TEST,
+#                       OPT_MEMCACHED_LOADTEST_TEST,
 #                       OPT_REDIS_TEST,
-#                       OPT_RED_LOADTEST_TEST,
+#                       OPT_REDIS_LOADTEST_TEST,
 #                       OPT_PURGING_LOADTEST_TEST,
 #                       OPT_IUR_LOADTEST_TEST, OPT_IPRO_PRESERVE_LOADTEST_TEST,
 #                       OPT_HTTPS_TEST,
-#                       OPT_LOADTEST_TRACE_TEST, OPT_STRESS_TEST,
-#                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
+#                       OPT_LOADTEST_TEST, OPT_STRESS_TEST,
+#                       OPT_SHARED_MEM_LOCKS_TEST, OPT_GZIP_TEST,
 #                       OPT_EXPERIMENT_GA_TEST, OPT_EXPERIMENT_NO_GA_TEST,
 #                       OPT_PER_VHOST_STATS_TEST, OPT_NO_PER_VHOST_STATS_TEST,
 #                       OPT_ALL_DIRECTIVES_TEST)
@@ -58,7 +58,7 @@ apache_vm_system_tests : setup_doc_root
 	$(MAKE) FAST_RESTART=1 apache_debug_experiment_test
 	$(MAKE) FAST_RESTART=1 apache_debug_vhost_only_test
 	$(MAKE) FAST_RESTART=1 apache_debug_global_off_test
-	$(MAKE) FAST_RESTART=1 apache_debug_shared_mem_lock_sanity_test
+	$(MAKE) FAST_RESTART=1 apache_debug_shared_mem_locks_sanity_test
 	$(MAKE) apache_debug_https_fetch_test
 	$(MAKE) FAST_RESTART=1 apache_debug_stats_logging_test
 	$(MAKE) FAST_RESTART=1 apache_debug_all_directives_test
@@ -343,7 +343,7 @@ apache_debug_downstream_caching_test :
 # setup nicely; we just need to turn off ourselves for the global scope.
 apache_debug_vhost_only_test :
 	$(MAKE) apache_install_conf \
-	  OPT_LOADTEST_TRACE_TEST=LOADTEST_TRACE_TEST=1 \
+	  OPT_LOADTEST_TEST=LOADTEST_TEST=1 \
 	  OPT_STRESS_TEST=STRESS_TEST=1
 	echo 'ModPagespeed off' >> $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_restart
@@ -355,7 +355,7 @@ apache_debug_vhost_only_test :
 EMPTY_HEADER_URL=http://www.modpagespeed.com/empty_header.html
 apache_debug_serf_empty_header_test :
 	$(MAKE) apache_install_conf \
-	  OPT_LOADTEST_TRACE_TEST=LOADTEST_TRACE_TEST=1 \
+	  OPT_LOADTEST_TEST=LOADTEST_TEST=1 \
 	  OPT_STRESS_TEST=STRESS_TEST=1 \
 	  SLURP_DIR=$(PWD)/$(INSTALL_DATA_DIR)/mod_pagespeed_test/slurp
 	$(MAKE) apache_debug_restart
@@ -381,7 +381,7 @@ apache_debug_https_fetch_test :
 
 # Sanity-check that enabling shared-memory locks don't cause the
 # system to crash, and a rewrite does successfully happen.
-apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
+apache_debug_shared_mem_locks_sanity_test : shared_mem_locks_test_prepare \
     apache_install_conf apache_debug_restart
 	$(WGET_NO_PROXY) -q -O /dev/null \
 	    $(EXAMPLE_COMBINE_CSS)?PageSpeedFilters=combine_css
@@ -390,8 +390,8 @@ apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
 	    $(EXAMPLE_COMBINE_CSS)?PageSpeedFilters=combine_css \
 	 | grep "\.pagespeed\.cc\."
 
-shared_mem_lock_test_prepare :
-	$(eval OPT_SLURP_TEST="SHARED_MEM_LOCK_TEST=1")
+shared_mem_locks_test_prepare :
+	$(eval OPT_SLURP_TEST="SHARED_MEM_LOCKS_TEST=1")
 	$(MAKE) stop
 	# "Directory not empty" failures were observed here, so add sleep to
 	# wait for pending cache-writes to finish.
