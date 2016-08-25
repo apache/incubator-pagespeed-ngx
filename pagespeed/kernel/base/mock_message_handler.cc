@@ -43,8 +43,9 @@ void MockMessageHandler::MessageSImpl(MessageType type,
   if (ShouldPrintMessage(message)) {
     internal_handler_.MessageSImpl(type, message);
     GoogleString type_str = MessageTypeToString(type);
-    StrAppend(&buffer_, type_str.substr(0, 1), "[Wed Jan 01 00:00:00 2014] [",
-              type_str, "] [00000] ", message, "\n");
+    StrAppend(&buffer_, type_str.substr(0, 1), "[Wed Jan 01 00:00:00 2014] ");
+    StrAppend(&buffer_, "[", type_str, "] [00000] ");
+    StrAppend(&buffer_, message, "\n");
   } else {
     ++skipped_message_counts_[type];
   }
@@ -57,6 +58,11 @@ void MockMessageHandler::FileMessageSImpl(MessageType type,
   ScopedMutex hold_mutex(mutex_.get());
   if (ShouldPrintMessage(message)) {
     internal_handler_.FileMessageSImpl(type, filename, line, message);
+    GoogleString type_str = MessageTypeToString(type);
+    StrAppend(&buffer_, type_str.substr(0, 1), "[Wed Jan 01 00:00:00 2014] ");
+    StrAppend(&buffer_, "[", type_str, "] [00000] ");
+    StrAppend(&buffer_, "[", filename, ":", IntegerToString(line), "] ");
+    StrAppend(&buffer_, message, "\n");
   } else {
     ++skipped_message_counts_[type];
   }

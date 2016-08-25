@@ -16,10 +16,12 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/null_mutex.h"
+#include "pagespeed/kernel/base/string_writer.h"
 
 namespace net_instaweb {
 
@@ -124,6 +126,67 @@ TEST_F(MockMessageHandlerTest, SkippedMessage) {
   EXPECT_EQ(20, handler_.TotalMessages());
   CheckSkippedCounts(4, 3, 2);
   EXPECT_EQ(9, handler_.TotalSkippedMessages());
+}
+
+TEST_F(MockMessageHandlerTest, FileMessage) {
+  CheckCounts(0, 0, 0, 0);
+
+  PS_LOG_INFO(&handler_, kMessageInfo);
+  EXPECT_EQ(1, handler_.TotalMessages());
+  EXPECT_EQ(0, handler_.SeriousMessages());
+  CheckCounts(1, 0, 0, 0);
+  CheckSkippedCounts(0, 0, 0);
+
+  handler_.AddPatternToSkipPrinting(kMessageWarning);
+  PS_LOG_WARN(&handler_, kMessageWarning);
+  EXPECT_EQ(2, handler_.TotalMessages());
+  EXPECT_EQ(1, handler_.SeriousMessages());
+  CheckCounts(1, 1, 0, 0);
+  CheckSkippedCounts(0, 1, 0);
+}
+
+TEST_F(MockMessageHandlerTest, Dump) {
+  static const char kFileName[] = "test_file.cc";
+  static const int kLine = 1234;
+  using testing::HasSubstr;
+  using testing::Not;
+
+  handler_.Message(kInfo, kMessageInfo);
+  handler_.FileMessage(kWarning, kFileName, kLine, kMessageWarning);
+  PS_LOG_ERROR(&handler_, kMessageError);
+
+  GoogleString data;
+  StringVector lines;
+  StringWriter writer(&data);
+  handler_.Dump(&writer);
+  {
+    StringPieceVector pieces;
+    SplitStringPieceToVector(data, "\n", &pieces, true);
+    for (auto p : pieces) {
+      lines.push_back(p.as_string());
+    }
+  }
+
+  EXPECT_EQ(lines.size(), 3) << "Expected one line per each log message";
+  // If there is unexpected amount of lines, let's provide meaningful error
+  // messages which describe what was expected on these lines.
+  lines.resize(3);
+
+  EXPECT_THAT(lines[0], HasSubstr(kMessageInfo));
+  EXPECT_THAT(lines[0], Not(HasSubstr(kMessageWarning)));
+  EXPECT_THAT(lines[0], Not(HasSubstr(kMessageError)));
+  EXPECT_THAT(lines[0], Not(HasSubstr(kFileName)));
+
+  EXPECT_THAT(lines[1], HasSubstr(kMessageWarning));
+  EXPECT_THAT(lines[1], Not(HasSubstr(kMessageInfo)));
+  EXPECT_THAT(lines[1], Not(HasSubstr(kMessageError)));
+  EXPECT_THAT(lines[1], HasSubstr(kFileName));
+  EXPECT_THAT(lines[1], HasSubstr(IntegerToString(kLine)));
+
+  EXPECT_THAT(lines[2], HasSubstr(kMessageError));
+  EXPECT_THAT(lines[2], Not(HasSubstr(kMessageInfo)));
+  EXPECT_THAT(lines[2], Not(HasSubstr(kMessageWarning)));
+  EXPECT_THAT(lines[2], HasSubstr(__FILE__));
 }
 
 }  // namespace
