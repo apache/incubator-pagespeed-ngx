@@ -1261,7 +1261,8 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_stat $STATS.2 $STATS.3 cache_hits 1
   check_stat $STATS.2 $STATS.3 ipro_served 1
   check_stat $STATS.2 $STATS.3 ipro_recorder_resources 0
-  check_stat $STATS.2 $STATS.3 image_rewrites 0
+  # Allow some slop in image_rewrites stat due to, I suspect, advisory locks.
+  check_stat_op $STATS.2 $STATS.3 image_rewrites 1 -le
 
   # Check that the IPRO served file didn't discard any Apache err_response_out
   # headers.  Only do this on servers that support err_response_out, so first
