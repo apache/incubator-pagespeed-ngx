@@ -1140,6 +1140,22 @@ TEST_F(CacheExtenderTest, SrcSet) {
                           a_url, " 1x, ", b_url, " 2x\">"));
 }
 
+TEST_F(CacheExtenderTest, VaryOrigin) {
+  options()->EnableExtendCacheFilters();
+  rewrite_driver()->AddFilters();
+
+  GoogleString url = AbsolutifyUrl("a.css");
+  ResponseHeaders response_headers;
+  DefaultResponseHeaders(kContentTypeCss, 100 /* ttl */, &response_headers);
+  response_headers.Add("Vary", "Origin");
+  SetFetchResponse(url, response_headers, "css file");
+
+  GoogleString cache_extended_css = Encode("", kFilterId, "0", "a.css", "css");
+  ValidateExpected("vary origin",
+                   StringPrintf(kCssFormat, "a.css"),
+                   StringPrintf(kCssFormat, cache_extended_css.c_str()));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

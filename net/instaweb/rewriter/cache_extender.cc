@@ -303,16 +303,22 @@ RewriteResult CacheExtender::RewriteLoadedResource(
   // See if the resource is cacheable; and if so whether there is any need
   // to cache extend it.
   bool ok = false;
+  // Assume that it may have cookies; see comment in
+  // CacheableResourceBase::IsValidAndCacheableImpl.
+  RequestHeaders::Properties req_properties;
   const ContentType* output_type = NULL;
   if (!server_context()->http_cache()->force_caching() &&
-      !headers->IsProxyCacheable()) {
+      !headers->IsProxyCacheable(
+          req_properties,
+          ResponseHeaders::GetVaryOption(driver()->options()->respect_vary()),
+          ResponseHeaders::kNoValidator)) {
     // Note: RewriteContextTest.PreserveNoCacheWithFailedRewrites
     // relies on CacheExtender failing rewrites in this case.
     // If you change this behavior that test MUST be updated as it covers
     // security.
     not_cacheable_count_->Add(1);
   } else if (ShouldRewriteResource(
-                 headers, now_ms, input_resource,url, result)) {
+      headers, now_ms, input_resource, url, result)) {
     // We must be careful what Content-Types we allow to be cache extended.
     // Specifically, we do not want to cache extend any Content-Types that
     // could execute scripts when loaded in a browser because that could
