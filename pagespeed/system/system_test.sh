@@ -460,7 +460,7 @@ if [ $statistics_enabled = "1" ]; then
 
   # This test only makes sense if you're running tests against localhost.
   if echo "$HOSTNAME" | grep "^localhost:"; then
-    if which ifconfig ; then
+    if which ifconfig >/dev/null; then
       start_test Non-local access to statistics fails.
       NON_LOCAL_IP=$( \
         ifconfig | egrep -o 'inet addr:[0-9]+.[0-9]+.[0-9]+.[0-9]+' | \
@@ -470,7 +470,7 @@ if [ $statistics_enabled = "1" ]; then
       URL="http://$NON_LOCAL_IP:$(echo $HOSTNAME | sed s/^localhost://)/"
       URL+="mod_pagespeed_example/styles/"
       URL+="W.rewrite_css_images.css.pagespeed.cf.Hash.css"
-      OUT=$(wget -O - -q $URL)
+      OUT=$($CURL -Ssi $URL)
       check_from "$OUT" grep background-image
 
       # Make sure we can't load statistics from NON_LOCAL_IP.
