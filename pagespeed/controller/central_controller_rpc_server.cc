@@ -31,10 +31,11 @@ namespace net_instaweb {
 CentralControllerRpcServer::CentralControllerRpcServer(
     int listen_port,
     ExpensiveOperationController* expensive_operation_controller,
-    ScheduleRewriteController* rewrite_controller)
+    ScheduleRewriteController* rewrite_controller, MessageHandler* handler)
     : listen_port_(listen_port),
       expensive_operation_controller_(expensive_operation_controller),
-      rewrite_controller_(rewrite_controller) {}
+      rewrite_controller_(rewrite_controller),
+      handler_(handler) {}
 
 int CentralControllerRpcServer::Setup() {
   ::grpc::ServerBuilder builder;
@@ -49,7 +50,7 @@ int CentralControllerRpcServer::Setup() {
   queue_ = builder.AddCompletionQueue();
   server_ = builder.BuildAndStart();
   if (server_ == nullptr) {
-    LOG(ERROR) << "CentralControllerRpcServer failed to start";
+    PS_LOG_ERROR(handler_, "CentralControllerRpcServer failed to start");
     return 1;
   }
 
@@ -58,16 +59,17 @@ int CentralControllerRpcServer::Setup() {
 
   ScheduleRewriteRpcHandler::CreateAndStart(&service_, queue_.get(),
                                             rewrite_controller_.get());
-
   return 0;
 }
 
 int CentralControllerRpcServer::Run() {
-  LOG(INFO) << "CentralControllerRpcServer waiting for events";
+  PS_LOG_INFO(handler_,
+              "CentralControllerRpcServer processing requests on port %d",
+              listen_port_);
 
   MainLoop(queue_.get());
 
-  LOG(INFO) << "CentralControllerRpcServer terminated.";
+  PS_LOG_INFO(handler_, "CentralControllerRpcServer terminated");
   return 0;
 }
 
@@ -85,7 +87,7 @@ void CentralControllerRpcServer::MainLoop(::grpc::CompletionQueue* queue) {
 }
 
 void CentralControllerRpcServer::Stop() {
-  LOG(INFO) << "Shutting down CentralControllerRpcServer.";
+  PS_LOG_INFO(handler_, "Shutting down CentralControllerRpcServer.");
   // This blocks indefinitely for all outstanding RPCs to complete.
   server_->Shutdown();
   // This should terminate the event loop immediately.

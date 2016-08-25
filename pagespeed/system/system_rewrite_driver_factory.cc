@@ -283,7 +283,8 @@ void SystemRewriteDriverFactory::StartController(
                                            thread_system(), statistics()),
             new PopularityContestScheduleRewriteController(
                 thread_system(), statistics(), timer(), 10 /* max_in_flight */,
-                1000 /* max_in_queue */)));
+                1000 /* max_in_queue */),
+            message_handler()));
     // In the forked process, this call starts a new event loop and never
     // returns.
     ControllerManager::ForkControllerProcess(

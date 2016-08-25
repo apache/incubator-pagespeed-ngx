@@ -23,6 +23,7 @@
 #include "pagespeed/controller/controller.grpc.pb.h"
 #include "pagespeed/controller/expensive_operation_controller.h"
 #include "pagespeed/controller/schedule_rewrite_controller.h"
+#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/util/grpc.h"
 #include "pagespeed/system/controller_process.h"
 
@@ -37,7 +38,8 @@ class CentralControllerRpcServer : public ControllerProcess {
   CentralControllerRpcServer(
       int listen_port,
       ExpensiveOperationController* expensive_operation_controller,
-      ScheduleRewriteController* rewrite_controller);
+      ScheduleRewriteController* rewrite_controller,
+      MessageHandler* handler);
   virtual ~CentralControllerRpcServer() { }
 
   // ControllerProcess implementation.
@@ -56,6 +58,7 @@ class CentralControllerRpcServer : public ControllerProcess {
 
   std::unique_ptr<ExpensiveOperationController> expensive_operation_controller_;
   std::unique_ptr<ScheduleRewriteController> rewrite_controller_;
+  MessageHandler* handler_;
 
   DISALLOW_COPY_AND_ASSIGN(CentralControllerRpcServer);
 };
