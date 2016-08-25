@@ -138,6 +138,8 @@
             'src/src/google/protobuf/compiler/importer.h',
             'src/src/google/protobuf/compiler/java/java_doc_comment.cc',
             'src/src/google/protobuf/compiler/java/java_doc_comment.h',
+            'src/src/google/protobuf/compiler/java/java_extension_lite.cc',
+            'src/src/google/protobuf/compiler/java/java_extension_lite.h',
             'src/src/google/protobuf/compiler/parser.h',
 
             'src/src/google/protobuf/stubs/int128.cc',
