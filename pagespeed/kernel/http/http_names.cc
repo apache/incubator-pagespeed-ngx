@@ -125,6 +125,7 @@ const char HttpAttributes::kXUACompatible[] = "X-UA-Compatible";
 const char HttpAttributes::kXPsaSplitConfig[] = "X-PSA-Split-Config";
 const char HttpAttributes::kXSendfile[] = "X-Sendfile";
 const char HttpAttributes::kXAccelRedirect[] = "X-Accel-Redirect";
+const char HttpAttributes::kXPageSpeedLoop[] = "X-PageSpeed-Loop";
 
 const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
   switch (rc) {

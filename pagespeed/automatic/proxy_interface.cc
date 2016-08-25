@@ -267,7 +267,13 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
 
   // Update request_headers.
   // We deal with encodings. So strip the users Accept-Encoding headers.
-  async_fetch->request_headers()->RemoveAll(HttpAttributes::kAcceptEncoding);
+  if (!async_fetch->request_headers()->Lookup1(
+          HttpAttributes::kXPageSpeedLoop)) {
+    // In proxy mode (mpr) we must pass through the accept encoding to be able
+    // to tell if the origin server is sending gzipped content when the client
+    // is requesting it.
+    async_fetch->request_headers()->RemoveAll(HttpAttributes::kAcceptEncoding);
+  }
   // Note: We preserve the User-Agent and Cookies so that the origin servers
   // send us the correct HTML. We will need to consider this for caching HTML.
 

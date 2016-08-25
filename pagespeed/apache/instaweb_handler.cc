@@ -518,7 +518,6 @@ bool InstawebHandler::HandleAsProxy() {
 }
 
 void InstawebHandler::HandleAsProxyForAll() {
-  static const char kLoopHeader[] = "X-PageSpeed-Loop";
   static const char kLoopValue[] = "MPS";
 
   // Note: we can't use MakeFetch here as we want ProxyInterface to create the
@@ -527,14 +526,13 @@ void InstawebHandler::HandleAsProxyForAll() {
   ApacheRequestToRequestHeaders(*request_, request_headers.get());
 
   // Do loop detection.
-  if (request_headers->HasValue(kLoopHeader, kLoopValue)) {
+  if (request_headers->HasValue(HttpAttributes::kXPageSpeedLoop, kLoopValue)) {
     write_handler_response("Loop detected on fetch in ProxyAllRequests mode; "
                            "you may need to authorize more domains. ",
                            request_);
     return;
   }
-  request_headers->Add(kLoopHeader, kLoopValue);
-
+  request_headers->Add(HttpAttributes::kXPageSpeedLoop, kLoopValue);
   SimpleBufferedApacheFetch fetch(request_context_,
                                   request_headers.release(),
                                   server_context_->thread_system(),

@@ -153,6 +153,8 @@ struct HttpAttributes {
   // Sendfile type responses.
   static const char kXSendfile[];
   static const char kXAccelRedirect[];
+  // PageSpeed Loop detection for proxy mode.
+  static const char kXPageSpeedLoop[];
 
   // Gets a sorted StringPieceVector containing all the end-to-end headers.
   // Any fields listed in here should be ignored during sanitization when they

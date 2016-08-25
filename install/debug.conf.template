@@ -1899,6 +1899,19 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
   ModPagespeedExperimentalProxyAllRequests on
   ModPagespeedExperimentalMeasurementProxy "http://mpr.example.com" secret
+  ModPagespeedFetchWithGzip on
+</VirtualHost>
+
+# For testing measurement proxy things, passthrough.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName mprpass.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mprpass"
+  ModPagespeedExperimentalProxyAllRequests on
+  ModPagespeedExperimentalMeasurementProxy "http://mprpass.example.com" secret
+  ModPagespeedFetchWithGzip on
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedInPlaceResourceOptimization off
 </VirtualHost>
 
 # For testing how we handle process-scope options.

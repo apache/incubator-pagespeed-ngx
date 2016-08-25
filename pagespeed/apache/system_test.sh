@@ -1052,6 +1052,19 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   OUT=$($CURL --silent --include --proxy $SECONDARY_HOSTNAME\
       http://mpr.example.com/h/b/secret/www.gstatic.com/psa/static/A.0e5d6484d7bf84edf94c17a8d6a6c6de-mobilize.css+0f58e3ef023072001e64bba88abaeeeb-mobilize.css,Mcc.JzQiGpc0_X.css.pagespeed.cf.0slDU6deBr.css)
   check_from "$OUT" fgrep -q "psmob-map-button"
+
+  start_test Measurement proxy mode passthrough gzip
+  URL="http://mprpass.example.com/h/b/secret/www.gstatic.com/psa/static/57ea3579bb97c7b4ca6658061d5c765b-mobilize.js"
+  http_proxy=${SECONDARY_HOSTNAME} fetch_until -gzip $URL "wc -c" 69551 "" -le
+  start_test Measurement proxy mode rewrite gzip
+  URL="http://mpr.example.com/h/b/secret/www.gstatic.com/psa/static/57ea3579bb97c7b4ca6658061d5c765b-mobilize.js"
+  http_proxy=${SECONDARY_HOSTNAME} fetch_until -gzip $URL "wc -c" 65151 "" -le
+  start_test Measurement proxy mode passthrough nogzip
+  URL="http://mprpass.example.com/h/b/secret/www.gstatic.com/psa/static/57ea3579bb97c7b4ca6658061d5c765b-mobilize.js"
+  http_proxy=${SECONDARY_HOSTNAME} fetch_until $URL "wc -c" 288467 "" -ge
+  start_test Measurement proxy mode rewrite nogzip
+  URL="http://mpr.example.com/h/b/secret/www.gstatic.com/psa/static/57ea3579bb97c7b4ca6658061d5c765b-mobilize.js"
+  http_proxy=${SECONDARY_HOSTNAME} fetch_until $URL "wc -c" 241055 "" -ge
 fi
 
 start_test Make sure Disallow/Allow overrides work in htaccess hierarchies
