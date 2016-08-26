@@ -97,7 +97,6 @@ void NgxMessageHandler::MessageSImpl(MessageType type,
   } else {
     GoogleMessageHandler::MessageSImpl(type, message);
   }
-  // Prepare a log message for the SharedCircularBuffer only.
   AddMessageToBuffer(type, message);
 }
 
@@ -111,6 +110,7 @@ void NgxMessageHandler::FileMessageSImpl(
   } else {
     GoogleMessageHandler::FileMessageSImpl(type, file, line, message);
   }
+  AddMessageToBuffer(type, file, line, message);
 }
 
 }  // namespace net_instaweb
