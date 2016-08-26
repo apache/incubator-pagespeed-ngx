@@ -22,6 +22,7 @@
 
 #include <cstddef>                     // for size_t
 #include <set>
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -577,9 +578,8 @@ class ServerContext {
     hostname_ = x;
   }
 
-  // Takes ownership of controller.
-  void set_central_controller(CentralController* controller) {
-    central_controller_.reset(controller);
+  void set_central_controller(std::shared_ptr<CentralController> controller) {
+    central_controller_ = controller;
   }
 
   CentralController* central_controller() {
@@ -816,7 +816,7 @@ class ServerContext {
 
   scoped_ptr<CachePropertyStore> cache_property_store_;
 
-  scoped_ptr<CentralController> central_controller_;
+  std::shared_ptr<CentralController> central_controller_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerContext);
 };

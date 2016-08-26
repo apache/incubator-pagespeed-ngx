@@ -500,7 +500,7 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   }
 
   server_context->set_central_controller(
-      CreateCentralController(server_context->lock_manager()));
+      GetCentralController(server_context->lock_manager()));
   if (server_context->url_namer() == nullptr) {
     server_context->set_url_namer(url_namer());
   }
@@ -541,9 +541,9 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
                                    true /* startup fetch */);
 }
 
-CentralController* RewriteDriverFactory::CreateCentralController(
+std::shared_ptr<CentralController> RewriteDriverFactory::GetCentralController(
     NamedLockManager* lock_manager) {
-  return new CompatibleCentralController(
+  return std::make_shared<CompatibleCentralController>(
       default_options()->image_max_rewrites_at_once(), statistics(),
       thread_system(), lock_manager);
 }

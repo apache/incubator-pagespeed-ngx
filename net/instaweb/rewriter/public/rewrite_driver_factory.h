@@ -21,6 +21,7 @@
 
 #include <set>
 #include <vector>
+#include <memory>
 
 #include "pagespeed/controller/central_controller.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
@@ -410,12 +411,9 @@ class RewriteDriverFactory {
 
   // Allow sub-classes to pick which CentralController they want to use.
   // lock_manager is owned by the caller and must outlive the Controller.
-  //
-  // TODO(cheesy): Right now this creates a new CentralController for each
-  // ServerContext. This is for backwards compatibility with Nginx, where we
-  // don't have a NamedLockManager on the driver factory. Once we have a
-  // real CentralController, this will need to be changed around a bit.
-  virtual CentralController* CreateCentralController(
+  // This uses shared_ptr to solve lifecycle differences among different
+  // implementations.
+  virtual std::shared_ptr<CentralController> GetCentralController(
       NamedLockManager* lock_manager);
 
   // For use in tests.
