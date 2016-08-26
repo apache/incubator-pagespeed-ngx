@@ -133,6 +133,8 @@ TEST_F(InflatingFetchTest, AutoInflate) {
   inflating_fetch_->response_headers()->Add(
       HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
   inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_->response_headers()->Add(
+      HttpAttributes::kContentLength, IntegerToString(gzipped_data_.size()));
   inflating_fetch_->Write(gzipped_data_, &message_handler_);
   inflating_fetch_->Done(true);
   EXPECT_EQ(kClearData, mock_fetch_->buffer())
@@ -140,6 +142,10 @@ TEST_F(InflatingFetchTest, AutoInflate) {
   EXPECT_TRUE(mock_fetch_->response_headers()->Lookup1(
       HttpAttributes::kContentEncoding) == NULL)
       << "Content encoding should be stripped since we inflated the data.";
+  // Content-length shouldn't be there (since we don't know the uncompressed
+  // size early enough).
+  EXPECT_FALSE(
+      mock_fetch_->response_headers()->Has(HttpAttributes::kContentLength));
   EXPECT_TRUE(mock_fetch_->done());
   EXPECT_TRUE(mock_fetch_->success());
 }

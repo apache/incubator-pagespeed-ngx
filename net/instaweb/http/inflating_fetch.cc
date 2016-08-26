@@ -196,6 +196,7 @@ void InflatingFetch::HandleHeadersComplete() {
 void InflatingFetch::InitInflater(GzipInflater::InflateType type,
                                   const StringPiece& value) {
   response_headers()->Remove(HttpAttributes::kContentEncoding, value);
+  response_headers()->RemoveAll(HttpAttributes::kContentLength);
   response_headers()->ComputeCaching();
 
   // TODO(jmarantz): Consider integrating with a free-store of Inflater
