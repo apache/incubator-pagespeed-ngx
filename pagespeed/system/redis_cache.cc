@@ -18,6 +18,7 @@
 
 #include "pagespeed/system/redis_cache.h"
 
+#include <sys/time.h>
 #include <cstddef>
 #include <cstdarg>
 
@@ -29,7 +30,7 @@ namespace net_instaweb {
 
 RedisCache::RedisCache(const StringPiece& host, int port, AbstractMutex* mutex,
                        MessageHandler* message_handler, Timer* timer,
-                       int64 reconnection_delay_ms)
+                       int64 reconnection_delay_ms, int64 timeout_us)
     : host_(host.as_string()),
       port_(port),
       redis_(nullptr),
@@ -37,6 +38,7 @@ RedisCache::RedisCache(const StringPiece& host, int port, AbstractMutex* mutex,
       message_handler_(message_handler),
       timer_(timer),
       reconnection_delay_ms_(reconnection_delay_ms),
+      timeout_us_(timeout_us),
       next_reconnect_at_ms_(timer_->NowMs()),
       is_started_up_(false) {}
 
@@ -55,13 +57,18 @@ bool RedisCache::Reconnect() {
   CHECK(is_started_up_);
 
   FreeRedisContext();
-  redis_ = redisConnect(host_.c_str(), port_);
+  struct timeval timeout;
+  timeout.tv_sec = timeout_us_ / Timer::kSecondUs;
+  timeout.tv_usec = timeout_us_ % Timer::kSecondUs;
+  redis_ = redisConnectWithTimeout(host_.c_str(), port_, timeout);
 
   bool success = false;
   if (redis_ == nullptr) {
     message_handler_->Message(kError, "Cannot allocate redis context");
   } else if (redis_->err) {
     LogRedisContextError("Error while connecting to redis");
+  } else if (redisSetTimeout(redis_, timeout) != REDIS_OK) {
+    LogRedisContextError("Error while setting timeout on redis context");
   } else {
     success = true;
   }

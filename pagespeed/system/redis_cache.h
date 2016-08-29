@@ -41,7 +41,6 @@ namespace net_instaweb {
 // This class is thread-safe.
 // TODO(yeputons): consider extracting a common interface with AprMemCache
 // TODO(yeputons): consider making Redis-reported errors treated as failures
-// TODO(yeputons): add timeouts for connecting and all individual operations
 class RedisCache : public CacheInterface {
  public:
   // Takes ownership of mutex. This mutex protects inner calls to hiredis only.
@@ -49,7 +48,7 @@ class RedisCache : public CacheInterface {
   // throughout full lifetime of RedisCache
   RedisCache(const StringPiece& host, int port, AbstractMutex* mutex,
              MessageHandler* message_handler, Timer* timer,
-             int64 reconnection_delay_ms_);
+             int64 reconnection_delay_ms, int64 timeout_us);
   ~RedisCache() override { ShutDown(); }
 
   GoogleString ServerDescription() const;
@@ -65,7 +64,6 @@ class RedisCache : public CacheInterface {
   // still allows us to reconnect quickly in case of network glitches.
   void StartUp() LOCKS_EXCLUDED(mutex_);
   // TODO(yeputons): add redis AUTH command support
-  // TODO(yeputons): add connection timeout
 
   // CacheInterface implementations
   void Get(const GoogleString& key, Callback* callback) override
@@ -118,6 +116,7 @@ class RedisCache : public CacheInterface {
   MessageHandler *message_handler_;
   Timer *timer_;
   const int64 reconnection_delay_ms_;
+  const int64 timeout_us_;
   int64 next_reconnect_at_ms_ GUARDED_BY(mutex_);
   bool is_started_up_ GUARDED_BY(mutex_);
 

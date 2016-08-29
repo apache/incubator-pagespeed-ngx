@@ -42,6 +42,7 @@ const char SystemRewriteOptions::kStaticAssetCDN[] = "StaticAssetCDN";
 const char SystemRewriteOptions::kRedisServer[] = "ExperimentalRedisServer";
 const char SystemRewriteOptions::kRedisReconnectionDelayMs[] =
     "RedisReconnectionDelayMs";
+const char SystemRewriteOptions::kRedisTimeoutUs[] = "RedisTimeoutUs";
 
 const int SystemRewriteOptions::RedisServerSpec::kDefaultPort = 6379;
 
@@ -111,6 +112,11 @@ void SystemRewriteOptions::AddProperties() {
                     SystemRewriteOptions::kRedisReconnectionDelayMs,
                     "Time to wait after unsuccessful reconnection before "
                     "another attempt (ms)",
+                    true);
+  AddSystemProperty(50 * Timer::kMsUs,  // 50 ms
+                    &SystemRewriteOptions::redis_timeout_us_, "rdt",
+                    SystemRewriteOptions::kRedisTimeoutUs,
+                    "Timeout for all Redis operations and connection (us)",
                     true);
   AddSystemProperty(50 * Timer::kMsUs,  // 50 ms
                     &SystemRewriteOptions::slow_file_latency_threshold_us_,

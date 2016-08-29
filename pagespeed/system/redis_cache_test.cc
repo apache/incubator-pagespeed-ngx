@@ -29,19 +29,21 @@
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/mock_timer.h"
+#include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/system/tcp_server_thread_for_testing.h"
 
+namespace net_instaweb {
+
 namespace {
   static const int kReconnectionDelayMs = 10;
+  static const int kTimeoutUs = 100 * Timer::kMsUs;
   static const char kSomeKey[] = "SomeKey";
   static const char kSomeValue[] = "SomeValue";
 }
-
-namespace net_instaweb {
 
 using testing::HasSubstr;
 
@@ -66,7 +68,7 @@ class RedisCacheTest : public CacheTestBase {
     }
 
     cache_.reset(new RedisCache("localhost", port, new NullMutex, &handler_,
-                                &timer_, kReconnectionDelayMs));
+                                &timer_, kReconnectionDelayMs, kTimeoutUs));
     cache_->StartUp();
     return cache_->FlushAll();
   }
@@ -205,7 +207,7 @@ class RedisCacheReconnectTest : public RedisCacheTest {
     CHECK_NE(port_, 0);
 
     cache_.reset(new RedisCache("localhost", port_, new NullMutex, &handler_,
-                                &timer_, kReconnectionDelayMs));
+                                &timer_, kReconnectionDelayMs, kTimeoutUs));
   }
 
  protected:
@@ -310,6 +312,117 @@ TEST_F(RedisCacheTest, DoesNotReconnectAfterShutdown) {
 
   EXPECT_FALSE(Cache()->IsHealthy());  // Reconnection is not allowed.
   CheckNotFound(kSomeKey);
+}
+
+class RedisNotRespondingServerThread : public TcpServerThreadForTesting {
+ public:
+  RedisNotRespondingServerThread(apr_port_t listen_port,
+                                 ThreadSystem* thread_system)
+      : TcpServerThreadForTesting(listen_port, "redis_not_responding_server",
+                                  thread_system) {}
+
+  ~RedisNotRespondingServerThread() {
+    ShutDown();
+  }
+
+ protected:
+  void HandleClientConnection(apr_socket_t* sock) override {
+    // Do nothing, socket will be closed in destructor
+  }
+};
+
+// These constants are for timeout tests.
+namespace {
+// Experiments showed that I/O functions on Linux may sometimes time out
+// slightly earlier than configured. It does not look like precision or
+// rounding error; waking up recv() 2ms earlier has probability around 0.7%.
+// That is partially leveraged by the fact that we have a bunch of code around
+// I/O in RedisCache, but probability is still non-zero (0.05%). Probability
+// of 1ms gap in RedisCacheOperationTimeouTest was around 5% at the time it was
+// written. So we put here 5ms to be safe.
+const int kTimedOutOperationMinTimeUs = kTimeoutUs - 5 * Timer::kMsUs;
+
+// Upper gap is bigger because taking more time than time out is expected.
+// Unfortunately, it still gives 0.05%-0.1% of spurious failures and 'real'
+// overhead in these outliers can be bigger than 100ms.
+const int kTimedOutOperationMaxTimeUs = kTimeoutUs + 50 * Timer::kMsUs;
+}  // namespace
+
+TEST_F(RedisCacheTest, ConnectionTimeout) {
+  // Try to connect to some definitely unreachable host.
+  // 192.0.2.0/24 is reserved for documentation purposes in RFC5737 and no
+  // machine should ever be routable in that subnet.
+  cache_.reset(new RedisCache("192.0.2.1", 12345, new NullMutex, &handler_,
+                              &timer_, kReconnectionDelayMs, kTimeoutUs));
+  PosixTimer timer;
+  int64 started_at_us = timer.NowUs();
+  cache_->StartUp();  // Should try to connect as well.
+  int64 waited_for_us = timer.NowUs() - started_at_us;
+  EXPECT_FALSE(cache_->IsHealthy());
+  EXPECT_GE(waited_for_us, kTimedOutOperationMinTimeUs);
+  EXPECT_LE(waited_for_us, kTimedOutOperationMaxTimeUs);
+}
+
+// All RedisCacheOperationTimeoutTests start with a cache connected to a server
+// which accepts single connection and does not answer until test is finished.
+// The test calls a single command. If the timeout handling is correct, it times
+// out and the test terminates correctly. If the timeout handling is not
+// correct, the test hangs.
+class RedisCacheOperationTimeoutTest : public RedisCacheTest {
+ protected:
+  static void SetUpTestCase() {
+    apr_initialize();
+    atexit(apr_terminate);
+    TcpServerThreadForTesting::PickListenPortOnce(&port_);
+    CHECK_NE(port_, 0);
+
+    // We want timeout to be significantly greater than measuring gap.
+    CHECK_GT(kTimeoutUs, 60 * Timer::kMsUs);
+  }
+
+  void SetUp() {
+    cache_.reset(new RedisCache("localhost", port_, new NullMutex, &handler_,
+                                &timer_, kReconnectionDelayMs, kTimeoutUs));
+    server_.reset(
+        new RedisNotRespondingServerThread(port_, thread_system_.get()));
+
+    ASSERT_TRUE(server_->Start());
+    // Wait while server starts and check its port.
+    ASSERT_EQ(port_, server_->GetListeningPort());
+
+    cache_->StartUp();
+    ASSERT_TRUE(cache_->IsHealthy());
+
+    started_at_us_ = timer_.NowUs();
+  }
+
+  void TearDown() {
+    int64 waited_for_us = timer_.NowUs() - started_at_us_;
+    EXPECT_GE(waited_for_us, kTimedOutOperationMinTimeUs);
+    EXPECT_LE(waited_for_us, kTimedOutOperationMaxTimeUs);
+  }
+
+ private:
+  static apr_port_t port_;
+  scoped_ptr<RedisNotRespondingServerThread> server_;
+  PosixTimer timer_;
+  int64 started_at_us_;
+};
+
+apr_port_t RedisCacheOperationTimeoutTest::port_ = 0;
+
+TEST_F(RedisCacheOperationTimeoutTest, Get) {
+  CheckNotFound("Key");
+}
+
+// TODO(yeputons): test MultiGet when it's a single command, not sequenced GET()
+
+TEST_F(RedisCacheOperationTimeoutTest, Put) {
+  CheckPut("Key", "Value");
+}
+
+TEST_F(RedisCacheOperationTimeoutTest, Delete) {
+  CheckDelete("Key");
 }
 
 }  // namespace net_instaweb

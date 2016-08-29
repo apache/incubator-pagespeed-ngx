@@ -245,4 +245,13 @@ TEST_F(SystemRewriteOptionsTest, RedisReconnectionDelay) {
                 &SystemRewriteOptions::redis_reconnection_delay_ms);
 }
 
+TEST_F(SystemRewriteOptionsTest, RedisTimeoutInitValue) {
+  EXPECT_GT(options_.redis_timeout_us(), 0);
+}
+
+TEST_F(SystemRewriteOptionsTest, RedisTimeout) {
+  TestIntOption(SystemRewriteOptions::kRedisTimeoutUs,
+                &SystemRewriteOptions::redis_timeout_us);
+}
+
 }  // namespace net_instaweb

@@ -2100,6 +2100,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedRateLimitBackgroundFetches true
 #ALL_DIRECTIVES ModPagespeedExperimentalRedisServer localhost:55555
 #ALL_DIRECTIVES ModPagespeedRedisReconnectionDelayMs 1000
+#ALL_DIRECTIVES ModPagespeedRedisTimeoutUs 50000
 #ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
 #ALL_DIRECTIVES ModPagespeedReportUnloadTime true
 #ALL_DIRECTIVES ModPagespeedRespectVary true

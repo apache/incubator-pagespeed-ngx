@@ -242,7 +242,7 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewRedis(
   RedisCache* redis_server = new RedisCache(
       server_spec.host, server_spec.port, factory_->thread_system()->NewMutex(),
       factory_->message_handler(), factory_->timer(),
-      config->redis_reconnection_delay_ms());
+      config->redis_reconnection_delay_ms(), config->redis_timeout_us());
   factory_->TakeOwnership(redis_server);
   redis_servers_.push_back(redis_server);
   if (redis_pool_.get() == NULL) {
@@ -279,7 +279,8 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewExternalCache(
   if (use_redis) {
     spec_signature =
         StrCat("r;", config->redis_server().ToString(), ";",
-               IntegerToString(config->redis_reconnection_delay_ms()));
+               IntegerToString(config->redis_reconnection_delay_ms()), ";",
+               IntegerToString(config->redis_timeout_us()));
   } else if (use_memcached) {
     spec_signature = StrCat("m;", config->memcached_servers(), ";",
                             IntegerToString(config->memcached_threads()), ";",

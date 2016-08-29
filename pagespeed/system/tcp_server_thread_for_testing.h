@@ -66,8 +66,9 @@ class TcpServerThreadForTesting : public ThreadSystem::Thread {
   apr_pool_t* pool() { return pool_; }
 
  private:
-  // Called after a successful call to apr_accept. Implementor must close
-  // sock.
+  // Called after a successful call to apr_accept. Implementor can close the
+  // socket themselves or it will be automatically closed by apr_pool_destroy()
+  // called in ShutDown().
   virtual void HandleClientConnection(apr_socket_t* sock) = 0;
 
   // Returns a socket bound to requested_listen_port_ if non-zero, otherwise
