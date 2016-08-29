@@ -1433,6 +1433,7 @@ OUT=$(cat "$ERROR_LOG" \
     | grep -v "\\[warn\\].*Controller process .* exited with status code.*" \
     | grep -v "\\[warn\\].*Rewrite.*failed.*.pagespeed....0.foo.*" \
     | grep -v "\\[warn\\].*A.blue.css.*but cannot access the original.*" \
+    | grep -v "\\[warn\\].*Adding function to sequence.*" \
     || true)
 
 check [ -z "$OUT" ]
