@@ -178,27 +178,26 @@ class SharedMemCache : public CacheInterface {
   void PutRawHash(const GoogleString& raw_hash, int64 last_use_timestamp_ms,
                   SharedString* value, bool checkpoint_ok);
 
-  // Finish a get, with the entry matching and sector lock held.
-  // Releases lock when done.
-  void GetFromEntry(const GoogleString& key,
-                    SharedMemCacheData::Sector<kBlockSize>* sector,
-                    SharedMemCacheData::EntryNum entry_num, Callback* callback)
-      UNLOCK_FUNCTION(sector->mutex());
+  // Finish a get, with the entry matching and sector lock held.  Releases lock
+  // while performing the read, but takes it again before returning.
+  CacheInterface::KeyState GetFromEntry(
+      const GoogleString& key,
+      SharedMemCacheData::Sector<kBlockSize>* sector,
+      SharedMemCacheData::EntryNum entry_num,
+      SharedString* out) EXCLUSIVE_LOCKS_REQUIRED(sector->mutex());
 
   // Finish a put into the given entry. Lock is expected to be held at entry,
-  // will be released when done. The hash in the entry must also be already
-  // correct at time of entry.
+  // will still be held when done. The hash in the entry must also be already
+  // correct at time of call.
   void PutIntoEntry(SharedMemCacheData::Sector<kBlockSize>* sector,
                     SharedMemCacheData::EntryNum entry_num,
                     int64 last_use_timestamp_ms, SharedString* value)
-      EXCLUSIVE_LOCKS_REQUIRED(sector->mutex())
-      UNLOCK_FUNCTION(sector->mutex());
+      EXCLUSIVE_LOCKS_REQUIRED(sector->mutex());
 
   // Finish a delete, with the entry matching and sector lock held.
-  // Releases lock when done.
   void DeleteEntry(SharedMemCacheData::Sector<kBlockSize>* sector,
                    SharedMemCacheData::EntryNum entry_num)
-      UNLOCK_FUNCTION(sector->mutex());
+      EXCLUSIVE_LOCKS_REQUIRED(sector->mutex());
 
   // Attempts to allocate at least the given number of blocks, and appends any
   // blocks it manages to allocate to *blocks. Returns whether successful.
