@@ -2536,6 +2536,17 @@ void RewriteContext::Propagate(bool render_slots) {
           ResourceSlotPtr slot = slots_[slot_index];
           ResourcePtr resource(outputs_[p]);
           slot->SetResource(resource);
+          if (slot->need_aggregate_input_info()) {
+            for (int i = 0; i < partitions_->other_dependency_size(); ++i) {
+              const InputInfo& other_dep = partitions_->other_dependency(p);
+              slot->ReportInput(other_dep);
+            }
+
+            for (int i = 0; i < partition->input_size(); ++i) {
+              const InputInfo& own_dep = partition->input(i);
+              slot->ReportInput(own_dep);
+            }
+          }
           if (render_slots && partition->url_relocatable() && !was_too_busy_) {
             // This check for relocatable is potentially unsafe in that later
             // filters might still try to relocate the resource.  We deal with

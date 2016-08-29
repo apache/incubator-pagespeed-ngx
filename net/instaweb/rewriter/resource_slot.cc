@@ -41,6 +41,13 @@ bool ResourceSlot::DirectSetUrl(const StringPiece& url) {
   return false;
 }
 
+void ResourceSlot::ReportInput(const InputInfo& input) {
+  if (inputs_ == nullptr) {
+    inputs_.reset(new std::vector<InputInfo>);
+  }
+  inputs_->push_back(input);
+}
+
 RewriteContext* ResourceSlot::LastContext() const {
   if (contexts_.empty()) {
     return NULL;

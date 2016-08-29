@@ -19,9 +19,11 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_SLOT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_SLOT_H_
 
+#include <memory>
 #include <set>
 #include <vector>
 
+#include "net/instaweb/rewriter/input_info.pb.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
@@ -33,7 +35,6 @@
 
 namespace net_instaweb {
 
-class CachedResults;
 class HtmlResourceSlot;
 class ResourceSlot;
 class RewriteContext;
@@ -58,7 +59,8 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
         disable_rendering_(false),
         should_delete_element_(false),
         disable_further_processing_(false),
-        was_optimized_(false) {
+        was_optimized_(false),
+        need_aggregate_input_info_(false) {
   }
 
   ResourcePtr resource() const { return resource_; }
@@ -129,6 +131,21 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
     return disable_further_processing_;
   }
 
+  // If this is true, input info on all inputs affecting this slot
+  // will be collected from all RewriteContexts chained to it.
+  void set_need_aggregate_input_info(bool x) {
+    need_aggregate_input_info_ = x;
+  }
+
+  bool need_aggregate_input_info() const {
+    return need_aggregate_input_info_;
+  }
+
+  void ReportInput(const InputInfo& input);
+
+  // may be nullptr.
+  const std::vector<InputInfo>* inputs() const { return inputs_.get(); }
+
   // Render is not thread-safe.  This must be called from the thread that
   // owns the DOM or CSS file. The RewriteContext state machine will only
   // call ResourceSlot::Render() on slots that were optimized successfully,
@@ -186,11 +203,13 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
  private:
   ResourcePtr resource_;
+  std::unique_ptr<std::vector<InputInfo>> inputs_;
   bool preserve_urls_;
   bool disable_rendering_;
   bool should_delete_element_;
   bool disable_further_processing_;
   bool was_optimized_;
+  bool need_aggregate_input_info_;
 
   // We track the RewriteContexts that are atempting to rewrite this
   // slot, to help us build a dependency graph between ResourceContexts.

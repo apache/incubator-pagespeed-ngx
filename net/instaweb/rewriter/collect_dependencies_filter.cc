@@ -65,6 +65,12 @@ class CollectDependenciesFilter::Context : public RewriteContext {
     // We will never produce output, but always want to do stuff.
     outputs->push_back(OutputResourcePtr(nullptr));
     partitions->add_partition();
+
+    ResourcePtr resource(slot(0)->resource());
+    if (resource->loaded()) {
+      resource->AddInputInfoToPartition(
+          Resource::kIncludeInputHash, 0, partitions->mutable_partition(0));
+    }
     return true;
   }
 
@@ -95,7 +101,8 @@ class CollectDependenciesFilter::Context : public RewriteContext {
   }
 
  protected:
-  void ExtractNestedCssDependencies(const ResourcePtr& resource,
+  void ExtractNestedCssDependencies(const Dependency* parent_dep,
+                                    const ResourcePtr& resource,
                                     CachedResult* partition) {
     // TODO(morlovich): We should probably look inside <style> blocks like this,
     // too?
@@ -125,9 +132,7 @@ class CollectDependenciesFilter::Context : public RewriteContext {
           Dependency* dep = partition->add_collected_dependency();
           dep->set_url(full_url.Spec().as_string());
           dep->set_content_type(DEP_CSS);
-          // TODO(morlovich): Set validity_info, which should be based on
-          // the containing CSS. (Could also have some sort of mechanism
-          // to be conditional on it)
+          *dep->mutable_validity_info() = parent_dep->validity_info();
         }
       }
     }
@@ -140,20 +145,35 @@ class CollectDependenciesFilter::Context : public RewriteContext {
     dep->set_url(slot(0)->resource()->url());
     dep->set_content_type(dep_type_);
 
-    if (dep_type_ == DEP_CSS) {
-      ExtractNestedCssDependencies(slot(0)->resource(), partition);
+    // The framework collected input info from any filter that ran before
+    // us, but not us (since it will do it after we finish work) --- which
+    // matters if our input is an unoptimized result, so add in our input info.
+    for (int i = 0; i < partition->input_size(); ++i) {
+      slot(0)->ReportInput(partition->input(i));
     }
 
-    // TODO(morlovich): Set validity_info.
-    // This is surprisingly complicated, since essentially we have to get info
-    // from all the steps along the RewriteContext, and the previous
-    // RewriteContexts already got deleted. (This isn't needed in normal
-    // operation since invalidation in the middle of a chain would change
-    // the input URL in the middle of the chain, but we are trying to skip
-    // to the end).
-    // (is_pagespeed_resource is also not currently set, but I am not sure
-    //  I actually want that: validity_info may be useful for non-optimized
-    //  resources as well).
+    if (slot(0)->inputs() != nullptr) {
+      for (const InputInfo& input : *slot(0)->inputs()) {
+        InputInfo* stored_copy = dep->add_validity_info();
+        *stored_copy = input;
+
+        // Drop the parts of the info we can't use for checking validity
+        // of push.
+        stored_copy->clear_input_content_hash();
+        stored_copy->clear_disable_further_processing();
+        stored_copy->clear_index();
+      }
+    }
+
+    // Note: this needs to happen after the above since we need to propagate
+    // validity_info.
+    if (dep_type_ == DEP_CSS) {
+      ExtractNestedCssDependencies(dep, slot(0)->resource(), partition);
+    }
+
+    // TODO(morlovich): is_pagespeed_resource is not currently set, but I am not
+    // sure I actually want that: validity_info may be useful for non-optimized
+    // resources as well, and we set that already.
 
     CHECK(output_resource.get() == nullptr);
     CHECK_EQ(0, partition_index);
@@ -272,6 +292,7 @@ void CollectDependenciesFilter::StartElementImpl(HtmlElement* element) {
         continue;
       }
       ResourceSlotPtr slot(driver()->GetSlot(resource, element, attr));
+      slot->set_need_aggregate_input_info(true);
       Context* context = new Context(
           attributes[i].category == semantic_type::kStylesheet ?
               DEP_CSS : DEP_JAVASCRIPT,

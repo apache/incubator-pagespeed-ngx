@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/dependency_tracker.h"
 
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/rewriter/dependencies.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -34,8 +36,6 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
-#include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/http_cache_failure.h"
 #include "pagespeed/opt/http/request_context.h"
 
 namespace net_instaweb {
@@ -62,12 +62,13 @@ class CollectDependenciesFilterTest : public RewriteTestBase {
     SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
                                   " *  { display: block }", 100);
     SetResponseWithDefaultHeaders("c.css", kContentTypeCss,
-                                  " *  { display: list-item }", 100);
+                                  " *  { display: list-item }", 150);
 
     SetResponseWithDefaultHeaders("b.js",  kContentTypeJavascript,
                                   " var b  = 42", 200);
     SetResponseWithDefaultHeaders("d.js",  kContentTypeJavascript,
-                                  " var d  = 32", 200);
+                                  " var d  = 32", 250);
+    start_time_ms_ = timer()->NowMs();
   }
 
   void ResetDriver() {
@@ -80,8 +81,14 @@ class CollectDependenciesFilterTest : public RewriteTestBase {
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
   }
 
+  GoogleString FormatRelTimeSec(int delta_sec) {
+    return Integer64ToString(start_time_ms_ + delta_sec * Timer::kSecondMs);
+  }
+
   PropertyCache* pcache_;
   PropertyPage* page_;
+  int64 start_time_ms_;
+  const int64 kYearSec = Timer::kYearMs / Timer::kSecondMs;
 };
 
 TEST_F(CollectDependenciesFilterTest, BasicOperation) {
@@ -103,21 +110,45 @@ TEST_F(CollectDependenciesFilterTest, BasicOperation) {
   DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
   rewrite_driver()->StartParse(kTestDomain);
   ASSERT_TRUE(tracker->read_in_info() != nullptr);
-  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
+
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(StrCat(
       "dependency {"
         "url: 'http://test.com/A.a.css.pagespeed.cf.0.css'"
-        "content_type: DEP_CSS"
+        "content_type: DEP_CSS "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(100), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
       "}"
       "dependency {"
         "url: 'http://test.com/b.js.pagespeed.jm.0.js'"
-        "content_type: DEP_JAVASCRIPT"
-      "}"));
+        "content_type: DEP_JAVASCRIPT "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(200), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+      "}")));
+
   rewrite_driver()->FinishParse();
 }
 
 TEST_F(CollectDependenciesFilterTest, MediaTopLevel) {
   SetResponseWithDefaultHeaders("e.css", kContentTypeCss,
-                                " *  { display: inline-block }", 100);
+                                " *  { display: inline-block }", 400);
 
   rewrite_driver()->AddFilters();
 
@@ -133,15 +164,25 @@ TEST_F(CollectDependenciesFilterTest, MediaTopLevel) {
   DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
   rewrite_driver()->StartParse(kTestDomain);
   ASSERT_TRUE(tracker->read_in_info() != nullptr);
-  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(StrCat(
       "dependency {"
         "url: 'http://test.com/a.css'"
-        "content_type: DEP_CSS"
+        "content_type: DEP_CSS "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(100), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
       "}"
       "dependency {"
         "url: 'http://test.com/e.css'"
-        "content_type: DEP_CSS"
-      "}"));
+        "content_type: DEP_CSS "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(400), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+      "}")));
 
   rewrite_driver()->FinishParse();
 }
@@ -178,6 +219,39 @@ TEST_F(CollectDependenciesFilterTest, HandleEmptyResources) {
         "url: 'http://test.com/f.js'"
         "content_type: DEP_JAVASCRIPT"
       "}"));
+
+  rewrite_driver()->FinishParse();
+}
+
+TEST_F(CollectDependenciesFilterTest, Unoptimized) {
+  const char kInput[] = "<link rel=stylesheet href=a.css>"
+                        "<script src=b.js></script>";
+  ValidateNoChanges("unoptimized", kInput);
+
+  // Read stuff back in from pcache.
+  ResetDriver();
+  DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
+  rewrite_driver()->StartParse(kTestDomain);
+  ASSERT_TRUE(tracker->read_in_info() != nullptr);
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(StrCat(
+      "dependency {"
+        "url: 'http://test.com/a.css'"
+        "content_type: DEP_CSS "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(100), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+      "}"
+      "dependency {"
+        "url: 'http://test.com/b.js'"
+        "content_type: DEP_JAVASCRIPT "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(200), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+      "}")));
 
   rewrite_driver()->FinishParse();
 }
@@ -235,11 +309,27 @@ TEST_F(CollectDependenciesFilterTest, Combiners) {
   DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
   rewrite_driver()->StartParse(kTestDomain);
   ASSERT_TRUE(tracker->read_in_info() != nullptr);
-  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(StrCat(
       "dependency {"
         "url: 'http://test.com/a.css+c.css.pagespeed.cc.0.css'"
-        "content_type: DEP_CSS"
-      "}"));
+        "content_type: DEP_CSS "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(100), " "  // a.css
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(150), " "  // c.css
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",  // a + c
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+      "}")));
   rewrite_driver()->FinishParse();
 }
 
@@ -268,19 +358,63 @@ TEST_F(CollectDependenciesFilterTest, Chain) {
   DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
   rewrite_driver()->StartParse(kTestDomain);
   ASSERT_TRUE(tracker->read_in_info() != nullptr);
-  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(StrCat(StrCat(
       "dependency {"
         "url: 'http://test.com/A.a.css+c.css,Mcc.0.css.pagespeed.cf.0.css'"
-        "content_type: DEP_CSS"
-      "}"
+        "content_type: DEP_CSS "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(100), " "  // a.css
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(150), " "  // c.css
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",  // a + c
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",  // (a + c).cf
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+      "}"),
       "dependency {"
         "url: 'http://test.com/b.js.pagespeed.jm.0.js'"
-        "content_type: DEP_JAVASCRIPT"
+        "content_type: DEP_JAVASCRIPT "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(200), " "  // b.js
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",  // b.js.jm
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
       "}"
       "dependency {"
         "url: 'http://test.com/d.js.pagespeed.jm.0.js'"
-        "content_type: DEP_JAVASCRIPT"
-      "}"));
+        "content_type: DEP_JAVASCRIPT "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(250), " "  // d.js
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",  // d.js.jm
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+      "}")));
   rewrite_driver()->FinishParse();
 }
 
