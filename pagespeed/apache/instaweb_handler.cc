@@ -99,6 +99,7 @@ InstawebHandler::InstawebHandler(request_rec* request)
       server_context_(InstawebContext::ServerContextFromServerRec(
           request->server)),
       rewrite_driver_(NULL),
+      driver_owned_(true),
       num_response_attributes_(0),
       fetch_(NULL) {
   apache_request_context_ = server_context_->NewApacheRequestContext(request);
@@ -125,6 +126,10 @@ InstawebHandler::~InstawebHandler() {
     WaitForFetch();
     delete fetch_;
   }
+  if (driver_owned_ && rewrite_driver_ != nullptr) {
+    rewrite_driver_->Cleanup();
+    rewrite_driver_ = nullptr;
+  }
 }
 
 void InstawebHandler::WaitForFetch() {
@@ -132,6 +137,11 @@ void InstawebHandler::WaitForFetch() {
     return;  // Nothing to wait for.
   }
   fetch_->Wait();
+}
+
+void InstawebHandler::DisownDriver() {
+  DCHECK(rewrite_driver_ != nullptr);
+  driver_owned_ = false;
 }
 
 // Makes a driver from the request_context and options.  Note that
@@ -390,6 +400,7 @@ void InstawebHandler::RemoveStrippedResponseHeadersFromApacheRequest() {
 // Handle url as .pagespeed. rewritten resource.
 void InstawebHandler::HandleAsPagespeedResource() {
   RewriteDriver* driver = MakeDriver();
+  DisownDriver();
   GoogleString output;  // TODO(jmarantz): Quit buffering resource output.
   StringWriter writer(&output);
 
@@ -444,6 +455,7 @@ bool InstawebHandler::HandleAsInPlace() {
   MakeFetch(false /* not buffered */, "ipro");
   fetch_->set_handle_error(false);
 
+  DisownDriver();
   driver->FetchInPlaceResource(stripped_gurl_, false /* proxy_mode */, fetch_);
   WaitForFetch();
   if (fetch_->status_ok()) {
@@ -509,6 +521,7 @@ bool InstawebHandler::HandleAsProxy() {
     RewriteDriver* driver = MakeDriver();
     MakeFetch(mapped_url, true /* buffered */, "proxy");
     fetch_->set_is_proxy(true);
+    DisownDriver();
     server_context_->proxy_fetch_factory()->StartNewProxyFetch(
         mapped_url, fetch_, driver, NULL, NULL);
     WaitForFetch();

@@ -82,8 +82,13 @@ class InstawebHandler {
 
   // Makes a driver from the request_context and options.  Note that
   // this can only be called once, as it potentially mutates the options
-  // as it transfers ownership of custom_options.
+  // as it transfers ownership of custom_options. The driver is owned by
+  // the InstawebHandler and will be cleaned up at destruction, unless you
+  // call DisownDriver().
   RewriteDriver* MakeDriver();
+
+  // Prevent "this" from cleaning up rewrite_driver_ at destruction.
+  void DisownDriver();
 
   // Allocates a Fetch object associated with the current request and
   // the specified URL.  Include in debug_info anything that's cheap to create
@@ -261,6 +266,7 @@ class InstawebHandler {
   // the same.  Only the ownership changes.
   const ApacheConfig* options_;
   RewriteDriver* rewrite_driver_;
+  bool driver_owned_;
   int num_response_attributes_;
   RewriteQuery rewrite_query_;
   ApacheFetch* fetch_;
