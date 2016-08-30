@@ -367,8 +367,8 @@ test :
 
 # Now hook in the full integration test suite. It needs to be run as root.
 apache_install_conf :
-	$(MAKE) staging_except_module OPTIONS="$(OPTIONS)"
-	$(MAKE) install_except_module OPTIONS="$(OPTIONS)"
+	$(MAKE) staging_except_module $(OPTIONS)
+	$(MAKE) install_except_module $(OPTIONS)
 
 # Sets up a machine to run as a server for running mod_pagespeed tests.
 # The tests include the fetching and proxying of a variety of content,
