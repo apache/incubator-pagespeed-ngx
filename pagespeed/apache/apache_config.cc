@@ -179,7 +179,7 @@ bool ApacheConfig::GetProxyAuth(StringPiece* name, StringPiece* value,
   // so it's no problem.
   stringpiece_ssize_type colon = auth.find(':');
   if (colon == StringPiece::npos) {
-    redirect->clear();
+    *redirect = StringPiece();
   } else {
     *redirect = auth.substr(colon + 1);
     auth = auth.substr(0, colon);
@@ -189,7 +189,7 @@ bool ApacheConfig::GetProxyAuth(StringPiece* name, StringPiece* value,
   stringpiece_ssize_type equals = auth.find('=');
   if (equals == StringPiece::npos) {
     *name = auth;
-    value->clear();
+    *value = StringPiece();
   } else {
     *name = auth.substr(0, equals);
     *value = auth.substr(equals + 1);
