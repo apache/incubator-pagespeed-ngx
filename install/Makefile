@@ -199,7 +199,13 @@ endif
 TESTS=REDIS MEMCACHED STRESS REWRITE LOADTEST PROXY SLURP SHARED_MEM_LOCKS \
       IPRO_PRESERVE_LOADTEST MEMCACHED_LOADTEST REDIS_LOADTEST \
       PURGING_LOADTEST SPELING GZIP EXPERIMENT_GA EXPERIMENT_NO_GA HTTPS \
-      ALL_DIRECTIVES PER_VHOST_STATS NO_PER_VHOST_STATS STATS_LOGGING
+      ALL_DIRECTIVES PER_VHOST_STATS NO_PER_VHOST_STATS STATS_LOGGING EXTCACHE
+
+ifeq ($(REDIS_TEST),1)
+  EXTCACHE_TEST=1
+else ifeq ($(MEMCACHED_TEST),1)
+  EXTCACHE_TEST=1
+endif
 
 # Compute the lists of tests that we will retain, by removing the "#TEST"
 # substring, and will strip, by removing the entire line on which the #TEST
@@ -360,57 +366,9 @@ test :
 		../system_test.sh localhost
 
 # Now hook in the full integration test suite. It needs to be run as root.
-# Each test is on it's own line for better diff/merge support.
-#
-# TODO(jmarantz): combine all these OPT_ flags into a single OPTIONS to
-# make it less cumbersome to propagate them.
 apache_install_conf :
-	$(MAKE) staging_except_module \
-	    $(OPT_REWRITE_TEST) \
-	    $(OPT_PROXY_TEST) \
-	    $(OPT_SLURP_TEST) \
-	    $(OPT_MEMCACHED_TEST) \
-	    $(OPT_REDIS_TEST) \
-	    $(OPT_IPRO_PRESERVE_LOADTEST_TEST) \
-	    $(OPT_MEMCACHED_LOADTEST_TEST) \
-	    $(OPT_REDIS_LOADTEST_TEST) \
-	    $(OPT_PURGING_LOADTEST_TEST) \
-	    $(OPT_IUR_LOADTEST_TEST) \
-	    $(OPT_SPELING_TEST) \
-	    $(OPT_LOADTEST_TEST) \
-	    $(OPT_STRESS_TEST) \
-	    $(OPT_HTTPS_TEST) \
-	    $(OPT_SHARED_MEM_LOCKS_TEST) \
-	    $(OPT_GZIP_TEST) \
-	    $(OPT_EXPERIMENT_GA_TEST) \
-	    $(OPT_EXPERIMENT_NO_GA_TEST) \
-	    $(OPT_ALL_DIRECTIVES_TEST) \
-	    $(OPT_PER_VHOST_STATS_TEST) \
-	    $(OPT_NO_PER_VHOST_STATS_TEST) \
-	    $(OPT_STATS_LOGGING_TEST)
-	$(MAKE) install_except_module \
-	    $(OPT_REWRITE_TEST) \
-	    $(OPT_PROXY_TEST) \
-	    $(OPT_SLURP_TEST) \
-	    $(OPT_MEMCACHED_TEST) \
-	    $(OPT_REDIS_TEST) \
-	    $(OPT_IPRO_PRESERVE_LOADTEST_TEST) \
-	    $(OPT_MEMCACHED_LOADTEST_TEST) \
-	    $(OPT_REDIS_LOADTEST_TEST) \
-	    $(OPT_PURGING_LOADTEST_TEST) \
-	    $(OPT_IUR_LOADTEST_TEST) \
-	    $(OPT_SPELING_TEST) \
-	    $(OPT_LOADTEST_TEST) \
-	    $(OPT_STRESS_TEST) \
-	    $(OPT_HTTPS_TEST) \
-	    $(OPT_SHARED_MEM_LOCKS_TEST) \
-	    $(OPT_GZIP_TEST) \
-	    $(OPT_EXPERIMENT_GA_TEST) \
-	    $(OPT_EXPERIMENT_NO_GA_TEST) \
-	    $(OPT_ALL_DIRECTIVES_TEST) \
-	    $(OPT_PER_VHOST_STATS_TEST) \
-	    $(OPT_NO_PER_VHOST_STATS_TEST) \
-	    $(OPT_STATS_LOGGING_TEST)
+	$(MAKE) staging_except_module OPTIONS="$(OPTIONS)"
+	$(MAKE) install_except_module OPTIONS="$(OPTIONS)"
 
 # Sets up a machine to run as a server for running mod_pagespeed tests.
 # The tests include the fetching and proxying of a variety of content,

@@ -6,19 +6,7 @@
 #  apache_system_tests
 #  apache_vm_system_tests  (includes tests that can be run on VMs)
 # Imports:
-#  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
-#                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_MEMCACHED_TEST,
-#                       OPT_MEMCACHED_LOADTEST_TEST,
-#                       OPT_REDIS_TEST,
-#                       OPT_REDIS_LOADTEST_TEST,
-#                       OPT_PURGING_LOADTEST_TEST,
-#                       OPT_IUR_LOADTEST_TEST, OPT_IPRO_PRESERVE_LOADTEST_TEST,
-#                       OPT_HTTPS_TEST,
-#                       OPT_LOADTEST_TEST, OPT_STRESS_TEST,
-#                       OPT_SHARED_MEM_LOCKS_TEST, OPT_GZIP_TEST,
-#                       OPT_EXPERIMENT_GA_TEST, OPT_EXPERIMENT_NO_GA_TEST,
-#                       OPT_PER_VHOST_STATS_TEST, OPT_NO_PER_VHOST_STATS_TEST,
-#                       OPT_ALL_DIRECTIVES_TEST)
+#  apache_install_conf (should read OPTIONS)
 #  stop, start  (to stop and start Apache)
 #  apache_debug_restart
 #  apache_debug_stop
@@ -207,7 +195,7 @@ apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf \
 	  | grep "Filter Examples"
 
 rewrite_test_prepare :
-	$(eval OPT_REWRITE_TEST="REWRITE_TEST=1")
+	$(eval OPTIONS+=REWRITE_TEST=1)
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # This test checks that when mod_speling is enabled we handle the
@@ -221,12 +209,12 @@ apache_debug_speling_test : speling_test_prepare apache_install_conf \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
 speling_test_prepare :
-	$(eval OPT_SPELING_TEST="SPELING_TEST=1")
+	$(eval OPTIONS+=SPELING_TEST=1)
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 apache_debug_memcached_test :
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
-	# run_program_with_memcached.sh exports $MEMCACHED_PORT which is
+	# run_program_with_memcached.sh exports $$MEMCACHED_PORT which is
 	# needed by apache_install_conf so pagespeed.conf gets the
 	# right ModPagespeedMemcachedServers setup.  MEMCACHED_PORT will
 	# be different on each run, which makes it easier for people to
@@ -239,7 +227,7 @@ apache_debug_memcached_test :
 	@echo PASS
 
 apache_debug_memcached_test_run :
-	$(MAKE) apache_install_conf OPT_MEMCACHED_TEST="MEMCACHED_TEST=1"
+	$(MAKE) apache_install_conf OPTIONS="$(OPTIONS) MEMCACHED_TEST=1"
 	$(MAKE) apache_debug_restart
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	CACHE_FLUSH_TEST=on \
@@ -256,7 +244,7 @@ apache_debug_memcached_test_run :
 
 apache_debug_redis_test :
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
-	# run_program_with_redis.sh exports $REDIS_PORT which is
+	# run_program_with_redis.sh exports $$REDIS_PORT which is
 	# needed by apache_install_conf so pagespeed.conf gets the
 	# right redis server config.  REDIS_PORT will be different
 	# on each run, which makes it easier for people to run
@@ -269,7 +257,7 @@ apache_debug_redis_test :
 	@echo PASS
 
 apache_debug_redis_test_run :
-	$(MAKE) apache_install_conf OPT_REDIS_TEST="REDIS_TEST=1"
+	$(MAKE) apache_install_conf OPTIONS="$(OPTIONS) REDIS_TEST=1"
 	$(MAKE) apache_debug_restart
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	CACHE_FLUSH_TEST=on \
@@ -307,7 +295,7 @@ apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
 	  test $$bytes -gt 200 -a $$bytes -lt 500
 
 gzip_test_prepare :
-	$(eval OPT_GZIP_TEST="GZIP_TEST=1")
+	$(eval OPTIONS+=GZIP_TEST=1)
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # Test to make sure the experiment framework is sending its headers.
@@ -326,11 +314,11 @@ apache_debug_experiment_no_ga_test : experiment_no_ga_test_prepare \
 	$(INSTALL_DATA_DIR)/apache_experiment_no_ga_test.sh $(APACHE_SERVER)
 
 experiment_ga_test_prepare :
-	$(eval OPT_EXPERIMENT_GA_TEST="EXPERIMENT_GA_TEST=1")
+	$(eval OPTIONS+=EXPERIMENT_GA_TEST=1)
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 experiment_no_ga_test_prepare :
-	$(eval OPT_EXPERIMENT_NO_GA_TEST="EXPERIMENT_NO_GA_TEST=1")
+	$(eval OPTIONS+=EXPERIMENT_NO_GA_TEST=1)
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 apache_debug_downstream_caching_test :
@@ -343,8 +331,7 @@ apache_debug_downstream_caching_test :
 # setup nicely; we just need to turn off ourselves for the global scope.
 apache_debug_vhost_only_test :
 	$(MAKE) apache_install_conf \
-	  OPT_LOADTEST_TEST=LOADTEST_TEST=1 \
-	  OPT_STRESS_TEST=STRESS_TEST=1
+	  OPTIONS="$(OPTIONS) LOADTEST_TEST=1 STRESS_TEST=1"
 	echo 'ModPagespeed off' >> $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_restart
 	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE) 2>&1 \
@@ -355,8 +342,7 @@ apache_debug_vhost_only_test :
 EMPTY_HEADER_URL=http://www.modpagespeed.com/empty_header.html
 apache_debug_serf_empty_header_test :
 	$(MAKE) apache_install_conf \
-	  OPT_LOADTEST_TEST=LOADTEST_TEST=1 \
-	  OPT_STRESS_TEST=STRESS_TEST=1 \
+	  OPTIONS="$(OPTIONS) LOADTEST_TEST=1 STRESS_TEST=1" \
 	  SLURP_DIR=$(PWD)/$(INSTALL_DATA_DIR)/mod_pagespeed_test/slurp
 	$(MAKE) apache_debug_restart
 	# Make sure we can fetch a URL with empty header correctly..
@@ -391,7 +377,7 @@ apache_debug_shared_mem_locks_sanity_test : shared_mem_locks_test_prepare \
 	 | grep "\.pagespeed\.cc\."
 
 shared_mem_locks_test_prepare :
-	$(eval OPT_SLURP_TEST="SHARED_MEM_LOCKS_TEST=1")
+	$(eval OPTIONS+=SHARED_MEM_LOCKS_TEST=1)
 	$(MAKE) stop
 	# "Directory not empty" failures were observed here, so add sleep to
 	# wait for pending cache-writes to finish.
@@ -402,8 +388,7 @@ shared_mem_locks_test_prepare :
 
 # Test that all directives are accepted by the options parser.
 apache_debug_all_directives_test :
-	$(MAKE) apache_install_conf \
-	  OPT_ALL_DIRECTIVES_TEST="ALL_DIRECTIVES_TEST=1"
+	$(MAKE) apache_install_conf OPTIONS="$(OPTIONS) ALL_DIRECTIVES_TEST=1"
 	$(MAKE) apache_debug_restart
 
 # Test to make sure that per-vhost stats work.
@@ -414,8 +399,7 @@ TRIM_PATH = \
 
 apache_debug_per_vhost_stats_test :
 	$(MAKE) apache_install_conf \
-	    OPT_PER_VHOST_STATS_TEST="PER_VHOST_STATS_TEST=1" \
-	    OPT_NO_PER_VHOST_STATS_TEST="NO_PER_VHOST_STATS_TEST=0"
+	  OPTIONS="$(OPTIONS) PER_VHOST_STATS_TEST=1 NO_PER_VHOST_STATS_TEST=0"
 	$(MAKE) apache_debug_restart
 	@echo Fetch a trim URL example from VHost: 8080 -- that should bump
 	@echo the stat for that there + global but not on :8083
@@ -440,8 +424,7 @@ apache_debug_per_vhost_stats_test :
 	     | grep url_trims | grep -w 2
 	# Without per-vhost stats.
 	$(MAKE) apache_install_conf \
-	    OPT_PER_VHOST_STATS_TEST="PER_VHOST_STATS_TEST=0" \
-	    OPT_NO_PER_VHOST_STATS_TEST="NO_PER_VHOST_STATS_TEST=1"
+	  OPTIONS="$(OPTIONS) PER_VHOST_STATS_TEST=0 NO_PER_VHOST_STATS_TEST=1"
 	$(MAKE) apache_debug_restart
 	@echo Now try without global stats -- both should update at once.
 	$(WGET_NO_PROXY) -q -O /dev/null $(APACHE_SERVER)/$(TRIM_PATH)
@@ -457,8 +440,7 @@ apache_debug_per_vhost_stats_test :
 
 # Test that statistics logging works.
 apache_debug_stats_logging_test :
-	$(MAKE) apache_install_conf \
-	    OPT_STATS_LOGGING_TEST="STATS_LOGGING_TEST=1"
+	$(MAKE) apache_install_conf OPTIONS="$(OPTIONS) STATS_LOGGING_TEST=1"
 	$(MAKE) apache_debug_restart
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 

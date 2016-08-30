@@ -16,18 +16,18 @@
 # default then we can eliminate this line.
 AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 
-# Do testing using memcached in lieu of the file cache.
+#EXTCACHE # When testing with an external cache in system tests, let's
+#EXTCACHE # make sure we are really hitting it and not servicing the
+#EXTCACHE # lookups in-memory.  Note that we will cover having a
+#EXTCACHE # non-zero lru-cache with an external cache in load tests.
+#EXTCACHE ModPagespeedLRUCacheKbPerProcess 0
+#MEMCACHED
+#MEMCACHED # Do testing using memcached in lieu of the file cache.
 #MEMCACHED ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
-
-# When testing with an external cache in system tests, let's make sure we are
-# really hitting it and not servicing the lookups in-memory.  Note that we will
-# cover having a non-zero lru-cache with an external cache in load tests.
-#MEMCACHED ModPagespeedLRUCacheKbPerProcess 0
-#REDIS ModPagespeedLRUCacheKbPerProcess 0
-
-# Do testing using redis instead of file cache
+#REDIS
+#REDIS # Do testing using redis instead of file cache
 #REDIS ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
-
+#EXTCACHE
 # If X-PSA-Blocking-Rewrite request header is present and its value matches the
 # value of ModPagespeedBlockingRewriteKey below, the response will be fully
 # rewritten before being flushed to the client.
