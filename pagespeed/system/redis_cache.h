@@ -35,44 +35,37 @@
 
 namespace net_instaweb {
 
-// Interface to Redis using hiredis library
-// Details are changing rapidly.
-// Right now this implementation uses sync API of hiredis and is blocking.
-// This class is thread-safe.
-// TODO(yeputons): consider extracting a common interface with AprMemCache
-// TODO(yeputons): consider making Redis-reported errors treated as failures
+// Interface to Redis using hiredis library. This implementation is blocking and
+// thread-safe. One should call StartUp() before making any requests and
+// ShutDown() after finishing work. Connecting will be initiated on StartUp()
+// call. If it fails there or is dropped after any request, the following
+// reconnection strategy is used:
+// 1. If an operation fails because of communication or protocol error, try
+//    reconnecting on the next Get/Put/Delete (without delay).
+// 2. If (re-)connection attempt is unsuccessfull, try again on next
+//    Get/Put/Delete operation, but not until at least reconnection_delay_ms_
+//    have passed from the previous attempt.
+// That ensures that we do not try to connect to unreachable server a lot, but
+// still allows us to reconnect quickly in case of network glitches.
+//
+// TODO(yeputons): consider extracting a common interface with AprMemCache.
+// TODO(yeputons): consider making Redis-reported errors treated as failures.
+// TODO(yeputons): add redis AUTH command support.
 class RedisCache : public CacheInterface {
  public:
-  // Takes ownership of mutex. This mutex protects inner calls to hiredis only.
-  // Does not take ownership of MessageHandler, and assumes the pointer is valid
-  // throughout full lifetime of RedisCache
-  RedisCache(const StringPiece& host, int port, AbstractMutex* mutex,
+  // Takes ownership of mutex, it should not be used outside RedisCache
+  // afterwards. Does not take ownership of MessageHandler or Timer, and assumes
+  // that these pointers are valid throughout full lifetime of RedisCache.
+  RedisCache(StringPiece host, int port, AbstractMutex* mutex,
              MessageHandler* message_handler, Timer* timer,
              int64 reconnection_delay_ms, int64 timeout_us);
   ~RedisCache() override { ShutDown(); }
 
   GoogleString ServerDescription() const;
 
-  // Enables cache and tries to connect to Redis, automatically reconnecting in
-  // case of failures until ShutDown() is called. Reconnection strategy is:
-  // 1. If (re-)connection attempt is unsuccessfull, try again on next
-  //    Get/Put/Delete operation, but not until at least reconnection_delay_ms_
-  //    have passed from the previous attempt.
-  // 2. If an operation fails because of communication or protocol error, try
-  //    reconnecting on next Get/Put/Delete (without delay).
-  // That ensures that we do not try to connect to unreachable server a lot, but
-  // still allows us to reconnect quickly in case of network glitches.
   void StartUp() LOCKS_EXCLUDED(mutex_);
-  // TODO(yeputons): add redis AUTH command support
 
-  // CacheInterface implementations
-  void Get(const GoogleString& key, Callback* callback) override
-      LOCKS_EXCLUDED(mutex_);
-  void Put(const GoogleString& key, SharedString* value) override
-      LOCKS_EXCLUDED(mutex_);
-  void Delete(const GoogleString& key) override LOCKS_EXCLUDED(mutex_);
-
-  // CacheInterface implementations
+  // CacheInterface implementations.
   GoogleString Name() const override { return FormatName(); }
   bool IsBlocking() const override { return true; }
   bool IsHealthy() const override LOCKS_EXCLUDED(mutex_);
@@ -80,18 +73,21 @@ class RedisCache : public CacheInterface {
 
   static GoogleString FormatName() { return "RedisCache"; }
 
-  // Flushes ALL DATA IN REDIS in blocking mode. Used in tests
-  bool FlushAll();
+  // CacheInterface implementations.
+  void Get(const GoogleString& key, Callback* callback) override
+      LOCKS_EXCLUDED(mutex_);
+  void Put(const GoogleString& key, SharedString* value) override
+      LOCKS_EXCLUDED(mutex_);
+  void Delete(const GoogleString& key) override LOCKS_EXCLUDED(mutex_);
 
-  // Appends detailed server status to a string, returning false if the server
-  // failed to return status.
-  bool GetStatus(GoogleString* status_string);
+  // Appends detailed server status to a string. Returns true if succeeded. If
+  // the the server failed to report status, does not change the string.
+  bool GetStatus(GoogleString* status_string) LOCKS_EXCLUDED(mutex_);
+
+  // Flushes ALL DATA IN REDIS in blocking mode. Used in tests.
+  bool FlushAll() LOCKS_EXCLUDED(mutex_);
 
  private:
-  bool Reconnect() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
-  bool IsHealthyLockHeld() const EXCLUSIVE_LOCKS_REQUIRED(mutex_);
-  void FreeRedisContext() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
-
   struct RedisReplyDeleter {
     void operator()(redisReply* ptr) {
       freeReplyObject(ptr);
@@ -99,10 +95,16 @@ class RedisCache : public CacheInterface {
   };
   typedef std::unique_ptr<redisReply, RedisReplyDeleter> RedisReply;
 
+  bool Reconnect() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  bool IsHealthyLockHeld() const EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  void FreeRedisContext() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
   RedisReply RedisCommand(const char* format, ...)
       EXCLUSIVE_LOCKS_REQUIRED(mutex_);
 
-  void LogRedisContextError(const char* cause) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  void LogRedisContextError(const char* cause)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
   bool ValidateRedisReply(const RedisReply& reply,
                           std::initializer_list<int> valid_types,
                           const char* command_executed)
@@ -110,13 +112,13 @@ class RedisCache : public CacheInterface {
 
   const GoogleString host_;
   const int port_;
-  redisContext *redis_ GUARDED_BY(mutex_);
-  scoped_ptr<AbstractMutex> mutex_;
-
-  MessageHandler *message_handler_;
-  Timer *timer_;
+  const scoped_ptr<AbstractMutex> mutex_;
+  MessageHandler* message_handler_;
+  Timer* timer_;
   const int64 reconnection_delay_ms_;
   const int64 timeout_us_;
+
+  redisContext *redis_ GUARDED_BY(mutex_);
   int64 next_reconnect_at_ms_ GUARDED_BY(mutex_);
   bool is_started_up_ GUARDED_BY(mutex_);
 

@@ -28,17 +28,17 @@
 
 namespace net_instaweb {
 
-RedisCache::RedisCache(const StringPiece& host, int port, AbstractMutex* mutex,
+RedisCache::RedisCache(StringPiece host, int port, AbstractMutex* mutex,
                        MessageHandler* message_handler, Timer* timer,
                        int64 reconnection_delay_ms, int64 timeout_us)
     : host_(host.as_string()),
       port_(port),
-      redis_(nullptr),
       mutex_(mutex),
       message_handler_(message_handler),
       timer_(timer),
       reconnection_delay_ms_(reconnection_delay_ms),
       timeout_us_(timeout_us),
+      redis_(nullptr),
       next_reconnect_at_ms_(timer_->NowMs()),
       is_started_up_(false) {}
 
@@ -53,34 +53,6 @@ void RedisCache::StartUp() {
   Reconnect();
 }
 
-bool RedisCache::Reconnect() {
-  CHECK(is_started_up_);
-
-  FreeRedisContext();
-  struct timeval timeout;
-  timeout.tv_sec = timeout_us_ / Timer::kSecondUs;
-  timeout.tv_usec = timeout_us_ % Timer::kSecondUs;
-  redis_ = redisConnectWithTimeout(host_.c_str(), port_, timeout);
-
-  bool success = false;
-  if (redis_ == nullptr) {
-    message_handler_->Message(kError, "Cannot allocate redis context");
-  } else if (redis_->err) {
-    LogRedisContextError("Error while connecting to redis");
-  } else if (redisSetTimeout(redis_, timeout) != REDIS_OK) {
-    LogRedisContextError("Error while setting timeout on redis context");
-  } else {
-    success = true;
-  }
-
-  next_reconnect_at_ms_ = timer_->NowMs();
-  if (!success) {
-    // If we did not connect, it's better to wait some time before reconnecting.
-    next_reconnect_at_ms_ += reconnection_delay_ms_;
-  }
-  return success;
-}
-
 // TODO(yeputons): think about weaker invariants and avoid taking the same mutex
 // which is used for long operations (e.g. connecting or queries).
 bool RedisCache::IsHealthy() const {
@@ -88,35 +60,10 @@ bool RedisCache::IsHealthy() const {
   return IsHealthyLockHeld();
 }
 
-bool RedisCache::IsHealthyLockHeld() const {
-  if (!is_started_up_) {
-    return false;
-  }
-  if (redis_ != nullptr && redis_->err == 0) {
-    return true;
-  }
-  // Quoting hireds documentation: "once an error is returned the context cannot
-  // be reused and you should set up a new connection". Reconnection cannot be
-  // done in IsHealthy() as it should not lock, we can be reconnect during
-  // requests only. But IsHealthy() returning false prevents requests from being
-  // called by cache users, so we want it to return true as long as we have
-  // waited enough to try reconnection.
-  return timer_->NowMs() >= next_reconnect_at_ms_;
-}
-
 void RedisCache::ShutDown() {
   ScopedMutex lock(mutex_.get());
   FreeRedisContext();
   is_started_up_ = false;
-}
-
-void RedisCache::FreeRedisContext() {
-  // TODO(yeputons): be careful when adding async requests: ShutDown can be
-  // called while there are some unfinished requests, they should return.
-  if (redis_ != nullptr) {  // hiredis 0.11 does not handle nullptr.
-    redisFree(redis_);
-  }
-  redis_ = nullptr;
 }
 
 void RedisCache::Get(const GoogleString& key, Callback* callback) {
@@ -177,18 +124,8 @@ void RedisCache::Delete(const GoogleString& key) {
 
   RedisReply reply = RedisCommand("DEL %b", key.data(), key.length());
   // Redis returns amount of keys deleted (probably, zero), no need in check
-  // that amount; all other errors are handled by ValidateRedisReply
+  // that amount; all other errors are handled by ValidateRedisReply.
   ValidateRedisReply(reply, {REDIS_REPLY_INTEGER}, "DEL");
-}
-
-bool RedisCache::FlushAll() {
-  ScopedMutex lock(mutex_.get());
-  if (!IsHealthyLockHeld()) {
-    return false;
-  }
-
-  RedisReply reply = RedisCommand("FLUSHALL");
-  return ValidateRedisReply(reply, {REDIS_REPLY_STATUS}, "FLUSHALL");
 }
 
 bool RedisCache::GetStatus(GoogleString* buffer) {
@@ -204,6 +141,69 @@ bool RedisCache::GetStatus(GoogleString* buffer) {
   StrAppend(buffer, "Statistics for Redis (", ServerDescription(), "):\n");
   StrAppend(buffer, reply->str);
   return true;
+}
+
+bool RedisCache::FlushAll() {
+  ScopedMutex lock(mutex_.get());
+  if (!IsHealthyLockHeld()) {
+    return false;
+  }
+
+  RedisReply reply = RedisCommand("FLUSHALL");
+  return ValidateRedisReply(reply, {REDIS_REPLY_STATUS}, "FLUSHALL");
+}
+
+bool RedisCache::Reconnect() {
+  CHECK(is_started_up_);
+
+  FreeRedisContext();
+  struct timeval timeout;
+  timeout.tv_sec = timeout_us_ / Timer::kSecondUs;
+  timeout.tv_usec = timeout_us_ % Timer::kSecondUs;
+  redis_ = redisConnectWithTimeout(host_.c_str(), port_, timeout);
+
+  bool success = false;
+  if (redis_ == nullptr) {
+    message_handler_->Message(kError, "Cannot allocate redis context");
+  } else if (redis_->err) {
+    LogRedisContextError("Error while connecting to redis");
+  } else if (redisSetTimeout(redis_, timeout) != REDIS_OK) {
+    LogRedisContextError("Error while setting timeout on redis context");
+  } else {
+    success = true;
+  }
+
+  next_reconnect_at_ms_ = timer_->NowMs();
+  if (!success) {
+    // If we did not connect, it's better to wait some time before reconnecting.
+    next_reconnect_at_ms_ += reconnection_delay_ms_;
+  }
+  return success;
+}
+
+bool RedisCache::IsHealthyLockHeld() const {
+  if (!is_started_up_) {
+    return false;
+  }
+  if (redis_ != nullptr && redis_->err == 0) {
+    return true;
+  }
+  // Quoting hireds documentation: "once an error is returned the context cannot
+  // be reused and you should set up a new connection". Reconnection cannot be
+  // done in IsHealthy() as it should not lock, we can be reconnect during
+  // requests only. But IsHealthy() returning false prevents requests from being
+  // called by cache users, so we want it to return true as long as we have
+  // waited enough to try reconnection.
+  return timer_->NowMs() >= next_reconnect_at_ms_;
+}
+
+void RedisCache::FreeRedisContext() {
+  // TODO(yeputons): be careful when adding async requests: ShutDown can be
+  // called while there are some unfinished requests, they should return.
+  if (redis_ != nullptr) {  // hiredis 0.11 does not handle nullptr.
+    redisFree(redis_);
+  }
+  redis_ = nullptr;
 }
 
 RedisCache::RedisReply RedisCache::RedisCommand(const char* format, ...) {
