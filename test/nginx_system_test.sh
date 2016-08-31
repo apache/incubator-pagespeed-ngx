@@ -310,7 +310,9 @@ CACHE_PURGE_METHODS="PURGE GET"
 SERVER_NAME=nginx
 
 # run generic system tests
-SYSTEM_TEST_FILE="$MOD_PAGESPEED_DIR/src/pagespeed/system/system_test.sh"
+PAGESPEED_DIR="$MOD_PAGESPEED_DIR/src/pagespeed"
+SYSTEM_TEST_FILE="$PAGESPEED_DIR/system/system_test.sh"
+REMOTE_CONFIG_TEST_FILE="$PAGESPEED_DIR/system/remote_config_test.sh"
 
 if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
   echo "Not finding $SYSTEM_TEST_FILE -- is mod_pagespeed not in a parallel"
@@ -361,6 +363,7 @@ fi
 # wants different ones than we want, so we need to reset our positional args.
 set -- "$PRIMARY_HOSTNAME"
 source $SYSTEM_TEST_FILE
+source $REMOTE_CONFIG_TEST_FILE
 
 # nginx-specific system tests
 
