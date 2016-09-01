@@ -640,7 +640,7 @@ JsKeywords::Type JsMinifyingTokenizer::NextTokenHelper(
     position_out->gen_col = current_position_.gen_col;
 
     next_type_ = JsKeywords::kEndOfInput;
-    next_token_.clear();
+    next_token_ = StringPiece();
     return prev_type_;
   }
   net_instaweb::source_map::Mapping first_position = current_position_;

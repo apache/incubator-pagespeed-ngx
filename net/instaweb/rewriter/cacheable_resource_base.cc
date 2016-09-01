@@ -230,7 +230,7 @@ class CacheableResourceBase::FetchCallbackBase : public AsyncFetchWithLock {
     bool cacheable = resource_->IsValidAndCacheableImpl(*headers);
     StringPiece contents;
     if (!value->ExtractContents(&contents)) {
-      contents.clear();
+      contents = StringPiece();
     }
     FetchResponseStatus fetch_status = HttpCacheFailure::ClassifyFailure(
         *headers, contents, success, cacheable);

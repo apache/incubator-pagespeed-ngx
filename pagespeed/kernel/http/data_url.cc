@@ -82,7 +82,7 @@ bool ParseDataUrl(const StringPiece& url,
   // First invalidate all outputs.
   *content_type = NULL;
   *encoding = UNKNOWN;
-  encoded_content->clear();
+  *encoded_content = StringPiece();
   size_t header_boundary = url.find(',');
   if (header_boundary == url.npos || !url.starts_with(kData)) {
     return false;

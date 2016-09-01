@@ -250,7 +250,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   // However, the fallback value should be filled in.
   HTTPValue* fallback_value = callback->fallback_http_value();
   meta_data_out.Clear();
-  contents.clear();
+  contents = StringPiece();
   EXPECT_FALSE(fallback_value->Empty());
   ASSERT_TRUE(fallback_value->ExtractHeaders(&meta_data_out,
                                              &message_handler_));

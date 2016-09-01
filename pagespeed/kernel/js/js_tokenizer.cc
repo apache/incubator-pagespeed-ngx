@@ -321,7 +321,7 @@ JsKeywords::Type JsTokenizer::NextToken(StringPiece* token_out) {
   // If we've cleanly reached the end of the input, we're done.
   if (input_.empty()) {
     parse_stack_.clear();
-    token_out->clear();
+    *token_out = StringPiece();
     return JsKeywords::kEndOfInput;
   }
   // Invariant: until we reach the end of the input, the parse stack is never
@@ -1079,7 +1079,7 @@ bool JsTokenizer::TryConsumeWhitespace(
 JsKeywords::Type JsTokenizer::Error(StringPiece* token_out) {
   error_ = true;
   *token_out = input_;
-  input_.clear();
+  input_ = StringPiece();
   return JsKeywords::kError;
 }
 

@@ -88,7 +88,7 @@ void SrcSetSlotCollection::ParseSrcSet(
 
     if (url_end == StringPiece::npos) {
       url = input;
-      input.clear();
+      input = StringPiece();
     } else {
       url = input.substr(0, url_end);
       input = input.substr(url_end);
