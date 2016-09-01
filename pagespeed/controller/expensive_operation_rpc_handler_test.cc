@@ -215,8 +215,39 @@ TEST_F(ExpensiveOperationRpcHandlerTest, ClientDisconnectWhileWaiting) {
   func_saved.Wait();
   client_.reset();
 
-  // Now "wake up" the server. This should call NotifyRewriteFailed.
+  // Now "wake up" the server. This should call
+  // NotifyExpensiveOperationComplete.
   QueueFunctionForServerThread(mock_controller_.saved_function_);
+
+  // Wait for the server to actually run the function before finishing.
+  func_run.Wait();
+}
+
+TEST_F(ExpensiveOperationRpcHandlerTest, ClientDisconnectWhileWaitingForDeny) {
+  WorkerTestBase::SyncPoint func_saved(thread_system_.get());
+  WorkerTestBase::SyncPoint func_run(thread_system_.get());
+
+  EXPECT_CALL(mock_controller_, ScheduleExpensiveOperation(_))
+      .WillOnce(DoAll(
+          WithArgs<0>(Invoke(&mock_controller_,
+                             &MockExpensiveOperationController::SaveFunction)),
+          InvokeWithoutArgs(&func_saved, &WorkerTestBase::SyncPoint::Notify)));
+  EXPECT_CALL(mock_controller_, NotifyExpensiveOperationComplete()).Times(0);
+  StartHandler();
+
+  SendScheduleRequest();
+
+  // Wait for the server to process the request, then drop the client.
+  func_saved.Wait();
+  client_.reset();
+
+  // Now "wake up" the server and have it deny the operation. This should call
+  // NotifyClient(false) which must not call NotifyExpensiveOperationComplete.
+  QueueFunctionForServerThread(
+      MakeFunction(mock_controller_.saved_function_, &Function::CallCancel));
+  // Queue another event to notify once NotifyClient has been invoked.
+  QueueFunctionForServerThread(
+      MakeFunction(&func_run, &WorkerTestBase::SyncPoint::Notify));
 
   // Wait for the server to actually run the function before finishing.
   func_run.Wait();

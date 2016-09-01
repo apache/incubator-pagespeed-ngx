@@ -187,9 +187,11 @@ void RequestResultRpcHandler<HandlerT, ControllerT, AsyncServiceT, RequestT,
                              ResponseT>::NotifyClient(bool ok_to_proceed) {
   if (state_ != WAITING_FOR_CONTROLLER) {
     // Either the client disconnected (DONE) or something bad is happening.
-    // Either way, the client's controller just told us to do work that we
-    // cannot, so tell the Controller that we did nothing.
-    HandleOperationFailed();
+    // If the client's controller just told us to do work, we cannot, so tell
+    // the Controller that we did nothing.
+    if (ok_to_proceed) {
+      HandleOperationFailed();
+    }
     if (state_ != DONE) {
       // If this fires, it's likely a coding error in this class. It should not
       // be possible just due to client misbehaviour.

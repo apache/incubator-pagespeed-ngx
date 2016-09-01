@@ -202,7 +202,7 @@ void PopularityContestScheduleRewriteController::NotifyRewriteFailed(
   Rewrite* rewrite = GetRewrite(key);
   CHECK(rewrite != nullptr) << "NotifyRewriteFailed called for unknown key: "
                              << key;
-  CHECK_EQ(rewrite->state, RUNNING) << "NotifyRewriteComplete called for key '"
+  CHECK_EQ(rewrite->state, RUNNING) << "NotifyRewriteFailed called for key '"
                                     << key << "' that isn't currently running";
   // Mark the rewrite as stopped but don't delete it. This ensures
   // saved_priority will be set on subsequent retries.
