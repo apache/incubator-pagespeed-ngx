@@ -57,6 +57,8 @@ ModPagespeedFetchHttps enable
 
 ModPagespeedLibrary 43 1o978_K0_LNE5_ystNklf http://www.modpagespeed.com/rewrite_javascript.js
 ModPagespeedRetainComment " google_ad_section*"
+ModPagespeedPermitIdsForCssCombining "allowed-to-combine-1-*"
+ModPagespeedPermitIdsForCssCombining "allowed-to-combine-2-*"
 
 # Test proxying of non-.pagespeed. resources.
 ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_http \
@@ -2094,6 +2096,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedNumExpensiveRewriteThreads 2
 #ALL_DIRECTIVES ModPagespeedNumRewriteThreads 4
 #ALL_DIRECTIVES ModPagespeedOptionCookiesDurationMs 12345
+#ALL_DIRECTIVES ModPagespeedPermitIdsForCssCombining *foo*
 #ALL_DIRECTIVES ModPagespeedPreserveSubresourceHints on
 #ALL_DIRECTIVES ModPagespeedPreserveUrlRelativity on
 #ALL_DIRECTIVES ModPagespeedProgressiveJpegMinBytes 1000

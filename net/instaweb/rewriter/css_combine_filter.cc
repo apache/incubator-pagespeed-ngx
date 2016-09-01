@@ -401,15 +401,35 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
       NextCombination("children in flush window");
       return;
     }
+
+    // Support PermitIdsForCssCombining by treating any ids whose values match
+    // the regexp as "expected" and removing them from nonstandard_attributes.
+    // TODO(jefftk): figure out how likely things are to break if you do go
+    // ahead and combine multiple elements with an id; various templates seem
+    // to put in ids when they're not actually referenced and we've gotten
+    // several mailing list questions about why we don't combine in this case.
+    // Is there actually javascript referencing css link tags by id?
+    // Tracked in https://github.com/pagespeed/mod_pagespeed/issues/1385
+    if (driver()->options()->CssCombiningMayPermitIds()) {
+      const char* value = element->AttributeValue(HtmlName::kId);
+      if (value != nullptr &&
+          driver()->options()->IsAllowedIdForCssCombining(value)) {
+        // Remove id from nonstandard_attributes, since it's expected.   This is
+        // awkward since we want to do this in a case insensitive way.
+        for (auto it = nonstandard_attributes.begin();
+             it != nonstandard_attributes.end(); ++it) {
+          if (StringCaseEqual(*it, "id")) {
+            nonstandard_attributes.erase(it);  // invalidates it, but that's ok
+            break;
+          }
+        }
+      }
+    }
+
     if (!nonstandard_attributes.empty()) {
       // TODO(jmaessen): allow more attributes.  This is the place it's
-      // riskiest:  we can't combine multiple elements with an id, for
+      // riskiest: we can't generally combine multiple elements with an id, for
       // example, so we'd need to explicitly catch and handle that case.
-      // TODO(jefftk): figure out how likely things are to break if you do go
-      // ahead and combine multiple elements with an id; various templates seem
-      // to put in ids when they're not actually referenced and we've gotten
-      // several mailing list questions about why we don't combine in this
-      // case.  Is there actually javascript referencing css link tags by id?
       GoogleString message("potentially non-combinable attribute");
       if (DebugMode()) {
         if (nonstandard_attributes.size() > 1) {

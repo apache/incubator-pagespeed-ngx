@@ -324,6 +324,8 @@ const char RewriteOptions::kForbidFilters[] = "ForbidFilters";
 const char RewriteOptions::kInlineResourcesWithoutExplicitAuthorization[] =
     "InlineResourcesWithoutExplicitAuthorization";
 const char RewriteOptions::kRetainComment[] = "RetainComment";
+const char RewriteOptions::kPermitIdsForCssCombining[] =
+    "PermitIdsForCssCombining";
 const char RewriteOptions::kAddResourceHeader[] = "AddResourceHeader";
 const char RewriteOptions::kCustomFetchHeader[] = "CustomFetchHeader";
 const char RewriteOptions::kLoadFromFile[] = "LoadFromFile";
@@ -3284,6 +3286,8 @@ RewriteOptions::ParseAndSetOptionFromNameWithScope(
     RetainComment(arg);
   } else if (StringCaseEqual(name, kBlockingRewriteRefererUrls)) {
     EnableBlockingRewriteForRefererUrlPattern(arg);
+  } else if (StringCaseEqual(name, kPermitIdsForCssCombining)) {
+    AddCssCombiningWildcard(arg);
   } else {
     result = RewriteOptions::kOptionNameUnknown;
   }
@@ -3849,6 +3853,7 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
       src.allow_when_inlining_resources_);
   retain_comments_.MergeOrShare(src.retain_comments_);
   lazyload_enabled_classes_.MergeOrShare(src.lazyload_enabled_classes_);
+  css_combining_permitted_ids_.MergeOrShare(src.css_combining_permitted_ids_);
   blocking_rewrite_referer_urls_.MergeOrShare(
       src.blocking_rewrite_referer_urls_);
   override_caching_wildcard_.MergeOrShare(src.override_caching_wildcard_);
@@ -4083,6 +4088,8 @@ void RewriteOptions::ComputeSignatureLockHeld() {
             allow_when_inlining_resources_->Signature(), "_");
   StrAppend(&signature_, "RC:", retain_comments_->Signature(), "_");
   StrAppend(&signature_, "LDC:", lazyload_enabled_classes_->Signature(), "_");
+  StrAppend(&signature_, "CCPI:",
+            css_combining_permitted_ids_->Signature(), "_");
   StrAppend(&signature_, "BRRU:",
             blocking_rewrite_referer_urls_->Signature(), "_");
   StrAppend(&signature_, "UCI:");

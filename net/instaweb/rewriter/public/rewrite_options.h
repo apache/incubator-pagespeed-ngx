@@ -408,6 +408,7 @@ class RewriteOptions {
   static const char kForbidFilters[];
   static const char kInlineResourcesWithoutExplicitAuthorization[];
   static const char kRetainComment[];
+  static const char kPermitIdsForCssCombining[];
   // 2-argument ones:
   static const char kAddResourceHeader[];
   static const char kCustomFetchHeader[];
@@ -2896,6 +2897,20 @@ class RewriteOptions {
     return lazyload_enabled_classes_->Match(class_name, true);
   }
 
+  // Adds a new comment wildcard pattern to be retained.
+  void AddCssCombiningWildcard(StringPiece id_wildcard) {
+    Modify();
+    css_combining_permitted_ids_.MakeWriteable()->Allow(id_wildcard);
+  }
+
+  bool IsAllowedIdForCssCombining(StringPiece id) const {
+    return css_combining_permitted_ids_->Match(id, false);
+  }
+
+  bool CssCombiningMayPermitIds() const {
+    return !css_combining_permitted_ids_->empty();
+  }
+
   void set_override_caching_ttl_ms(int64 x) {
     set_option(x, &override_caching_ttl_ms_);
   }
@@ -4290,6 +4305,7 @@ class RewriteOptions {
   CopyOnWrite<FastWildcardGroup> allow_when_inlining_resources_;
   CopyOnWrite<FastWildcardGroup> retain_comments_;
   CopyOnWrite<FastWildcardGroup> lazyload_enabled_classes_;
+  CopyOnWrite<FastWildcardGroup> css_combining_permitted_ids_;
 
   // When certain url patterns are in the referer we want to do a blocking
   // rewrite.

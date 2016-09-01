@@ -1154,6 +1154,7 @@ TEST_F(RewriteOptionsTest, LookupNonBaseOptionByNameTest) {
   FailLookupOptionByName(RewriteOptions::kExperimentSpec);
   FailLookupOptionByName(RewriteOptions::kForbidFilters);
   FailLookupOptionByName(RewriteOptions::kRetainComment);
+  FailLookupOptionByName(RewriteOptions::kPermitIdsForCssCombining);
 
   // 2-arg options
   FailLookupOptionByName(RewriteOptions::kCustomFetchHeader);

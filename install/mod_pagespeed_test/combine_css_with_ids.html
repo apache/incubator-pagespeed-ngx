@@ -1,0 +1,21 @@
+<html>
+  <head>
+    <title>combine_css with ids</title>
+    <link rel="stylesheet" type="text/css"
+          href="../mod_pagespeed_example/styles/yellow.css" id="not-allowed">
+    <link rel="stylesheet" type="text/css"
+          href="../mod_pagespeed_example/styles/blue.css"
+          id="allowed-to-combine-1-foo" data-other="this disallows">
+    <link rel="stylesheet" type="text/css"
+          href="../mod_pagespeed_example/styles/big.css"
+          id="allowed-to-combine-1-foo">
+    <link rel="stylesheet" type="text/css"
+          href="../mod_pagespeed_example/styles/bold.css"
+          id="allowed-to-combine-2-bar">
+  </head>
+  <body>
+    <div class="blue yellow big bold">
+      Hello, PageSpeed!
+    </div>
+  </body>
+</html>

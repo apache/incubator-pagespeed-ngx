@@ -834,6 +834,71 @@ TEST_F(CssCombineFilterWithDebugTest, NonStandardAttributesBarrier) {
              "potentially non-combinable attribute: &#39;foo&#39;-->", true);
 }
 
+TEST_F(CssCombineFilterTest, NonStandardAttributesBarrierWithId) {
+  SetHtmlMimetype();
+  static const char kBarrier[] =
+      "<link rel='stylesheet' type='text/css' href='a.css' foo='bar' id=baz>";
+  UseMd5Hasher();
+  CombineCss("non_standard_attributes_with_id_barrier", kBarrier, "", true);
+}
+
+TEST_F(CssCombineFilterWithDebugTest,
+       NonStandardAttributesBarrierWithId) {
+  SetHtmlMimetype();
+  static const char kBarrier[] =
+      "<link rel='stylesheet' type='text/css' href='a.css' foo='bar' id=baz>";
+  UseMd5Hasher();
+  CombineCss("non_standard_attributes_with_id_barrier", kBarrier,
+             "<!--combine_css: Could not combine over barrier: "
+             "potentially non-combinable attributes: &#39;foo&#39;"
+             " and &#39;id&#39;-->", true);
+}
+
+TEST_F(CssCombineFilterTest, NonStandardAttributesBarrierWithAllowedId) {
+  SetHtmlMimetype();
+  static const char kBarrier[] =
+      "<link rel='stylesheet' type='text/css' href='a.css' foo='bar' id=baz>";
+  UseMd5Hasher();
+  options()->ClearSignatureForTesting();
+  options()->AddCssCombiningWildcard("b?z");
+  server_context()->ComputeSignature(options());
+  CombineCss("non_standard_attributes_with_allowed_id_barrier",
+             kBarrier, "", true);
+}
+
+TEST_F(CssCombineFilterWithDebugTest,
+       NonStandardAttributesBarrierWithAllowedId) {
+  SetHtmlMimetype();
+  static const char kBarrier[] =
+      "<link rel='stylesheet' type='text/css' href='a.css' foo='bar' id=baz>";
+  UseMd5Hasher();
+  options()->ClearSignatureForTesting();
+  options()->AddCssCombiningWildcard("b?z");
+  server_context()->ComputeSignature(options());
+  CombineCss("non_standard_attributes_with_allowed_id_barrier", kBarrier,
+             "<!--combine_css: Could not combine over barrier: "
+             "potentially non-combinable attribute: &#39;foo&#39;-->", true);
+}
+
+TEST_F(CssCombineFilterTest, IdAloneIsNoBarrier) {
+  SetHtmlMimetype();
+  static const char kInput[] =
+      "<link rel='stylesheet' type='text/css' href='a.css' id=baz>"
+      "<link rel='stylesheet' type='text/css' href='b.css'>";
+  UseMd5Hasher();
+  options()->ClearSignatureForTesting();
+  options()->AddCssCombiningWildcard("b?z");
+  server_context()->ComputeSignature(options());
+
+  SetupCssResources("a.css", "b.css");
+
+  ParseUrl(StrCat(kDomain, "index.html"), kInput);
+
+  StringVector css_urls;
+  CollectCssLinks("id_alone_is_no_barrier", output_buffer_, &css_urls);
+  EXPECT_EQ(1UL, css_urls.size());
+}
+
 TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", "@Import '1a.css';", "", true);
