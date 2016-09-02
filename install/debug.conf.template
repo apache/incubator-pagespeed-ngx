@@ -55,6 +55,10 @@ ModPagespeedInlineResourcesWithoutExplicitAuthorization off
 # built with ssl, but otherwise will cause no trouble.
 ModPagespeedFetchHttps enable
 
+#VALGRIND # Under valgrind, the default 5 second serf fetch timeout may
+#VALGRIND # not be enough.  Make it 20 seconds.
+#VALGRIND ModPagespeedFetcherTimeOutMs 20000
+
 ModPagespeedLibrary 43 1o978_K0_LNE5_ystNklf http://www.modpagespeed.com/rewrite_javascript.js
 ModPagespeedRetainComment " google_ad_section*"
 ModPagespeedPermitIdsForCssCombining "allowed-to-combine-1-*"
@@ -1039,11 +1043,11 @@ NameVirtualHost 127.0.0.1:@@APACHE_TERTIARY_PORT@@
 </VirtualHost>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/wait/" >
-    ModPagespeedInPlaceWaitForOptimized on
+  ModPagespeedInPlaceWaitForOptimized on
+  ModPagespeedInPlaceRewriteDeadlineMs 5000
 
-    # Make the deadline long here for valgrind tests.  We could
-    # conditionalize this.
-    ModPagespeedInPlaceRewriteDeadlineMs 20000
+#VALGRIND  # Make the deadline long here for valgrind tests.
+#VALGRIND  ModPagespeedInPlaceRewriteDeadlineMs 20000
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/wait/" >
@@ -1887,45 +1891,43 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeed off
 </VirtualHost>
 
-# For testing measurement proxy things.
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName mpr.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
-  ModPagespeedExperimentalProxyAllRequests on
-  ModPagespeedExperimentalMeasurementProxy "http://mpr.example.com" secret
-  ModPagespeedFetchWithGzip on
-</VirtualHost>
+#GZIP # For testing measurement proxy things.
+#GZIP <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+#GZIP   ServerName mpr.example.com
+#GZIP   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#GZIP   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
+#GZIP   ModPagespeedExperimentalProxyAllRequests on
+#GZIP   ModPagespeedExperimentalMeasurementProxy "http://mpr.example.com" secret
+#GZIP </VirtualHost>
+#GZIP
+#GZIP # For testing measurement proxy things, passthrough.
+#GZIP <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+#GZIP   ServerName mprpass.example.com
+#GZIP   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#GZIP   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mprpass"
+#GZIP   ModPagespeedExperimentalProxyAllRequests on
+#GZIP   ModPagespeedExperimentalMeasurementProxy "http://mprpass.example.com" secret
+#GZIP   ModPagespeedRewriteLevel PassThrough
+#GZIP   ModPagespeedInPlaceResourceOptimization off
+#GZIP </VirtualHost>
 
-# For testing measurement proxy things, passthrough.
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName mprpass.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mprpass"
-  ModPagespeedExperimentalProxyAllRequests on
-  ModPagespeedExperimentalMeasurementProxy "http://mprpass.example.com" secret
-  ModPagespeedFetchWithGzip on
-  ModPagespeedRewriteLevel PassThrough
-  ModPagespeedInPlaceResourceOptimization off
-</VirtualHost>
-
-# For testing how we handle process-scope options.
-ModPagespeedIproMaxResponseBytes 1048576001
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName ps1.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
-  ModPagespeedIproMaxResponseBytes 1048576002
-  ModPagespeedEnableFilters debug
-</VirtualHost>
-
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName ps2.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
-  ModPagespeedIproMaxResponseBytes 1048576003
-  ModPagespeedEnableFilters debug
-</VirtualHost>
+#PROCESS_SCOPE # For testing how we handle process-scope options.
+#PROCESS_SCOPE ModPagespeedIproMaxResponseBytes 1048576001
+#PROCESS_SCOPE <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+#PROCESS_SCOPE   ServerName ps1.example.com
+#PROCESS_SCOPE   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#PROCESS_SCOPE   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
+#PROCESS_SCOPE   ModPagespeedIproMaxResponseBytes 1048576002
+#PROCESS_SCOPE   ModPagespeedEnableFilters debug
+#PROCESS_SCOPE </VirtualHost>
+#PROCESS_SCOPE
+#PROCESS_SCOPE <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+#PROCESS_SCOPE   ServerName ps2.example.com
+#PROCESS_SCOPE   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#PROCESS_SCOPE   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
+#PROCESS_SCOPE   ModPagespeedIproMaxResponseBytes 1048576003
+#PROCESS_SCOPE   ModPagespeedEnableFilters debug
+#PROCESS_SCOPE </VirtualHost>
 
 # For testing with a custom origin header.  In this VirtualHost,
 # /mod_pagespeed_test is included in our DocumentRoot and thus does

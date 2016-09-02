@@ -31,6 +31,13 @@ export APACHE_LOG
 export APACHE_DOC_ROOT
 export MOD_PAGESPEED_CACHE
 
+PAGESPEED_DIR = $(realpath $(shell \
+  if [ -f $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh ]; then \
+    echo $(MOD_PAGESPEED_ROOT)/pagespeed ;\
+  else \
+    echo $(MOD_PAGESPEED_ROOT)/third_party/pagespeed ;\
+  fi))
+
 apache_vm_system_tests : setup_doc_root
 	$(MAKE) FAST_RESTART=1 apache_debug_smoke_test
 	$(MAKE) FAST_RESTART=1 apache_debug_downstream_caching_test
@@ -43,6 +50,7 @@ apache_vm_system_tests : setup_doc_root
 	$(MAKE) FAST_RESTART=1 apache_debug_slurp_test
 	$(MAKE) FAST_RESTART=1 apache_debug_speling_test
 	$(MAKE) FAST_RESTART=1 apache_debug_gzip_test
+	$(MAKE) FAST_RESTART=1 apache_debug_process_scope_test
 	$(MAKE) FAST_RESTART=1 apache_debug_experiment_test
 	$(MAKE) FAST_RESTART=1 apache_debug_vhost_only_test
 	$(MAKE) FAST_RESTART=1 apache_debug_global_off_test
@@ -86,16 +94,10 @@ else
 endif
 EXAMPLE = $(APACHE_SERVER)/mod_pagespeed_example
 EXAMPLE_IMAGE = $(EXAMPLE)/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
-EXAMPLE_BIG_CSS = $(EXAMPLE)/styles/big.css.pagespeed.ce.01O-NppLwe.css
 EXAMPLE_COMBINE_CSS = $(EXAMPLE)/combine_css.html
 TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
 
-APACHE_SYSTEM_TEST = $(shell \
-  if [ -f $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh ]; then \
-    echo $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh ;\
-  else \
-    echo $(MOD_PAGESPEED_ROOT)/third_party/pagespeed/apache/system_test.sh ;\
-  fi)
+APACHE_SYSTEM_TEST = $(PAGESPEED_DIR)/apache/system_test.sh
 
 # Installs debug configuration and runs a smoke test against it.
 # This will blow away your existing pagespeed.conf,
@@ -198,6 +200,25 @@ rewrite_test_prepare :
 	$(eval OPTIONS+=REWRITE_TEST=1)
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
+apache_debug_process_scope_test :
+	@echo '***' Process-scope test
+	$(MAKE) stop
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
+	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
+	$(MAKE) apache_install_conf OPTIONS="$(OPTIONS) PROCESS_SCOPE_TEST=1"
+	$(MAKE) start
+	SECONDARY_HOSTNAME=localhost:$(APACHE_SECONDARY_PORT) \
+	SERVER_NAME=apache \
+	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	    $(PAGESPEED_DIR)/apache/process_scope_test.sh \
+		$(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	#
+	# Restore config
+	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
+	$(MAKE) apache_debug_stop
+	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
+	@echo PASS
+
 # This test checks that when mod_speling is enabled we handle the
 # resource requests properly by nulling out request->filename.  If
 # we fail to do that then mod_speling rewrites the result to be a 300
@@ -278,21 +299,17 @@ apache_debug_redis_test_run :
 # the compression is done by mod_deflate which might change.  So we
 # do a cumbersome range-check that the 4307 bytes gets compressed to
 # somewhere between 200 and 500 bytes.
+#
+# We run the measurement proxy test here as well, as that also requires
+# gzip to be on.
 apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
     apache_debug_restart
-	@echo Testing efficacy of ModPagespeedFetchWithGzip:
-	# Note: The client request will not served with gzip because we do not
-	# have an Accept-Encoding header, we are testing that the backend fetch
-	# uses gzip.
-	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE_BIG_CSS) 2>&1 \
-	  | head | grep "HTTP request sent, awaiting response... 200 OK"
-	# TODO(sligocki): The serf_fetch_bytes_count should be available on
-	# this vhost's mod_pagespeed_statistics page. Why isn't it?
-	bytes=`$(WGET_NO_PROXY) -q -O - \
-	  $(APACHE_SERVER)/mod_pagespeed_global_statistics \
-	  | sed -n 's/serf_fetch_bytes_count: *//p'`; \
-	  echo Compressed big.css took $$bytes bytes; \
-	  test $$bytes -gt 200 -a $$bytes -lt 500
+	SECONDARY_HOSTNAME=localhost:$(APACHE_SECONDARY_PORT) \
+	SERVER_NAME=apache \
+	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	    $(PAGESPEED_DIR)/apache/gzip_test.sh \
+		$(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+
 
 gzip_test_prepare :
 	$(eval OPTIONS+=GZIP_TEST=1)
