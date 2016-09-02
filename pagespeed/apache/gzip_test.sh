@@ -47,6 +47,13 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 fi
 
 start_test Efficacy of ModPagespeedFetchWithGzip
+
+# TODO(sligocki): The serf_fetch_bytes_count should be available on
+# this vhost's pagespeed_admin/statistics page. Why isn't it?
+GLOBAL_STATISTICS_URL="$PRIMARY_SERVER/pagespeed_global_admin/statistics?PageSpeed=off"
+STATS=$OUTDIR/gzip_efficacy_stats
+$WGET_DUMP $GLOBAL_STATISTICS_URL > $STATS.1
+
 # Note: The client request will not served with gzip because we do not
 # have an Accept-Encoding header, we are testing that the backend fetch
 # uses gzip.
@@ -54,10 +61,8 @@ EXAMPLE_BIG_CSS="$EXAMPLE_ROOT/styles/big.css.pagespeed.ce.01O-NppLwe.css"
 echo $WGET -O /dev/null --save-headers "$EXAMPLE_BIG_CSS"
 $WGET -O /dev/null --save-headers "$EXAMPLE_BIG_CSS" 2>&1 \
   | head | grep "HTTP request sent, awaiting response... 200 OK"
-# TODO(sligocki): The serf_fetch_bytes_count should be available on
-# this vhost's pagespeed_admin/statistics page. Why isn't it?
-STATISTICS_URL="$PRIMARY_SERVER/pagespeed_global_admin/statistics?PageSpeed=off"
-bytes=$(scrape_stat serf_fetch_bytes_count)
-check [ $bytes -gt 200 -a $bytes -lt 500 ]
+$WGET_DUMP $GLOBAL_STATISTICS_URL > $STATS.2
+check_stat_op $STATS.1 $STATS.2 serf_fetch_bytes_count 200 -gt
+check_stat_op $STATS.1 $STATS.2 serf_fetch_bytes_count 500 -lt
 
 check_failures_and_exit
