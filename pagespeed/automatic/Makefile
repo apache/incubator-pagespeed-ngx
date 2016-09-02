@@ -230,7 +230,8 @@ INCLUDE_PATH = \
     -I$(MOD_PAGESPEED_ROOT)/third_party/google-sparsehash/src \
     -I$(MOD_PAGESPEED_ROOT)/third_party/google-sparsehash/gen/$(INCLUDE_ARCH)/include \
     -I$(MOD_PAGESPEED_ROOT)/third_party/protobuf/src/src \
-    -I$(MOD_PAGESPEED_ROOT)/third_party/re2/src
+    -I$(MOD_PAGESPEED_ROOT)/third_party/re2/src \
+    -I$(MOD_PAGESPEED_ROOT)/url/
 PSOL = $(OUTPUT_DIR)/pagespeed_automatic.a
 OBJS          = $(OUTPUT_DIR)/static_rewriter_main.o \
 		$(OUTPUT_DIR)/static_rewriter.o \
