@@ -166,7 +166,8 @@ pagespeed_include="\
   $mod_pagespeed_dir/third_party/apr/src/include \
   $mod_pagespeed_dir/third_party/aprutil/src/include \
   $mod_pagespeed_dir/third_party/apr/gen/arch/$os_name/$arch_name/include \
-  $mod_pagespeed_dir/third_party/aprutil/gen/arch/$os_name/$arch_name/include"
+  $mod_pagespeed_dir/third_party/aprutil/gen/arch/$os_name/$arch_name/include \
+  $mod_pagespeed_dir/url"
 ngx_feature_path="$pagespeed_include"
 
 pagespeed_libs="$pagespeed_libs $psol_binary -lrt -pthread -lm"
