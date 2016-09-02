@@ -184,11 +184,22 @@ TEST_F(RedirectOnSizeLimitFilterTest, TestFlushBeforeLimit) {
 
 TEST_F(RedirectOnSizeLimitFilterTest, TestEscapingAndFlush) {
   SetupDriver(100);
+  // Depending on the version of Chromium GURL used, we get different quoting
+  // for a single-quote.  Either is acceptable.
   static const char kOutput[] =
       "<html>"
       "<input type=\"text\"/>"
       "<script type=\"text/javascript\">"
       "window.location=\"http://test.com/in.html?%27(&PageSpeed=off\";"
+      "</script>"
+      "<script type=\"text/javascript\">alert('123');</script>"
+      "</html>";
+
+  static const char kOutputAlt[] =
+      "<html>"
+      "<input type=\"text\"/>"
+      "<script type=\"text/javascript\">"
+      "window.location=\"http://test.com/in.html?\\'(&PageSpeed=off\";"
       "</script>"
       "<script type=\"text/javascript\">alert('123');</script>"
       "</html>";
@@ -204,7 +215,7 @@ TEST_F(RedirectOnSizeLimitFilterTest, TestEscapingAndFlush) {
       "<table><tr><td>blah</td></tr></table></html>");
   html_parse()->FinishParse();
 
-  EXPECT_STREQ(kOutput, output_);
+  EXPECT_TRUE((kOutput == output_) || (kOutputAlt == output_)) << output_;
 }
 
 }  // namespace net_instaweb

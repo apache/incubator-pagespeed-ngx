@@ -1,14 +1,9 @@
 Makefile
+!third_party/libjpeg_turbo/yasm/source/config/linux/Makefile
 *.mk
 *.Makefile
 out/*
 testing/*
-build/android/*
-build/mac/*
-build/linux/*
-build/internal/*
-build/win/*
-build/ios/*
 build/gyp_helper.pyc
 build/landmine_utils.pyc
 build/temp_gyp/*
@@ -19,7 +14,7 @@ third_party/boringssl/*
 third_party/chromium/src/base/*
 third_party/chromium/src/build/*
 third_party/chromium/src/net/base/*
-third_party/chromium/src/url/*
+third_party/chromium/src/googleurl/*
 third_party/chromium_deps/*
 third_party/closure_library/*
 third_party/domain_registry_provider/*
@@ -33,7 +28,6 @@ third_party/httpd24/src/*
 third_party/icu/*
 third_party/jsoncpp/src/*
 third_party/libjpeg_turbo/src/*
-third_party/libjpeg_turbo/yasm/*
 third_party/libpng/src/*
 third_party/libwebp/*
 third_party/mod_spdy/*

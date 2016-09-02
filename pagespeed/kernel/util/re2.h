@@ -26,7 +26,7 @@
 using re2::RE2;
 
 namespace re2 {
-const RE2::CannedOptions posix_syntax = RE2::POSIX_SYNTAX;
+const RE2::CannedOptions posix_syntax = RE2::POSIX;
 }  // namespace re2
 
 typedef re2::StringPiece Re2StringPiece;

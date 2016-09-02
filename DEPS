@@ -17,12 +17,10 @@ vars = {
   # that don't end with a trailing slash to http. We therefore try to make sure
   # all https URLs include the trailing slash, but it's unclear if SVN actually
   # respects this.
-  "chromium_trunk": "https://src.chromium.org/svn/trunk/",
   "chromium_git": "https://chromium.googlesource.com",
   # We don't include @ inside the revision here as is customary since
   # we want to pass this into a -D flag
   "chromium_revision_num": "256281",
-  "chromium_deps_root": "src/third_party/chromium_deps",
 
   "libpagespeed_svn_root": "https://github.com/pagespeed/page-speed/trunk/",
   "libpagespeed_trunk": "https://github.com/pagespeed/page-speed/trunk/lib/trunk/",
@@ -113,32 +111,10 @@ vars = {
 
 deps = {
 
-  # Fetch dependent DEPS so we can sync our other dependencies relative
-  # to them.
-  Var("chromium_deps_root"):
-    File(Var("chromium_trunk") + "src/DEPS@" + Var("chromium_revision_num")),
-
   # Other dependencies.
   "src/build/temp_gyp":
     Var("libpagespeed_trunk") + "src/build/temp_gyp/" +
         Var("libpagespeed_revision"),
-
-  # We check 'build/android' out of Chromium repo to get
-  # 'android/cpufeatures.gypi', which is needed to compile libwebp.
-  "src/build/android":
-    Var("chromium_trunk") + "src/build/android/@" +
-        Var("chromium_revision_num"),
-  "src/build/ios":
-    Var("chromium_trunk") + "src/build/ios/@" + Var("chromium_revision_num"),
-  "src/build/internal":
-    Var("chromium_trunk") + "src/build/internal/@" +
-        Var("chromium_revision_num"),
-  "src/build/linux":
-    Var("chromium_trunk") + "src/build/linux/@" + Var("chromium_revision_num"),
-  "src/build/mac":
-    Var("chromium_trunk") + "src/build/mac/@" + Var("chromium_revision_num"),
-  "src/build/win":
-    Var("chromium_trunk") + "src/build/win/@" + Var("chromium_revision_num"),
 
   # TODO(huibao): Remove references to libpagespeed.
   "src/third_party/giflib":
@@ -148,21 +124,13 @@ deps = {
     Var("libpagespeed_svn_root") + "deps/optipng-0.7.4/",
   "src/third_party/zlib": Var("libpagespeed_svn_root") + "deps/zlib-1.2.5/",
 
-  # Yasm assember is required for libjpeg_turbo.
-  "src/third_party/libjpeg_turbo/yasm":
-    Var("chromium_trunk") + "src/third_party/yasm/@" +
-        Var("chromium_revision_num"),
-
   "src/third_party/libjpeg_turbo/yasm/source/patched-yasm":
-    Var("chromium_trunk") + "deps/third_party/yasm/patched-yasm/@" +
-        Var("chromium_revision_num"),
-
+    Var("chromium_git") + "/chromium/deps/yasm/patched-yasm@7da28c6c7c6a1387217352ce02b31754deb54d2a",
   "src/third_party/libjpeg_turbo/src":
-    Var("chromium_trunk") + "deps/third_party/libjpeg_turbo/@" +
-        Var("chromium_revision_num"),
+    Var("chromium_git") + "/chromium/deps/libjpeg_turbo/@7260e4d8b8e1e40b17f03fafdf1cd83296900f76",
 
   "src/testing":
-    Var("chromium_trunk") + "src/testing/@" + Var("chromium_revision_num"),
+    Var("chromium_git") + "/chromium/src/testing/@3207604f790d18c626e9dcb1a09874618c68844b",
   "src/testing/gtest": Var("gtest_src") + Var("gtest_revision"),
   "src/testing/gmock": Var("gmock_src") + Var("gmock_revision"),
 
@@ -186,16 +154,14 @@ deps = {
     Var("apache_httpd24_src") + "os/" + Var("apache_httpd24_revision"),
 
   "src/third_party/chromium/src/base":
-    Var("chromium_trunk") + "src/base/@" + Var("chromium_revision_num"),
+    Var("chromium_git") + "/chromium/src/base@ccf3c2f324c4ae0d1aa878921b7c98f7deca5ee8",
 
   "src/third_party/chromium/src/build":
-    Var("chromium_trunk") + "src/build/@" + Var("chromium_revision_num"),
+    Var("chromium_git") + "/chromium/src/build/@06b7bd9c7a8adb3708db8df4dc058de94f0d5554",
 
-  "src/third_party/chromium/src/net/base":
-     Var("chromium_trunk") + "src/net/base@" + Var("chromium_revision_num"),
-
-  "src/third_party/chromium/src/url":
-    Var("chromium_trunk") + "src/url@" + Var("chromium_revision_num"),
+  # This revision is before headers got moved to main chromium repo.
+  "src/third_party/chromium/src/googleurl":
+    Var("chromium_git") + "/external/google-url@405b6e1798f88e85291820b30344723512e0c38f",
 
   "src/third_party/closure_library":
     Var("closure_library") + Var("closure_library_revision"),
@@ -224,7 +190,7 @@ deps = {
   "src/third_party/libwebp": Var("libwebp_src") + Var("libwebp_revision"),
 
   "src/tools/clang":
-    Var("chromium_trunk") + "src/tools/clang/@" + Var("chromium_revision_num"),
+    Var("chromium_git") + "/chromium/src/tools/clang/@bf272f7b05896b9a18de8497383f8b873a86cfbc",
 
   # This is the same commit as the version from svn included from chromium_deps,
   # but the svn is down, so we take it from chromium-git.
@@ -232,13 +198,11 @@ deps = {
     Var("chromium_git") + "/external/gyp@" + "0fb31294ae844bbf83eba05876b7a241b66f1e99",
 
   "src/third_party/modp_b64":
-    Var("chromium_trunk") + "src/third_party/modp_b64/@" +
-        Var("chromium_revision_num"),
+    Var("chromium_git") + "/chromium/src/third_party/modp_b64/@aae60754fa997799e8037f5e8ca1f56d58df763d",
 
   # RE2.
   "src/third_party/re2/src":
-    Var("chromium_trunk") + "src/third_party/re2/@" +
-        Var("chromium_revision_num"),
+    "https://github.com/google/re2.git/@78dd4fa1f86bafbf5a5eb006778d9e6e27297af6",
 
   # Comment to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
@@ -261,20 +225,6 @@ deps = {
 
   "src/third_party/hiredis/src":
     Var("hiredis_src") + '@' + Var("hiredis_revision"),
-}
-
-
-deps_os = {
-  "win": {
-    "src/third_party/cygwin": From(Var("chromium_deps_root")),
-    "src/third_party/python_26":
-      Var("chromium_trunk") + "tools/third_party/python_26/@" +
-          Var("chromium_revision_num"),
-  },
-  "mac": {
-  },
-  "unix": {
-  },
 }
 
 

@@ -31,8 +31,19 @@
           '..',
         ],
       },
+      'all_dependent_settings': {
+        'include_dirs': [
+          '<(DEPTH)/url'
+        ]
+      },
+      'include_dirs': [
+        '<(DEPTH)/url',
+      ],
       'defines': [
         'URL_IMPLEMENTATION',
+        # This is a bit of paranoia to make sure this can't load its own copy
+        # of string16.h rather than chromium one (base/strings/string16).
+        'BASE_STRING16_H_',
       ],
       # TODO(jschuh): crbug.com/167187 fix size_t to int truncations.
       'msvs_disabled_warnings': [4267, ],
