@@ -163,3 +163,31 @@
    fun:_ZN3re23DFA10AddToQueueEPNS0_5WorkqEij
    ...
 }
+
+{
+   <re2 uninitialized value in optimized code>
+   Memcheck:Value8
+   fun:_ZNK3re210SparseSetTIvE8containsEi
+   ...
+}
+
+{
+   <re2 uninitialized value in optimized code>
+   Memcheck:Cond
+   fun:_ZNK3re210SparseSetTIvE8containsEi
+   ...
+}
+
+{
+   <re2 uninitialized value in optimized code>
+   Memcheck:Value8
+   fun:_ZNK3re211SparseArrayIiE9has_indexEi
+   ...
+}
+
+{
+   <re2 uninitialized value in optimized code>
+   Memcheck:Cond
+   fun:_ZNK3re211SparseArrayIiE9has_indexEi
+   ...
+}
