@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/thread.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/waveform.h"
 
@@ -53,7 +54,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   // If worker thread exit is requested, returns NULL.  Returns next
   // pending task, also setting it in current_task_ otherwise.  Takes
   // care of synchronization, including waiting for next state change.
-  Function* GetNextTask() {
+  Function* GetNextTask() LOCKS_EXCLUDED(mutex_) {
     ScopedMutex lock(mutex_.get());
 
     // Clean any task we were running last iteration
@@ -76,7 +77,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     return current_task_;
   }
 
-  virtual void Run() {
+  virtual void Run() LOCKS_EXCLUDED(mutex_) {
     Function* task;
     while ((task = GetNextTask()) != NULL) {
       // Run tasks (not holding the lock, so new tasks can be added).
@@ -85,7 +86,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     }
   }
 
-  void ShutDown() {
+  void ShutDown() LOCKS_EXCLUDED(mutex_) {
     {
       ScopedMutex lock(mutex_.get());
 
@@ -102,17 +103,23 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     }
 
     Join();
-    int delta = tasks_.size();
+    std::deque<Function*> cancel_tasks;
+    {
+      ScopedMutex lock(mutex_.get());
+      started_ = false;  // Reject further jobs on explicit shutdown.
+      cancel_tasks.swap(tasks_);
+    }
+
+    int delta = cancel_tasks.size();
     owner_->UpdateQueueSizeStat(-delta);
-    while (!tasks_.empty()) {
-      Function* closure = tasks_.front();
-      tasks_.pop_front();
+    while (!cancel_tasks.empty()) {
+      Function* closure = cancel_tasks.front();
+      cancel_tasks.pop_front();
       closure->CallCancel();
     }
-    started_ = false;  // Reject further jobs on explicit shutdown.
   }
 
-  void Start() {
+  void Start() LOCKS_EXCLUDED(mutex_) {
     ScopedMutex lock(mutex_.get());
     if (!started_ && !exit_) {
       started_ = Thread::Start();
@@ -122,13 +129,14 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     }
   }
 
-  bool QueueIfPermitted(Function* closure) {
+  bool QueueIfPermitted(Function* closure) LOCKS_EXCLUDED(mutex_) {
+    ScopedMutex lock(mutex_.get());
     if (!started_) {
+      lock.Release();
       closure->CallCancel();
       return true;
     }
 
-    ScopedMutex lock(mutex_.get());
     if (owner_->IsPermitted(closure)) {
       tasks_.push_back(closure);
       owner_->UpdateQueueSizeStat(1);
@@ -141,8 +149,9 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     }
   }
 
-  // Must be called with mutex held.
-  int NumJobs() {
+  // This requires mutex_ be locked, but is called very indirectly via
+  // IsPermitted() above, making proper annotations difficult.
+  int NumJobs() NO_THREAD_SAFETY_ANALYSIS {
     int num = static_cast<int>(tasks_.size());
     if (current_task_ != NULL) {
       ++num;
@@ -150,7 +159,7 @@ class Worker::WorkThread : public ThreadSystem::Thread {
     return num;
   }
 
-  bool IsBusy() const {
+  bool IsBusy() const LOCKS_EXCLUDED(mutex_) {
     ScopedMutex lock(mutex_.get());
     return (current_task_ != NULL) || !tasks_.empty();
   }
@@ -158,13 +167,15 @@ class Worker::WorkThread : public ThreadSystem::Thread {
  private:
   Worker* owner_;
 
-  // guards state_change_, current_task_, tasks_, exit_;
   scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
-  scoped_ptr<ThreadSystem::Condvar> state_change_;
-  Function* current_task_;  // non-NULL if we are actually running something.
-  std::deque<Function*> tasks_;  // things waiting to be run.
-  bool exit_;
-  bool started_;
+  scoped_ptr<ThreadSystem::Condvar> state_change_ GUARDED_BY(mutex_);
+
+  // non-NULL if we are actually running something.
+  Function* current_task_ GUARDED_BY(mutex_);
+  std::deque<Function*> tasks_ GUARDED_BY(mutex_);  // things waiting to be run.
+
+  bool exit_ GUARDED_BY(mutex_);
+  bool started_ GUARDED_BY(mutex_);
   AtomicBool quit_requested_;
 
   DISALLOW_COPY_AND_ASSIGN(WorkThread);

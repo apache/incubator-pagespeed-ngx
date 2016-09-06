@@ -308,6 +308,7 @@ QueuedWorkerPool::Sequence::Sequence(ThreadSystem* thread_system,
 }
 
 void QueuedWorkerPool::Sequence::Reset() {
+  ScopedMutex lock(sequence_mutex_.get());
   shutdown_ = false;
   active_ = false;
   DCHECK(work_queue_.empty());

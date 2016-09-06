@@ -148,12 +148,13 @@ class QueuedWorkerPool {
     void Cancel() LOCKS_EXCLUDED(sequence_mutex_);
 
     friend class QueuedWorkerPool;
-    std::deque<Function*> work_queue_;
+    std::deque<Function*> work_queue_ GUARDED_BY(sequence_mutex_);
     scoped_ptr<ThreadSystem::CondvarCapableMutex> sequence_mutex_;
     QueuedWorkerPool* pool_;
-    bool shutdown_;
-    bool active_;
-    scoped_ptr<ThreadSystem::Condvar> termination_condvar_;
+    bool shutdown_ GUARDED_BY(sequence_mutex_);
+    bool active_ GUARDED_BY(sequence_mutex_);
+    scoped_ptr<ThreadSystem::Condvar> termination_condvar_
+        GUARDED_BY(sequence_mutex_);
     Waveform* queue_size_;
     size_t max_queue_size_;
 
