@@ -30,6 +30,8 @@
 set -e
 set -u
 
+source $(dirname "$BASH_SOURCE")/shell_utils.sh || exit 1
+
 # Check amount of arguments
 if [[ "$#" == 0 ]]; then
   echo "Usage: $0 <server-start-command> [<arguments...>]" >&2
@@ -89,15 +91,20 @@ while [[ -z "$SERVER_PORT" ]]; do
   eval "$@" "&"
 
   SERVER_PID="$!"
-  sleep 2 # wait until server starts
 
-  # Check that the process we started actually listens for the port we want
-  if ! ( netstat -tanp 2>/dev/null |
-    grep ":$SERVER_PORT .* LISTEN .* $SERVER_PID/$SERVER_CMD" >/dev/null); then
-    echo "$SERVER_CMD does not listen on port $SERVER_PORT after two seconds, killing it"
+  echo -n "Waiting for server..."
+  if ! wait_cmd_with_timeout 2 \
+    'netstat -tanp 2>/dev/null |' \
+    'grep ":$SERVER_PORT .* LISTEN .* $SERVER_PID/$SERVER_CMD" >/dev/null'
+  then
+    echo
+    echo "$SERVER_CMD does not listen on port $SERVER_PORT after two" \
+         "seconds, killing it"
     kill "$SERVER_PID" || true
     SERVER_PID=""
     SERVER_PORT=""
+  else
+    echo
   fi
 done
 
