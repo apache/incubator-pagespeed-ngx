@@ -73,13 +73,58 @@ class RedisCacheTest : public CacheTestBase {
     return cache_->FlushAll();
   }
 
+  void InitRedisWithCustomServer() {
+    cache_.reset(new RedisCache("localhost", custom_server_port_, new NullMutex,
+                                &handler_, &timer_, kReconnectionDelayMs,
+                                kTimeoutUs));
+  }
+
+  void InitRedisWithUnreachableServer() {
+    // Try to connect to some definitely unreachable host.
+    // 192.0.2.0/24 is reserved for documentation purposes in RFC5737 and no
+    // machine should ever be routable in that subnet.
+    cache_.reset(new RedisCache("192.0.2.1", 12345, new NullMutex, &handler_,
+                                &timer_, kReconnectionDelayMs, kTimeoutUs));
+  }
+
+  static void SetUpTestCase() {
+    apr_initialize();
+    TcpServerThreadForTesting::PickListenPortOnce(&custom_server_port_);
+    CHECK_NE(custom_server_port_, 0);
+  }
+
+  template<class ServerThread>
+  bool StartCustomServer() {
+    WaitForCustomServerShutdown();
+    custom_server_.reset(
+        new ServerThread(custom_server_port_, thread_system_.get()));
+    if (!custom_server_->Start()) {
+      return false;
+    }
+    // Wait while server starts and check its port
+    return custom_server_->GetListeningPort() == custom_server_port_;
+  }
+
+  void WaitForCustomServerShutdown() {
+    custom_server_.reset();
+  }
+
+  static void TearDownTestCase() {
+    apr_terminate();
+  }
+
   CacheInterface* Cache() override { return cache_.get(); }
 
   scoped_ptr<RedisCache> cache_;
   scoped_ptr<ThreadSystem> thread_system_;
   MockTimer timer_;
   GoogleMessageHandler handler_;
+
+  scoped_ptr<TcpServerThreadForTesting> custom_server_;
+  static apr_port_t custom_server_port_;
 };
+
+apr_port_t RedisCacheTest::custom_server_port_ = 0;
 
 // Simple flow of putting in an item, getting it, deleting it.
 TEST_F(RedisCacheTest, PutGetDelete) {
@@ -200,49 +245,20 @@ class RedisGetRespondingServerThread : public TcpServerThreadForTesting {
   }
 };
 
-class RedisCacheReconnectTest : public RedisCacheTest {
- public:
-  void SetUp() {
-    TcpServerThreadForTesting::PickListenPortOnce(&port_);
-    CHECK_NE(port_, 0);
-
-    cache_.reset(new RedisCache("localhost", port_, new NullMutex, &handler_,
-                                &timer_, kReconnectionDelayMs, kTimeoutUs));
-  }
-
- protected:
-  void ProcessOneMoreConnection() {
-    // If there was an old server, we wait till it finishes as
-    // TcpServerThreadForTesting calls Join in destructor.
-    server_.reset(
-        new RedisGetRespondingServerThread(port_, thread_system_.get()));
-    ASSERT_TRUE(server_->Start());
-    // Wait while server starts and check its port
-    ASSERT_EQ(port_, server_->GetListeningPort());
-  }
-
-  void WaitForServerShutdown() {
-    server_.reset();
-  }
-
- private:
-  apr_port_t port_;
-  scoped_ptr<RedisGetRespondingServerThread> server_;
-};
-
-TEST_F(RedisCacheReconnectTest, ReconnectsInstantly) {
-  ProcessOneMoreConnection();
+TEST_F(RedisCacheTest, ReconnectsInstantly) {
+  InitRedisWithCustomServer();
+  ASSERT_TRUE(StartCustomServer<RedisGetRespondingServerThread>());
   cache_->StartUp();
 
   CheckGet(kSomeKey, kSomeValue);
   // Server closes connection after processing one request, but cache does not
   // know about that yet.
-  WaitForServerShutdown();
+  WaitForCustomServerShutdown();
   EXPECT_TRUE(Cache()->IsHealthy());
 
   // Client should not reconnect as it learns about disconnection only when it
   // tries to run the command.
-  ProcessOneMoreConnection();  // Should not receive connection right now.
+  ASSERT_TRUE(StartCustomServer<RedisGetRespondingServerThread>());
   CheckNotFound(kSomeKey);
 
   // First reconnection attempt should happen right away.
@@ -250,14 +266,15 @@ TEST_F(RedisCacheReconnectTest, ReconnectsInstantly) {
   CheckGet(kSomeKey, kSomeValue);
 }
 
-TEST_F(RedisCacheReconnectTest, ReconnectsUntilSuccessWithTimeout) {
-  ProcessOneMoreConnection();
+TEST_F(RedisCacheTest, ReconnectsUntilSuccessWithTimeout) {
+  InitRedisWithCustomServer();
+  ASSERT_TRUE(StartCustomServer<RedisGetRespondingServerThread>());
   cache_->StartUp();
 
   CheckGet(kSomeKey, kSomeValue);
   // Server closes connection after processing one request, but cache does not
   // know about that yet.
-  WaitForServerShutdown();
+  WaitForCustomServerShutdown();
   EXPECT_TRUE(Cache()->IsHealthy());
 
   // Let client know that we're disconnected by trying to read.
@@ -268,7 +285,7 @@ TEST_F(RedisCacheReconnectTest, ReconnectsUntilSuccessWithTimeout) {
   CheckNotFound(kSomeKey);  // ...but it fails.
 
   // Second attempt, should not reconnect before timeout.
-  ProcessOneMoreConnection();  // Should not receive connection right now.
+  ASSERT_TRUE(StartCustomServer<RedisGetRespondingServerThread>());
   timer_.AdvanceMs(kReconnectionDelayMs - 1);
   EXPECT_FALSE(Cache()->IsHealthy());  // Reconnection is not allowed.
   CheckNotFound(kSomeKey);
@@ -279,7 +296,8 @@ TEST_F(RedisCacheReconnectTest, ReconnectsUntilSuccessWithTimeout) {
   CheckGet(kSomeKey, kSomeValue);
 }
 
-TEST_F(RedisCacheReconnectTest, ReconnectsIfStartUpFailed) {
+TEST_F(RedisCacheTest, ReconnectsIfStartUpFailed) {
+  InitRedisWithCustomServer();
   cache_->StartUp();
 
   // Client already knows that connection failed.
@@ -287,7 +305,7 @@ TEST_F(RedisCacheReconnectTest, ReconnectsIfStartUpFailed) {
   CheckNotFound(kSomeKey);
 
   // Should not reconnect before timeout.
-  ProcessOneMoreConnection();  // Should not receive connection right now.
+  ASSERT_TRUE(StartCustomServer<RedisGetRespondingServerThread>());
   timer_.AdvanceMs(kReconnectionDelayMs - 1);
   EXPECT_FALSE(Cache()->IsHealthy());  // Reconnection is not allowed.
   CheckNotFound(kSomeKey);
@@ -346,14 +364,14 @@ const int kTimedOutOperationMinTimeUs = kTimeoutUs - 5 * Timer::kMsUs;
 // Unfortunately, it still gives 0.05%-0.1% of spurious failures and 'real'
 // overhead in these outliers can be bigger than 100ms.
 const int kTimedOutOperationMaxTimeUs = kTimeoutUs + 50 * Timer::kMsUs;
+
+// We want timeout to be significantly greater than measuring gap.
+static_assert(kTimeoutUs >= 60 * Timer::kMsUs,
+              "kTimeoutUs is smaller than measuring gap");
 }  // namespace
 
 TEST_F(RedisCacheTest, ConnectionTimeout) {
-  // Try to connect to some definitely unreachable host.
-  // 192.0.2.0/24 is reserved for documentation purposes in RFC5737 and no
-  // machine should ever be routable in that subnet.
-  cache_.reset(new RedisCache("192.0.2.1", 12345, new NullMutex, &handler_,
-                              &timer_, kReconnectionDelayMs, kTimeoutUs));
+  InitRedisWithUnreachableServer();
   PosixTimer timer;
   int64 started_at_us = timer.NowUs();
   cache_->StartUp();  // Should try to connect as well.
@@ -370,29 +388,10 @@ TEST_F(RedisCacheTest, ConnectionTimeout) {
 // correct, the test hangs.
 class RedisCacheOperationTimeoutTest : public RedisCacheTest {
  protected:
-  static void SetUpTestCase() {
-    apr_initialize();
-    atexit(apr_terminate);
-    TcpServerThreadForTesting::PickListenPortOnce(&port_);
-    CHECK_NE(port_, 0);
-
-    // We want timeout to be significantly greater than measuring gap.
-    CHECK_GT(kTimeoutUs, 60 * Timer::kMsUs);
-  }
-
   void SetUp() {
-    cache_.reset(new RedisCache("localhost", port_, new NullMutex, &handler_,
-                                &timer_, kReconnectionDelayMs, kTimeoutUs));
-    server_.reset(
-        new RedisNotRespondingServerThread(port_, thread_system_.get()));
-
-    ASSERT_TRUE(server_->Start());
-    // Wait while server starts and check its port.
-    ASSERT_EQ(port_, server_->GetListeningPort());
-
+    InitRedisWithCustomServer();
+    CHECK(StartCustomServer<RedisNotRespondingServerThread>());
     cache_->StartUp();
-    ASSERT_TRUE(cache_->IsHealthy());
-
     started_at_us_ = timer_.NowUs();
   }
 
@@ -403,13 +402,9 @@ class RedisCacheOperationTimeoutTest : public RedisCacheTest {
   }
 
  private:
-  static apr_port_t port_;
-  scoped_ptr<RedisNotRespondingServerThread> server_;
   PosixTimer timer_;
   int64 started_at_us_;
 };
-
-apr_port_t RedisCacheOperationTimeoutTest::port_ = 0;
 
 TEST_F(RedisCacheOperationTimeoutTest, Get) {
   CheckNotFound("Key");
