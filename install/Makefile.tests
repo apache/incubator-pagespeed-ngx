@@ -51,6 +51,7 @@ apache_vm_system_tests : setup_doc_root
 	$(MAKE) FAST_RESTART=1 apache_debug_speling_test
 	$(MAKE) FAST_RESTART=1 apache_debug_gzip_test
 	$(MAKE) FAST_RESTART=1 apache_debug_process_scope_test
+	$(MAKE) FAST_RESTART=1 apache_debug_remote_config_test
 	$(MAKE) FAST_RESTART=1 apache_debug_experiment_test
 	$(MAKE) FAST_RESTART=1 apache_debug_vhost_only_test
 	$(MAKE) FAST_RESTART=1 apache_debug_global_off_test
@@ -98,6 +99,7 @@ EXAMPLE_COMBINE_CSS = $(EXAMPLE)/combine_css.html
 TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
 
 APACHE_SYSTEM_TEST = $(PAGESPEED_DIR)/apache/system_test.sh
+APACHE_REMOTE_CONFIG_TEST = $(PAGESPEED_DIR)/system/remote_config_test.sh
 
 # Installs debug configuration and runs a smoke test against it.
 # This will blow away your existing pagespeed.conf,
@@ -109,13 +111,6 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 	$(MAKE) start
 	CACHE_FLUSH_TEST=on \
-	RCPORT1=$(RCPORT1) \
-	RCPORT2=$(RCPORT2) \
-	RCPORT3=$(RCPORT3) \
-	RCPORT4=$(RCPORT4) \
-	RCPORT5=$(RCPORT5) \
-	RCPORT6=$(RCPORT6) \
-	RCPORT7=$(RCPORT7) \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
@@ -124,13 +119,6 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	#
 	@echo '***' System-test with warm cache
 	CACHE_FLUSH_TEST=on \
-	RCPORT1=$(RCPORT1) \
-	RCPORT2=$(RCPORT2) \
-	RCPORT3=$(RCPORT3) \
-	RCPORT4=$(RCPORT4) \
-	RCPORT5=$(RCPORT5) \
-	RCPORT6=$(RCPORT6) \
-	RCPORT7=$(RCPORT7) \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
@@ -144,13 +132,6 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	grep ModPagespeedInheritVHostConfig $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) stop
 	$(MAKE) start
-	RCPORT1=$(RCPORT1) \
-	RCPORT2=$(RCPORT2) \
-	RCPORT3=$(RCPORT3) \
-	RCPORT4=$(RCPORT4) \
-	RCPORT5=$(RCPORT5) \
-	RCPORT6=$(RCPORT6) \
-	RCPORT7=$(RCPORT7) \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
@@ -168,6 +149,25 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	$(MAKE) start
 	CACHE_FLUSH_TEST=on \
 	NO_VHOST_MERGE=on \
+	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
+	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
+	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	#
+	# Restore config
+	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
+	$(MAKE) apache_debug_stop
+	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
+	@echo PASS
+
+apache_debug_remote_config_test :
+	@echo '***' Remote-config test
+	$(MAKE) stop
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
+	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
+	$(MAKE) apache_install_conf OPTIONS="$(OPTIONS) REMOTE_CONFIG_TEST=1"
+	$(MAKE) start
+	CACHE_FLUSH_TEST=on \
 	RCPORT1=$(RCPORT1) \
 	RCPORT2=$(RCPORT2) \
 	RCPORT3=$(RCPORT3) \
@@ -175,10 +175,12 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	RCPORT5=$(RCPORT5) \
 	RCPORT6=$(RCPORT6) \
 	RCPORT7=$(RCPORT7) \
+	SECONDARY_HOSTNAME=localhost:$(APACHE_SECONDARY_PORT) \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	FIRST_RUN=true SERVER_NAME=apache \
+	    $(APACHE_REMOTE_CONFIG_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Restore config
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
@@ -252,13 +254,6 @@ apache_debug_memcached_test_run :
 	$(MAKE) apache_debug_restart
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	CACHE_FLUSH_TEST=on \
-	RCPORT1=$(RCPORT1) \
-	RCPORT2=$(RCPORT2) \
-	RCPORT3=$(RCPORT3) \
-	RCPORT4=$(RCPORT4) \
-	RCPORT5=$(RCPORT5) \
-	RCPORT6=$(RCPORT6) \
-	RCPORT7=$(RCPORT7) \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
@@ -282,13 +277,6 @@ apache_debug_redis_test_run :
 	$(MAKE) apache_debug_restart
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	CACHE_FLUSH_TEST=on \
-	RCPORT1=$(RCPORT1) \
-	RCPORT2=$(RCPORT2) \
-	RCPORT3=$(RCPORT3) \
-	RCPORT4=$(RCPORT4) \
-	RCPORT5=$(RCPORT5) \
-	RCPORT6=$(RCPORT6) \
-	RCPORT7=$(RCPORT7) \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)

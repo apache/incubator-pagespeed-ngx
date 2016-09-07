@@ -131,6 +131,7 @@ TESTTMP="$TEMPDIR"
 ORIGINAL_TEMPDIR="$TEMPDIR"
 unset TEMPDIR
 
+HELPERS_LOADED=1
 HOSTNAME=$1
 PRIMARY_SERVER=http://$HOSTNAME
 EXAMPLE_ROOT=$PRIMARY_SERVER/mod_pagespeed_example
@@ -826,7 +827,7 @@ function generate_url {
 function kill_port {
   PORT="$1"
   PID="$(lsof -i:$PORT -t -s TCP:LISTEN)" || true
-  if [ $PID != "" ]; then
+  if [ "$PID" != "" ]; then
     kill -9 $PID
   fi
 }
@@ -837,7 +838,10 @@ function kill_port {
 function kill_listener_port {
   CMDLINE="$1"
   PORT="$2"
-  kill -9 $(lsof -t -i TCP:${PORT} -s TCP:LISTEN -a -c "/^${CMDLINE}$/") || true
+  PIDS="$(lsof -t -i TCP:${PORT} -s TCP:LISTEN -a -c "/^${CMDLINE}$/")" || true
+  if [ "$PIDS" != "" ]; then
+    kill -9 $PIDS
+  fi
 }
 
 # Performs timed reads on the output from a command passed via $1. The stream
