@@ -24,6 +24,16 @@ const char QueuedExpensiveOperationController::kActiveExpensiveOperations[] =
     "active-expensive-operations";
 const char QueuedExpensiveOperationController::kQueuedExpensiveOperations[] =
     "queued-expensive-operations";
+const char QueuedExpensiveOperationController::kPermittedExpensiveOperations[] =
+    "permitted-expensive-operations";
+
+namespace {
+
+// TODO(cheesy): Replace all use of this pattern with a new constant, like
+// Statistics::kDefaultStatisticsGroup.
+const char kStatisticsGroup[] = "Statistics";
+
+}  // namespace
 
 QueuedExpensiveOperationController::QueuedExpensiveOperationController(
     int max_expensive_operations, ThreadSystem* thread_system,
@@ -34,7 +44,9 @@ QueuedExpensiveOperationController::QueuedExpensiveOperationController(
       active_operations_counter_(
           stats->GetUpDownCounter(kActiveExpensiveOperations)),
       queued_operations_counter_(
-          stats->GetUpDownCounter(kQueuedExpensiveOperations)) {
+          stats->GetUpDownCounter(kQueuedExpensiveOperations)),
+      permitted_operations_counter_(
+          stats->GetTimedVariable(kPermittedExpensiveOperations)) {
 }
 
 QueuedExpensiveOperationController::~QueuedExpensiveOperationController() {
@@ -55,6 +67,7 @@ QueuedExpensiveOperationController::~QueuedExpensiveOperationController() {
 void QueuedExpensiveOperationController::InitStats(Statistics* statistics) {
   statistics->AddGlobalUpDownCounter(kActiveExpensiveOperations);
   statistics->AddGlobalUpDownCounter(kQueuedExpensiveOperations);
+  statistics->AddTimedVariable(kPermittedExpensiveOperations, kStatisticsGroup);
 }
 
 void QueuedExpensiveOperationController::ScheduleExpensiveOperation(
@@ -113,6 +126,7 @@ Function* QueuedExpensiveOperationController::Dequeue() {
 void QueuedExpensiveOperationController::IncrementInProgress() {
   ++num_in_progress_;
   active_operations_counter_->Set(num_in_progress_);
+  permitted_operations_counter_->IncBy(1);
 }
 
 void QueuedExpensiveOperationController::DecrementInProgress() {

@@ -72,6 +72,13 @@ class QueuedExpensiveOperationTest : public testing::Test {
         ->Get();
   }
 
+  int64 permitted_operations() {
+    return stats_
+        .GetTimedVariable(
+            QueuedExpensiveOperationController::kPermittedExpensiveOperations)
+        ->Get(TimedVariable::START);
+  }
+
  protected:
   scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats stats_;
@@ -79,17 +86,23 @@ class QueuedExpensiveOperationTest : public testing::Test {
 };
 
 TEST_F(QueuedExpensiveOperationTest, EmptyScheduleImmediately) {
+  EXPECT_EQ(0, active_operations());
+  EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(0, permitted_operations());
+
   TrackCallsFunction f;
   EXPECT_FALSE(f.run_called_);
   EXPECT_FALSE(f.cancel_called_);
   controller_->ScheduleExpensiveOperation(&f);
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(1, permitted_operations());
   EXPECT_TRUE(f.run_called_);
   EXPECT_FALSE(f.cancel_called_);
   controller_->NotifyExpensiveOperationComplete();
   EXPECT_EQ(0, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(1, permitted_operations());
 }
 
 TEST_F(QueuedExpensiveOperationTest, ActuallyLimits) {
@@ -99,12 +112,14 @@ TEST_F(QueuedExpensiveOperationTest, ActuallyLimits) {
   controller_->ScheduleExpensiveOperation(&f1);
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(1, permitted_operations());
   EXPECT_TRUE(f1.run_called_);
   EXPECT_FALSE(f1.cancel_called_);
 
   controller_->ScheduleExpensiveOperation(&f2);
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(1, queued_operations());
+  EXPECT_EQ(1, permitted_operations());
   EXPECT_TRUE(f1.run_called_);
   EXPECT_FALSE(f1.cancel_called_);
   EXPECT_FALSE(f2.run_called_);
@@ -113,12 +128,14 @@ TEST_F(QueuedExpensiveOperationTest, ActuallyLimits) {
   controller_->NotifyExpensiveOperationComplete();
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(2, permitted_operations());
   EXPECT_TRUE(f2.run_called_);
   EXPECT_FALSE(f2.cancel_called_);
 
   controller_->NotifyExpensiveOperationComplete();
   EXPECT_EQ(0, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(2, permitted_operations());
 }
 
 TEST_F(QueuedExpensiveOperationTest, QueueOrder) {
@@ -129,34 +146,40 @@ TEST_F(QueuedExpensiveOperationTest, QueueOrder) {
   controller_->ScheduleExpensiveOperation(&f1);
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(1, permitted_operations());
   EXPECT_TRUE(f1.run_called_);
 
   controller_->ScheduleExpensiveOperation(&f2);
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(1, queued_operations());
+  EXPECT_EQ(1, permitted_operations());
   EXPECT_FALSE(f2.run_called_);
   EXPECT_FALSE(f2.cancel_called_);
 
   controller_->ScheduleExpensiveOperation(&f3);
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(2, queued_operations());
+  EXPECT_EQ(1, permitted_operations());
   EXPECT_FALSE(f3.run_called_);
   EXPECT_FALSE(f3.cancel_called_);
 
   controller_->NotifyExpensiveOperationComplete();
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(1, queued_operations());
+  EXPECT_EQ(2, permitted_operations());
   EXPECT_TRUE(f2.run_called_);
   EXPECT_FALSE(f3.run_called_);
 
   controller_->NotifyExpensiveOperationComplete();
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(3, permitted_operations());
   EXPECT_TRUE(f3.run_called_);
 
   controller_->NotifyExpensiveOperationComplete();
   EXPECT_EQ(0, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(3, permitted_operations());
 }
 
 TEST_F(QueuedExpensiveOperationTest, QueueSize2) {
@@ -169,24 +192,28 @@ TEST_F(QueuedExpensiveOperationTest, QueueSize2) {
   controller_->ScheduleExpensiveOperation(&f1);
   EXPECT_EQ(1, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(1, permitted_operations());
   EXPECT_TRUE(f1.run_called_);
   EXPECT_FALSE(f1.cancel_called_);
 
   controller_->ScheduleExpensiveOperation(&f2);
   EXPECT_EQ(2, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(2, permitted_operations());
   EXPECT_TRUE(f2.run_called_);
   EXPECT_FALSE(f2.cancel_called_);
 
   controller_->ScheduleExpensiveOperation(&f3);
   EXPECT_EQ(2, active_operations());
   EXPECT_EQ(1, queued_operations());
+  EXPECT_EQ(2, permitted_operations());
   EXPECT_FALSE(f3.run_called_);
   EXPECT_FALSE(f3.cancel_called_);
 
   controller_->NotifyExpensiveOperationComplete();
   EXPECT_EQ(2, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(3, permitted_operations());
   EXPECT_TRUE(f3.run_called_);
   EXPECT_FALSE(f3.cancel_called_);
 
@@ -194,6 +221,7 @@ TEST_F(QueuedExpensiveOperationTest, QueueSize2) {
   controller_->NotifyExpensiveOperationComplete();
   EXPECT_EQ(0, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(3, permitted_operations());
 }
 
 TEST_F(QueuedExpensiveOperationTest, QueueSize0) {
@@ -203,6 +231,7 @@ TEST_F(QueuedExpensiveOperationTest, QueueSize0) {
   controller_->ScheduleExpensiveOperation(&f);
   EXPECT_EQ(0, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(0, permitted_operations());
   EXPECT_FALSE(f.run_called_);
   EXPECT_TRUE(f.cancel_called_);
 }
@@ -221,6 +250,7 @@ TEST_F(QueuedExpensiveOperationTest, QueueSizeNegative) {
     controller_->ScheduleExpensiveOperation(&f);
     EXPECT_EQ(i + 1, active_operations());
     EXPECT_EQ(0, queued_operations());
+    EXPECT_EQ(i + 1, permitted_operations());
     EXPECT_TRUE(f.run_called_);
     EXPECT_FALSE(f.cancel_called_);
   }
@@ -233,6 +263,7 @@ TEST_F(QueuedExpensiveOperationTest, QueueSizeNegative) {
   // Just in case.
   EXPECT_EQ(0, active_operations());
   EXPECT_EQ(0, queued_operations());
+  EXPECT_EQ(funcs.size(), permitted_operations());
 }
 
 }  // namespace

@@ -42,6 +42,7 @@ class QueuedExpensiveOperationController
  public:
   static const char kActiveExpensiveOperations[];
   static const char kQueuedExpensiveOperations[];
+  static const char kPermittedExpensiveOperations[];
 
   QueuedExpensiveOperationController(int max_expensive_operations,
                                      ThreadSystem* thread_system,
@@ -67,6 +68,7 @@ class QueuedExpensiveOperationController
   scoped_ptr<AbstractMutex> mutex_;
   UpDownCounter* active_operations_counter_;
   UpDownCounter* queued_operations_counter_;
+  TimedVariable* permitted_operations_counter_;
 
   DISALLOW_COPY_AND_ASSIGN(QueuedExpensiveOperationController);
 };
