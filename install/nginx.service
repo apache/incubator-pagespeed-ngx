@@ -1,0 +1,18 @@
+# This is a systemd configuration file for nginx on ngxpagespeed.com.  When
+# setting up ngxpagespeed.com, copy this to /lib/systemd/system/nginx.service
+
+[Unit]
+Description=nginx
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+PIDFile=/usr/local/nginx/logs/nginx.pid
+ExecStartPre=/usr/local/nginx/sbin/nginx -t
+ExecStart=/usr/local/nginx/sbin/nginx
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s QUIT $MAINPID
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
