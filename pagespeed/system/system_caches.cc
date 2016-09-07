@@ -540,6 +540,13 @@ void SystemCaches::SetupCaches(ServerContext* server_context,
       // optimization results, and the payloads are all small (message
       // InputInfo in ../rewriter/cached_result.proto).
       server_context->set_filesystem_metadata_cache(shm_metadata_cache);
+
+      // We checkpoint the shm cache when running with external caches, and
+      // restore it (to local shm only) on restart.  Not checkpointing in this
+      // case would also be defensible, but the implementation complexity would
+      // be very high.  For example, you might have two vhosts that both use the
+      // default-enabled shared memory metadata cache, but only one has an
+      // external cache enabled.
     } else {
       // For persistence across restarts, we checkpoint the shm_metadata_cache
       // to disk every so often, and restore it on restart. This means we don't
