@@ -58,9 +58,14 @@ double ComputePSNR(const uint8_t* pixels1, const uint8_t* pixels2,
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       for (int ch = 0; ch < num_channels; ++ch) {
+        double alpha_scaling1 = 0, alpha_scaling2 = 0;
+        if (ch != kIndexAlpha && num_channels > 3) {
+          alpha_scaling1 = pixels1[kIndexAlpha] / 255.0;
+          alpha_scaling2 = pixels2[kIndexAlpha] / 255.0;
+        }
         int index = y * stride + (x * num_channels + ch);
-        double dif = static_cast<double>(pixels1[index]) -
-                     static_cast<double>(pixels2[index]);
+        double dif = static_cast<double>(pixels1[index] * alpha_scaling1) -
+                     static_cast<double>(pixels2[index] * alpha_scaling2);
         error += dif * dif;
       }
     }

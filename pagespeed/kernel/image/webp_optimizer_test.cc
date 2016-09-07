@@ -132,7 +132,8 @@ class WebpScanlineOptimizerTest : public testing::Test {
       ASSERT_TRUE(webp_writer->WriteNextScanline(
           reinterpret_cast<void*>(scanline)));
     }
-    ASSERT_TRUE(webp_writer->FinalizeWrite());
+    ScanlineStatus status = webp_writer->FinalizeWriteWithStatus();
+    ASSERT_TRUE(status.Success()) << "Status=" << status.ToString();
   }
 
  protected:
@@ -163,8 +164,8 @@ TEST_F(WebpScanlineOptimizerTest, ConvertToAndReadLossyWebp) {
 
   for (size_t i = 0; i < kValidImageCount; ++i) {
     GoogleString original_image, gold_image, webp_image;
-    ReadTestFile(kWebpTestDir, kValidImages[i].original_file, "png",
-                 &original_image);
+    GoogleString file_name = kValidImages[i].original_file;
+    ReadTestFile(kWebpTestDir, file_name.c_str(), "png", &original_image);
     ConvertPngToWebp(original_image, webp_config, &webp_image);
     ReadTestFile(kWebpTestDir, kValidImages[i].gold_file, "png",
                  &gold_image);
@@ -303,6 +304,11 @@ class AnimatedWebpTest : public testing::Test {
     GoogleString output_image;
     ConvertGifToWebp(filename, input_image, webp_config, &output_image);
 
+    GoogleString output_path =
+        net_instaweb::StrCat(net_instaweb::GTestTempDir(),
+                             kTestRootDir,
+                             filename, ".webp");
+
     if (check_pixels) {
       EXPECT_TRUE(
           pagespeed::image_compression::CompareAnimatedImages(
@@ -365,31 +371,31 @@ TEST_F(AnimatedWebpTest, ConvertGifs) {
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  CheckGifVsWebP("gif/completely_transparent.gif", &webp_config, false);
+  CheckGifVsWebP("gif/completely_transparent.gif", &webp_config, true);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  CheckGifVsWebP("gif/square2loop.gif", &webp_config, false);
+  CheckGifVsWebP("gif/square2loop.gif", &webp_config, true);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  CheckGifVsWebP("gif/full2loop.gif", &webp_config, false);
+  CheckGifVsWebP("gif/full2loop.gif", &webp_config, true);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  CheckGifVsWebP("gif/interlaced.gif", &webp_config, false);
+  CheckGifVsWebP("gif/interlaced.gif", &webp_config, true);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  CheckGifVsWebP("gif/red_empty_screen.gif", &webp_config, false);
+  CheckGifVsWebP("gif/red_empty_screen.gif", &webp_config, true);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  CheckGifVsWebP("gif/red_unused_invalid_background.gif", &webp_config, false);
+  CheckGifVsWebP("gif/red_unused_invalid_background.gif", &webp_config, true);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  CheckGifVsWebP("gif/transparent.gif", &webp_config, false);
+  CheckGifVsWebP("gif/transparent.gif", &webp_config, true);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
@@ -397,11 +403,11 @@ TEST_F(AnimatedWebpTest, ConvertGifs) {
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  CheckGifVsWebP("webp/multiple_frame_opaque.gif", &webp_config, false);
+  CheckGifVsWebP("webp/multiple_frame_opaque.gif", &webp_config, true);
   EXPECT_LT(3, progress_data.times_called);
 
   progress_data.times_called = 0;
-  CheckGifVsWebP("webp/multiple_frame_opaque_gray.gif", &webp_config, false);
+  CheckGifVsWebP("webp/multiple_frame_opaque_gray.gif", &webp_config, true);
   EXPECT_LT(3, progress_data.times_called);
 }
 

@@ -169,7 +169,7 @@ ipro_rewrite_image "$HOST_ALLOW_AUTO" "$IMAGE_CUPPA" \
 # Animated GIF image, optimized for Chrome on Android.
 ipro_rewrite_image "$HOST_ALLOW_AUTO" "$IMAGE_ANIMATION" \
   "$CHROME_MOBILE" "$ACCEPT_WEBP_YES" "image/gif" "image/webp" \
-  "" "User-Agent,Save-Data" "$UNOPTIMIZED" 6490 "$UNOPTIMIZED" 4312
+  "" "User-Agent,Save-Data" "$UNOPTIMIZED" 6122 "$UNOPTIMIZED" 3036
 # Animated GIF image, optimized for Safari on iOS.
 ipro_rewrite_image "$HOST_ALLOW_AUTO" "$IMAGE_ANIMATION" \
   "$SAFARI_MOBILE" "$ACCEPT_WEBP_NO" "image/gif" "image/gif" \

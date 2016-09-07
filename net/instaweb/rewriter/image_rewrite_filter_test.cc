@@ -247,7 +247,7 @@ const OptimizedImageInfoList kAnimationOptimizedForWebpUa = {
   // [Save-Data: yes, Via: yes]: Cannot optimize.
   {&kContentTypeGif, nullptr, 26251},
   // [Save-Data: yes, Via: no]: Convert to WebP Save-Data quality.
-  {&kContentTypeWebp, "User-Agent,Save-Data", 4312},
+  {&kContentTypeWebp, "User-Agent,Save-Data", 3036},
 };
 
 const OptimizedImageInfoList kAnimationOptimizedForDesktopUa = {
