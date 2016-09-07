@@ -251,21 +251,21 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/insta
                          "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/instant/"
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cookie/" >
-    # Add Vary:Cookie.  This should prevent us from optimizing the
-    # vary_cookie.css even though ModPagespeedRespectVary is off.
-    # apache/system_test.sh does the fetches test with and without cookies.
-    Header append Vary Cookie
-    ModPagespeedRespectVary off
-    ModPagespeedInPlaceWaitForOptimized on
+  # Add Vary:Cookie.  This should prevent us from optimizing the
+  # vary_cookie.css even though ModPagespeedRespectVary is off.
+  # apache/system_test.sh does the fetches test with and without cookies.
+  Header append Vary Cookie
+  ModPagespeedRespectVary off
+  ModPagespeedInPlaceWaitForOptimized on
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/cookie2/" >
-    # Add Vary:Cookie2.  This should prevent us from optimizing the
-    # vary_cookie2.css even though ModPagespeedRespectVary is off.
-    # apache/system_test.sh does the fetches test with and without cookie2.
-    Header append Vary Cookie2
-    ModPagespeedRespectVary off
-    ModPagespeedInPlaceWaitForOptimized on
+  # Add Vary:Cookie2.  This should prevent us from optimizing the
+  # vary_cookie2.css even though ModPagespeedRespectVary is off.
+  # apache/system_test.sh does the fetches test with and without cookie2.
+  Header append Vary Cookie2
+  ModPagespeedRespectVary off
+  ModPagespeedInPlaceWaitForOptimized on
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/ipro/mod_deflate/" >
@@ -278,18 +278,18 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/ipro/insta
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/" >
-    # Files in this directory should be served uncacheable.
-    Header set Cache-control "no-cache"
+  # Files in this directory should be served uncacheable.
+  Header set Cache-control "no-cache"
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/remote_config/" >
-    # Files in this directory should be served uncacheable.
-    Header set Cache-control "max-age=7200, must-revalidate"
+  # Files in this directory should be served uncacheable.
+  Header set Cache-control "max-age=7200, must-revalidate"
 </Directory>
 
 # Set jpeg Quality
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/jpeg_rewriting/" >
-    ModPagespeedJpegRecompressionQuality 70
+  ModPagespeedJpegRecompressionQuality 70
 </Directory>
 
 # Set Generic Image Quality
@@ -2006,6 +2006,14 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
   ModPagespeedRewriteDeadlinePerFlushMs 1
   ModPagespeedDisableFilters add_instrumentation
 </VirtualHost>
+
+# In case the system has not added webp as an installed mimetype, this
+# is needed to allow automatic/system_tests/resource_content_type_html.sh
+# to work, as that is needed for
+# automatic/system_tests/resource_content_type_html.sh to work.
+<FilesMatch "\.(webp)$">
+  Header add Content-Type image/webp
+</FilesMatch>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
 #ALL_DIRECTIVES ModPagespeedAllow foo

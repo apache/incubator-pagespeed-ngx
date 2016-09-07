@@ -10,6 +10,7 @@ function verify_nosniff {
   shift
   acceptable_content_types="$@"
   URL=$REWRITTEN_ROOT/$leaf
+  echo $CURL -D- -o/dev/null -sS "$URL"
   OUT=$($CURL -D- -o/dev/null -sS "$URL")
   check_from "$OUT" grep '^HTTP.* 200 OK'
   found=false
