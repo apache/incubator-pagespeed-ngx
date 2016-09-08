@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# Builds a mod_pagespeed distribution on a buildbot.
+# Builds a mod_pagespeed distribution.
 #
 # Usage:
-#   1.  Log into buildbot
-#   3.  ./build_release_platform.sh $RELEASE $CHANNEL [patch_file] [tag]
+#   1. [optional] Log into buildbot
+#   2. ./build_release_platform.sh [-clean] $RELEASE $CHANNEL [patch_file] [tag]
 #
 # Where $RELEASE is either the 4 segment version number, e.g 0.10.21.2, or the
 # word "trunk" and $CHANNEL is either "beta" or "stable".
@@ -30,14 +30,38 @@
 
 set -e  # exit script if any command returns an error
 set -u  # exit the script if any variable is uninitialized
-set -x  # print commands as we run them
 export VIRTUALBOX_TEST="VIRTUALBOX_TEST"  # to skip some tests that fail in VM
+
+# Cleanup /var/html if desired before running.
+if [ "$1" = "-clean" ]; then
+  clean=1
+  shift
+else
+  clean=0
+fi
 
 RELEASE=$1
 CHANNEL=$2
 TAG=$RELEASE
 
 do_patch="0"
+
+if [ -d /var/www/html/do_not_modify ] || \
+   [ -d /var/www/html/mod_pagespeed_example ] || \
+   [ -d /var/www/html/mod_pagespeed_test ]; then
+  if [ $clean -eq 0 ]; then
+    echo Stale directories in /var/www/html/ exist.  Clean them
+    echo yourself or specify -clean as first arg to let the script do that
+    echo for you.
+    exit 1
+  fi
+  set -x
+  sudo rm -rf /var/www/html/do_not_modify
+  sudo rm -rf /var/www/html/mod_pagespeed_example
+  sudo rm -rf /var/www/html/mod_pagespeed_test
+else
+  set -x
+fi
 
 # Apply optional patch-file to apply before building.  To create a patch from a
 # commit, do:
@@ -53,16 +77,17 @@ fi
 
 if [ -d ~/bin/depot_tools ]; then
   cd ~/bin/depot_tools
-  svn update
+  git pull
 else
   mkdir -p ~/bin
   cd ~/bin
-  svn co https://src.chromium.org/svn/trunk/tools/depot_tools
+  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
 fi
 
 PATH=~/bin/depot_tools:$PATH
 
-# Are we on RedHat or Ubuntu?
+# Are we on CentOS or Ubuntu?
+# TODO(jmarantz): make this work on RedHat.
 #
 # Note that the 'force' directives on the install commands are only
 # used for this RPM/DEB build/install/test script, and are not
@@ -71,12 +96,40 @@ PATH=~/bin/depot_tools:$PATH
 # If the force directives are not included, then the installation will
 # fail if run a second time.
 if [ "$(grep CentOS /etc/issue)" ]; then
+  echo Making sure FCGI is installed ...
+  httpd -M | grep -q fcgid_module
+  if [ $? != 0 ]; then
+    #TODO(jmarantz): find the appropriate installation snippet for CentOS
+    # rather than just asking the user to do it.
+    echo You must install mod_fcgid to run tests that require PHP.
+    exit 1
+  fi
+
+  httpd -M | grep -q php5_module
+  if [ $? != 0 ]; then
+    #TODO(jmarantz): ditto
+    echo You must install mod_php5 to run tests that require PHP.
+    exit 1
+  fi
+
   EXT=rpm
   INSTALL="rpm --install"
   RESTART="./centos.sh apache_debug_restart"
   TEST="./centos.sh enable_ports_and_file_access apache_vm_system_tests"
   echo We appear to be running on CentOS.  Building rpm...
 else
+  echo Making sure FCGI is installed ...
+  apache2ctl -M | grep -q fcgid_module
+  if [ $? != 0 ]; then
+    sudo apt-get install libapache2-mod-fcgid
+  fi
+
+  echo Making sure PHP is installed ...
+  apache2ctl -M | grep -q php5_module
+  if [ $? != 0 ]; then
+    sudo apt-get install libapache2-mod-php5
+  fi
+
   EXT=deb
   INSTALL="dpkg --install"
   RESTART="./ubuntu.sh apache_debug_restart"

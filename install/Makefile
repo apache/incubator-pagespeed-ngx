@@ -45,17 +45,21 @@ APACHE_DOC_ROOT       = /var/www
 #APACHE_DOMAIN        = localhost:8080  # For test-server.
 APACHE_DOMAIN         = localhost
 APACHE_HTTPS_DOMAIN   = localhost
+
+# Define the ports used for the root install.  These must be distinct from
+# the ones used for debug installs.
 APACHE_PORT           = 80
-APACHE_SECONDARY_PORT = 8084
-APACHE_TERTIARY_PORT  = 8085
-CONTROLLER_PORT       = 8086
-RCPORT1               = 9091
-RCPORT2               = 9092
-RCPORT3               = 9093
-RCPORT4               = 9094
-RCPORT5               = 9095
-RCPORT6               = 9096
-RCPORT7               = 9097
+APACHE_SECONDARY_PORT = 8087
+APACHE_TERTIARY_PORT  = 8088
+CONTROLLER_PORT       = 8090
+RCPORT1               = 8091
+RCPORT2               = 8092
+RCPORT3               = 8093
+RCPORT4               = 8094
+RCPORT5               = 8095
+RCPORT6               = 8096
+RCPORT7               = 8097
+
 SSL_CERT_DIR          = /etc/ssl/certs
 SSL_CERT_FILE_COMMAND =
 
