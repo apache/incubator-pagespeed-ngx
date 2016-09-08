@@ -350,14 +350,14 @@ void FlushEarlyFlow::TryStart(
 
 void FlushEarlyFlow::InitStats(Statistics* stats) {
   stats->AddTimedVariable(kNumRequestsFlushedEarly,
-                          ServerContext::kStatisticsGroup);
+                          Statistics::kDefaultGroup);
   stats->AddTimedVariable(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
-      ServerContext::kStatisticsGroup);
+      Statistics::kDefaultGroup);
   stats->AddTimedVariable(kNumFlushEarlyHttpStatusCodeDeemedUnstable,
-                          ServerContext::kStatisticsGroup);
+                          Statistics::kDefaultGroup);
   stats->AddTimedVariable(kNumFlushEarlyRequestsRedirected,
-                          ServerContext::kStatisticsGroup);
+                          Statistics::kDefaultGroup);
   stats->AddHistogram(kFlushEarlyRewriteLatencyMs)->EnableNegativeBuckets();
 }
 

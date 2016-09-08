@@ -197,9 +197,6 @@ const int64 ServerContext::kGeneratedMaxAgeMs = Timer::kYearMs;
 const int64 ServerContext::kCacheTtlForMismatchedContentMs =
     5 * Timer::kMinuteMs;
 
-// Statistics group names.
-const char ServerContext::kStatisticsGroup[] = "Statistics";
-
 // Our HTTP cache mostly stores full URLs, including the http: prefix,
 // mapping them into the URL contents and HTTP headers.  However, we
 // also put name->hash mappings into the HTTP cache, and we prefix

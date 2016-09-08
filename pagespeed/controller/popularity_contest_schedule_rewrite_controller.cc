@@ -49,12 +49,6 @@ const char
     PopularityContestScheduleRewriteController::kNumRewritesAwaitingRetry[] =
         "popularity-contest-num-rewrites-awaiting-retry";
 
-namespace {
-
-const char kStatisticsGroup[] = "Statistics";
-
-}  // namespace
-
 PopularityContestScheduleRewriteController::
     PopularityContestScheduleRewriteController(ThreadSystem* thread_system,
                                                Statistics* stats, Timer* timer,
@@ -83,11 +77,13 @@ PopularityContestScheduleRewriteController::
 }
 
 void PopularityContestScheduleRewriteController::InitStats(Statistics* stats) {
-  stats->AddTimedVariable(kNumRewritesRequested, kStatisticsGroup);
-  stats->AddTimedVariable(kNumRewritesSucceeded, kStatisticsGroup);
-  stats->AddTimedVariable(kNumRewritesFailed, kStatisticsGroup);
-  stats->AddTimedVariable(kNumRewritesRejectedQueueSize, kStatisticsGroup);
-  stats->AddTimedVariable(kNumRewritesRejectedInProgress, kStatisticsGroup);
+  stats->AddTimedVariable(kNumRewritesRequested, Statistics::kDefaultGroup);
+  stats->AddTimedVariable(kNumRewritesSucceeded, Statistics::kDefaultGroup);
+  stats->AddTimedVariable(kNumRewritesFailed, Statistics::kDefaultGroup);
+  stats->AddTimedVariable(kNumRewritesRejectedQueueSize,
+                          Statistics::kDefaultGroup);
+  stats->AddTimedVariable(kNumRewritesRejectedInProgress,
+                          Statistics::kDefaultGroup);
   stats->AddUpDownCounter(kRewriteQueueSize);
   stats->AddUpDownCounter(kNumRewritesRunning);
   stats->AddUpDownCounter(kNumRewritesAwaitingRetry);

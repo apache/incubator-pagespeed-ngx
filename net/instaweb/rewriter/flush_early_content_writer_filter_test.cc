@@ -93,7 +93,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
         "alert('bar')", 100 /* sec */);
     statistics()->AddTimedVariable(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
-      ServerContext::kStatisticsGroup);
+      Statistics::kDefaultGroup);
     options()->EnableFilter(RewriteOptions::kFlushSubresources);
     options()->set_flush_more_resources_early_if_time_permits(true);
     options()->set_flush_more_resources_in_ie_and_firefox(true);

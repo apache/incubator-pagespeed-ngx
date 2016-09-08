@@ -64,11 +64,11 @@ CriticalSelectorFinder::~CriticalSelectorFinder() {
 
 void CriticalSelectorFinder::InitStats(Statistics* statistics) {
   statistics->AddTimedVariable(kCriticalSelectorsValidCount,
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(kCriticalSelectorsExpiredCount,
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(kCriticalSelectorsNotFoundCount,
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
 }
 
 bool CriticalSelectorFinder::IsCriticalSelector(RewriteDriver* driver,

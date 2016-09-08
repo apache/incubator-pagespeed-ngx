@@ -321,9 +321,9 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
 void RateController::InitStats(Statistics* statistics) {
   statistics->AddUpDownCounter(kCurrentGlobalFetchQueueSize);
   statistics->AddTimedVariable(kQueuedFetchCount,
-                               UrlAsyncFetcher::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(kDroppedFetchCount,
-                               UrlAsyncFetcher::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
 }
 
 void RateController::DeleteFetchInfoIfPossible(

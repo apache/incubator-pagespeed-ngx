@@ -113,9 +113,6 @@ class ServerContext {
   static const char kResourceEtagValue[];
   static const char kCacheKeyResourceNamePrefix[];
 
-  // Default statistics group name.
-  static const char kStatisticsGroup[];
-
   explicit ServerContext(RewriteDriverFactory* factory);
   virtual ~ServerContext();
 

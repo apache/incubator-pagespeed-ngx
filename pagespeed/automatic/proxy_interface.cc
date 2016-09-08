@@ -101,17 +101,17 @@ ProxyInterface::~ProxyInterface() {
 void ProxyInterface::InitStats(StringPiece stats_prefix,
                                Statistics* statistics) {
   statistics->AddTimedVariable(StrCat(stats_prefix, kTotalRequestCount),
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(StrCat(stats_prefix, kPagespeedRequestCount),
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(StrCat(stats_prefix, kRejectedRequestCount),
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(
       StrCat(stats_prefix, kNoDomainConfigRequestCount),
-      ServerContext::kStatisticsGroup);
+      Statistics::kDefaultGroup);
   statistics->AddTimedVariable(
       StrCat(stats_prefix, kNoDomainConfigResourceRequestCount),
-      ServerContext::kStatisticsGroup);
+      Statistics::kDefaultGroup);
   FlushEarlyFlow::InitStats(statistics);
 }
 

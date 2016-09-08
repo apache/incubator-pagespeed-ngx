@@ -27,14 +27,6 @@ const char QueuedExpensiveOperationController::kQueuedExpensiveOperations[] =
 const char QueuedExpensiveOperationController::kPermittedExpensiveOperations[] =
     "permitted-expensive-operations";
 
-namespace {
-
-// TODO(cheesy): Replace all use of this pattern with a new constant, like
-// Statistics::kDefaultStatisticsGroup.
-const char kStatisticsGroup[] = "Statistics";
-
-}  // namespace
-
 QueuedExpensiveOperationController::QueuedExpensiveOperationController(
     int max_expensive_operations, ThreadSystem* thread_system,
     Statistics* stats)
@@ -67,7 +59,8 @@ QueuedExpensiveOperationController::~QueuedExpensiveOperationController() {
 void QueuedExpensiveOperationController::InitStats(Statistics* statistics) {
   statistics->AddGlobalUpDownCounter(kActiveExpensiveOperations);
   statistics->AddGlobalUpDownCounter(kQueuedExpensiveOperations);
-  statistics->AddTimedVariable(kPermittedExpensiveOperations, kStatisticsGroup);
+  statistics->AddTimedVariable(kPermittedExpensiveOperations,
+                               Statistics::kDefaultGroup);
 }
 
 void QueuedExpensiveOperationController::ScheduleExpensiveOperation(

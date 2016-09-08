@@ -30,6 +30,10 @@
 #include "pagespeed/kernel/base/string_writer.h"
 #include "pagespeed/kernel/base/writer.h"
 
+namespace net_instaweb {
+
+const char Statistics::kDefaultGroup[] = "Statistics";
+
 namespace {
 // As we do fix size buckets, each bucket has the same height.
 const double kBarHeightPerBucket = 20;
@@ -38,7 +42,6 @@ const double kBarHeightPerBucket = 20;
 // The width of a bucket is percentage_of_bucket_value * kBarWidthTotal.
 const double kBarWidthTotal = 400;
 }  // namespace
-namespace net_instaweb {
 
 class MessageHandler;
 

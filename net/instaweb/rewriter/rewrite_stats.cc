@@ -138,13 +138,13 @@ void RewriteStats::InitStats(Statistics* statistics) {
   statistics->AddVariable(kDownstreamCachePurgeAttempts);
   statistics->AddVariable(kSuccessfulDownstreamCachePurges);
   statistics->AddTimedVariable(kTotalFetchCount,
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(kTotalRewriteCount,
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(kRewritesExecuted,
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(kRewritesDropped,
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddVariable(kNumResourceFetchSuccesses);
   statistics->AddVariable(kNumResourceFetchFailures);
 

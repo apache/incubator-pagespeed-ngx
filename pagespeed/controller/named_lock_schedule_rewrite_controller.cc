@@ -36,12 +36,6 @@ const char NamedLockScheduleRewriteController::kLocksCurrentlyHeld[] =
 
 const int NamedLockScheduleRewriteController::kStealMs = 30000;
 
-namespace {
-
-const char kStatisticsGroup[] = "Statistics";
-
-}  // namespace
-
 NamedLockScheduleRewriteController::NamedLockScheduleRewriteController(
     NamedLockManager* lock_manager, ThreadSystem* thread_system,
     Statistics* stats)
@@ -62,10 +56,11 @@ NamedLockScheduleRewriteController::~NamedLockScheduleRewriteController() {
 }
 
 void NamedLockScheduleRewriteController::InitStats(Statistics* statistics) {
-  statistics->AddTimedVariable(kLocksGranted, kStatisticsGroup);
-  statistics->AddTimedVariable(kLocksDenied, kStatisticsGroup);
-  statistics->AddTimedVariable(kLocksStolen, kStatisticsGroup);
-  statistics->AddTimedVariable(kLocksReleasedWhenNotHeld, kStatisticsGroup);
+  statistics->AddTimedVariable(kLocksGranted, Statistics::kDefaultGroup);
+  statistics->AddTimedVariable(kLocksDenied, Statistics::kDefaultGroup);
+  statistics->AddTimedVariable(kLocksStolen, Statistics::kDefaultGroup);
+  statistics->AddTimedVariable(kLocksReleasedWhenNotHeld,
+                               Statistics::kDefaultGroup);
   statistics->AddUpDownCounter(kLocksCurrentlyHeld);
 }
 

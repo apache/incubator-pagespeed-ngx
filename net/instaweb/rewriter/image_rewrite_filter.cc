@@ -762,9 +762,9 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kImageRewritesDroppedNoSavingResize);
   statistics->AddVariable(kImageRewritesDroppedNoSavingNoResize);
   statistics->AddTimedVariable(kImageRewritesDroppedDueToLoad,
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddTimedVariable(kImageRewritesSquashingForMobileScreen,
-                               ServerContext::kStatisticsGroup);
+                               Statistics::kDefaultGroup);
   statistics->AddVariable(kImageRewriteTotalBytesSaved);
   statistics->AddVariable(kImageRewriteTotalOriginalBytes);
   statistics->AddVariable(kImageRewriteUses);

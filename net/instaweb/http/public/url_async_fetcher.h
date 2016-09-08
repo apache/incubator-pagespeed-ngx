@@ -34,9 +34,6 @@ class UrlAsyncFetcher {
  public:
   static const int64 kUnspecifiedTimeout;
 
-  // Default statistics group name.
-  static const char kStatisticsGroup[];
-
   virtual ~UrlAsyncFetcher();
 
   // Asynchronously fetch a URL, set the response headers and stream the

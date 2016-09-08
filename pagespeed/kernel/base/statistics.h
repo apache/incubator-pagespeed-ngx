@@ -341,6 +341,9 @@ class FakeTimedVariable : public TimedVariable {
 // Base class for implementations of monitoring statistics.
 class Statistics {
  public:
+  // Default group for use with AddTimedVariable.
+  static const char kDefaultGroup[];
+
   Statistics() {}
   virtual ~Statistics();
 
