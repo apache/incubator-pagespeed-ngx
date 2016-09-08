@@ -119,5 +119,34 @@ void DependencyTracker::WriteToPropertyCacheIfDone() {
   ClearLockHeld();
 }
 
-}  // namespace net_instaweb
+bool DependencyOrderCompator::operator()(
+    const Dependency& a, const Dependency& b) {
+  int pos = 0;
+  while (pos < a.order_key_size() && pos < b.order_key_size()) {
+    if (a.order_key(pos) < b.order_key(pos)) {
+      return true;
+    }
+    if (a.order_key(pos) > b.order_key(pos)) {
+      return false;
+    }
 
+    ++pos;
+  }
+
+  if (pos == a.order_key_size()) {
+    // a at end.
+    if (pos == b.order_key_size()) {
+      // b also at end -> they're the same.
+      return false;
+    } else {
+      // not at end -> a is prefix of b, so a < b
+      return true;
+    }
+  } else {
+    // a not at end, b at end => b is a prefix of a, so b < a, so
+    // clearly not a < b
+    return false;
+  }
+}
+
+}  // namespace net_instaweb

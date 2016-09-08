@@ -16,11 +16,12 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 
-#include "net/instaweb/rewriter/public/dependency_tracker.h"
+#include "net/instaweb/rewriter/public/collect_dependencies_filter.h"
 
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/rewriter/dependencies.pb.h"
+#include "net/instaweb/rewriter/public/dependency_tracker.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -126,6 +127,7 @@ TEST_F(CollectDependenciesFilterTest, BasicOperation) {
             "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 0"
       "}"
       "dependency {"
         "url: 'http://test.com/b.js.pagespeed.jm.0.js'"
@@ -141,6 +143,7 @@ TEST_F(CollectDependenciesFilterTest, BasicOperation) {
             "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 1"
       "}")));
 
   rewrite_driver()->FinishParse();
@@ -173,6 +176,7 @@ TEST_F(CollectDependenciesFilterTest, MediaTopLevel) {
             "expiration_time_ms: ", FormatRelTimeSec(100), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 0"
       "}"
       "dependency {"
         "url: 'http://test.com/e.css'"
@@ -182,6 +186,7 @@ TEST_F(CollectDependenciesFilterTest, MediaTopLevel) {
             "expiration_time_ms: ", FormatRelTimeSec(400), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 1"
       "}")));
 
   rewrite_driver()->FinishParse();
@@ -213,11 +218,13 @@ TEST_F(CollectDependenciesFilterTest, HandleEmptyResources) {
   EXPECT_THAT(*tracker->read_in_info(), EqualsProto(
       "dependency {"
         "url: 'http://test.com/e.css'"
-        "content_type: DEP_CSS"
+        "content_type: DEP_CSS "
+        "order_key: 0"
       "}"
       "dependency {"
         "url: 'http://test.com/f.js'"
-        "content_type: DEP_JAVASCRIPT"
+        "content_type: DEP_JAVASCRIPT "
+        "order_key: 1"
       "}"));
 
   rewrite_driver()->FinishParse();
@@ -242,6 +249,7 @@ TEST_F(CollectDependenciesFilterTest, Unoptimized) {
             "expiration_time_ms: ", FormatRelTimeSec(100), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 0"
       "}"
       "dependency {"
         "url: 'http://test.com/b.js'"
@@ -251,6 +259,7 @@ TEST_F(CollectDependenciesFilterTest, Unoptimized) {
             "expiration_time_ms: ", FormatRelTimeSec(200), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 1"
       "}")));
 
   rewrite_driver()->FinishParse();
@@ -329,6 +338,7 @@ TEST_F(CollectDependenciesFilterTest, Combiners) {
             "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 0"
       "}")));
   rewrite_driver()->FinishParse();
 }
@@ -384,6 +394,7 @@ TEST_F(CollectDependenciesFilterTest, Chain) {
             "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 0"
       "}"),
       "dependency {"
         "url: 'http://test.com/b.js.pagespeed.jm.0.js'"
@@ -399,6 +410,7 @@ TEST_F(CollectDependenciesFilterTest, Chain) {
             "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 2"
       "}"
       "dependency {"
         "url: 'http://test.com/d.js.pagespeed.jm.0.js'"
@@ -414,6 +426,80 @@ TEST_F(CollectDependenciesFilterTest, Chain) {
             "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
             "date_ms: ", FormatRelTimeSec(0),
         "}"
+        "order_key: 3"
+      "}")));
+  rewrite_driver()->FinishParse();
+}
+
+TEST_F(CollectDependenciesFilterTest, Indirect) {
+  // Test that we collect indirect dependencies.
+  SetResponseWithDefaultHeaders("d.css", kContentTypeCss,
+                                "@import \"i1.css\" all;\n"
+                                "@import \"i2.css\" print, screen;\n"
+                                "@import \"i3.css\" print;         ", 300);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  rewrite_driver()->AddFilters();
+
+  const char kInput[] = "<link rel=stylesheet href=d.css>";
+  const char kOutput[] =
+    "<link rel=stylesheet href=A.d.css.pagespeed.cf.0.css>";
+
+  ValidateExpected("basic_res", kInput, kOutput);
+
+  ResetDriver();
+  DependencyTracker* tracker = rewrite_driver()->dependency_tracker();
+  rewrite_driver()->StartParse(kTestDomain);
+  ASSERT_TRUE(tracker->read_in_info() != nullptr);
+  EXPECT_THAT(*tracker->read_in_info(), EqualsProto(StrCat(StrCat(
+      "dependency {"
+        "url: 'http://test.com/A.d.css.pagespeed.cf.0.css'"
+        "content_type: DEP_CSS "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(300), " "  // d.css
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",  // d.cf
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "order_key: 0"
+      "}"),
+      "dependency {"
+        "url: 'http://test.com/i1.css'"
+        "content_type: DEP_CSS "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(300), " "  // d.css
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",  // d.cf
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "order_key: 0 "
+        "order_key: 1"
+      "}"
+      "dependency {"
+        "url: 'http://test.com/i2.css'"
+        "content_type: DEP_CSS "
+        "validity_info {"
+            "type: CACHED "
+            "expiration_time_ms: ", FormatRelTimeSec(300), " "  // d.css
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "validity_info {"
+            "type: CACHED "
+            "last_modified_time_ms: ", FormatRelTimeSec(0), " ",  // d.cf
+            "expiration_time_ms: ", FormatRelTimeSec(kYearSec), " "
+            "date_ms: ", FormatRelTimeSec(0),
+        "}"
+        "order_key: 0 "
+        "order_key: 2"
       "}")));
   rewrite_driver()->FinishParse();
 }

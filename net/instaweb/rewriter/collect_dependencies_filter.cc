@@ -213,15 +213,30 @@ class CollectDependenciesFilter::Context : public RewriteContext {
         output_partition(0)->collected_dependency_size() > 0) {
       CachedResult* result = output_partition(0);
 
+      // Top-level stuff just gets its dep_id_ as the sorting key.
+      result->mutable_collected_dependency(0)->add_order_key(dep_id_);
+
       dep_tracker->ReportDependencyCandidate(dep_id_,
                                              &result->collected_dependency(0));
-      // Any other dependencies get their brand new IDs.
-      // TODO(morlovich): They actually should be hinted right after dependency
-      // dep_id_.
+
+      // Any other dependencies stored in result->collected_dependency >= 1
+      // are things we discovered *inside* whatever is described by
+      // result->collected_dependency(0)
+      //
+      // We grab a brand new ID for each one's storage inside
+      // dependency_tracker, and give them sorting keys based on the parent's
+      // dep_id_: (dep_id_, 1), (dep_id_, 2), etc., and so on, to make them get
+      // sorted after their parent (whose sorting key will be (dep_id_)) and
+      // before the next top-level resource, which will be something like
+      // (dep_id_ + 1) or some larger number. Note that we produce order keys
+      // at most 2 deep because we (for now?) only collect dependencies that
+      // deep.
       for (int c = 1; c < result->collected_dependency_size(); ++c) {
         int additional_dep_id = dep_tracker->RegisterDependencyCandidate();
-        dep_tracker->ReportDependencyCandidate(
-            additional_dep_id, &result->collected_dependency(c));
+        Dependency* child_dep = result->mutable_collected_dependency(c);
+        child_dep->add_order_key(dep_id_);
+        child_dep->add_order_key(c);
+        dep_tracker->ReportDependencyCandidate(additional_dep_id, child_dep);
       }
     } else {
       dep_tracker->ReportDependencyCandidate(dep_id_, nullptr);

@@ -102,6 +102,13 @@ class DependencyTracker {
   DISALLOW_COPY_AND_ASSIGN(DependencyTracker);
 };
 
+
+// Compares two Dependency objects based on the order_key field.
+class DependencyOrderCompator {
+ public:
+  bool operator()(const Dependency& a, const Dependency& b);
+};
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_REWRITER_PUBLIC_DEPENDENCY_TRACKER_H_

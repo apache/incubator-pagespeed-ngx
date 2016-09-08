@@ -197,6 +197,91 @@ TEST_F(DependencyTrackerTest, ViaRewriteDriverOff) {
   TestInRewriteDriver(false);
 }
 
+TEST_F(DependencyTrackerTest, Comparator) {
+  Dependency de;
+
+  Dependency de1;
+  de1.add_order_key(1);
+
+  Dependency de12;
+  de12.add_order_key(1);
+  de12.add_order_key(2);
+
+  Dependency de121;
+  de121.add_order_key(1);
+  de121.add_order_key(2);
+  de121.add_order_key(1);
+
+  Dependency de122;
+  de122.add_order_key(1);
+  de122.add_order_key(2);
+  de122.add_order_key(2);
+
+  Dependency de13;
+  de13.add_order_key(1);
+  de13.add_order_key(3);
+
+  Dependency de2;
+  de2.add_order_key(2);
+
+  DependencyOrderCompator less;
+  EXPECT_FALSE(less(de, de));
+  EXPECT_TRUE(less(de, de1));
+  EXPECT_TRUE(less(de, de12));
+  EXPECT_TRUE(less(de, de121));
+  EXPECT_TRUE(less(de, de122));
+  EXPECT_TRUE(less(de, de13));
+  EXPECT_TRUE(less(de, de2));
+
+  EXPECT_FALSE(less(de1, de));
+  EXPECT_FALSE(less(de1, de1));
+  EXPECT_TRUE(less(de1, de12));
+  EXPECT_TRUE(less(de1, de121));
+  EXPECT_TRUE(less(de1, de122));
+  EXPECT_TRUE(less(de1, de13));
+  EXPECT_TRUE(less(de1, de2));
+
+  EXPECT_FALSE(less(de12, de));
+  EXPECT_FALSE(less(de12, de1));
+  EXPECT_FALSE(less(de12, de12));
+  EXPECT_TRUE(less(de12, de121));
+  EXPECT_TRUE(less(de12, de122));
+  EXPECT_TRUE(less(de12, de13));
+  EXPECT_TRUE(less(de12, de2));
+
+  EXPECT_FALSE(less(de121, de));
+  EXPECT_FALSE(less(de121, de1));
+  EXPECT_FALSE(less(de121, de12));
+  EXPECT_FALSE(less(de121, de121));
+  EXPECT_TRUE(less(de121, de122));
+  EXPECT_TRUE(less(de121, de13));
+  EXPECT_TRUE(less(de121, de2));
+
+  EXPECT_FALSE(less(de122, de));
+  EXPECT_FALSE(less(de122, de1));
+  EXPECT_FALSE(less(de122, de12));
+  EXPECT_FALSE(less(de122, de121));
+  EXPECT_FALSE(less(de122, de122));
+  EXPECT_TRUE(less(de122, de13));
+  EXPECT_TRUE(less(de122, de2));
+
+  EXPECT_FALSE(less(de13, de));
+  EXPECT_FALSE(less(de13, de1));
+  EXPECT_FALSE(less(de13, de12));
+  EXPECT_FALSE(less(de13, de121));
+  EXPECT_FALSE(less(de13, de122));
+  EXPECT_FALSE(less(de13, de13));
+  EXPECT_TRUE(less(de13, de2));
+
+  EXPECT_FALSE(less(de2, de));
+  EXPECT_FALSE(less(de2, de1));
+  EXPECT_FALSE(less(de2, de12));
+  EXPECT_FALSE(less(de2, de121));
+  EXPECT_FALSE(less(de2, de122));
+  EXPECT_FALSE(less(de2, de13));
+  EXPECT_FALSE(less(de2, de2));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

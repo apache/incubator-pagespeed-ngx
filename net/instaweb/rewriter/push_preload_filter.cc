@@ -25,11 +25,13 @@
 
 #include "net/instaweb/rewriter/public/push_preload_filter.h"
 
+#include <algorithm>
 #include <unordered_set>
 #include <utility>                      // for pair
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/dependencies.pb.h"
+#include "net/instaweb/rewriter/public/collect_dependencies_filter.h"
 #include "net/instaweb/rewriter/public/dependency_tracker.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/string.h"
@@ -58,10 +60,17 @@ void PushPreloadFilter::StartDocumentImpl() {
   const Dependencies* deps = driver()->dependency_tracker()->read_in_info();
   CHECK(deps != nullptr) << "DetermineEnabled should have prevented this";
 
+  // Sort dependencies by order_key.
+  std::vector<Dependency> ordered_deps;
+  for (int i = 0, n = deps->dependency_size(); i < n; ++i) {
+    ordered_deps.push_back(deps->dependency(i));
+  }
+  DependencyOrderCompator dep_order;
+  std::sort(ordered_deps.begin(), ordered_deps.end(), dep_order);
+
   std::unordered_set<GoogleString> already_seen;
 
-  for (int i = 0, n = deps->dependency_size(); i < n; ++i) {\
-    const Dependency& dep = deps->dependency(i);
+  for (const Dependency& dep : ordered_deps) {
     GoogleUrl dep_url(dep.url());
 
     if (!dep_url.IsWebValid()) {

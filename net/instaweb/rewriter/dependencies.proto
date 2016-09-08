@@ -43,6 +43,10 @@ message Dependency {
   // including other_dependency, so at the time we have to decide whether to
   // push/preload we can tell if .pagespeed. resource has expired yet or not.
   repeated InputInfo validity_info = 5;
+
+  // Encodes the order of this compared to other dependencies. The semantics
+  // are lexicographic, e.g. (4) is before (4,1) is before (5).
+  repeated int32 order_key = 6;
 }
 
 // All the candidates for pushing or preloading.
