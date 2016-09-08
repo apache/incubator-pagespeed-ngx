@@ -35,7 +35,6 @@
 
 namespace net_instaweb {
 
-extern const char* CSS_mobilize_css;
 extern const char* JS_add_instrumentation;
 extern const char* JS_add_instrumentation_opt;
 extern const char* JS_client_domain_rewriter;
@@ -64,8 +63,6 @@ extern const char* JS_lazyload_images;
 extern const char* JS_lazyload_images_opt;
 extern const char* JS_local_storage_cache;
 extern const char* JS_local_storage_cache_opt;
-extern const char* JS_mobilize_js;
-extern const char* JS_mobilize_js_opt;
 extern const char* JS_responsive_js;
 extern const char* JS_responsive_js_opt;
 
@@ -88,20 +85,6 @@ const char StaticAssetManager::kGStaticBase[] =
 
 // TODO(jud): Change to "/psaassets/".
 const char StaticAssetManager::kDefaultLibraryUrlPrefix[] = "/psajs/";
-
-// TODO(jud): Refactor this struct so that each static type served (js, images,
-// etc.) has it's own implementation.
-struct StaticAssetManager::Asset {
-  const char* file_name;
-  GoogleString js_optimized;
-  GoogleString js_debug;
-  GoogleString js_opt_hash;
-  GoogleString js_debug_hash;
-  GoogleString opt_url;
-  GoogleString debug_url;
-  GoogleString release_label;
-  ContentType content_type;
-};
 
 StaticAssetManager::StaticAssetManager(
     const GoogleString& static_asset_base,
@@ -252,15 +235,9 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::DETERMINISTIC_JS]->file_name = "deterministic";
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->file_name =
       "local_storage_cache";
-  assets_[StaticAssetEnum::MOBILIZE_JS]->file_name = "mobilize";
-  assets_[StaticAssetEnum::MOBILIZE_CSS]->file_name = "mobilize_css";
   assets_[StaticAssetEnum::RESPONSIVE_JS]->file_name = "responsive";
   // Note that we still have to provide a name for these unused files because of
   // the DCHECK for unique names below.
-  assets_[StaticAssetEnum::DEPRECATED_MOBILIZE_XHR_JS]->file_name =
-      "deprecated_mobilize_xhr";
-  assets_[StaticAssetEnum::DEPRECATED_MOBILIZE_LAYOUT_CSS]->file_name =
-      "deprecated_mobilize_layout_css";
   assets_[StaticAssetEnum::DEPRECATED_SPLIT_HTML_BEACON_JS]->file_name =
       "deprecated_split_html_beacon";
   assets_[StaticAssetEnum::DEPRECATED_GHOST_CLICK_BUSTER_JS]->file_name =
@@ -296,8 +273,6 @@ void StaticAssetManager::InitializeAssetStrings() {
       JS_deterministic_opt;
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->js_optimized =
       JS_local_storage_cache_opt;
-  assets_[StaticAssetEnum::MOBILIZE_JS]->js_optimized = JS_mobilize_js_opt;
-  assets_[StaticAssetEnum::MOBILIZE_CSS]->js_optimized = CSS_mobilize_css;
   assets_[StaticAssetEnum::RESPONSIVE_JS]->js_optimized = JS_responsive_js_opt;
 
   // Initialize cleartext javascript strings->
@@ -324,8 +299,6 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::DETERMINISTIC_JS]->js_debug = JS_deterministic;
   assets_[StaticAssetEnum::LOCAL_STORAGE_CACHE_JS]->js_debug =
       JS_local_storage_cache;
-  assets_[StaticAssetEnum::MOBILIZE_JS]->js_debug = JS_mobilize_js;
-  assets_[StaticAssetEnum::MOBILIZE_CSS]->js_debug = CSS_mobilize_css;
   assets_[StaticAssetEnum::RESPONSIVE_JS]->js_debug = JS_responsive_js;
 
   // Initialize non-JS assets
@@ -336,11 +309,18 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[StaticAssetEnum::BLANK_GIF]->js_debug.append(
       reinterpret_cast<const char*>(GIF_blank), GIF_blank_len);
   assets_[StaticAssetEnum::BLANK_GIF]->content_type = kContentTypeGif;
-  assets_[StaticAssetEnum::MOBILIZE_CSS]->content_type = kContentTypeCss;
+
+  assets_[StaticAssetEnum::MOBILIZE_JS]->file_name = nullptr;
+  assets_[StaticAssetEnum::MOBILIZE_CSS]->file_name = nullptr;
+  assets_[StaticAssetEnum::DEPRECATED_MOBILIZE_XHR_JS]->file_name = nullptr;
+  assets_[StaticAssetEnum::DEPRECATED_MOBILIZE_LAYOUT_CSS]->file_name = nullptr;
 
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {
     Asset* asset = *it;
+    if (asset->file_name == nullptr) {
+      continue;
+    }
     asset->js_opt_hash = hasher_->Hash(asset->js_optimized);
     asset->js_debug_hash = hasher_->Hash(asset->js_debug);
 

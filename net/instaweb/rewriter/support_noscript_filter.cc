@@ -18,11 +18,11 @@
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
 
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/user_agent_matcher.h"
 
 namespace net_instaweb {
 
@@ -94,7 +95,11 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
         break;
       case RewriteOptions::kMobilize:
         filter_enabled =
-            MobilizeRewriteFilter::IsApplicableFor(rewrite_driver_);
+            (options->mob_always() ||
+             (rewrite_driver_->server_context()
+                  ->user_agent_matcher()
+                  ->GetDeviceTypeForUA(rewrite_driver_->user_agent()) ==
+              UserAgentMatcher::kMobile));
         break;
       default:
         break;

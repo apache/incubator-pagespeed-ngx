@@ -80,7 +80,6 @@
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/google_font_css_inline_filter.h"
 #include "net/instaweb/rewriter/public/handle_noscript_redirect_filter.h"
-#include "net/instaweb/rewriter/public/iframe_fetcher.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
@@ -97,7 +96,6 @@
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/make_show_ads_async_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
-#include "net/instaweb/rewriter/public/mobilize_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/pedantic_filter.h"
@@ -893,7 +891,6 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   LocalStorageCacheFilter::InitStats(statistics);
   MakeShowAdsAsyncFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
-  MobilizeRewriteFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
   UrlInputResource::InitStats(statistics);
   UrlLeftTrimFilter::InitStats(statistics);
@@ -1187,17 +1184,6 @@ void RewriteDriver::AddPreRenderFilters() {
     }
   }
 
-  // Mobilize after JS-rewrite and before JS-inline.  We don't
-  // want to use the PageSpeed minifier to re-optimize the
-  // closure-compiled mobilization code because (a) it won't
-  // do much good (b) it would rename the URL to something we won't
-  // find on /mod_pagespeed_static and (c) we certainly don't want
-  // source-maps for the compiled code.  However, we do want
-  // the inliner to work on the small compiled xhr.js.
-  if (rewrite_options->Enabled(RewriteOptions::kMobilize)) {
-    AppendOwnedPreRenderFilter(new MobilizeRewriteFilter(this));
-  }
-
   if (rewrite_options->Enabled(RewriteOptions::kInlineJavascript)) {
     // Inline small Javascript files.  Give JS minification a chance to run
     // before we decide what counts as "small".
@@ -1483,14 +1469,6 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
 }
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
-  if (options()->mob_iframe()) {
-    IframeFetcher* ifetcher = new IframeFetcher(
-        options(), server_context_->user_agent_matcher(),
-        url_async_fetcher_);
-    CacheUrlAsyncFetcher* cache_fetcher = CreateCustomCacheFetcher(ifetcher);
-    cache_fetcher->set_own_fetcher(true);
-    return cache_fetcher;
-  }
   return CreateCustomCacheFetcher(url_async_fetcher_);
 }
 

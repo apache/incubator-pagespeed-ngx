@@ -22,7 +22,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/iframe_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -395,14 +394,9 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
     // base tag applies for that set of elements.
     return;
   }
-  // Make sure domain rewriting of this element has not been forbidden.  Right
-  // now we must not rewrite the src url of the iframe created by the
-  // iframe_fetcher.
+  // Disable rewriting if the iframe_fetcher is enabled
   const RewriteOptions* options = driver()->options();
-  if (options->mob_iframe() &&
-      (StringPiece(element->EscapedAttributeValue(HtmlName::kId)) ==
-       IframeFetcher::kIframeId) &&
-      element->keyword() == HtmlName::kIframe) {
+  if (options->mob_iframe()) {
     return;
   }
   resource_tag_scanner::UrlCategoryVector attributes;

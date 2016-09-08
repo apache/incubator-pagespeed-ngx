@@ -21,6 +21,7 @@
 
 #include <map>
 #include <vector>
+#include <cstddef>                     // for size_t
 
 #include "net/instaweb/rewriter/static_asset_config.pb.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
@@ -30,13 +31,13 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
+#include "pagespeed/kernel/http/content_type.h"
 
 namespace net_instaweb {
 
 class Hasher;
 class MessageHandler;
 class RewriteOptions;
-struct ContentType;
 
 // Composes URLs for the javascript files injected by the various PSA filters.
 // TODO(ksimbili): Refactor out the common base class to serve the static files
@@ -61,6 +62,14 @@ class StaticAssetManager {
                      MessageHandler* message_handler);
 
   ~StaticAssetManager();
+
+  // Determines whether the specified index is a valid asset enum.
+  bool IsValidIndex(size_t i) const {
+    lock_->Lock();
+    bool valid = (i <= assets_.size()) && (assets_[i]->file_name != nullptr);
+    lock_->Unlock();
+    return valid;
+  }
 
   // Returns the url based on the value of debug filter and the value of
   // serve_asset_from_gstatic flag.
@@ -134,13 +143,26 @@ class StaticAssetManager {
   }
 
  private:
-  class Asset;
+  // TODO(jud): Refactor this struct so that each static type served
+  // (js, images, etc.) has it's own implementation.
+  struct Asset {
+    const char* file_name;
+    GoogleString js_optimized;
+    GoogleString js_debug;
+    GoogleString js_opt_hash;
+    GoogleString js_debug_hash;
+    GoogleString opt_url;
+    GoogleString debug_url;
+    GoogleString release_label;
+    ContentType content_type;
+  };
 
   typedef std::map<GoogleString, StaticAssetEnum::StaticAsset>
       FileNameToModuleMap;
 
   void InitializeAssetStrings();
   void InitializeAssetUrls() EXCLUSIVE_LOCKS_REQUIRED(lock_);
+
 
   // Backend for ApplyGStaticConfiguration and ResetGStaticConfiguration;
   // the 'config' parameter is the appropriate composition of initial

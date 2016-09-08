@@ -204,6 +204,9 @@ TEST_F(StaticAssetManagerTest, TestHtml5InsertInlineJs) {
 
 TEST_F(StaticAssetManagerTest, TestEncodedUrls) {
   for (int i = 0; i < StaticAssetEnum::StaticAsset_ARRAYSIZE; ++i) {
+    if (!manager_->IsValidIndex(i)) {
+      continue;
+    }
     StaticAssetEnum::StaticAsset module =
         static_cast<StaticAssetEnum::StaticAsset>(i);
 

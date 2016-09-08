@@ -22,7 +22,6 @@
 
 #include <cstddef>                     // for size_t
 #include <set>
-#include <memory>
 #include <utility>
 #include <vector>
 
@@ -210,7 +209,7 @@ class ServerContext {
   // Creates a caching-fetcher based on the specified options.  If you call
   // this with DefaultSystemFetcher() then it will not include any loopback
   // fetching installed in the RewriteDriver.
-  CacheUrlAsyncFetcher* CreateCustomCacheFetcher(
+  virtual CacheUrlAsyncFetcher* CreateCustomCacheFetcher(
       const RewriteOptions* options, const GoogleString& fragment,
       CacheUrlAsyncFetcher::AsyncOpHooks* hooks, UrlAsyncFetcher* fetcher);
 

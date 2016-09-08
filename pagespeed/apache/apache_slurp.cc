@@ -23,8 +23,6 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
-#include "net/instaweb/rewriter/public/iframe_fetcher.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "pagespeed/apache/apache_config.h"
 #include "pagespeed/apache/apache_server_context.h"
 #include "pagespeed/apache/apache_writer.h"
@@ -189,14 +187,6 @@ bool InstawebHandler::ProxyUrl() {
         options()->test_proxy_slurp(), server_context_->file_system(),
         server_context_->timer()));
     fetcher = fetcher_storage.get();
-  } else if (!proxy_suffix.empty() && options()->mob_iframe()) {
-    // Reset stripped_url to its original state and let the iframe-fetcher
-    // do the stripping again so it can redirect to the origin if the UA
-    // cannot support iframe mobilization.
-    stripped_url = stripped_gurl_.Spec().as_string();
-    fetcher_storage.reset(new IframeFetcher(
-        options(), server_context_->user_agent_matcher(), fetcher));
-    fetcher = fetcher_storage.get();
   } else if (!proxy_suffix.empty()) {
     // Do some extra caching when using proxy_suffix (but we don't want it in
     // other modes since they are used for things like loadtesting)
@@ -272,14 +262,6 @@ bool InstawebHandler::ProxyUrl() {
     // slurped resources, since we've captured them from the origin
     // in the fetch we did to write the slurp.
     ApacheWriter apache_writer(request_, server_context_->thread_system());
-
-    // TODO(jmarantz): This is a bit of a hack, but we need to be able to
-    // tweak headers from pagespeed.conf while experimenting with mobilization.
-    // Longer term we might not need this, or we might want to make this
-    // a separate option.
-    if (!options()->Enabled(RewriteOptions::kMobilize)) {
-      apache_writer.set_disable_downstream_header_filters(true);
-    }
 
     ChunkingWriter chunking_writer(
         &apache_writer, options()->slurp_flush_limit());

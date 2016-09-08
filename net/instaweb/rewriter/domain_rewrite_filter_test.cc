@@ -21,7 +21,6 @@
 #include <memory>
 
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/iframe_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -155,40 +154,56 @@ TEST_F(DomainRewriteFilterTest, RewriteHyperlinks) {
   options()->ClearSignatureForTesting();
   options()->set_domain_rewrite_hyperlinks(true);
   options()->set_mob_iframe(false);
-  ValidateExpected(
-      "forms and a tags",
-      StrCat("<a href=\"", kFrom1Domain, "link.html\"/>"
-             "<form action=\"", kFrom1Domain, "blank\"/>"
-             "<a href=\"https://from1.test.com/1.html\"/>"
-             "<area href=\"", kFrom1Domain, "2.html\"/>"
-             "<iframe src=\"", kFrom1Domain, "iframe.html\"/>"
-             "<iframe id=\"", IframeFetcher::kIframeId, "\""
-             " src=\"", kFrom1Domain, "iframe.html\"/>"),
-      StrCat("<a href=\"http://to1.test.com/link.html\"/>"
-             "<form action=\"http://to1.test.com/blank\"/>"
-             "<a href=\"https://from1.test.com/1.html\"/>"
-             "<area href=\"http://to1.test.com/2.html\"/>"
-             "<iframe src=\"http://to1.test.com/iframe.html\"/>"
-             "<iframe id=\"", IframeFetcher::kIframeId, "\""
-             " src=\"http://to1.test.com/iframe.html\"/>"));
+  ValidateExpected("forms and a tags",
+                   StrCat("<a href=\"", kFrom1Domain,
+                          "link.html\"/>"
+                          "<form action=\"",
+                          kFrom1Domain,
+                          "blank\"/>"
+                          "<a href=\"https://from1.test.com/1.html\"/>"
+                          "<area href=\"",
+                          kFrom1Domain,
+                          "2.html\"/>"
+                          "<iframe src=\"",
+                          kFrom1Domain,
+                          "iframe.html\"/>"
+                          "<iframe id=\"psmob-iframe\""
+                          " src=\"",
+                          kFrom1Domain, "iframe.html\"/>"),
+                   "<a href=\"http://to1.test.com/link.html\"/>"
+                   "<form action=\"http://to1.test.com/blank\"/>"
+                   "<a href=\"https://from1.test.com/1.html\"/>"
+                   "<area href=\"http://to1.test.com/2.html\"/>"
+                   "<iframe src=\"http://to1.test.com/iframe.html\"/>"
+                   "<iframe id=\"psmob-iframe\""
+                   " src=\"http://to1.test.com/iframe.html\"/>");
 }
 
-TEST_F(DomainRewriteFilterTest, RewriteHyperlinksIframe) {
+TEST_F(DomainRewriteFilterTest, NoRewriteWhenMobIframeIsEnabled) {
   options()->ClearSignatureForTesting();
   options()->set_domain_rewrite_hyperlinks(true);
   options()->set_mob_iframe(true);
-  ValidateExpected(
-      "forms and a tags in iframe mode",
-      StrCat("<a id=\"", IframeFetcher::kIframeId, "\""
-             " href=\"", kFrom1Domain, "link.html\"/>"
-             "<iframe src=\"", kFrom1Domain, "iframe.html\"/>"
-             "<iframe id=\"", IframeFetcher::kIframeId, "\""
-             " src=\"", kFrom1Domain, "iframe.html\"/>"),
-      StrCat("<a id=\"", IframeFetcher::kIframeId, "\""
-             " href=\"http://to1.test.com/link.html\"/>"
-             "<iframe src=\"http://to1.test.com/iframe.html\"/>"
-             "<iframe id=\"", IframeFetcher::kIframeId, "\""
-             " src=\"", kFrom1Domain, "iframe.html\"/>"));
+  ValidateExpected("forms and a tags in iframe mode",
+                   StrCat("<a id=\"psmob-iframe\""
+                          " href=\"",
+                          kFrom1Domain,
+                          "link.html\"/>"
+                          "<iframe src=\"",
+                          kFrom1Domain,
+                          "iframe.html\"/>"
+                          "<iframe id=\"psmob-iframe\""
+                          " src=\"",
+                          kFrom1Domain, "iframe.html\"/>"),
+                   StrCat("<a id=\"psmob-iframe\""
+                          " href=\"",
+                          kFrom1Domain,
+                          "link.html\"/>"
+                          "<iframe src=\"",
+                          kFrom1Domain,
+                          "iframe.html\"/>"
+                          "<iframe id=\"psmob-iframe\""
+                          " src=\"",
+                          kFrom1Domain, "iframe.html\"/>"));
 }
 
 TEST_F(DomainRewriteFilterTest, RewriteButDoNotShardHyperlinks) {

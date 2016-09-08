@@ -58,7 +58,6 @@ run_test image_quality_webp
 run_test image_resize
 run_test broken_images
 run_test make_show_ads_async
-run_test mobilizer
 run_test responsive_images
 run_test shortcut_icons
 

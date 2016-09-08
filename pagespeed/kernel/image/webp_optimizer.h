@@ -19,7 +19,6 @@
 #ifndef PAGESPEED_KERNEL_IMAGE_WEBP_OPTIMIZER_H_
 #define PAGESPEED_KERNEL_IMAGE_WEBP_OPTIMIZER_H_
 
-// For libwebp, encode.h must be included before gif2webp_util.h.
 #include <cstddef>
 #include "third_party/libwebp/src/webp/encode.h"
 #include "third_party/libwebp/src/webp/mux.h"

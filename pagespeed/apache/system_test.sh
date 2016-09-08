@@ -809,53 +809,6 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   OUT=$($WGET_DUMP "$HOSTNAME/pagespeed_admin/cache?purge=*")
   check_from "$OUT" fgrep -q "ModPagespeedEnableCachePurge on"
 
-  start_test mobilizer with JS compiled.
-  MOB_SUFFIX_RE="\\.[A-Za-z0-9_\-]+\\.js"
-
-  URL="http://${PAGESPEED_TEST_HOST}.suffix.net/mod_pagespeed_example/index.html"
-  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP "$URL")
-  check_from "$OUT" egrep -q "pagespeed_static/mobilize$MOB_SUFFIX_RE"
-  check_not_from "$OUT" fgrep -q layout.js
-  check_not_from "$OUT" fgrep -q util.js
-  check_not_from "$OUT" fgrep -q nav.js
-
-  start_test mobilizer with debug on
-  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
-    "$URL?PageSpeedFilters=+debug" | grep script)
-  check_from "$OUT" egrep -q "pagespeed_static/mobilize_debug$MOB_SUFFIX_RE"
-  check_not_from "$OUT" fgrep -q layout.js
-  check_not_from "$OUT" fgrep -q util.js
-  check_not_from "$OUT" fgrep -q nav.js
-
-  start_test no mobilization files if we turn mobilization off
-  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
-    --header 'X-PSA-Blocking-Rewrite: psatest' \
-    "$URL?PageSpeedFilters=-mobilize")
-  check_not_from "$OUT" fgrep -q window.XMLHttpRequest
-  check_not_from "$OUT" egrep -q "pagespeed_static/mobilize$MOB_SUFFIX_RE"
-  check_not_from "$OUT" fgrep -q layout.js
-  check_not_from "$OUT" fgrep -q util.js
-  check_not_from "$OUT" fgrep -q nav.js
-
-  start_test mobilization in iframe mode
-  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP "$URL?PageSpeedMobIframe=on")
-  # Have a <noscript> tag redirecting to the noscript option.
-  FALLBACK="<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;url='$URL?PageSpeed=noscript'"
-  check_from "$OUT" fgrep -q "$FALLBACK"
-  check_not_from "$OUT" fgrep -q "PageSpeed Filter Examples"
-  check_from "$OUT" fgrep -q "psmob-iframe"
-
-  start_test mobilization in iframe mode w/XHR
-  # With XHR we should get redirected to the original rather than iframe'd.
-  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header=X-Requested-With:XMLHttpRequest  "$URL?PageSpeedMobIframe=on")
-  check_from "$OUT" fgrep -q "PageSpeed Filter Examples"
-  check_not_from "$OUT" fgrep -q "psmob-iframe"
-
-  start_test mobilization in iframe mode + noscript
-  # Same for pure noscript.
-  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP "$URL?PageSpeedMobIframe=on&PageSpeed=noscript")
-  check_from "$OUT" fgrep -q "PageSpeed Filter Examples"
-  check_not_from "$OUT" fgrep -q "psmob-iframe"
 
   start_test inline_google_font_css before move_to_head and move_above_scripts
   URL="$TEST_ROOT/move_font_css_to_head.html"
