@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/image/webp_optimizer.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstdint>
 
 #include "base/logging.h"
@@ -310,6 +311,7 @@ ScanlineStatus WebpFrameWriter::PrepareImage(const ImageSpec* image_spec) {
   webp_image_.height = image_spec->height;
   webp_image_.use_argb = true;
 #ifndef NDEBUG
+  memset(&stats_, 0, sizeof stats_);
   webp_image_.stats = &stats_;
 #endif
 
