@@ -47,7 +47,6 @@ namespace {
 
 using testing::HasSubstr;
 
-
 // TODO(yeputons): refactor this class with AprMemCacheTest, see details in
 // apr_mem_cache_test.cc
 class RedisCacheTest : public CacheTestBase {
