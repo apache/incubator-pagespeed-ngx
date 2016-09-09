@@ -360,12 +360,13 @@ TEST_F(RpcHandlerTest, WriteResultOutsideHandleRequest) {
 // Test that HandleError is invoked if the client disconnects after the
 // handler Write()s.
 TEST_F(RpcHandlerTest, ClientAbortAfterWrite) {
+  WorkerTestBase::SyncPoint sync(thread_system_.get());
   MockRpcHandler* handler = new MockRpcHandler(&service_, queue_.get());
   EXPECT_CALL(*handler, HandleRequest(_))
       .Times(1)
       .WillOnce(InvokeWithoutArgs(handler, &MockRpcHandler::SendResponse));
-  // Override the default implementation, which aborts.
-  EXPECT_CALL(*handler, HandleError()).Times(1).WillOnce(Return());
+  EXPECT_CALL(*handler, HandleError()).Times(1)
+      .WillOnce(InvokeWithoutArgs(&sync, &WorkerTestBase::SyncPoint::Notify));
   StartOnServerThread(handler);
 
   TestRequest req;
@@ -375,6 +376,9 @@ TEST_F(RpcHandlerTest, ClientAbortAfterWrite) {
 
   // Disconnects from server.
   client_.reset();
+
+  // Make sure the server sees the error and finishes up before we destory it.
+  sync.Wait();
 }
 
 // Test that HandleError is not invoked if the client disconnects after the
