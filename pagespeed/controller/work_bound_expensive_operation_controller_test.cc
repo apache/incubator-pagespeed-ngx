@@ -99,6 +99,10 @@ TEST_F(WorkBoundExpensiveOperationTest, LimitZeroIsUnlimited) {
   EXPECT_TRUE(TryToWork());
 }
 
+TEST_F(WorkBoundExpensiveOperationTest, LimitNegativeIsUnlimited) {
+  InitControllerWithLimit(-1);
+  EXPECT_TRUE(TryToWork());
+}
 
 }  // namespace
 }  // namespace net_instaweb
