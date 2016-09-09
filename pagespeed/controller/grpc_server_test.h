@@ -54,11 +54,14 @@ class GrpcServerTest : public testing::Test {
   void SetUp() override {
     ::grpc::ServerBuilder builder;
     builder.AddListeningPort(ServerAddress(),
-                             ::grpc::InsecureServerCredentials());
+                             ::grpc::InsecureServerCredentials(),
+                             &listen_port_);
     queue_ = builder.AddCompletionQueue();
     RegisterServices(&builder);
     server_ = builder.BuildAndStart();
     CHECK(server_.get() != nullptr);
+    // listen_port_ may have been 0 first time through. gRPC sets -1 on failure.
+    CHECK_GT(listen_port_, 0);
 
     server_thread_.reset(
         new GrpcServerThread(queue_.get(), thread_system_.get()));
@@ -117,12 +120,8 @@ class GrpcServerTest : public testing::Test {
   }
 
   static void SetUpTestCase() {
-    // Pick a random port between 32768 and 65535 to listen on.
-    // We need to seed the RNG first.
-    timeval tv;
-    gettimeofday(&tv, NULL);
-    srandom(tv.tv_usec * tv.tv_sec);
-    listen_port_ = (random() & 0x7FFF) | 0x8000;
+    // When this is 0, gRPC will pick an unused port for us.
+    listen_port_ = 0;
   }
 
   GoogleString ServerAddress() const {
