@@ -240,7 +240,7 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewRedis(
   const SystemRewriteOptions::RedisServerSpec& server_spec =
     config->redis_server();
   RedisCache* redis_server = new RedisCache(
-      server_spec.host, server_spec.port, factory_->thread_system()->NewMutex(),
+      server_spec.host, server_spec.port, factory_->thread_system(),
       factory_->message_handler(), factory_->timer(),
       config->redis_reconnection_delay_ms(), config->redis_timeout_us());
   factory_->TakeOwnership(redis_server);

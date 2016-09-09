@@ -220,6 +220,13 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
                                 true /* enable_property_cache */);
 
     // Sanity-check that the two caches work.
+    // Note: even though we may have AsyncCache under the hood, right now it's
+    // possible with external caches only, and both of them are configured with
+    // a single thread. So, Get() can only be executed after Put() finishes.
+    //
+    // TODO(yeputons): it's important that RedisCache is connected at that
+    // point. Otherwise it will try to connect in Put() and combination of
+    // AsyncCache and fast-fail in "connecting" state will play against us.
     TestPut(server_context->metadata_cache(), "a", "b");
     TestGet(server_context->metadata_cache(), "a",
             CacheInterface::kAvailable, "b");

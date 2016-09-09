@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/util/platform.h"
@@ -66,24 +67,26 @@ class RedisCacheTest : public CacheTestBase {
       return false;
     }
 
-    cache_.reset(new RedisCache("localhost", port, new NullMutex, &handler_,
-                                &timer_, kReconnectionDelayMs, kTimeoutUs));
+    cache_.reset(new RedisCache("localhost", port, thread_system_.get(),
+                                &handler_, &timer_, kReconnectionDelayMs,
+                                kTimeoutUs));
     cache_->StartUp();
     return cache_->FlushAll();
   }
 
   void InitRedisWithCustomServer() {
-    cache_.reset(new RedisCache("localhost", custom_server_port_, new NullMutex,
-                                &handler_, &timer_, kReconnectionDelayMs,
-                                kTimeoutUs));
+    cache_.reset(new RedisCache("localhost", custom_server_port_,
+                                thread_system_.get(), &handler_, &timer_,
+                                kReconnectionDelayMs, kTimeoutUs));
   }
 
   void InitRedisWithUnreachableServer() {
     // Try to connect to some definitely unreachable host.
     // 192.0.2.0/24 is reserved for documentation purposes in RFC5737 and no
     // machine should ever be routable in that subnet.
-    cache_.reset(new RedisCache("192.0.2.1", 12345, new NullMutex, &handler_,
-                                &timer_, kReconnectionDelayMs, kTimeoutUs));
+    cache_.reset(new RedisCache("192.0.2.1", 12345, thread_system_.get(),
+                                &handler_, &timer_, kReconnectionDelayMs,
+                                kTimeoutUs));
   }
 
   static void SetUpTestCase() {
@@ -113,6 +116,10 @@ class RedisCacheTest : public CacheTestBase {
   }
 
   CacheInterface* Cache() override { return cache_.get(); }
+
+  ThreadSynchronizer* GetThreadSynchronizer() {
+    return cache_->GetThreadSynchronizerForTesting();
+  }
 
   scoped_ptr<RedisCache> cache_;
   scoped_ptr<ThreadSystem> thread_system_;
@@ -378,6 +385,105 @@ TEST_F(RedisCacheTest, ConnectionTimeout) {
   EXPECT_FALSE(cache_->IsHealthy());
   EXPECT_GE(waited_for_us, kTimedOutOperationMinTimeUs);
   EXPECT_LE(waited_for_us, kTimedOutOperationMaxTimeUs);
+}
+
+class GetRequestThread : public ThreadSystem::Thread {
+ public:
+  GetRequestThread(CacheInterface* cache, ThreadSystem* system)
+      : ThreadSystem::Thread(system, "get_request_thread",
+                             ThreadSystem::kJoinable),
+        cache_(cache),
+        check_called_(false) {}
+
+  void Run() override {
+    cache_->Get(kSomeKey, &callback_);
+  }
+
+  void CheckLookupResult(CacheInterface::KeyState expected_state) {
+    check_called_ = true;
+    Join();
+    EXPECT_TRUE(callback_.called());
+    EXPECT_EQ(callback_.state(), expected_state);
+    if (expected_state == CacheInterface::kAvailable) {
+      EXPECT_STREQ(callback_.value()->Value(), kSomeValue);
+    }
+  }
+
+  ~GetRequestThread() override {
+    EXPECT_TRUE(check_called_)
+        << "CheckLookupResult() was not called on GetRequestThread";
+  }
+
+ private:
+  CacheInterface* cache_;
+  CacheInterface::SynchronousCallback callback_;
+  bool check_called_;
+};
+
+TEST_F(RedisCacheTest, IsHealthyDoesNotBlock) {
+  InitRedisWithCustomServer();
+  StartCustomServer<RedisGetRespondingServerThread>();
+  GetThreadSynchronizer()->EnableForPrefix("RedisCommand.After");
+  cache_->StartUp();
+
+  GetRequestThread thread(Cache(), thread_system_.get());
+  ASSERT_TRUE(thread.Start());
+  GetThreadSynchronizer()->Wait("RedisCommand.After.Signal");
+
+  // Check that IsHealthy() returns even when operation is in progress.
+  Cache()->IsHealthy();
+
+  GetThreadSynchronizer()->Signal("RedisCommand.After.Wait");
+  thread.CheckLookupResult(CacheInterface::kAvailable);
+}
+
+TEST_F(RedisCacheTest, ConnectionFastFail) {
+  InitRedisWithCustomServer();
+  StartCustomServer<RedisGetRespondingServerThread>();
+  GetThreadSynchronizer()->EnableForPrefix("RedisConnect.After");
+  cache_->StartUp(/* connect_now */ false);
+
+  EXPECT_TRUE(Cache()->IsHealthy());
+  GetRequestThread thread(Cache(), thread_system_.get());
+  ASSERT_TRUE(thread.Start());
+  GetThreadSynchronizer()->Wait("RedisConnect.After.Signal");
+
+  EXPECT_FALSE(Cache()->IsHealthy());  // Connection is in progress.
+
+  // Check that Get() returns immediately. Two times becase first call may
+  // theoretically override cache's state (real bug).
+  for (int iter = 1; iter <= 2; iter++) {
+    CheckNotFound(kSomeKey);
+  }
+
+  GetThreadSynchronizer()->Signal("RedisConnect.After.Wait");
+  thread.CheckLookupResult(CacheInterface::kAvailable);
+
+  // Now that thread is terminated, connection is established, cache should be
+  // healthy again.
+  EXPECT_TRUE(Cache()->IsHealthy());
+}
+
+TEST_F(RedisCacheTest, ShutDownDuringConnection) {
+  InitRedisWithCustomServer();
+  StartCustomServer<RedisNotRespondingServerThread>();
+  GetThreadSynchronizer()->EnableForPrefix("RedisConnect.After");
+  cache_->StartUp(/* connect_now */ false);
+
+  EXPECT_TRUE(Cache()->IsHealthy());
+  GetRequestThread thread(Cache(), thread_system_.get());
+  ASSERT_TRUE(thread.Start());
+  GetThreadSynchronizer()->Wait("RedisConnect.After.Signal");
+
+  Cache()->ShutDown();
+
+  GetThreadSynchronizer()->Signal("RedisConnect.After.Wait");
+  thread.CheckLookupResult(CacheInterface::kNotFound);
+
+  // Cache potentially may want to reconnect, so we advance timer to ensure that
+  // it does not want to.
+  timer_.AdvanceMs(kReconnectionDelayMs);
+  EXPECT_FALSE(Cache()->IsHealthy());
 }
 
 // All RedisCacheOperationTimeoutTests start with a cache connected to a server

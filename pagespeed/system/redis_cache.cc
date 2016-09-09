@@ -21,6 +21,7 @@
 #include <sys/time.h>
 #include <cstddef>
 #include <cstdarg>
+#include <utility>
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/shared_string.h"
@@ -28,58 +29,100 @@
 
 namespace net_instaweb {
 
-RedisCache::RedisCache(StringPiece host, int port, AbstractMutex* mutex,
+// Hiredis is a non-thread-safe C library which we wrap around. We could use a
+// single mutex for all operations, but we want to have two properties:
+// 1. IsHealthy() never locks for a long time.
+//    Why: it's specification of CacheInterface and it's called in a part of
+//    rewriting where we need to know quickly whether to bother doing work.
+// 2. If there is a connection in progress, at most one thread is locked. All
+//    other threads fail current operation and unlock. All new threads return
+//    failure immediately.
+//    Why: connection happens after previous connection drops, which is caused
+//    by network glitches or server failure. Either way, it's reasonable to
+//    expect that reconnection may take a very long time, therefore we do not
+//    want many threads to wait for it.
+//
+// Some invariants:
+// 1. state_mutex_ can be locked for constant time only (by a single thread).
+// 2. Current state of cache is kept in bunch of variables protected by
+//    state_mutex_, therefore IsHealthy() can return fast.
+// 3. All Redis-related errors are detected and reflected in state_ by
+//    UpdateState(), which should be called after operations on redis_.
+//    Note that if you have not actually performed operation on redis_, you
+//    should not call it.
+// 4. Mutexes should be locked in that order: redis_mutex_, state_mutex_.
+// 5. Thread that wants to change state variables should have BOTH redis_mutex_
+//    and state_mutex_. It should happen automatically: if thread does not hold
+//    redis_mutex_, it cannot do anything with cache and cannot change state.
+// 6. redis_mutex_ can be locked for non-constant time only if it's for
+//    operation on healthy redis_. Ideologically, redis_mutex_ is used for
+//    'queueing' Redis commands.
+// 7. If reconnection is required, redis_mutex_ is unlocked so other threads can
+//    unlock, see state_ == kConnecting and fail their operations. The mutex is
+//    locked back after re-connection is completed.
+// 8. RedisCommand() and ValidateRedisReply() are called under same lock of
+//    redis_mutex_.
+
+RedisCache::RedisCache(StringPiece host, int port, ThreadSystem* thread_system,
                        MessageHandler* message_handler, Timer* timer,
                        int64 reconnection_delay_ms, int64 timeout_us)
     : host_(host.as_string()),
       port_(port),
-      mutex_(mutex),
+      redis_mutex_(thread_system->NewMutex()),
+      state_mutex_(thread_system->NewMutex()),
       message_handler_(message_handler),
       timer_(timer),
       reconnection_delay_ms_(reconnection_delay_ms),
       timeout_us_(timeout_us),
+      thread_synchronizer_(new ThreadSynchronizer(thread_system)),
       redis_(nullptr),
-      next_reconnect_at_ms_(timer_->NowMs()),
-      is_started_up_(false) {}
+      state_(kShutDown),
+      next_reconnect_at_ms_(timer_->NowMs()) {}
 
 GoogleString RedisCache::ServerDescription() const {
   return StrCat(host_, ":", IntegerToString(port_));
 }
 
-void RedisCache::StartUp() {
-  ScopedMutex lock(mutex_.get());
-  DCHECK(!is_started_up_);
-  is_started_up_ = true;
-  Reconnect();
+void RedisCache::StartUp(bool connect_now) {
+  ScopedMutex lock1(redis_mutex_.get());
+  {
+    ScopedMutex lock2(state_mutex_.get());
+    CHECK_EQ(state_, kShutDown);
+    state_ = kDisconnected;
+  }
+  if (connect_now) {
+    EnsureConnection();
+  }
 }
 
-// TODO(yeputons): think about weaker invariants and avoid taking the same mutex
-// which is used for long operations (e.g. connecting or queries).
 bool RedisCache::IsHealthy() const {
-  ScopedMutex lock(mutex_.get());
+  ScopedMutex lock(state_mutex_.get());
   return IsHealthyLockHeld();
 }
 
 void RedisCache::ShutDown() {
-  ScopedMutex lock(mutex_.get());
-  FreeRedisContext();
-  is_started_up_ = false;
+  ScopedMutex lock1(redis_mutex_.get());
+  ScopedMutex lock2(state_mutex_.get());
+  if (state_ == kShutDown) {
+    return;
+  }
+  // As we were able to grab redis_mutex_, there is no operation in progress,
+  // maybe except for connection. EnsureConnection() will deal with that.
+
+  // TODO(yeputons): be careful when adding async requests: ShutDown can be
+  // called while there are some unfinished requests, they should return.
+  redis_.reset();
+  state_ = kShutDown;
 }
 
 void RedisCache::Get(const GoogleString& key, Callback* callback) {
-  mutex_->Lock();
-  if (!IsHealthyLockHeld()) {
-    mutex_->Unlock();
-    // TODO(yeputons): return kNetworkError instead?
-    ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
-    return;
-  }
+  ScopedMutex lock(redis_mutex_.get());
 
   RedisReply reply = RedisCommand("GET %b", key.data(), key.length());
-  KeyState keyState = CacheInterface::kNotFound;
   bool reply_valid =
       ValidateRedisReply(reply, {REDIS_REPLY_STRING, REDIS_REPLY_NIL}, "GET");
-  mutex_->Unlock();
+
+  KeyState keyState = CacheInterface::kNotFound;
   if (reply_valid) {
     if (reply->type == REDIS_REPLY_STRING) {
       // The only type of values that we store in Redis is string.
@@ -89,22 +132,25 @@ void RedisCache::Get(const GoogleString& key, Callback* callback) {
       // REDIS_REPLY_NIL means 'key not found', do nothing.
     }
   }
+  // Release mutex before calling callback, because it may want to do some more
+  // cache calls.
+  reply.reset();  // free RedisReply before releasing mutex
+  lock.Release();
   ValidateAndReportResult(key, keyState, callback);
 }
 
 void RedisCache::Put(const GoogleString& key, SharedString* value) {
-  ScopedMutex lock(mutex_.get());
-  if (!IsHealthyLockHeld()) {
-    return;
-  }
+  ScopedMutex lock(redis_mutex_.get());
 
   RedisReply reply = RedisCommand(
       "SET %b %b",
       key.data(), key.length(),
       value->data(), static_cast<size_t>(value->size()));
+
   if (!ValidateRedisReply(reply, {REDIS_REPLY_STATUS}, "SET")) {
     return;
   }
+
   GoogleString answer(reply->str, reply->len);
   if (answer == "OK") {
     // Success, nothing to do.
@@ -117,11 +163,7 @@ void RedisCache::Put(const GoogleString& key, SharedString* value) {
 }
 
 void RedisCache::Delete(const GoogleString& key) {
-  ScopedMutex lock(mutex_.get());
-  if (!IsHealthyLockHeld()) {
-    return;
-  }
-
+  ScopedMutex lock(redis_mutex_.get());
   RedisReply reply = RedisCommand("DEL %b", key.data(), key.length());
   // Redis returns amount of keys deleted (probably, zero), no need in check
   // that amount; all other errors are handled by ValidateRedisReply.
@@ -129,138 +171,180 @@ void RedisCache::Delete(const GoogleString& key) {
 }
 
 bool RedisCache::GetStatus(GoogleString* buffer) {
-  ScopedMutex lock(mutex_.get());
-  if (!IsHealthyLockHeld()) {
-    return false;
-  }
-
+  ScopedMutex lock(redis_mutex_.get());
   RedisReply reply = RedisCommand("INFO");
   if (!ValidateRedisReply(reply, {REDIS_REPLY_STRING}, "INFO")) {
     return false;
   }
+
   StrAppend(buffer, "Statistics for Redis (", ServerDescription(), "):\n");
   StrAppend(buffer, reply->str);
   return true;
 }
 
 bool RedisCache::FlushAll() {
-  ScopedMutex lock(mutex_.get());
-  if (!IsHealthyLockHeld()) {
-    return false;
-  }
-
+  ScopedMutex lock(redis_mutex_.get());
   RedisReply reply = RedisCommand("FLUSHALL");
   return ValidateRedisReply(reply, {REDIS_REPLY_STATUS}, "FLUSHALL");
 }
 
-bool RedisCache::Reconnect() {
-  CHECK(is_started_up_);
+bool RedisCache::EnsureConnection() {
+  {
+    ScopedMutex lock(state_mutex_.get());
+    if (state_ == kConnected) {
+      return true;
+    }
+    DCHECK(!redis_);
+    // IsHealthyLockHeld() knows whether reconnection is sensible.
+    if (!IsHealthyLockHeld()) {
+      return false;
+    }
+    redis_.reset();
+    state_ = kConnecting;
+  }
 
-  FreeRedisContext();
+  // redis_mutex_ is held on entry to EnsureConnection().
+  redis_mutex_->Unlock();
+  RedisContext loc_redis = TryConnect();
+  redis_mutex_->Lock();
+
+  ScopedMutex lock(state_mutex_.get());
+  if (state_ == kConnecting) {
+    CHECK(!redis_);
+    redis_ = std::move(loc_redis);
+
+    next_reconnect_at_ms_ = timer_->NowMs();
+    if (!redis_) {
+      // It's better to wait some time before next attempt.
+      next_reconnect_at_ms_ += reconnection_delay_ms_;
+    }
+    UpdateState();
+  } else {
+    // Looks like cache was shut down. It also possible that it was started up
+    // back (though it's prohibited by CacheInterface), but in that case we
+    // will just fail this old operation, no big deal.
+    DCHECK_EQ(state_, kShutDown);
+  }
+  return state_ == kConnected;
+}
+
+RedisCache::RedisContext RedisCache::TryConnect() {
   struct timeval timeout;
   timeout.tv_sec = timeout_us_ / Timer::kSecondUs;
   timeout.tv_usec = timeout_us_ % Timer::kSecondUs;
-  redis_ = redisConnectWithTimeout(host_.c_str(), port_, timeout);
 
-  bool success = false;
-  if (redis_ == nullptr) {
+  RedisContext loc_redis(
+      redisConnectWithTimeout(host_.c_str(), port_, timeout));
+  thread_synchronizer_->Signal("RedisConnect.After.Signal");
+  thread_synchronizer_->Wait("RedisConnect.After.Wait");
+
+  if (loc_redis == nullptr) {
     message_handler_->Message(kError, "Cannot allocate redis context");
-  } else if (redis_->err) {
-    LogRedisContextError("Error while connecting to redis");
-  } else if (redisSetTimeout(redis_, timeout) != REDIS_OK) {
-    LogRedisContextError("Error while setting timeout on redis context");
+  } else if (loc_redis->err) {
+    LogRedisContextError(loc_redis.get(), "Error while connecting to redis");
+  } else if (redisSetTimeout(loc_redis.get(), timeout) != REDIS_OK) {
+    LogRedisContextError(loc_redis.get(),
+                         "Error while setting timeout on redis context");
   } else {
-    success = true;
+    return loc_redis;
   }
-
-  next_reconnect_at_ms_ = timer_->NowMs();
-  if (!success) {
-    // If we did not connect, it's better to wait some time before reconnecting.
-    next_reconnect_at_ms_ += reconnection_delay_ms_;
-  }
-  return success;
+  return nullptr;
 }
 
 bool RedisCache::IsHealthyLockHeld() const {
-  if (!is_started_up_) {
-    return false;
+  switch (state_) {
+    case kShutDown:
+      return false;
+    case kDisconnected:
+      // Reconnection can happen during cache request onnly. We want some thread
+      // to make a cache request, so we return `true` if cache is eligible for
+      // reconnection.
+      return next_reconnect_at_ms_ <= timer_->NowMs();
+    case kConnecting:
+      return false;
+    case kConnected:
+      return true;
   }
-  if (redis_ != nullptr && redis_->err == 0) {
-    return true;
-  }
-  // Quoting hireds documentation: "once an error is returned the context cannot
-  // be reused and you should set up a new connection". Reconnection cannot be
-  // done in IsHealthy() as it should not lock, we can be reconnect during
-  // requests only. But IsHealthy() returning false prevents requests from being
-  // called by cache users, so we want it to return true as long as we have
-  // waited enough to try reconnection.
-  return timer_->NowMs() >= next_reconnect_at_ms_;
+  // gcc thinks following lines are reachable.
+  LOG(FATAL) << "Invalid state_ in IsHealthyLockHeld()";
+  return false;
 }
 
-void RedisCache::FreeRedisContext() {
-  // TODO(yeputons): be careful when adding async requests: ShutDown can be
-  // called while there are some unfinished requests, they should return.
-  if (redis_ != nullptr) {  // hiredis 0.11 does not handle nullptr.
-    redisFree(redis_);
+void RedisCache::UpdateState() {
+  // Quoting hireds documentation: "once an error is returned the context cannot
+  // be reused and you should set up a new connection".
+  if (redis_ != nullptr && redis_->err == 0) {
+    state_ = kConnected;
+  } else {
+    state_ = kDisconnected;
+    redis_.reset();
   }
-  redis_ = nullptr;
 }
 
 RedisCache::RedisReply RedisCache::RedisCommand(const char* format, ...) {
-  if (redis_ == nullptr || redis_->err != 0) {
-    // Redis context is invalid, have to reconnect.
-    if (!Reconnect()) {
-      return nullptr;
-    }
+  if (!EnsureConnection()) {
+    return nullptr;
   }
 
   va_list args;
   va_start(args, format);
-  void* result = redisvCommand(redis_, format, args);
+  void* result = redisvCommand(redis_.get(), format, args);
   va_end(args);
+  thread_synchronizer_->Signal("RedisCommand.After.Signal");
+  thread_synchronizer_->Wait("RedisCommand.After.Wait");
 
-  if (redis_->err) {
-    // If we have just learned about some problem, try reconnecting right away.
-    next_reconnect_at_ms_ = timer_->NowMs();
-  }
   return RedisReply(static_cast<redisReply*>(result));
 }
 
-void RedisCache::LogRedisContextError(const char* cause) {
-  if (redis_ == nullptr) {
-    // Can happen if Reconnect() failed to allocate context
+void RedisCache::LogRedisContextError(redisContext* context,
+                                      const char* cause) {
+  if (context == nullptr) {
+    // Can happen if EnsureConnection() failed to allocate context
     message_handler_->Message(
         kError, "%s: unknown error (redis context is not available)", cause);
   } else {
     message_handler_->Message(kError, "%s: err flags is %d, %s",
-                              cause, redis_->err, redis_->errstr);
+                              cause, context->err, context->errstr);
   }
 }
 
 bool RedisCache::ValidateRedisReply(const RedisReply& reply,
                                     std::initializer_list<int> valid_types,
                                     const char* command_executed) {
-  if (reply == nullptr) {
-    LogRedisContextError(command_executed);
-    return false;
+  {
+    ScopedMutex lock(state_mutex_.get());
+    if (state_ != kConnected) {
+      // We should not have made a request to Redis at all.
+      // Thus, reply is non-existent and there are no errors to log.
+      DCHECK(!reply);
+      return false;
+    }
   }
-  if (reply->type == REDIS_REPLY_ERROR) {
+  bool valid = false;
+  if (reply == nullptr) {
+    LogRedisContextError(redis_.get(), command_executed);
+  } else if (reply->type == REDIS_REPLY_ERROR) {
     GoogleString error(reply->str, reply->len);
     LOG(DFATAL) << command_executed << ": redis returned error: " << error;
     message_handler_->Message(kError, "%s: redis returned error: %s",
                               command_executed, error.c_str());
-    return false;
-  }
-  for (int type : valid_types) {
-    if (reply->type == type) {
-      return true;
+  } else {
+    for (int type : valid_types) {
+      if (reply->type == type) {
+        valid = true;
+      }
+    }
+    if (!valid) {
+      LOG(DFATAL) << command_executed
+                  << ": unexpected reply type from redis: " << reply->type;
+      message_handler_->Message(kError,
+                                "%s: unexpected reply type from redis: %d",
+                                command_executed, reply->type);
     }
   }
-  LOG(DFATAL) << command_executed
-              << ": unexpected reply type from redis: " << reply->type;
-  message_handler_->Message(kError, "%s: unexpected reply type from redis: %d",
-                            command_executed, reply->type);
-  return false;
+  ScopedMutex lock(state_mutex_.get());
+  UpdateState();
+  return valid;
 }
 
 }  // namespace net_instaweb
