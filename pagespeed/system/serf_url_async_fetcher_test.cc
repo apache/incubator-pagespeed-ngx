@@ -73,8 +73,8 @@ namespace net_instaweb {
 
 namespace {
 const int kThreadedPollMs = 200;
-const int kWaitTimeoutMs = 5 * 1000;
 const int kFetcherTimeoutMs = 5 * 1000;
+const int kFetcherTimeoutValgrindMs = 20 * 1000;
 
 const int kModpagespeedSite = 0;  // TODO(matterbury): These should be an enum?
 const int kGoogleFavicon = 1;
@@ -148,11 +148,16 @@ class SerfUrlAsyncFetcherTest : public ::testing::Test {
   SerfUrlAsyncFetcherTest()
       : thread_system_(Platform::CreateThreadSystem()),
         message_handler_(thread_system_->NewMutex()),
-        flaky_retries_(0) {
+        flaky_retries_(0),
+        fetcher_timeout_ms_(FetcherTimeoutMs()) {
   }
 
   virtual void SetUp() {
     SetUpWithProxy("");
+  }
+
+  static int64 FetcherTimeoutMs() {
+    return RunningOnValgrind() ? kFetcherTimeoutValgrindMs : kFetcherTimeoutMs;
   }
 
   void SetUpWithProxy(const char* proxy) {
@@ -171,7 +176,7 @@ class SerfUrlAsyncFetcherTest : public ::testing::Test {
     serf_url_async_fetcher_.reset(
         new SerfUrlAsyncFetcher(proxy, pool_, thread_system_.get(),
                                 statistics_.get(), timer_.get(),
-                                kFetcherTimeoutMs, &message_handler_));
+                                fetcher_timeout_ms_, &message_handler_));
     mutex_.reset(thread_system_->NewMutex());
     AddTestUrl(StrCat("http:", fetch_test_domain,
                       "/mod_pagespeed_example/index.html"),
@@ -416,6 +421,7 @@ class SerfUrlAsyncFetcherTest : public ::testing::Test {
   GoogleString https_favicon_url_;
   GoogleString favicon_head_;
   int64 flaky_retries_;
+  int64 fetcher_timeout_ms_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcherTest);
@@ -525,7 +531,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
   }
   StartFetches(kModpagespeedSite, kGoogleLogo);
   serf_url_async_fetcher_->WaitForActiveFetches(
-      kWaitTimeoutMs, &message_handler_,
+      fetcher_timeout_ms_, &message_handler_,
       SerfUrlAsyncFetcher::kThreadedOnly);
   EXPECT_EQ(0, ActiveFetches());
 }
@@ -604,13 +610,13 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
     ASSERT_EQ(1, WaitTillDone(kCgiSlowJs, kCgiSlowJs));
     if (timeouts->Get() == 1) {
       int64 elapsed_ms = timer_->NowMs() - start_ms;
-      EXPECT_LE(kFetcherTimeoutMs, elapsed_ms);
+      EXPECT_LE(fetcher_timeout_ms_, elapsed_ms);
       ASSERT_TRUE(fetches_[kCgiSlowJs]->IsDone());
       EXPECT_FALSE(fetches_[kCgiSlowJs]->success());
 
       int time_duration =
           statistics_->GetVariable(SerfStats::kSerfFetchTimeDurationMs)->Get();
-      EXPECT_LE(kFetcherTimeoutMs, time_duration);
+      EXPECT_LE(fetcher_timeout_ms_, time_duration);
       break;
     }
   }
@@ -990,7 +996,7 @@ This text is less than 500 bytes.
       apr_size_t response_size = STATIC_STRLEN(kResponse);
       apr_socket_send(sock, kResponse, &response_size);
       // Wait for over the timeout to make really sure it times out.
-      WaitForHangupOrTimeout(sock, kFetcherTimeoutMs * 1000 * 2);
+      WaitForHangupOrTimeout(sock, FetcherTimeoutMs() * 1000 * 2);
       apr_socket_close(sock);
     }
 
