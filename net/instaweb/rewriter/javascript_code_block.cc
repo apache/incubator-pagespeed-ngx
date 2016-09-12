@@ -28,8 +28,7 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/js/js_minify.h"
-
-namespace pagespeed { namespace js { struct JsTokenizerPatterns; } }
+#include "pagespeed/kernel/js/js_tokenizer.h"
 
 namespace net_instaweb {
 
