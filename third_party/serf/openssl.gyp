@@ -63,6 +63,7 @@
       ],
       'cflags': [
         '-D_POSIX_C_SOURCE=200112L',
+        '-std=c99',
       ],
       'defines': [ 'BORINGSSL_IMPLEMENTATION',
                    'BORINGSSL_NO_STATIC_INITIALIZER',

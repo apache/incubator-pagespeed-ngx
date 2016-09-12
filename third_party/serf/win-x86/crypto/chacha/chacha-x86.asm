@@ -272,13 +272,11 @@ L$004loop:
 	xor	esi,DWORD [36+ebx]
 	xor	edx,DWORD [48+ebx]
 	xor	edi,DWORD [56+ebx]
-	mov	DWORD [16+esp],ebp
-	mov	ebp,DWORD [esp]
-	mov	DWORD [32+esp],ecx
-	mov	DWORD [36+esp],esi
-	mov	DWORD [48+esp],edx
-	mov	DWORD [56+esp],edi
-	mov	DWORD [eax],ebp
+	mov	DWORD [16+eax],ebp
+	mov	DWORD [32+eax],ecx
+	mov	DWORD [36+eax],esi
+	mov	DWORD [48+eax],edx
+	mov	DWORD [56+eax],edi
 	mov	ebp,DWORD [4+esp]
 	mov	ecx,DWORD [8+esp]
 	mov	esi,DWORD [12+esp]
@@ -295,42 +293,34 @@ L$004loop:
 	xor	edx,DWORD [20+ebx]
 	xor	edi,DWORD [24+ebx]
 	mov	DWORD [4+eax],ebp
-	mov	ebp,DWORD [16+esp]
 	mov	DWORD [8+eax],ecx
 	mov	DWORD [12+eax],esi
-	mov	DWORD [16+eax],ebp
 	mov	DWORD [20+eax],edx
 	mov	DWORD [24+eax],edi
-	mov	ecx,DWORD [28+esp]
-	mov	edx,DWORD [32+esp]
-	mov	edi,DWORD [36+esp]
-	add	ecx,DWORD [92+esp]
-	mov	ebp,DWORD [40+esp]
-	xor	ecx,DWORD [28+ebx]
+	mov	ebp,DWORD [28+esp]
+	mov	ecx,DWORD [40+esp]
 	mov	esi,DWORD [44+esp]
-	mov	DWORD [28+eax],ecx
-	mov	DWORD [32+eax],edx
-	mov	DWORD [36+eax],edi
-	add	ebp,DWORD [104+esp]
-	add	esi,DWORD [108+esp]
-	xor	ebp,DWORD [40+ebx]
-	xor	esi,DWORD [44+ebx]
-	mov	DWORD [40+eax],ebp
-	mov	DWORD [44+eax],esi
-	mov	ecx,DWORD [48+esp]
-	mov	esi,DWORD [56+esp]
 	mov	edx,DWORD [52+esp]
 	mov	edi,DWORD [60+esp]
+	add	ebp,DWORD [92+esp]
+	add	ecx,DWORD [104+esp]
+	add	esi,DWORD [108+esp]
 	add	edx,DWORD [116+esp]
 	add	edi,DWORD [124+esp]
+	xor	ebp,DWORD [28+ebx]
+	xor	ecx,DWORD [40+ebx]
+	xor	esi,DWORD [44+ebx]
 	xor	edx,DWORD [52+ebx]
 	xor	edi,DWORD [60+ebx]
 	lea	ebx,[64+ebx]
-	mov	DWORD [48+eax],ecx
+	mov	DWORD [28+eax],ebp
+	mov	ebp,DWORD [esp]
+	mov	DWORD [40+eax],ecx
 	mov	ecx,DWORD [160+esp]
+	mov	DWORD [44+eax],esi
 	mov	DWORD [52+eax],edx
-	mov	DWORD [56+eax],esi
 	mov	DWORD [60+eax],edi
+	mov	DWORD [eax],ebp
 	lea	eax,[64+eax]
 	sub	ecx,64
 	jnz	NEAR L$003outer_loop
@@ -723,14 +713,24 @@ L$010loop:
 	punpcklqdq	xmm6,xmm7
 	punpckhqdq	xmm1,xmm2
 	punpckhqdq	xmm3,xmm7
-	movdqa	[ebx-128],xmm0
+	movdqu	xmm4,[esi-128]
+	movdqu	xmm5,[esi-64]
+	movdqu	xmm2,[esi]
+	movdqu	xmm7,[64+esi]
+	lea	esi,[16+esi]
+	pxor	xmm4,xmm0
 	movdqa	xmm0,[ebx-64]
-	movdqa	[ebx-112],xmm1
-	movdqa	[ebx-96],xmm6
-	movdqa	[ebx-80],xmm3
+	pxor	xmm5,xmm1
 	movdqa	xmm1,[ebx-48]
+	pxor	xmm6,xmm2
 	movdqa	xmm2,[ebx-32]
+	pxor	xmm7,xmm3
 	movdqa	xmm3,[ebx-16]
+	movdqu	[edi-128],xmm4
+	movdqu	[edi-64],xmm5
+	movdqu	[edi],xmm6
+	movdqu	[64+edi],xmm7
+	lea	edi,[16+edi]
 	paddd	xmm0,[ebp-64]
 	paddd	xmm1,[ebp-48]
 	paddd	xmm2,[ebp-32]
@@ -747,14 +747,24 @@ L$010loop:
 	punpcklqdq	xmm6,xmm7
 	punpckhqdq	xmm1,xmm2
 	punpckhqdq	xmm3,xmm7
-	movdqa	[ebx-64],xmm0
+	movdqu	xmm4,[esi-128]
+	movdqu	xmm5,[esi-64]
+	movdqu	xmm2,[esi]
+	movdqu	xmm7,[64+esi]
+	lea	esi,[16+esi]
+	pxor	xmm4,xmm0
 	movdqa	xmm0,[ebx]
-	movdqa	[ebx-48],xmm1
-	movdqa	[ebx-32],xmm6
-	movdqa	[ebx-16],xmm3
+	pxor	xmm5,xmm1
 	movdqa	xmm1,[16+ebx]
+	pxor	xmm6,xmm2
 	movdqa	xmm2,[32+ebx]
+	pxor	xmm7,xmm3
 	movdqa	xmm3,[48+ebx]
+	movdqu	[edi-128],xmm4
+	movdqu	[edi-64],xmm5
+	movdqu	[edi],xmm6
+	movdqu	[64+edi],xmm7
+	lea	edi,[16+edi]
 	paddd	xmm0,[ebp]
 	paddd	xmm1,[16+ebp]
 	paddd	xmm2,[32+ebp]
@@ -771,14 +781,24 @@ L$010loop:
 	punpcklqdq	xmm6,xmm7
 	punpckhqdq	xmm1,xmm2
 	punpckhqdq	xmm3,xmm7
-	movdqa	[ebx],xmm0
+	movdqu	xmm4,[esi-128]
+	movdqu	xmm5,[esi-64]
+	movdqu	xmm2,[esi]
+	movdqu	xmm7,[64+esi]
+	lea	esi,[16+esi]
+	pxor	xmm4,xmm0
 	movdqa	xmm0,[64+ebx]
-	movdqa	[16+ebx],xmm1
-	movdqa	[32+ebx],xmm6
-	movdqa	[48+ebx],xmm3
+	pxor	xmm5,xmm1
 	movdqa	xmm1,[80+ebx]
+	pxor	xmm6,xmm2
 	movdqa	xmm2,[96+ebx]
+	pxor	xmm7,xmm3
 	movdqa	xmm3,[112+ebx]
+	movdqu	[edi-128],xmm4
+	movdqu	[edi-64],xmm5
+	movdqu	[edi],xmm6
+	movdqu	[64+edi],xmm7
+	lea	edi,[16+edi]
 	paddd	xmm0,[64+ebp]
 	paddd	xmm1,[80+ebp]
 	paddd	xmm2,[96+ebp]
@@ -795,60 +815,20 @@ L$010loop:
 	punpcklqdq	xmm6,xmm7
 	punpckhqdq	xmm1,xmm2
 	punpckhqdq	xmm3,xmm7
-	movdqa	[64+ebx],xmm0
-	movdqa	[80+ebx],xmm1
-	movdqa	[96+ebx],xmm6
-	movdqa	[112+ebx],xmm3
-	movdqu	xmm0,[esi-128]
-	movdqu	xmm1,[esi-112]
-	movdqu	xmm2,[esi-96]
-	movdqu	xmm3,[esi-80]
-	pxor	xmm0,[ebx-128]
-	pxor	xmm1,[ebx-64]
-	pxor	xmm2,[ebx]
-	pxor	xmm3,[64+ebx]
-	movdqu	[edi-128],xmm0
-	movdqu	[edi-112],xmm1
-	movdqu	[edi-96],xmm2
-	movdqu	[edi-80],xmm3
-	movdqu	xmm0,[esi-64]
-	movdqu	xmm1,[esi-48]
-	movdqu	xmm2,[esi-32]
-	movdqu	xmm3,[esi-16]
-	pxor	xmm0,[ebx-112]
-	pxor	xmm1,[ebx-48]
-	pxor	xmm2,[16+ebx]
-	pxor	xmm3,[80+ebx]
-	movdqu	[edi-64],xmm0
-	movdqu	[edi-48],xmm1
-	movdqu	[edi-32],xmm2
-	movdqu	[edi-16],xmm3
-	movdqu	xmm0,[esi]
-	movdqu	xmm1,[16+esi]
-	movdqu	xmm2,[32+esi]
-	movdqu	xmm3,[48+esi]
-	pxor	xmm0,[ebx-96]
-	pxor	xmm1,[ebx-32]
-	pxor	xmm2,[32+ebx]
-	pxor	xmm3,[96+ebx]
-	movdqu	[edi],xmm0
-	movdqu	[16+edi],xmm1
-	movdqu	[32+edi],xmm2
-	movdqu	[48+edi],xmm3
-	movdqu	xmm0,[64+esi]
-	movdqu	xmm1,[80+esi]
-	movdqu	xmm2,[96+esi]
-	movdqu	xmm3,[112+esi]
-	pxor	xmm0,[ebx-80]
-	pxor	xmm1,[ebx-16]
-	pxor	xmm2,[48+ebx]
-	pxor	xmm3,[112+ebx]
-	movdqu	[64+edi],xmm0
-	movdqu	[80+edi],xmm1
-	movdqu	[96+edi],xmm2
-	movdqu	[112+edi],xmm3
-	lea	esi,[256+esi]
-	lea	edi,[256+edi]
+	movdqu	xmm4,[esi-128]
+	movdqu	xmm5,[esi-64]
+	movdqu	xmm2,[esi]
+	movdqu	xmm7,[64+esi]
+	lea	esi,[208+esi]
+	pxor	xmm4,xmm0
+	pxor	xmm5,xmm1
+	pxor	xmm6,xmm2
+	pxor	xmm7,xmm3
+	movdqu	[edi-128],xmm4
+	movdqu	[edi-64],xmm5
+	movdqu	[edi],xmm6
+	movdqu	[64+edi],xmm7
+	lea	edi,[208+edi]
 	sub	ecx,256
 	jnc	NEAR L$009outer_loop
 	add	ecx,256

@@ -260,13 +260,11 @@ L004loop:
 	xorl	36(%ebx),%esi
 	xorl	48(%ebx),%edx
 	xorl	56(%ebx),%edi
-	movl	%ebp,16(%esp)
-	movl	(%esp),%ebp
-	movl	%ecx,32(%esp)
-	movl	%esi,36(%esp)
-	movl	%edx,48(%esp)
-	movl	%edi,56(%esp)
-	movl	%ebp,(%eax)
+	movl	%ebp,16(%eax)
+	movl	%ecx,32(%eax)
+	movl	%esi,36(%eax)
+	movl	%edx,48(%eax)
+	movl	%edi,56(%eax)
 	movl	4(%esp),%ebp
 	movl	8(%esp),%ecx
 	movl	12(%esp),%esi
@@ -283,42 +281,34 @@ L004loop:
 	xorl	20(%ebx),%edx
 	xorl	24(%ebx),%edi
 	movl	%ebp,4(%eax)
-	movl	16(%esp),%ebp
 	movl	%ecx,8(%eax)
 	movl	%esi,12(%eax)
-	movl	%ebp,16(%eax)
 	movl	%edx,20(%eax)
 	movl	%edi,24(%eax)
-	movl	28(%esp),%ecx
-	movl	32(%esp),%edx
-	movl	36(%esp),%edi
-	addl	92(%esp),%ecx
-	movl	40(%esp),%ebp
-	xorl	28(%ebx),%ecx
+	movl	28(%esp),%ebp
+	movl	40(%esp),%ecx
 	movl	44(%esp),%esi
-	movl	%ecx,28(%eax)
-	movl	%edx,32(%eax)
-	movl	%edi,36(%eax)
-	addl	104(%esp),%ebp
-	addl	108(%esp),%esi
-	xorl	40(%ebx),%ebp
-	xorl	44(%ebx),%esi
-	movl	%ebp,40(%eax)
-	movl	%esi,44(%eax)
-	movl	48(%esp),%ecx
-	movl	56(%esp),%esi
 	movl	52(%esp),%edx
 	movl	60(%esp),%edi
+	addl	92(%esp),%ebp
+	addl	104(%esp),%ecx
+	addl	108(%esp),%esi
 	addl	116(%esp),%edx
 	addl	124(%esp),%edi
+	xorl	28(%ebx),%ebp
+	xorl	40(%ebx),%ecx
+	xorl	44(%ebx),%esi
 	xorl	52(%ebx),%edx
 	xorl	60(%ebx),%edi
 	leal	64(%ebx),%ebx
-	movl	%ecx,48(%eax)
+	movl	%ebp,28(%eax)
+	movl	(%esp),%ebp
+	movl	%ecx,40(%eax)
 	movl	160(%esp),%ecx
+	movl	%esi,44(%eax)
 	movl	%edx,52(%eax)
-	movl	%esi,56(%eax)
 	movl	%edi,60(%eax)
+	movl	%ebp,(%eax)
 	leal	64(%eax),%eax
 	subl	$64,%ecx
 	jnz	L003outer_loop
@@ -712,14 +702,24 @@ L010loop:
 	punpcklqdq	%xmm7,%xmm6
 	punpckhqdq	%xmm2,%xmm1
 	punpckhqdq	%xmm7,%xmm3
-	movdqa	%xmm0,-128(%ebx)
+	movdqu	-128(%esi),%xmm4
+	movdqu	-64(%esi),%xmm5
+	movdqu	(%esi),%xmm2
+	movdqu	64(%esi),%xmm7
+	leal	16(%esi),%esi
+	pxor	%xmm0,%xmm4
 	movdqa	-64(%ebx),%xmm0
-	movdqa	%xmm1,-112(%ebx)
-	movdqa	%xmm6,-96(%ebx)
-	movdqa	%xmm3,-80(%ebx)
+	pxor	%xmm1,%xmm5
 	movdqa	-48(%ebx),%xmm1
+	pxor	%xmm2,%xmm6
 	movdqa	-32(%ebx),%xmm2
+	pxor	%xmm3,%xmm7
 	movdqa	-16(%ebx),%xmm3
+	movdqu	%xmm4,-128(%edi)
+	movdqu	%xmm5,-64(%edi)
+	movdqu	%xmm6,(%edi)
+	movdqu	%xmm7,64(%edi)
+	leal	16(%edi),%edi
 	paddd	-64(%ebp),%xmm0
 	paddd	-48(%ebp),%xmm1
 	paddd	-32(%ebp),%xmm2
@@ -736,14 +736,24 @@ L010loop:
 	punpcklqdq	%xmm7,%xmm6
 	punpckhqdq	%xmm2,%xmm1
 	punpckhqdq	%xmm7,%xmm3
-	movdqa	%xmm0,-64(%ebx)
+	movdqu	-128(%esi),%xmm4
+	movdqu	-64(%esi),%xmm5
+	movdqu	(%esi),%xmm2
+	movdqu	64(%esi),%xmm7
+	leal	16(%esi),%esi
+	pxor	%xmm0,%xmm4
 	movdqa	(%ebx),%xmm0
-	movdqa	%xmm1,-48(%ebx)
-	movdqa	%xmm6,-32(%ebx)
-	movdqa	%xmm3,-16(%ebx)
+	pxor	%xmm1,%xmm5
 	movdqa	16(%ebx),%xmm1
+	pxor	%xmm2,%xmm6
 	movdqa	32(%ebx),%xmm2
+	pxor	%xmm3,%xmm7
 	movdqa	48(%ebx),%xmm3
+	movdqu	%xmm4,-128(%edi)
+	movdqu	%xmm5,-64(%edi)
+	movdqu	%xmm6,(%edi)
+	movdqu	%xmm7,64(%edi)
+	leal	16(%edi),%edi
 	paddd	(%ebp),%xmm0
 	paddd	16(%ebp),%xmm1
 	paddd	32(%ebp),%xmm2
@@ -760,14 +770,24 @@ L010loop:
 	punpcklqdq	%xmm7,%xmm6
 	punpckhqdq	%xmm2,%xmm1
 	punpckhqdq	%xmm7,%xmm3
-	movdqa	%xmm0,(%ebx)
+	movdqu	-128(%esi),%xmm4
+	movdqu	-64(%esi),%xmm5
+	movdqu	(%esi),%xmm2
+	movdqu	64(%esi),%xmm7
+	leal	16(%esi),%esi
+	pxor	%xmm0,%xmm4
 	movdqa	64(%ebx),%xmm0
-	movdqa	%xmm1,16(%ebx)
-	movdqa	%xmm6,32(%ebx)
-	movdqa	%xmm3,48(%ebx)
+	pxor	%xmm1,%xmm5
 	movdqa	80(%ebx),%xmm1
+	pxor	%xmm2,%xmm6
 	movdqa	96(%ebx),%xmm2
+	pxor	%xmm3,%xmm7
 	movdqa	112(%ebx),%xmm3
+	movdqu	%xmm4,-128(%edi)
+	movdqu	%xmm5,-64(%edi)
+	movdqu	%xmm6,(%edi)
+	movdqu	%xmm7,64(%edi)
+	leal	16(%edi),%edi
 	paddd	64(%ebp),%xmm0
 	paddd	80(%ebp),%xmm1
 	paddd	96(%ebp),%xmm2
@@ -784,60 +804,20 @@ L010loop:
 	punpcklqdq	%xmm7,%xmm6
 	punpckhqdq	%xmm2,%xmm1
 	punpckhqdq	%xmm7,%xmm3
-	movdqa	%xmm0,64(%ebx)
-	movdqa	%xmm1,80(%ebx)
-	movdqa	%xmm6,96(%ebx)
-	movdqa	%xmm3,112(%ebx)
-	movdqu	-128(%esi),%xmm0
-	movdqu	-112(%esi),%xmm1
-	movdqu	-96(%esi),%xmm2
-	movdqu	-80(%esi),%xmm3
-	pxor	-128(%ebx),%xmm0
-	pxor	-64(%ebx),%xmm1
-	pxor	(%ebx),%xmm2
-	pxor	64(%ebx),%xmm3
-	movdqu	%xmm0,-128(%edi)
-	movdqu	%xmm1,-112(%edi)
-	movdqu	%xmm2,-96(%edi)
-	movdqu	%xmm3,-80(%edi)
-	movdqu	-64(%esi),%xmm0
-	movdqu	-48(%esi),%xmm1
-	movdqu	-32(%esi),%xmm2
-	movdqu	-16(%esi),%xmm3
-	pxor	-112(%ebx),%xmm0
-	pxor	-48(%ebx),%xmm1
-	pxor	16(%ebx),%xmm2
-	pxor	80(%ebx),%xmm3
-	movdqu	%xmm0,-64(%edi)
-	movdqu	%xmm1,-48(%edi)
-	movdqu	%xmm2,-32(%edi)
-	movdqu	%xmm3,-16(%edi)
-	movdqu	(%esi),%xmm0
-	movdqu	16(%esi),%xmm1
-	movdqu	32(%esi),%xmm2
-	movdqu	48(%esi),%xmm3
-	pxor	-96(%ebx),%xmm0
-	pxor	-32(%ebx),%xmm1
-	pxor	32(%ebx),%xmm2
-	pxor	96(%ebx),%xmm3
-	movdqu	%xmm0,(%edi)
-	movdqu	%xmm1,16(%edi)
-	movdqu	%xmm2,32(%edi)
-	movdqu	%xmm3,48(%edi)
-	movdqu	64(%esi),%xmm0
-	movdqu	80(%esi),%xmm1
-	movdqu	96(%esi),%xmm2
-	movdqu	112(%esi),%xmm3
-	pxor	-80(%ebx),%xmm0
-	pxor	-16(%ebx),%xmm1
-	pxor	48(%ebx),%xmm2
-	pxor	112(%ebx),%xmm3
-	movdqu	%xmm0,64(%edi)
-	movdqu	%xmm1,80(%edi)
-	movdqu	%xmm2,96(%edi)
-	movdqu	%xmm3,112(%edi)
-	leal	256(%esi),%esi
-	leal	256(%edi),%edi
+	movdqu	-128(%esi),%xmm4
+	movdqu	-64(%esi),%xmm5
+	movdqu	(%esi),%xmm2
+	movdqu	64(%esi),%xmm7
+	leal	208(%esi),%esi
+	pxor	%xmm0,%xmm4
+	pxor	%xmm1,%xmm5
+	pxor	%xmm2,%xmm6
+	pxor	%xmm3,%xmm7
+	movdqu	%xmm4,-128(%edi)
+	movdqu	%xmm5,-64(%edi)
+	movdqu	%xmm6,(%edi)
+	movdqu	%xmm7,64(%edi)
+	leal	208(%edi),%edi
 	subl	$256,%ecx
 	jnc	L009outer_loop
 	addl	$256,%ecx
