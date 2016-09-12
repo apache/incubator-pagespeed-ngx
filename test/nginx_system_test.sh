@@ -323,7 +323,8 @@ BEACON_HANDLER="ngx_pagespeed_beacon"
 STATISTICS_HANDLER="ngx_pagespeed_statistics"
 GLOBAL_STATISTICS_HANDLER="ngx_pagespeed_global_statistics"
 MESSAGES_HANDLER="ngx_pagespeed_message"
-STATISTICS_URL=http://$PRIMARY_HOSTNAME/ngx_pagespeed_statistics
+STATISTICS_URL=http://$PRIMARY_HOSTNAME/$STATISTICS_HANDLER
+GLOBAL_STATISTICS_URL=http://$PRIMARY_HOSTNAME/$GLOBAL_STATISTICS_HANDLER
 
 # An expected failure can be indicated like: "~In-place resource optimization~"
 PAGESPEED_EXPECTED_FAILURES="
