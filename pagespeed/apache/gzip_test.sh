@@ -50,7 +50,6 @@ start_test Efficacy of ModPagespeedFetchWithGzip
 
 # TODO(sligocki): The serf_fetch_bytes_count should be available on
 # this vhost's pagespeed_admin/statistics page. Why isn't it?
-GLOBAL_STATISTICS_URL="$PRIMARY_SERVER/pagespeed_global_admin/statistics?PageSpeed=off"
 STATS=$OUTDIR/gzip_efficacy_stats
 $WGET_DUMP $GLOBAL_STATISTICS_URL > $STATS.1
 

@@ -1582,7 +1582,30 @@ void RewriteContext::OutputCacheMiss() {
 
 void RewriteContext::ObtainLockForCreation(ServerContext* server_context,
                                            Function* callback) {
-  if (ScheduleViaCentralController() && !has_parent()) {
+  // Because the CentralController can block indefinitely, it's important that
+  // any given sequence of rewrite only requests a single lock from it. For
+  // instance, if all the image rewrites within a css rewrite requested a
+  // controller lock it would be at best slow and could easily deadlock if
+  // insufficient "rewrite tokens" are available. In general we prevent this by
+  // only allowing "root" contexts to obtain a lock, ie: those without a parent.
+  // Unfortunately, in the case of IPRO the "interesting" context is nested
+  // inside an InPlaceRewriteContext. We don't want to require all IPRO requests
+  // go via the controller, since many are fast. So instead we have an
+  // escape-hatch that allows InPlaceRewriteContext to declare itself safe for
+  // nesting.
+  bool context_safe_for_controller = !has_parent();
+  if (has_parent() && !parent_->has_parent()) {
+    context_safe_for_controller =
+        parent_->ScheduleNestedContextViaCentalController();
+    if (context_safe_for_controller && parent_->num_nested() > 1) {
+      // If a context declares itself safe for nesting but actually has multiple
+      // nested contexts, it can cause the problems described above.
+      context_safe_for_controller = false;
+      LOG(DFATAL) << "Parent context declared itself safe for nesting, but it "
+                  << "has " << parent_->num_nested() << " children";
+    }
+  }
+  if (ScheduleViaCentralController() && context_safe_for_controller) {
     server_context->central_controller()->ScheduleRewrite(
         new TryLockFunction(LockName(), Driver()->rewrite_worker(), callback,
                             this));

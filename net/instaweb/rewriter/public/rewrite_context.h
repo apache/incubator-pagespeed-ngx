@@ -629,6 +629,15 @@ class RewriteContext {
   // true, allowing more intelligent prioritization.
   virtual bool ScheduleViaCentralController() { return false; }
 
+  // In general, ScheduleViaCentralController() is ignored for nested Contexts.
+  // However, in the case of (at least) IPRO we need to schedule the inner
+  // context via the Controller. This can be overridden by such contexts, which
+  // are DHCHECKed to have at most one nested context.
+  // See longer comment in ObtainLockForCreation implementation.
+  virtual bool ScheduleNestedContextViaCentalController() const {
+    return false;
+  }
+
   // Obtain a lock to create the resource. callback may not be invoked for an
   // indeterminate time.
   void ObtainLockForCreation(ServerContext* server_context, Function* callback);

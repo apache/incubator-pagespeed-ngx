@@ -114,6 +114,12 @@ class InPlaceRewriteContext : public SingleRewriteContext {
   // resource than wait for the optimization.
   virtual bool CreationLockBeforeStartFetch() const { return false; }
 
+  // The context nested inside this context can be scheduled via the
+  // CentralController. See comment in RewriteContext::ObtainLockForCreation.
+  bool ScheduleNestedContextViaCentalController() const override {
+    return true;
+  }
+
  private:
   friend class RecordingFetch;
   // Implements RewriteContext::Harvest().

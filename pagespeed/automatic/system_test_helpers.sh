@@ -139,6 +139,8 @@ EXAMPLE_ROOT=$PRIMARY_SERVER/mod_pagespeed_example
 # Currently we are, so disable that so that it doesn't spoil our stats.
 DEFAULT_STATISTICS_URL=$PRIMARY_SERVER/mod_pagespeed_statistics?PageSpeed=off
 STATISTICS_URL=${STATISTICS_URL:-$DEFAULT_STATISTICS_URL}
+DEFAULT_GLOBAL_STATISTICS_URL="$PRIMARY_SERVER/pagespeed_global_admin/statistics?PageSpeed=off"
+GLOBAL_STATISTICS_URL=${GLOBAL_STATISTICS_URL:-$DEFAULT_GLOBAL_STATISTICS_URL}
 BAD_RESOURCE_URL=$PRIMARY_SERVER/mod_pagespeed/W.bad.pagespeed.cf.hash.css
 MESSAGE_URL=$PRIMARY_SERVER/pagespeed_admin/message_history
 CONSOLE_URL=$PRIMARY_SERVER/pagespeed_admin/console
