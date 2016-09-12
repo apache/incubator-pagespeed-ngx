@@ -71,11 +71,9 @@ LazyloadImagesFilter::~LazyloadImagesFilter() {}
 void LazyloadImagesFilter::DetermineEnabled(GoogleString* disabled_reason) {
   RewriterHtmlApplication::Status should_apply = ShouldApply(driver());
   set_is_enabled(should_apply == RewriterHtmlApplication::ACTIVE);
-  if (!driver()->flushing_early()) {
-    driver()->log_record()->LogRewriterHtmlStatus(
-        RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
-        should_apply);
-  }
+  driver()->log_record()->LogRewriterHtmlStatus(
+      RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
+      should_apply);
 }
 
 void LazyloadImagesFilter::StartDocumentImpl() {
@@ -108,9 +106,8 @@ RewriterHtmlApplication::Status LazyloadImagesFilter::ShouldApply(
   if (!driver->request_properties()->SupportsLazyloadImages()) {
     return RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED;
   }
-  if (driver->flushing_early() ||
-      (driver->request_headers() != NULL &&
-       driver->request_headers()->IsXmlHttpRequest())) {
+  if (driver->request_headers() != nullptr &&
+      driver->request_headers()->IsXmlHttpRequest()) {
     return RewriterHtmlApplication::DISABLED;
   }
   CriticalImagesFinder* finder =

@@ -84,7 +84,6 @@ class DomainRewriteFilter;
 class FallbackPropertyPage;
 class FileSystem;
 class FlushEarlyInfo;
-class FlushEarlyRenderInfo;
 class HtmlWriterFilter;
 class MessageHandler;
 class RequestProperties;
@@ -1073,18 +1072,6 @@ class RewriteDriver : public HtmlParse {
   // We expect to this method to be called on the HTML parser thread.
   void increment_num_inline_preview_images();
 
-  // We expect to this method to be called on the HTML parser thread.
-  // Returns the number of pagespeed resources flushed by flush early flow.
-  int num_flushed_early_pagespeed_resources() const {
-    return num_flushed_early_pagespeed_resources_;
-  }
-
-  // We expect to this method to be called on the HTML parser thread or after
-  // parsing is completed.
-  void increment_num_flushed_early_pagespeed_resources() {
-    ++num_flushed_early_pagespeed_resources_;
-  }
-
   // Increment reference count for misc. async ops that need the RewriteDriver
   // kept alive.
   void IncrementAsyncEventsCount();
@@ -1104,12 +1091,6 @@ class RewriteDriver : public HtmlParse {
   // that browsers should parse it as XHTML.
   XhtmlStatus MimeTypeXhtmlStatus();
 
-  void set_flushed_early(bool x) { flushed_early_ = x; }
-  bool flushed_early() const { return flushed_early_; }
-
-  void set_flushing_early(bool x) { flushing_early_ = x; }
-  bool flushing_early() const { return flushing_early_; }
-
   void set_is_lazyload_script_flushed(bool x) {
     is_lazyload_script_flushed_ = x;
   }
@@ -1119,18 +1100,11 @@ class RewriteDriver : public HtmlParse {
   // This method is not thread-safe. Call it only from the html parser thread.
   FlushEarlyInfo* flush_early_info();
 
-  FlushEarlyRenderInfo* flush_early_render_info() const;
-
   // dependency_tracker()->RegisterDependencyCandidate and
   // ReportDependencyCandidate can be called from any thread.
   DependencyTracker* dependency_tracker() const {
     return dependency_tracker_.get();
   }
-
-  // Takes the ownership of flush_early_render_info. This method is not
-  // thread-safe. Call it only from the html parser thread.
-  void set_flush_early_render_info(
-      FlushEarlyRenderInfo* flush_early_render_info);
 
   // Determines whether we are currently in Debug mode; meaning that the
   // site owner or user has enabled filter kDebug.
@@ -1151,10 +1125,6 @@ class RewriteDriver : public HtmlParse {
   // Generates an unauthorized domain debug comment. Public for unit tests.
   static GoogleString GenerateUnauthorizedDomainDebugComment(
       const GoogleUrl& gurl);
-
-  // Saves the origin headers for a request in flush_early_info so that it can
-  // be used in subsequent request.
-  void SaveOriginalHeaders(const ResponseHeaders& response_headers);
 
   // log_record() always returns a pointer to a valid AbstractLogRecord, owned
   // by the rewrite_driver's request context.
@@ -1567,14 +1537,6 @@ class RewriteDriver : public HtmlParse {
   bool flush_requested_;
   bool flush_occurred_;
 
-  // If it is true, then the bytes were flushed before receiving bytes from the
-  // origin server.
-  bool flushed_early_;
-  // If set to true, then we are using this RewriteDriver to flush HTML to the
-  // user early. This is only set to true when
-  // enable_flush_subresources_experimental is true.
-  bool flushing_early_;
-
   // If it is set to true, then lazyload script is flushed with flush early
   // flow.
   bool is_lazyload_script_flushed_;
@@ -1751,16 +1713,12 @@ class RewriteDriver : public HtmlParse {
   // InlinePreviewFilter.
   int num_inline_preview_images_;
 
-  // Number of flushed early pagespeed rewritten resource.
-  int num_flushed_early_pagespeed_resources_;
-
   // The total number of bytes for which ParseText is called.
   int num_bytes_in_;
 
   DebugFilter* debug_filter_;
 
   scoped_ptr<FlushEarlyInfo> flush_early_info_;
-  scoped_ptr<FlushEarlyRenderInfo> flush_early_render_info_;
   scoped_ptr<DependencyTracker> dependency_tracker_;
 
   bool can_rewrite_resources_;

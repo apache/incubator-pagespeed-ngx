@@ -113,7 +113,6 @@ class RewriteOptions {
     kCachePartialHtmlDeprecated,
     kCanonicalizeJavascriptLibraries,
     kCollapseWhitespace,
-    kCollectFlushEarlyContentFilter,
     kCombineCss,
     kCombineHeads,
     kCombineJavascript,
@@ -260,7 +259,6 @@ class RewriteOptions {
   static const char kEnableCachePurge[];
   static const char kEnableDeferJsExperimental[];
   static const char kEnableExtendedInstrumentation[];
-  static const char kEnableFlushEarlyCriticalCss[];
   static const char kEnableLazyLoadHighResImages[];
   static const char kEnablePrioritizingScripts[];
   static const char kEnabled[];
@@ -272,7 +270,6 @@ class RewriteOptions {
   static const char kFinderPropertiesCacheRefreshTimeMs[];
   static const char kFlushBufferLimitBytes[];
   static const char kFlushHtml[];
-  static const char kFlushMoreResourcesEarlyIfTimePermits[];
   static const char kFollowFlushes[];
   static const char kGoogleFontCssInlineMaxBytes[];
   static const char kForbidAllDisabledFilters[];
@@ -638,7 +635,6 @@ class RewriteOptions {
   };
 
   static const char kCacheExtenderId[];
-  static const char kCollectFlushEarlyContentFilterId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCssImportFlattenerId[];
@@ -1987,13 +1983,6 @@ class RewriteOptions {
     return serve_stale_while_revalidate_threshold_sec_.value();
   }
 
-  void set_enable_flush_early_critical_css(bool x) {
-    set_option(x, &enable_flush_early_critical_css_);
-  }
-  bool enable_flush_early_critical_css() const {
-    return enable_flush_early_critical_css_.value();
-  }
-
   void set_default_cache_html(bool x) { set_option(x, &default_cache_html_); }
   bool default_cache_html() const { return default_cache_html_.value(); }
 
@@ -2329,22 +2318,8 @@ class RewriteOptions {
     set_option(x, &client_domain_rewrite_);
   }
 
-  void set_flush_more_resources_early_if_time_permits(bool x) {
-    set_option(x, &flush_more_resources_early_if_time_permits_);
-  }
-  bool flush_more_resources_early_if_time_permits() const {
-    return flush_more_resources_early_if_time_permits_.value();
-  }
-
   void set_follow_flushes(bool x) { set_option(x, &follow_flushes_); }
   bool follow_flushes() const { return follow_flushes_.value(); }
-
-  void set_flush_more_resources_in_ie_and_firefox(bool x) {
-    set_option(x, &flush_more_resources_in_ie_and_firefox_);
-  }
-  bool flush_more_resources_in_ie_and_firefox() const {
-    return flush_more_resources_in_ie_and_firefox_.value();
-  }
 
   void set_max_prefetch_js_elements(int x) {
     set_option(x, &max_prefetch_js_elements_);
@@ -3888,8 +3863,6 @@ class RewriteOptions {
   // Threshold for serving stale responses while revalidating in background.
   // 0 means don't serve stale content.
   Option<int64> serve_stale_while_revalidate_threshold_sec_;
-  // Whether to flush the inlined critical css rules early.
-  Option<bool> enable_flush_early_critical_css_;
 
   // When default_cache_html_ is false (default) we do not cache
   // input HTML which lacks Cache-Control headers. But, when set true,
@@ -3955,12 +3928,6 @@ class RewriteOptions {
   Option<bool> report_unload_time_;
 
   Option<bool> serve_rewritten_webp_urls_to_any_agent_;
-
-  // Flush more resources if origin is slow to respond.
-  Option<bool> flush_more_resources_early_if_time_permits_;
-
-  // Flush more resources in IE and Firefox.
-  Option<bool> flush_more_resources_in_ie_and_firefox_;
 
   // Number of script elements to prefetch early. Applicable when defer_js
   // filter is enabled.

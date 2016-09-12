@@ -70,7 +70,6 @@ void DedupInlinedImagesFilter::DetermineEnabled(GoogleString* disabled_reason) {
   // they both replace an image with JavaScript, and in both cases we need
   // to disable the filter for certain classes of UA.
   if (!driver()->request_properties()->SupportsLazyloadImages() ||
-      driver()->flushing_early() ||
       (driver()->request_headers() != NULL &&
        driver()->request_headers()->IsXmlHttpRequest())) {
     set_is_enabled(false);

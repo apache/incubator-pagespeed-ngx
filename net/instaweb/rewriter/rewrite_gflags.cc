@@ -252,9 +252,6 @@ DEFINE_int32(psa_idle_flush_time_ms,
              " will be injected. Use a value <= 0 to disable.");
 DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
-DEFINE_bool(enable_flush_early_critical_css, false,
-            "If true, inlined critical css rules are flushed early if both"
-            "flush subresources and critical css filter are enabled");
 DEFINE_bool(use_selectors_for_critical_css, true,
             "Deprecated. Doesn't do anything any more");
 DEFINE_int32(max_inlined_preview_images_index,
@@ -347,13 +344,6 @@ DEFINE_bool(disable_rewrite_on_no_transform, true,
 
 DEFINE_bool(lazyload_highres_images, false,
             "Enables experimental lazy load of high res images.");
-
-DEFINE_bool(flush_more_resources_early_if_time_permits, false,
-            "Flush more resources if origin is slow to respond.");
-
-DEFINE_bool(flush_more_resources_in_ie_and_firefox, false,
-            "Flush more resources if origin is slow to respond in IE and "
-            "Firefox.");
 
 DEFINE_bool(avoid_renaming_introspective_javascript, true,
             "Don't combine, inline, cache extend, or otherwise modify "
@@ -672,10 +662,6 @@ bool RewriteGflags::SetupOptionsOnly(
     options->set_image_limit_rendered_area_percent(
         FLAGS_image_limit_rendered_area_percent);
   }
-  if (WasExplicitlySet("enable_flush_early_critical_css")) {
-    options->set_enable_flush_early_critical_css(
-        FLAGS_enable_flush_early_critical_css);
-  }
   if (WasExplicitlySet("max_inlined_preview_images_index")) {
     options->set_max_inlined_preview_images_index(
         FLAGS_max_inlined_preview_images_index);
@@ -760,15 +746,6 @@ bool RewriteGflags::SetupOptionsOnly(
   if (WasExplicitlySet("disable_background_fetches_for_bots")) {
     options->set_disable_background_fetches_for_bots(
         FLAGS_disable_background_fetches_for_bots);
-  }
-  if (WasExplicitlySet("flush_more_resources_early_if_time_permits")) {
-    options->set_flush_more_resources_early_if_time_permits(
-        FLAGS_flush_more_resources_early_if_time_permits);
-  }
-  // TODO(pulkitg): Remove this flag when this feature gets stabilized.
-  if (WasExplicitlySet("flush_more_resources_in_ie_and_firefox")) {
-    options->set_flush_more_resources_in_ie_and_firefox(
-        FLAGS_flush_more_resources_in_ie_and_firefox);
   }
   if (WasExplicitlySet("lazyload_highres_images")) {
     options->set_lazyload_highres_images(FLAGS_lazyload_highres_images);

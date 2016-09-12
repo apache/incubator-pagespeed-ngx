@@ -22,33 +22,12 @@ option optimize_for = LITE_RUNTIME;
 
 package net_instaweb;
 
-enum FlushEarlyContentType {
-  OTHER = 1;
-  JAVASCRIPT = 2;
-  CSS = 3;
-}
-
-message FlushEarlyResource {  // deprecated.
-  optional string rewritten_url = 1;
-  optional FlushEarlyContentType content_type = 2;
-}
 
 // FlushEarlyInfo stores various information for flushing a request early i.e.
 // before receiving a response form the origin server.
 // NextId: 13
 message FlushEarlyInfo {
-  // ResponseHeaders proto from previous response which is used for subsequent
-  // response for the same html url.
-  optional HttpResponseHeaders response_headers = 1;
-
-  // The html of the page before the <head> element.
-  optional string pre_head = 2;
-
-  repeated string resources = 3;  // deprecated.
-
-  // The resources in the head section for the page.
-  repeated FlushEarlyResource subresource = 4;  // deprecated.
-
+  reserved 1, 2, 3, 4;
   // Domains for which DNS prefetch tags will be inserted in <head>.
   repeated string dns_prefetch_domains = 5;
 
@@ -61,37 +40,5 @@ message FlushEarlyInfo {
   // prefetch tags could be potentially inserted.
   optional int32 total_dns_prefetch_domains_previous = 7;
 
-  // Meta Tag which specifies the content type of the page.
-  optional string content_type_meta_tag = 8;  // deprecated.
-
-  // The HTML for all resource elements that we want to try to flush early.
-  optional string resource_html = 9;
-
-  // Stores the last n fetch latencies (time to first byte from the origin).
-  // Each entry is separated by a comma. Insertion happens at the front and
-  // entry will be deleted from the back.
-  optional string last_n_fetch_latencies = 10;
-
-  // Stores the average fetch latency in milliseconds.
-  optional double average_fetch_latency_ms = 11;
-
-  // Whether the server response has http_only_cookie.
-  optional bool http_only_cookie_present = 12 [ default = false ];
-}
-
-// FlushEarlyRenderInfo stores information for flushing a request early i.e.
-// before receiving a response form the origin server.
-// NextId: 5
-message FlushEarlyRenderInfo {
-  // Url of privately cacheable resources.
-  repeated string private_cacheable_url = 1;
-
-  // Charset of the html document.
-  optional string charset = 2;
-
-  // This is a marker in property cache stating if the entry was ever updated.
-  optional bool updated = 3;
-
-  // Url of public cacheable resources.
-  repeated string public_cacheable_url = 4;
+  reserved 8, 9, 10, 11, 12;
 }

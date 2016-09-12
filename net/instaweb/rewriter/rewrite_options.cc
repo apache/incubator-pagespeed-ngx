@@ -114,8 +114,6 @@ const char RewriteOptions::kEnableAggressiveRewritersForMobile[] =
 const char RewriteOptions::kEnableDeferJsExperimental[] =
     "EnableDeferJsExperimental";
 const char RewriteOptions::kEnableCachePurge[] = "EnableCachePurge";
-const char RewriteOptions::kEnableFlushEarlyCriticalCss[] =
-    "EnableFlushEarlyCriticalCss";
 const char RewriteOptions::kEnableExtendedInstrumentation[] =
     "EnableExtendedInstrumentation";
 const char RewriteOptions::kEnableLazyLoadHighResImages[] =
@@ -134,8 +132,6 @@ const char RewriteOptions::kFinderPropertiesCacheRefreshTimeMs[] =
     "FinderPropertiesCacheRefreshTimeMs";
 const char RewriteOptions::kFlushBufferLimitBytes[] = "FlushBufferLimitBytes";
 const char RewriteOptions::kFlushHtml[] = "FlushHtml";
-const char RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits[] =
-    "FlushMoreResourcesEarlyIfTimePermits";
 const char RewriteOptions::kFollowFlushes[] = "FollowFlushes";
 const char RewriteOptions::kForbidAllDisabledFilters[] =
     "ForbidAllDisabledFilters";
@@ -390,7 +386,6 @@ const char RewriteOptions::kNullOption[] = "";
 
 // RewriteFilter prefixes
 const char RewriteOptions::kCacheExtenderId[] = "ce";
-const char RewriteOptions::kCollectFlushEarlyContentFilterId[] = "fe";
 const char RewriteOptions::kCssCombinerId[] = "cc";
 const char RewriteOptions::kCssFilterId[] = "cf";
 const char RewriteOptions::kCssImportFlattenerId[] = "if";
@@ -759,9 +754,6 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
         {RewriteOptions::kCanonicalizeJavascriptLibraries, "ij",
          "Canonicalize Javascript library URLs"},
         {RewriteOptions::kCollapseWhitespace, "cw", "Collapse Whitespace"},
-        {RewriteOptions::kCollectFlushEarlyContentFilter,
-         RewriteOptions::kCollectFlushEarlyContentFilterId,
-         "Collect Flush Early Content Filter"},
         {RewriteOptions::kCombineCss, RewriteOptions::kCssCombinerId,
          "Combine Css"},
         {RewriteOptions::kCombineHeads, "ch", "Combine Heads"},
@@ -1574,21 +1566,11 @@ void RewriteOptions::AddProperties() {
       "background. 0 means don't serve stale content."
       "Note: Stale response will be served only for non-html requests.", true);
   AddBaseProperty(
-      false,
-      &RewriteOptions::flush_more_resources_early_if_time_permits_,
-      "fretp", kFlushMoreResourcesEarlyIfTimePermits,
-      kDirectoryScope,
-      NULL, true);  // TODO(jmarantz): implement for mod_pagespeed.
-  AddBaseProperty(
       true, &RewriteOptions::follow_flushes_, "ff", kFollowFlushes,
       kDirectoryScope,
       "Attempt to mirror incoming flushes for html streams in the output "
       "when ProxyFetch is used.",
       true);
-  AddRequestProperty(
-      false,
-      &RewriteOptions::flush_more_resources_in_ie_and_firefox_,
-      "fmrief", true);
   AddBaseProperty(
       kDefaultMaxPrefetchJsElements,
       &RewriteOptions::max_prefetch_js_elements_, "mpje",
@@ -1631,11 +1613,6 @@ void RewriteOptions::AddProperties() {
       "elhr", kEnableLazyLoadHighResImages,
       kDirectoryScope,
       NULL, true);
-  AddBaseProperty(
-      false, &RewriteOptions::enable_flush_early_critical_css_, "efcc",
-      kEnableFlushEarlyCriticalCss,
-      kDirectoryScope,
-      NULL, true);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
       false, &RewriteOptions::default_cache_html_, "dch",
       kDefaultCacheHtml,

@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -42,6 +41,11 @@ const char JsDisableFilter::kElementOnloadCode[] =
     "if (this==window) elem=document.body;"
     "elem.setAttribute('data-pagespeed-loaded', 1)";
 
+namespace {
+// TODO(morlovich): Use saner prefetch/preload mechanism.
+const char kPrefetchImageTagHtml[] = "new Image().src=\"%s\";";
+}
+
 JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       script_tag_scanner_(driver),
@@ -61,7 +65,7 @@ void JsDisableFilter::DetermineEnabled(GoogleString* disabled_reason) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
         RewriterHtmlApplication::ACTIVE);
-  } else if (!driver()->flushing_early()) {
+  } else {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
         RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
@@ -190,8 +194,7 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
             EscapeToJsStringLiteral(src->DecodedValueOrNull(), false,
                                     &escaped_source);
             StrAppend(&prefetch_js_elements_, StringPrintf(
-                      FlushEarlyContentWriterFilter::kPrefetchImageTagHtml,
-                      escaped_source.c_str()));
+                      kPrefetchImageTagHtml, escaped_source.c_str()));
           }
           prefetch_js_elements_count_++;
         }

@@ -26,7 +26,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
@@ -69,37 +68,6 @@ template<typename VectorType> void Compact(VectorType* cl) {
 
 }  // namespace
 
-// When flush early filter is enabled, critical css rules are flushed early
-// as innerHTML of a script element. When the CSS element appears in the
-// document, find the previously flushed style data and copy it to the style
-// element so it can be applied. This script is used for that.
-const char CriticalSelectorFilter::kApplyFlushEarlyCss[] =
-    "var applyFlushedCriticalCss = function(script_id, mediaString) {"
-    "  var scripts = document.getElementsByTagName('script');"
-    "  var styleScript = document.getElementById(script_id);"
-    "  if (styleScript == null) {"
-    "    return;"
-    "  }"
-    "  var cssText = styleScript.innerHTML || styleScript.textContent || "
-    "                styleScript.data || \"\";"
-    "  var styleElem = document.createElement('style');"
-    "  styleElem.type = 'text/css';"
-    "  if (styleElem.styleSheet) {"
-    "    styleElem.styleSheet.cssText = cssText;"
-    "  } else {"
-    "    styleElem.appendChild(document.createTextNode(cssText));"
-    "  }"
-    "  if (mediaString) {"
-    "    styleElem.setAttribute(\"media\", mediaString);"
-    "  }"
-    "  var currentScript = scripts[scripts.length-1];"
-    "  currentScript.parentNode.insertBefore(styleElem, currentScript);"
-    "};";
-
-const char CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate[] =
-    "applyFlushedCriticalCss(\"%s\", \"%s\");";
-
-const char CriticalSelectorFilter::kMoveScriptId[] = "psa_flush_style_early";
 const char CriticalSelectorFilter::kNoscriptStylesClass[] = "psa_add_styles";
 
 // TODO(morlovich): Check charset like CssInlineFilter::ShouldInline().
@@ -321,18 +289,6 @@ void CriticalSelectorFilter::RenderSummary(
 
   if (drop_entire_element) {
     driver()->DeleteNode(element);
-  } else if (char_node == NULL) {
-    const GoogleString& url = summary.location;
-    if (IsCssFlushedEarly(url)) {
-      ApplyCssFlushedEarly(element,
-                           driver()->server_context()->hasher()->Hash(url),
-                           element->AttributeValue(HtmlName::kMedia));
-    } else if (driver()->flushing_early()) {
-      // Add an attribute so the flush early filter can flush these
-      // elements early.
-      driver()->AddAttribute(element, HtmlName::kDataPagespeedFlushStyle,
-                             driver()->server_context()->hasher()->Hash(url));
-    }
   }
 
   // We've altered the CSS, so we should generate code to load the entire thing.
@@ -383,7 +339,7 @@ void CriticalSelectorFilter::RenderDone() {
     return;
   }
 
-  if (!css_elements_.empty() && any_rendered_ && !driver()->flushing_early()) {
+  if (!css_elements_.empty() && any_rendered_) {
     HtmlElement* noscript_element = NULL;
     Compact(&css_elements_);
     for (int i = 0, n = css_elements_.size(); i < n; ++i) {
@@ -476,52 +432,6 @@ void CriticalSelectorFilter::RememberFullCss(
     save = new CssElement(driver(), element, noscript);
   }
   css_elements_[pos] = save;
-}
-
-bool CriticalSelectorFilter::IsCssFlushedEarly(const GoogleString& url) const {
-  if (!driver()->flushed_early() ||
-      !driver()->options()->enable_flush_early_critical_css() ||
-      driver()->flush_early_info() == NULL) {
-    return false;
-  }
-
-  // If the url is present in the DOM cohort, it is guaranteed to have
-  // been flushed early.
-  GoogleString escaped_url;
-  HtmlKeywords::Escape(url, &escaped_url);
-  // TODO(slamm): Replace with cheaper and more robust solution.
-  return (driver()->flush_early_info()->resource_html().find(
-      StrCat("\"", escaped_url, "\"")) != GoogleString::npos);
-}
-
-void CriticalSelectorFilter::ApplyCssFlushedEarly(
-    HtmlElement* element, const GoogleString& style_id, const char* media) {
-  // In this case we have already added the CSS rules to the head as
-  // part of flushing early. Now, find the rule, remove the disabled tag
-  // and move it here.
-
-  // Add the JS function definition that moves and applies the flushed early
-  // CSS rules, if it has not already been added.
-  if (!is_flush_script_added_) {
-    is_flush_script_added_ = true;
-    HtmlElement* script =
-        driver()->NewElement(element->parent(), HtmlName::kScript);
-    // TODO(slamm): Remove this attribute and update webdriver test as needed.
-    driver()->AddAttribute(script, HtmlName::kId, kMoveScriptId);
-    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
-    driver()->InsertNodeBeforeNode(element, script);
-    AddJsToElement(kApplyFlushEarlyCss, script);
-  }
-
-  HtmlElement* script_element =
-      driver()->NewElement(element->parent(), HtmlName::kScript);
-  driver()->AddAttribute(script_element, HtmlName::kDataPagespeedNoDefer, NULL);
-  driver()->ReplaceNode(element, script_element);
-
-  GoogleString js_data = StringPrintf(kInvokeFlushEarlyCssTemplate,
-                                      style_id.c_str(),
-                                      (media != NULL ? media : ""));
-  AddJsToElement(js_data, script_element);
 }
 
 }  // namespace net_instaweb

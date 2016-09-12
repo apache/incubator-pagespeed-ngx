@@ -90,9 +90,6 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
       case RewriteOptions::kLocalStorageCache:
         filter_enabled = request_properties->SupportsImageInlining();
         break;
-      case RewriteOptions::kFlushSubresources:
-        filter_enabled = rewrite_driver_->flushed_early();;
-        break;
       case RewriteOptions::kMobilize:
         filter_enabled =
             (options->mob_always() ||

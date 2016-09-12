@@ -34,7 +34,6 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/experiment_matcher.h"
-#include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/request_properties.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -1012,10 +1011,6 @@ void ServerContext::set_critical_images_finder(CriticalImagesFinder* finder) {
 void ServerContext::set_critical_selector_finder(
     CriticalSelectorFinder* finder) {
   critical_selector_finder_.reset(finder);
-}
-
-void ServerContext::set_flush_early_info_finder(FlushEarlyInfoFinder* finder) {
-  flush_early_info_finder_.reset(finder);
 }
 
 void ServerContext::ApplySessionFetchers(const RequestContextPtr& req,

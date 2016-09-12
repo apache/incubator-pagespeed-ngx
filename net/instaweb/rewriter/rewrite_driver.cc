@@ -45,7 +45,6 @@
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
-#include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 #include "net/instaweb/rewriter/public/collect_dependencies_filter.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
@@ -75,7 +74,6 @@
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/fix_reflow_filter.h"
-#include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/flush_html_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/google_font_css_inline_filter.h"
@@ -119,7 +117,6 @@
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/strip_subresource_hints_filter.h"
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
-#include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -249,8 +246,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       fast_blocking_rewrite_(true),
       flush_requested_(false),
       flush_occurred_(false),
-      flushed_early_(false),
-      flushing_early_(false),
       is_lazyload_script_flushed_(false),
       write_property_cache_dom_cohort_(false),
       should_skip_parsing_(kNotSet),
@@ -281,7 +276,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
-      num_flushed_early_pagespeed_resources_(0),
       num_bytes_in_(0),
       debug_filter_(NULL),
       can_rewrite_resources_(true),
@@ -452,8 +446,6 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   status_code_ = 0;
   flush_requested_ = false;
   flush_occurred_ = false;
-  flushed_early_ = false;
-  flushing_early_ = false;
   tried_to_distribute_fetch_ = false;
   defer_instrumentation_script_ = false;
   is_amp_ = false;
@@ -465,10 +457,8 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   fully_rewrite_on_flush_ = false;
   fast_blocking_rewrite_ = true;
   num_inline_preview_images_ = 0;
-  num_flushed_early_pagespeed_resources_ = 0;
   num_bytes_in_ = 0;
   flush_early_info_.reset(NULL);
-  flush_early_render_info_.reset(NULL);
   can_rewrite_resources_ = true;
   is_nested_ = false;
   num_initiated_rewrites_ = 0;
@@ -1034,13 +1024,6 @@ void RewriteDriver::AddPreRenderFilters() {
     AddOwnedPostRenderFilter(resp_filter2);
   }
 
-  // We disable combine_css and combine_javascript when flush_subresources is
-  // enabled, since the way CSS and JS is combined is not deterministic.
-  // However, we do not disable combine_javascript when defer_javascript is
-  // enabled since in this case, flush_subresources does not flush JS resources.
-  bool flush_subresources_enabled = rewrite_options->Enabled(
-      RewriteOptions::kFlushSubresources);
-
   if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag) ||
       rewrite_options->Enabled(RewriteOptions::kAddHead) ||
       rewrite_options->Enabled(RewriteOptions::kAddInstrumentation) ||
@@ -1050,8 +1033,7 @@ void RewriteDriver::AddPreRenderFilters() {
       rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
       rewrite_options->Enabled(RewriteOptions::kMobilize) ||
       rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts) ||
-      rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
-      flush_subresources_enabled) {
+      rewrite_options->Enabled(RewriteOptions::kMoveCssToHead)) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
     AddOwnedEarlyPreRenderFilter(new AddHeadFilter(
@@ -1105,8 +1087,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // which only combines CSS links that are already in the head.
     AppendOwnedPreRenderFilter(new CssMoveToHeadFilter(this));
   }
-  if (!flush_subresources_enabled &&
-      rewrite_options->Enabled(RewriteOptions::kCombineCss)) {
+  if (rewrite_options->Enabled(RewriteOptions::kCombineCss)) {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
     // once and requires a server_context_ to be set.
@@ -1155,8 +1136,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // Like MakeGoogleAnalyticsAsync, InsertGA should be before js rewriting.
     AppendOwnedPreRenderFilter(new InsertGAFilter(this));
   }
-  if (!flush_subresources_enabled &&
-      rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
+  if (rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
     // Combine external JS resources. Done after minification and analytics
     // detection, as it converts script sources into string literals, making
     // them opaque to analysis.
@@ -1230,12 +1210,6 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kLocalStorageCache)) {
     EnableRewriteFilter(RewriteOptions::kLocalStorageCacheId);
-  }
-  // Enable Flush subresources early filter to extract the subresources from
-  // head. This should be the last prerender filter.
-  if (flush_subresources_enabled) {
-      AppendOwnedPreRenderFilter(new
-                                 CollectFlushEarlyContentFilter(this));
   }
 
   if (options()->NeedsDependenciesCohort()) {
@@ -1433,16 +1407,7 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
 void RewriteDriver::SetWriter(Writer* writer) {
   writer_ = writer;
   if (html_writer_filter_ == NULL) {
-    if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
-        flushing_early_) {
-      // If we are flushing early using this RewriteDriver object, we use the
-      // FlushEarlyContentWriterFilter.
-      html_writer_filter_.reset(new FlushEarlyContentWriterFilter(this));
-    } else if (options()->Enabled(RewriteOptions::kFlushSubresources)) {
-      html_writer_filter_.reset(new SuppressPreheadFilter(this));
-    } else {
-      html_writer_filter_.reset(new HtmlWriterFilter(this));
-    }
+    html_writer_filter_.reset(new HtmlWriterFilter(this));
     html_writer_filter_->set_case_fold(options()->lowercase_html_names());
     if (options()->Enabled(RewriteOptions::kHtmlWriterFilter)) {
       HtmlParse::AddFilter(html_writer_filter_.get());
@@ -2660,8 +2625,6 @@ GoogleString RewriteDriver::ToStringLockHeld(bool show_detached_contexts)
   AppendBool(&out, "fast_blocking_rewrite", fast_blocking_rewrite_);
   AppendBool(&out, "flush_requested", flush_requested_);
   AppendBool(&out, "flush_occurred", flush_occurred_);
-  AppendBool(&out, "flushed_early", flushed_early_);
-  AppendBool(&out, "flushing_early", flushing_early_);
   AppendBool(&out, "is_lazyload_script_flushed", is_lazyload_script_flushed_);
   AppendBool(&out, "release_driver", release_driver_);
   AppendBool(&out, "write_property_cache_dom_cohort",
@@ -3480,10 +3443,6 @@ GoogleString RewriteDriver::GenerateUnauthorizedDomainDebugComment(
   return escaped;
 }
 
-void RewriteDriver::SaveOriginalHeaders(const ResponseHeaders& headers) {
-  headers.GetSanitizedProto(flush_early_info()->mutable_response_headers());
-}
-
 bool RewriteDriver::is_critical_images_beacon_enabled() {
   return (options()->Enabled(RewriteOptions::kLazyloadImages) ||
           options()->Enabled(RewriteOptions::kInlineImages) ||
@@ -3493,15 +3452,6 @@ bool RewriteDriver::is_critical_images_beacon_enabled() {
          options()->critical_images_beacon_enabled() &&
          server_context_->factory()->UseBeaconResultsInFilters() &&
          server_context_->page_property_cache()->enabled();
-}
-
-FlushEarlyRenderInfo* RewriteDriver::flush_early_render_info() const {
-  return flush_early_render_info_.get();
-}
-
-void RewriteDriver::set_flush_early_render_info(
-    FlushEarlyRenderInfo* flush_early_render_info) {
-  flush_early_render_info_.reset(flush_early_render_info);
 }
 
 bool RewriteDriver::Write(const ResourceVector& inputs,

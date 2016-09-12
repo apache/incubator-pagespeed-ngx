@@ -44,8 +44,7 @@ void JsDeferDisabledFilter::DetermineEnabled(GoogleString* disabled_reason) {
 
 bool JsDeferDisabledFilter::ShouldApply(RewriteDriver* driver) {
   return driver->request_properties()->SupportsJsDefer(
-      driver->options()->enable_aggressive_rewriters_for_mobile()) &&
-      !driver->flushing_early();
+      driver->options()->enable_aggressive_rewriters_for_mobile());
 }
 
 void JsDeferDisabledFilter::InsertJsDeferCode() {

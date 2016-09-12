@@ -441,9 +441,6 @@ CriticalImagesInfo* CriticalImagesFinder::ExtractCriticalImagesFromCache(
     RewriteDriver* driver,
     const PropertyValue* property_value) {
   CriticalImagesInfo* critical_images_info = NULL;
-  // Don't track stats if we are flushing early, since we will already be
-  // counting this when we are rewriting the full page.
-  bool track_stats = !driver->flushing_early();
   const PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
   int64 cache_ttl_ms =
@@ -456,17 +453,15 @@ CriticalImagesInfo* CriticalImagesFinder::ExtractCriticalImagesFromCache(
       critical_images_info =
           CriticalImagesInfoFromPropertyValue(PercentSeenForCritical(),
                                               property_value);
-      if (track_stats) {
-        if (critical_images_info == NULL) {
-          critical_images_not_found_count_->Add(1);
-        } else {
-          critical_images_valid_count_->Add(1);
-        }
+      if (critical_images_info == NULL) {
+        critical_images_not_found_count_->Add(1);
+      } else {
+        critical_images_valid_count_->Add(1);
       }
-    } else if (track_stats) {
+    } else {
       critical_images_expired_count_->Add(1);
     }
-  } else if (track_stats) {
+  } else {
     critical_images_not_found_count_->Add(1);
   }
   return critical_images_info;

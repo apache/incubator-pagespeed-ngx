@@ -63,7 +63,6 @@ class CriticalSelectorFinder;
 class RequestProperties;
 class ExperimentMatcher;
 class FileSystem;
-class FlushEarlyInfoFinder;
 class GoogleUrl;
 class MessageHandler;
 class NamedLock;
@@ -275,11 +274,6 @@ class ServerContext {
     return critical_selector_finder_.get();
   }
   void set_critical_selector_finder(CriticalSelectorFinder* finder);
-
-  FlushEarlyInfoFinder* flush_early_info_finder() const {
-    return flush_early_info_finder_.get();
-  }
-  void set_flush_early_info_finder(FlushEarlyInfoFinder* finder);
 
   UserAgentMatcher* user_agent_matcher() const {
     return user_agent_matcher_;
@@ -709,7 +703,6 @@ class ServerContext {
   SHA1Signature* signature_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
   scoped_ptr<CriticalSelectorFinder> critical_selector_finder_;
-  scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the
   // system will not work sensibly if the "hash algorithm" used always returns

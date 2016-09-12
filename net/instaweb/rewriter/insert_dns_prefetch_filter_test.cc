@@ -380,20 +380,4 @@ TEST_F(InsertDnsPrefetchFilterTest, InsertDomainsinHeadForFlushEarlyFlow) {
   CheckPrefetchInfo(4, 0, 4, "b.com,d.com,a.com,c.com");
 }
 
-TEST_F(InsertDnsPrefetchFilterTest, NoDomainsWhileFlushingEarly) {
-  rewrite_driver()->set_flushing_early(true);
-  GoogleString html =
-      "<head>"
-        "<script src=\"http://b.com/\"/>"
-      "</head>"
-      "<body>"
-        "<link type=\"text/css\" rel=\"stylesheet\" href=\"http://a.com/\">"
-        "<script src=\"http://b.com/\"/>"
-        "<img src=\"http://c.com/\"/>"
-      "</body>";
-  Parse("store_domains_in_body", html);
-  EXPECT_EQ(AddHtmlBody(html), output_);
-  CheckPrefetchInfo(0, 0, 0, "");
-}
-
 }  // namespace net_instaweb

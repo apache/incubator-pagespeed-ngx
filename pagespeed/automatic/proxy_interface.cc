@@ -33,7 +33,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "pagespeed/automatic/flush_early_flow.h"
 #include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/hasher.h"
@@ -112,7 +111,6 @@ void ProxyInterface::InitStats(StringPiece stats_prefix,
   statistics->AddTimedVariable(
       StrCat(stats_prefix, kNoDomainConfigResourceRequestCount),
       Statistics::kDefaultGroup);
-  FlushEarlyFlow::InitStats(statistics);
 }
 
 bool ProxyInterface::IsWellFormedUrl(const GoogleUrl& url) {
@@ -317,8 +315,6 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
         options = global_options->Clone();
       }
     }
-    // TODO(anupama): Adapt the experiment logic below for the FlushEarlyFlow as
-    // well.
     bool need_to_store_experiment_data = false;
     if (options != NULL && options->running_experiment()) {
       need_to_store_experiment_data =
@@ -374,19 +370,6 @@ void ProxyInterface::GetRewriteOptionsDone(RequestData* request_data,
     driver->set_pagespeed_option_cookies(
         query.pagespeed_option_cookies().ToEscapedString());
 
-    if (driver->options() != NULL && driver->options()->enabled() &&
-        property_callback != NULL &&
-        driver->options()->IsAllowed(url_string)) {
-      // NOTE: The FlushEarly flow will run in parallel with the ProxyFetch,
-      // but will not begin (FlushEarlyFlwow::FlushEarly) until the
-      // PropertyCache lookup has completed.
-      // Also it does NOT take ownership of property_callback.
-      // FlushEarlyFlow might not start if the request is not GET or if the
-      // useragent is unsupported etc.
-      FlushEarlyFlow::TryStart(url_string, &async_fetch, driver,
-                               proxy_fetch_factory_.get(),
-                               property_callback);
-    }
     // Takes ownership of property_callback.
     proxy_fetch_factory_->StartNewProxyFetch(
         url_string, async_fetch, driver, property_callback, NULL);

@@ -21,7 +21,6 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_finder_support_util.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_summarizer_base.h"
@@ -63,9 +62,6 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
 
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-
-    // Disable flush early for tests (unless they turn it on).
-    options()->set_enable_flush_early_critical_css(false);
 
     // Enable critical selector filter alone so that
     // testing isn't disrupted by beacon injection.
@@ -539,107 +535,6 @@ TEST_F(CriticalSelectorFilterTest, DoNotLazyLoadIfNothingRewritten) {
                                          CssLinkHref("b.css")));
   CallFetcherCallbacks();
   // Skip ValidateRewriterLogging because fetcher interferes with WriteLog.
-}
-
-TEST_F(CriticalSelectorFilterTest, InlineAndAddStyleForFlushingEarly) {
-  SetResponseWithDefaultHeaders("noscript.css", kContentTypeCss,
-                                "noscript { border: 1px solid red; }", 100);
-
-  GoogleString css = StrCat(
-      "<style>*,p {display: none; } span {display: inline; }</style>",
-      CssLinkHref("a.css"),
-      "<noscript>", CssLinkHref("noscript.css"), "</noscript>",
-      CssLinkHref("b.css"));
-
-  GoogleString critical_css =
-      "<style>*{display:none}</style>"  // from the inline
-      "<style data-pagespeed-flush-style=\"0\">"
-          "div,*::first-letter{display:block}</style>"  // from a.css
-      "<noscript></noscript>"  // from noscript.css
-      "<style data-pagespeed-flush-style=\"0\">"
-          "@media screen{*{margin:0}}</style>";  // from b.css
-
-  GoogleString input_html = StrCat(
-      "<head>",
-      css,
-      "</head>"
-      "<body><div>Stuff</div></body>");
-
-  options()->ClearSignatureForTesting();
-  options()->set_enable_flush_early_critical_css(true);
-  options()->ComputeSignature();
-  rewrite_driver()->set_flushing_early(true);
-  // The "flushing_early" driver expects the critical CSS without the
-  // full CSS at the bottom (no LoadRestOfCss).  This allows the flush
-  // early flow to collect the CSS to flush.  The filter output is not
-  // sent to the end user. (The "flushed_early" driver filters the
-  // content that is sent to the user.)
-  ValidateExpected(
-      "flushing_early", input_html,
-      StrCat("<head>", critical_css, "</head>",
-             "<body><div>Stuff</div></body>"));
-  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE);
-}
-
-TEST_F(CriticalSelectorFilterTest, InlineFlushEarly) {
-  SetResponseWithDefaultHeaders("noscript.css", kContentTypeCss,
-                                "noscript { border: 1px solid red; }", 100);
-
-  GoogleString css_script = StrCat(
-      "<style>*,p {display: none; } span {display: inline; }</style>",
-      CssLinkHref("a.css"),
-      CssLinkHrefMedia("b.css", "print,screen"));
-  GoogleString css_noscript = StrCat(
-      "<noscript>", CssLinkHref("noscript.css"), "</noscript>");
-
-  GoogleString a_url = "http://test.com/a.css";
-  GoogleString b_url = "http://test.com/b.css";
-  GoogleString a_style_id =
-      rewrite_driver()->server_context()->hasher()->Hash(a_url);
-  GoogleString b_style_id =
-      rewrite_driver()->server_context()->hasher()->Hash(b_url);
-  GoogleString critical_css = StrCat(
-      "<style>*{display:none}</style>"  // from the inline
-      "<script id=\"psa_flush_style_early\" data-pagespeed-no-defer"
-      " type=\"text/javascript\">",
-      CriticalSelectorFilter::kApplyFlushEarlyCss,
-      "</script>"
-      "<script data-pagespeed-no-defer type=\"text/javascript\">",
-      StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
-                   a_style_id.c_str(), "" /* media */),
-      "</script>"  // from a.css
-      "<script data-pagespeed-no-defer type=\"text/javascript\">",
-      StringPrintf(CriticalSelectorFilter::kInvokeFlushEarlyCssTemplate,
-                   b_style_id.c_str(), "screen" /* media */),
-      "</script>"  // from b.css
-      "<noscript></noscript>");  // from noscript.css
-
-  GoogleString html = StrCat(
-      "<head>",
-      css_script,
-      css_noscript,
-      "</head>"
-      "<body><div>Stuff</div></body>");
-
-  options()->ClearSignatureForTesting();
-  options()->set_enable_flush_early_critical_css(true);
-  options()->ComputeSignature();
-
-  rewrite_driver()->flush_early_info()->set_resource_html(
-      CssLinkHref("\"" + a_url + "\"") +
-      CssLinkHref("\"" + b_url + "\""));
-
-  rewrite_driver()->set_flushed_early(true);
-
-  ValidateExpected(
-      "flushed_early", html,
-      StrCat("<head>", critical_css, "</head>",
-             "<body><div>Stuff</div>",
-             WrapForJsLoad(css_script),
-             css_noscript,
-             JsLoader(),
-             "</body>"));
-  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE);
 }
 
 class CriticalSelectorWithRewriteCssFilterTest

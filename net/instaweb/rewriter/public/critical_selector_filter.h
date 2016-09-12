@@ -50,9 +50,6 @@ class CriticalSelectorFilter : public CssSummarizerBase {
  public:
   static const char kAddStylesFunction[];
   static const char kAddStylesInvocation[];
-  static const char kApplyFlushEarlyCss[];
-  static const char kInvokeFlushEarlyCssTemplate[];
-  static const char kMoveScriptId[];
   static const char kNoscriptStylesClass[];
 
   explicit CriticalSelectorFilter(RewriteDriver* rewrite_driver);
@@ -115,11 +112,6 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   void RememberFullCss(int pos,
                        HtmlElement* element,
                        HtmlCharactersNode* char_node);
-
-  bool IsCssFlushedEarly(const GoogleString& url) const;
-  void ApplyCssFlushedEarly(HtmlElement* element,
-                            const GoogleString& style_id,
-                            const char* media);
 
   // Selectors that are critical for this page.
   // These are just copied over from the finder and turned into a set for easier

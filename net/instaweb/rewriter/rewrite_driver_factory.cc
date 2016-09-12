@@ -386,10 +386,6 @@ SHA1Signature* RewriteDriverFactory::DefaultSignature() {
   return new SHA1Signature();
 }
 
-FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {
-  return NULL;
-}
-
 UsageDataReporter* RewriteDriverFactory::DefaultUsageDataReporter() {
   return new UsageDataReporter;
 }
@@ -518,7 +514,6 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
       DefaultCriticalImagesFinder(server_context));
   server_context->set_critical_selector_finder(
       DefaultCriticalSelectorFinder(server_context));
-  server_context->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
   server_context->set_hostname(hostname_);
   server_context->PostInitHook();
   InitDecodingDriver(server_context);
