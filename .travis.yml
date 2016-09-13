@@ -21,6 +21,16 @@ install:
   - python build/gyp_chromium -Dchannel=beta
   - make BUILDTYPE=Release AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh linux_package_deb
   - sudo dpkg -i out/Release/mod-pagespeed*.deb
+# Remove broken repo, per: https://github.com/travis-ci/travis-ci/issues/6588
+# Undo this once the repo is fixed.
+before_script:
+  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ main restricted'"
+  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ universe'"
+  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ multiverse'"
+  - "sudo add-apt-repository http://archive.ubuntu.com/ubuntu/"
+  - "sudo add-apt-repository 'http://archive.ubuntu.com/ubuntu/ universe'"
+  - "sudo add-apt-repository 'http://archive.ubuntu.com/ubuntu/ multiverse'"
+  - "sudo apt-get -qq update"
 script:
   - cd ~/build_directory/src
   - ./install/run_program_with_ext_caches.sh ./out/Release/mod_pagespeed_test \; ./out/Release/pagespeed_automatic_test
