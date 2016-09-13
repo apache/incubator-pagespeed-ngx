@@ -149,25 +149,7 @@ class AbstractLogRecord  {
   // Mutex-guarded log mutation convenience methods. The rule of thumb is that
   // if a single-field update to a logging proto occurs multiple times, it
   // should be factored out into a method on this class.
-  void SetBlinkRequestFlow(int flow);
-  void SetCacheHtmlRequestFlow(int flow);
   void SetIsOriginalResourceCacheable(bool cacheable);
-
-  // Override SetBlinkInfoImpl if necessary.
-  void SetBlinkInfo(const GoogleString& user_agent);
-
-  // Override SetCacheHtmlInfoImpl if necessary.
-  void SetCacheHtmlLoggingInfo(const GoogleString& user_agent);
-
-  // Log a RewriterInfo for the flush early filter.
-  void LogFlushEarlyActivity(
-      const char* id,
-      const GoogleString& url,
-      RewriterApplication::Status status,
-      FlushEarlyResourceInfo::ContentType content_type,
-      FlushEarlyResourceInfo::ResourceType resource_type,
-      bool is_bandwidth_affected,
-      bool in_head);
 
   // Log a RewriterInfo for the image rewrite filter.
   virtual void LogImageRewriteActivity(
@@ -254,11 +236,6 @@ class AbstractLogRecord  {
   virtual void SetTimingInfo(const RequestTimingInfo& timing_info) {}
 
  protected:
-  // Implements setting Blink specific log information; base impl is a no-op.
-  virtual void SetBlinkInfoImpl(const GoogleString& user_agent) {}
-
-  // Implements setting Cache Html specific log information
-  virtual void SetCacheHtmlLoggingInfoImpl(const GoogleString& user_agent) {}
   // Implements writing a log, base implementation is a no-op. Returns false if
   // writing failed.
   virtual bool WriteLogImpl() = 0;

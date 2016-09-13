@@ -110,36 +110,9 @@ void AbstractLogRecord::LogRewriterApplicationStatus(
   stats->status_counts[status]++;
 }
 
-void AbstractLogRecord::SetBlinkRequestFlow(int flow) {
-  DCHECK(BlinkInfo::BlinkRequestFlow_IsValid(flow));
-  ScopedMutex lock(mutex_.get());
-  logging_info()->mutable_blink_info()->set_blink_request_flow(
-      static_cast<BlinkInfo::BlinkRequestFlow>(flow));
-}
-
-void AbstractLogRecord::SetCacheHtmlRequestFlow(int flow) {
-  DCHECK(CacheHtmlLoggingInfo::CacheHtmlRequestFlow_IsValid(flow));
-  ScopedMutex lock(mutex_.get());
-  CacheHtmlLoggingInfo* cache_html_logging_info =
-      logging_info()->mutable_cache_html_logging_info();
-  cache_html_logging_info->set_cache_html_request_flow(
-      static_cast<CacheHtmlLoggingInfo::CacheHtmlRequestFlow>(flow));
-}
-
 void AbstractLogRecord::SetIsOriginalResourceCacheable(bool cacheable) {
   ScopedMutex lock(mutex_.get());
   logging_info()->set_is_original_resource_cacheable(cacheable);
-}
-
-void AbstractLogRecord::SetBlinkInfo(const GoogleString& user_agent) {
-  ScopedMutex lock(mutex_.get());
-  SetBlinkInfoImpl(user_agent);
-}
-
-void AbstractLogRecord::SetCacheHtmlLoggingInfo(
-    const GoogleString& user_agent) {
-  ScopedMutex lock(mutex_.get());
-  SetCacheHtmlLoggingInfoImpl(user_agent);
 }
 
 bool AbstractLogRecord::WriteLog() {
@@ -188,28 +161,6 @@ void AbstractLogRecord::SetAllowLoggingUrls(bool allow_logging_urls) {
 void AbstractLogRecord::SetLogUrlIndices(bool log_url_indices) {
   ScopedMutex lock(mutex_.get());
   log_url_indices_ = log_url_indices;
-}
-
-void AbstractLogRecord::LogFlushEarlyActivity(
-    const char* id,
-    const GoogleString& url,
-    RewriterApplication::Status status,
-    FlushEarlyResourceInfo::ContentType content_type,
-    FlushEarlyResourceInfo::ResourceType resource_type,
-    bool is_bandwidth_affected,
-    bool in_head) {
-  RewriterInfo* rewriter_info = SetRewriterLoggingStatusHelper(id, url, status);
-  if (rewriter_info == NULL) {
-    return;
-  }
-
-  ScopedMutex lock(mutex_.get());
-  FlushEarlyResourceInfo* flush_early_resource_info =
-      rewriter_info->mutable_flush_early_resource_info();
-  flush_early_resource_info->set_content_type(content_type);
-  flush_early_resource_info->set_resource_type(resource_type);
-  flush_early_resource_info->set_is_bandwidth_affected(is_bandwidth_affected);
-  flush_early_resource_info->set_in_head(in_head);
 }
 
 void AbstractLogRecord::LogJsDisableFilter(const char* id,
