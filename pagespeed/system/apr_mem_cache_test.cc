@@ -41,8 +41,6 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
-#include "pagespeed/kernel/base/posix_timer.h"
-#include "pagespeed/kernel/cache/cache_key_prepender.h"
 #include "pagespeed/kernel/cache/cache_spammer.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/cache/fallback_cache.h"
@@ -50,6 +48,7 @@
 #include "pagespeed/kernel/thread/blocking_callback.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/system/tcp_connection_for_testing.h"
 #include "pagespeed/system/tcp_server_thread_for_testing.h"
 
 namespace net_instaweb {
@@ -82,21 +81,35 @@ class AprMemCacheTest : public CacheTestBase {
 
   // Establishes a connection to a memcached instance; either one
   // on localhost:$MEMCACHED_PORT or, if non-empty, the one in
-  // server_spec_.
+  // server_spec_. If the former is used, this method also sends
+  // 'flush_all' command to the server to erase all entries in the cache.
   bool ConnectToMemcached(bool use_md5_hasher) {
     // See install/run_program_with_memcached.sh where this environment
     // variable is established during development testing flows.
     if (server_spec_.empty()) {
       const char* kPortString = getenv("MEMCACHED_PORT");
-      if (kPortString == NULL) {
+      int port;
+      if (kPortString == nullptr || !StringToInt(kPortString, &port)) {
         LOG(ERROR) << "AprMemCache tests are skipped because env var "
                    << "$MEMCACHED_PORT is not set.  Set that to the port "
                    << "number where memcached is running to enable the "
-                   << "tests.  See install/run_program_with_memcached.sh";
+                   << "tests. ALL DATA ON THE SERVER WILL BE ERASED! See "
+                   << "install/run_program_with_memcached.sh as a way to "
+                   << "run separate instance of memcached for testing.";
         // Does not fail the test.
         return false;
       }
       server_spec_ = StrCat("localhost:", kPortString);
+      TcpConnectionForTesting connection;
+      if (!connection.Connect("localhost", port)) {
+        return false;
+      }
+      connection.Send("flush_all\r\n");
+      GoogleString answer = connection.ReadLineCrLf();
+      EXPECT_EQ(answer, "OK\r\n") << "Unable to flush data in memcached";
+      if (answer != "OK\r\n") {
+        return false;
+      }
     }
     Hasher* hasher = &mock_hasher_;
     if (use_md5_hasher) {
@@ -104,21 +117,7 @@ class AprMemCacheTest : public CacheTestBase {
     }
     servers_.reset(new AprMemCache(server_spec_, 5, hasher, &statistics_,
                                    &timer_, &handler_));
-    // As memcached is not restarted between tests, we need some other kind of
-    // isolation. One option would be to flush memcached, if apr_memcache
-    // supported that. We do not want to modify our fork even further, so we
-    // prepend the test name and current time to all keys that go to memcached.
-    const ::testing::TestInfo* const test_info =
-        ::testing::UnitTest::GetInstance()->current_test_info();
-    PosixTimer timer;
-    const GoogleString memcache_prefix =
-        StrCat(test_info->test_case_name(), ".",
-               test_info->name(), "_",
-               Integer64ToString(timer.NowUs()), "_");
-    prefixed_memcache_.reset(
-        new CacheKeyPrepender(memcache_prefix, servers_.get()));
-
-    cache_.reset(new FallbackCache(prefixed_memcache_.get(), lru_cache_.get(),
+    cache_.reset(new FallbackCache(servers_.get(), lru_cache_.get(),
                                    kTestValueSizeThreshold,
                                    &handler_));
 
@@ -159,7 +158,6 @@ class AprMemCacheTest : public CacheTestBase {
   MockTimer timer_;
   scoped_ptr<LRUCache> lru_cache_;
   scoped_ptr<AprMemCache> servers_;
-  scoped_ptr<CacheKeyPrepender> prefixed_memcache_;
   scoped_ptr<FallbackCache> cache_;
   scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats statistics_;
@@ -348,7 +346,7 @@ TEST_F(AprMemCacheTest, MultiServerFallback) {
   // Make another connection to the same memcached, but with a different
   // fallback cache.
   LRUCache lru_cache2(kLRUCacheSize);
-  FallbackCache mem_cache2(prefixed_memcache_.get(), &lru_cache2,
+  FallbackCache mem_cache2(servers_.get(), &lru_cache2,
                            kTestValueSizeThreshold,
                            &handler_);
 
@@ -382,7 +380,7 @@ TEST_F(AprMemCacheTest, KeyOver64kDropped) {
   const int kBigLruSize = 1000000;
   const int kThreshold =  200000;    // fits key and small value.
   LRUCache lru_cache2(kLRUCacheSize);
-  FallbackCache mem_cache2(prefixed_memcache_.get(), &lru_cache2,
+  FallbackCache mem_cache2(servers_.get(), &lru_cache2,
                            kThreshold, &handler_);
 
   const GoogleString kKey(kBigLruSize, 'a');
@@ -438,7 +436,7 @@ TEST_F(AprMemCacheTest, ThreadSafe) {
                          200 /* num_iters */,
                          10 /* num_inserts */,
                          false, true, large_pattern.c_str(),
-                         prefixed_memcache_.get(),
+                         servers_.get(),
                          thread_system_.get());
 }
 
