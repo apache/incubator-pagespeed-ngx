@@ -67,6 +67,9 @@ class CustomRewriteTestBase : public RewriteTestBase {
     return new OptionsClass(factory()->thread_system());
   }
 
+  // Non-virtual override of options method defined in RewriteTestBase.
+  OptionsClass* options() { return static_cast<OptionsClass*>(options_); }
+
  private:
   // We must call the static Initialize method on the options class before
   // we construct a factory, which will 'new' the OptionsClass.

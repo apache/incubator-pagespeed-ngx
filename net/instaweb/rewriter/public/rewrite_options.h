@@ -2683,60 +2683,7 @@ class RewriteOptions {
   void set_amp_link_pattern(const GoogleString& id) {
     set_option(id, &amp_link_pattern_);
   }
-
-  bool mob_always() const { return mob_always_.value(); }
-  void set_mob_always(bool x) { set_option(x, &mob_always_); }
-  bool mob_iframe() const { return mob_iframe_.value(); }
-  const GoogleString& mob_iframe_viewport() const {
-    return mob_iframe_viewport_.value();
-  }
-  bool mob_iframe_disable() const { return mob_iframe_disable_.value(); }
-  void set_mob_beacon_url(StringPiece x) {
-    set_option(x.as_string(), &mob_beacon_url_);
-  }
-  const GoogleString& mob_beacon_url() const { return mob_beacon_url_.value(); }
-  void set_mob_beacon_category(StringPiece x) {
-    set_option(x.as_string(), &mob_beacon_category_);
-  }
-  const GoogleString& mob_beacon_category() const {
-    return mob_beacon_category_.value();
-  }
-  void set_mob_phone_number(StringPiece x) {
-    set_option(x.as_string(), &mob_phone_number_);
-  }
-  const GoogleString& mob_phone_number() const {
-    return mob_phone_number_.value();
-  }
-  void set_mob_map_location(StringPiece x) {
-    set_option(x.as_string(), &mob_map_location_);
-  }
-  const GoogleString& mob_map_location() const {
-    return mob_map_location_.value();
-  }
-  void set_mob_iframe(bool x) { set_option(x, &mob_iframe_); }
-  void set_mob_iframe_disable(bool x) { set_option(x, &mob_iframe_disable_); }
-  void set_mob_iframe_viewport(StringPiece x) {
-    set_option(x.as_string(), &mob_iframe_viewport_);
-  }
-  const MobTheme& mob_theme() const { return mob_theme_.value(); }
-  void set_mob_theme(const MobTheme& x) {
-    set_option(x, &mob_theme_);
-  }
-  bool has_mob_theme() const { return mob_theme_.was_set(); }
-  int64 mob_conversion_id() const { return mob_conversion_id_.value(); }
-  void set_mob_conversion_id(int64 x) { set_option(x, &mob_conversion_id_); }
-  const GoogleString& mob_map_conversion_label() const {
-    return mob_map_conversion_label_.value();
-  }
-  void set_mob_map_conversion_label(StringPiece x) {
-    set_option(x.as_string(), &mob_map_conversion_label_);
-  }
-  const GoogleString& mob_phone_conversion_label() const {
-    return mob_phone_conversion_label_.value();
-  }
-  void set_mob_phone_conversion_label(StringPiece x) {
-    set_option(x.as_string(), &mob_phone_conversion_label_);
-  }
+  virtual bool DisableDomainRewrite() const { return false; }
 
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
@@ -4238,24 +4185,6 @@ class RewriteOptions {
   scoped_ptr<std::vector<ElementAttributeCategory> > url_valued_attributes_;
 
   Option<ResourceCategorySet> inline_unauthorized_resource_types_;
-
-  Option<bool> mob_always_;
-  Option<bool> mob_iframe_;
-  Option<bool> mob_iframe_disable_;
-  Option<GoogleString> mob_iframe_viewport_;
-  Option<bool> mob_nav_;
-  Option<bool> mob_labeled_mode_;
-  Option<GoogleString> mob_nav_classes_;
-  Option<bool> mob_static_;
-
-  Option<GoogleString> mob_beacon_url_;
-  Option<GoogleString> mob_beacon_category_;
-  Option<GoogleString> mob_map_location_;
-  Option<GoogleString> mob_phone_number_;
-  Option<int64> mob_conversion_id_;
-  Option<GoogleString> mob_map_conversion_label_;
-  Option<GoogleString> mob_phone_conversion_label_;
-  Option<MobTheme> mob_theme_;
 
   Option<int64> noop_;
 

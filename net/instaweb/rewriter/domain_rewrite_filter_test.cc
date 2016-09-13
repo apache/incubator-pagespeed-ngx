@@ -153,7 +153,6 @@ TEST_F(DomainRewriteFilterTest, DontTouchIfAlreadyRewritten) {
 TEST_F(DomainRewriteFilterTest, RewriteHyperlinks) {
   options()->ClearSignatureForTesting();
   options()->set_domain_rewrite_hyperlinks(true);
-  options()->set_mob_iframe(false);
   ValidateExpected("forms and a tags",
                    StrCat("<a href=\"", kFrom1Domain,
                           "link.html\"/>"
@@ -177,33 +176,6 @@ TEST_F(DomainRewriteFilterTest, RewriteHyperlinks) {
                    "<iframe src=\"http://to1.test.com/iframe.html\"/>"
                    "<iframe id=\"psmob-iframe\""
                    " src=\"http://to1.test.com/iframe.html\"/>");
-}
-
-TEST_F(DomainRewriteFilterTest, NoRewriteWhenMobIframeIsEnabled) {
-  options()->ClearSignatureForTesting();
-  options()->set_domain_rewrite_hyperlinks(true);
-  options()->set_mob_iframe(true);
-  ValidateExpected("forms and a tags in iframe mode",
-                   StrCat("<a id=\"psmob-iframe\""
-                          " href=\"",
-                          kFrom1Domain,
-                          "link.html\"/>"
-                          "<iframe src=\"",
-                          kFrom1Domain,
-                          "iframe.html\"/>"
-                          "<iframe id=\"psmob-iframe\""
-                          " src=\"",
-                          kFrom1Domain, "iframe.html\"/>"),
-                   StrCat("<a id=\"psmob-iframe\""
-                          " href=\"",
-                          kFrom1Domain,
-                          "link.html\"/>"
-                          "<iframe src=\"",
-                          kFrom1Domain,
-                          "iframe.html\"/>"
-                          "<iframe id=\"psmob-iframe\""
-                          " src=\"",
-                          kFrom1Domain, "iframe.html\"/>"));
 }
 
 TEST_F(DomainRewriteFilterTest, RewriteButDoNotShardHyperlinks) {

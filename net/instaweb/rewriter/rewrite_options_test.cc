@@ -930,7 +930,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kAllowLoggingUrlsInLogRecord,
     RewriteOptions::kAllowOptionsToBeSetByCookies,
     RewriteOptions::kAllowVaryOn,
-    RewriteOptions::kAlwaysMobilize,
     RewriteOptions::kAlwaysRewriteCss,
     RewriteOptions::kAmpLinkPattern,
     RewriteOptions::kAnalyticsID,
@@ -1041,21 +1040,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMetadataCacheStalenessThresholdMs,
     RewriteOptions::kMinImageSizeLowResolutionBytes,
     RewriteOptions::kMinResourceCacheTimeToRewriteMs,
-    RewriteOptions::kMobBeaconCategory,
-    RewriteOptions::kMobBeaconUrl,
-    RewriteOptions::kMobConversionId,
-    RewriteOptions::kMobIframe,
-    RewriteOptions::kMobIframeDisable,
-    RewriteOptions::kMobIframeViewport,
-    RewriteOptions::kMobMapConversionLabel,
-    RewriteOptions::kMobMapLocation,
-    RewriteOptions::kMobNav,
-    RewriteOptions::kMobLabeledMode,
-    RewriteOptions::kMobNavClasses,
-    RewriteOptions::kMobPhoneConversionLabel,
-    RewriteOptions::kMobPhoneNumber,
-    RewriteOptions::kMobStatic,
-    RewriteOptions::kMobTheme,
     RewriteOptions::kModifyCachingHeaders,
     RewriteOptions::kNoop,
     RewriteOptions::kNoTransformOptimizedImages,
@@ -3182,17 +3166,6 @@ TEST_F(RewriteOptionsTest, ParseFloats) {
   EXPECT_FALSE(RewriteOptions::ParseFromString("1, 2, -5", &densities));
   EXPECT_FALSE(RewriteOptions::ParseFromString("1.2.3", &densities));
   EXPECT_FALSE(RewriteOptions::ParseFromString("1 2 3", &densities));
-}
-
-TEST_F(RewriteOptionsTest, MobilizeFiltersTest) {
-  options_.SetRewriteLevel(RewriteOptions::kMobilizeFilters);
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kMobilize));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteCss));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kRewriteDomains));
-
-  EXPECT_TRUE(options_.css_preserve_urls());
-  EXPECT_TRUE(options_.domain_rewrite_hyperlinks());
-  EXPECT_FALSE(options_.mob_always());
 }
 
 TEST_F(RewriteOptionsTest, ParseAllowVaryOn) {

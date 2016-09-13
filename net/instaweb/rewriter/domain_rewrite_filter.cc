@@ -394,9 +394,10 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
     // base tag applies for that set of elements.
     return;
   }
-  // Disable rewriting if the iframe_fetcher is enabled
   const RewriteOptions* options = driver()->options();
-  if (options->mob_iframe()) {
+  // TODO(yassinh): Cleanup domain rewrite filter to remove DisableDomainRewrite
+  // condition.
+  if (options->DisableDomainRewrite()) {
     return;
   }
   resource_tag_scanner::UrlCategoryVector attributes;

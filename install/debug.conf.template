@@ -1984,8 +1984,6 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
   ModPagespeedFetchProxy localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_proxysuffix"
   ModPagespeedRewriteLevel PassThrough
-  ModPagespeedMobNav on
-  ModPagespeedAlwaysMobilize on
   ModPagespeedProxySuffix .suffix.net
   ModPagespeedEnableFilters rewrite_domains,collapse_whitespace,mobilize
   ModPagespeedEnableFilters rewrite_images,experiment_collect_mob_image_info,rewrite_css

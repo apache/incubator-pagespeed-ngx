@@ -91,12 +91,7 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
         filter_enabled = request_properties->SupportsImageInlining();
         break;
       case RewriteOptions::kMobilize:
-        filter_enabled =
-            (options->mob_always() ||
-             (rewrite_driver_->server_context()
-                  ->user_agent_matcher()
-                  ->GetDeviceTypeForUA(rewrite_driver_->user_agent()) ==
-              UserAgentMatcher::kMobile));
+        filter_enabled = false;
         break;
       default:
         break;

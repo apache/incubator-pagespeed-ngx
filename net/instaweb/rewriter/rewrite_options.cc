@@ -61,7 +61,6 @@ const char RewriteOptions::kAllowLoggingUrlsInLogRecord[] =
     "AllowLoggingUrlsInLogRecord";
 const char RewriteOptions::kAllowOptionsToBeSetByCookies[] =
     "AllowOptionsToBeSetByCookies";
-const char RewriteOptions::kAlwaysMobilize[] = "AlwaysMobilize";
 const char RewriteOptions::kAlwaysRewriteCss[] = "AlwaysRewriteCss";
 const char RewriteOptions::kAmpLinkPattern[] = "AmpLinkPattern";
 const char RewriteOptions::kAnalyticsID[] = "AnalyticsID";
@@ -228,23 +227,6 @@ const char RewriteOptions::kMinImageSizeLowResolutionBytes[] =
     "MinImageSizeLowResolutionBytes";
 const char RewriteOptions::kMinResourceCacheTimeToRewriteMs[] =
     "MinResourceCacheTimeToRewriteMs";
-const char RewriteOptions::kMobBeaconCategory[] = "MobBeaconCategory";
-const char RewriteOptions::kMobBeaconUrl[] = "MobBeaconUrl";
-const char RewriteOptions::kMobMapLocation[] = "MobMapLocation";
-const char RewriteOptions::kMobPhoneNumber[] = "MobPhoneNumber";
-const char RewriteOptions::kMobConversionId[] = "MobConversionId";
-const char RewriteOptions::kMobMapConversionLabel[] =
-    "MobMapConversionLabel";
-const char RewriteOptions::kMobPhoneConversionLabel[] =
-    "MobPhoneConversionLabel";
-const char RewriteOptions::kMobIframe[] = "MobIframe";
-const char RewriteOptions::kMobIframeDisable[] = "MobIframeDisable";
-const char RewriteOptions::kMobIframeViewport[] = "MobIframeViewport";
-const char RewriteOptions::kMobNav[] = "MobNav";
-const char RewriteOptions::kMobLabeledMode[] = "MobLabeledMode";
-const char RewriteOptions::kMobNavClasses[] = "MobNavigationalClasses";
-const char RewriteOptions::kMobStatic[] = "MobStatic";
-const char RewriteOptions::kMobTheme[] = "MobTheme";
 const char RewriteOptions::kModifyCachingHeaders[] = "ModifyCachingHeaders";
 const char RewriteOptions::kNoop[] = "Noop";
 const char RewriteOptions::kNoTransformOptimizedImages[] =
@@ -2244,84 +2226,6 @@ void RewriteOptions::AddProperties() {
       "avo", kAllowVaryOn, kQueryScope,
       "\"Auto\", \"None\", or comma separated list of strings chosen from "
       "\"Save-Data\", \"User-Agent\", and \"Accept\".", true);
-
-  AddBaseProperty(
-      false, &RewriteOptions::mob_always_, "malways", kAlwaysMobilize,
-      kQueryScope,
-      "(experimental) Unconditionally mobilize page regardless of user-agent.",
-      true);
-  AddBaseProperty(
-      "", &RewriteOptions::mob_beacon_category_, "mbeaconcat",
-      kMobBeaconCategory, kDirectoryScope,
-      "(experimental) Additional category info to pass to beacon.",
-      true);
-  AddBaseProperty(
-      kDefaultBeaconUrl, &RewriteOptions::mob_beacon_url_, "mbeaconurl",
-      kMobBeaconUrl, kDirectoryScope,
-      "(experimental) URL for beacons sent from the mobilization filter.",
-      true);
-  AddBaseProperty(
-      "", &RewriteOptions::mob_map_location_, "mlocation", kMobMapLocation,
-      kQueryScope,
-      "(experimental) map location for click-to-navigate.  This should be in "
-      "a form suitable for sending to a map query, and will not be exposed in "
-      "a web UI directly until map button is pressed", true);
-  AddBaseProperty(
-      "", &RewriteOptions::mob_phone_number_, "mphone", kMobPhoneNumber,
-      kQueryScope,
-      "(experimental) phone number for click-to-call.  This should be in "
-      "a form suitable for sending to a dialer, and will not be exposed in "
-      "a web UI directly until call button is pressed", true);
-  AddBaseProperty(
-      0, &RewriteOptions::mob_conversion_id_, "mcnvid", kMobConversionId,
-      kQueryScope,
-      "(experimental) conversion ID", true);
-  AddBaseProperty(
-      "", &RewriteOptions::mob_map_conversion_label_, "mpcnvl",
-      kMobMapConversionLabel, kQueryScope,
-      "(experimental) phone conversion Label", true);
-  AddBaseProperty(
-      "", &RewriteOptions::mob_phone_conversion_label_, "mmcnvl",
-      kMobPhoneConversionLabel, kQueryScope,
-      "(experimental) map conversion Label", true);
-  // TODO(jud): Remove this option, since we no longer support non-iframe mode.
-  AddBaseProperty(
-      false, &RewriteOptions::mob_iframe_, "miframe", kMobIframe, kQueryScope,
-      "Deprecated. Whether to use an iframe rather than proxying", true);
-  AddBaseProperty(
-      false, &RewriteOptions::mob_iframe_disable_, "miframedis",
-      kMobIframeDisable, kDirectoryScope,
-      "(experimental) serves a redirect to the original page for every request "
-      "for which MobIFrame is enabled.  Intended as a safety valve when an "
-      "iframed site is sending us traffic and we don't want to actually "
-      "mobilize it.", true);
-  // Note that setting this option to "none" turns off inserting an iframe. We
-  // use this because it's otherwise difficult to set the option to a blank
-  // string to override the default.
-  AddBaseProperty(
-      "width=device-width,initial-scale=1",
-      &RewriteOptions::mob_iframe_viewport_, "miframev", kMobIframeViewport,
-      kQueryScope,
-      "(experimental) the content of the viewport tag to insert "
-      "when in iframe mode. Set to \"none\" to avoid adding a viewport tag.",
-      true);
-  // TODO(jud): Remove this option.
-  AddBaseProperty(false, &RewriteOptions::mob_nav_, "mnav", kMobNav,
-                  kQueryScope, "Deprecated.", true);
-  // TODO(jud): Remove this option. It should always be true.
-  AddBaseProperty(true, &RewriteOptions::mob_labeled_mode_, "mlabeled",
-                  kMobLabeledMode, kQueryScope, "Deprecated.", true);
-  // TODO(jud): Remove this option.
-  AddBaseProperty("", &RewriteOptions::mob_nav_classes_, "navcls",
-                  kMobNavClasses, kQueryScope, "Deprecated.", true);
-  // TODO(jud): Remove this option.
-  AddBaseProperty(false, &RewriteOptions::mob_static_, "mstatic", kMobStatic,
-                  kQueryScope, "Deprecated.", true);
-  AddBaseProperty(
-      MobTheme(), &RewriteOptions::mob_theme_, "mtheme", kMobTheme,
-      kServerScope,  // DO NOT MAKE THIS QueryScope --- that would XSS.
-      "(experimental) pre-computed theme for mobilization JS",
-      true);
 
   // Test-only, so no enum.
   AddRequestProperty(false,

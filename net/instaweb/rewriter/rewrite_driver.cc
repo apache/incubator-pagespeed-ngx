@@ -1297,8 +1297,7 @@ void RewriteDriver::AddPostRenderFilters() {
   // All filters that might add urls should come before the domain rewriter,
   // so they'll get rewritten.
   if (rewrite_options->domain_lawyer()->can_rewrite_domains() &&
-      (rewrite_options->Enabled(RewriteOptions::kRewriteDomains) ||
-       rewrite_options->mob_iframe())) {
+      rewrite_options->Enabled(RewriteOptions::kRewriteDomains)) {
     // Rewrite mapped domains and shard any resources not otherwise rewritten.
     // We want do do this after all the content-changing rewrites, because they
     // will map & shard as part of their execution.
