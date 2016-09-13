@@ -73,11 +73,6 @@ class JsDisableFilter : public CommonFilter {
   ScriptTagScanner script_tag_scanner_;
   int index_;
   bool ie_meta_tag_written_;
-  int prefetch_js_elements_count_;
-  int max_prefetch_js_elements_;
-  GoogleString prefetch_js_elements_;
-  bool should_look_for_prefetch_js_elements_;
-  UserAgentMatcher::PrefetchMechanism prefetch_mechanism_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDisableFilter);
 };

@@ -41,17 +41,11 @@ const char JsDisableFilter::kElementOnloadCode[] =
     "if (this==window) elem=document.body;"
     "elem.setAttribute('data-pagespeed-loaded', 1)";
 
-namespace {
-// TODO(morlovich): Use saner prefetch/preload mechanism.
-const char kPrefetchImageTagHtml[] = "new Image().src=\"%s\";";
-}
-
 JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       script_tag_scanner_(driver),
       index_(0),
-      ie_meta_tag_written_(false),
-      max_prefetch_js_elements_(0) {
+      ie_meta_tag_written_(false) {
 }
 
 JsDisableFilter::~JsDisableFilter() {
@@ -75,14 +69,6 @@ void JsDisableFilter::DetermineEnabled(GoogleString* disabled_reason) {
 void JsDisableFilter::StartDocumentImpl() {
   index_ = 0;
   ie_meta_tag_written_ = false;
-  should_look_for_prefetch_js_elements_ = false;
-  prefetch_js_elements_.clear();
-  prefetch_js_elements_count_ = 0;
-  max_prefetch_js_elements_ =
-      driver()->options()->max_prefetch_js_elements();
-  prefetch_mechanism_ =
-      driver()->user_agent_matcher()->GetPrefetchMechanism(
-          driver()->user_agent());
 }
 
 void JsDisableFilter::InsertJsDeferExperimentalScript() {
@@ -134,28 +120,9 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
     if (!ie_meta_tag_written_) {
       InsertMetaTagForIE(element);
     }
-    should_look_for_prefetch_js_elements_ = true;
   } else if (element->keyword() == HtmlName::kBody) {
     if (!ie_meta_tag_written_) {
       InsertMetaTagForIE(element);
-    }
-    if (prefetch_js_elements_count_ != 0) {
-      // We have collected some script elements that can be downloaded early.
-      should_look_for_prefetch_js_elements_ = false;
-      // The method to download the scripts differs based on the user agent.
-      // Iframe is used for non-chrome UAs whereas for Chrome, the scripts are
-      // downloaded as Image.src().
-      if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
-        HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
-        driver()->AddAttribute(
-            script, HtmlName::kDataPagespeedNoDefer, NULL);
-        GoogleString script_data = StrCat("(function(){", prefetch_js_elements_,
-                                          "})()");
-        driver()->PrependChild(element, script);
-        HtmlNode* script_code =
-            driver()->NewCharactersNode(script, script_data);
-        driver()->AppendChild(script, script_code);
-      }
     }
   } else {
     HtmlElement::Attribute* src;
@@ -186,19 +153,6 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
           RewriteOptions::FilterId(RewriteOptions::kDisableJavascript), false);
 
       // TODO(rahulbansal): Add logging for prioritize scripts
-      if (src != NULL) {
-        if (should_look_for_prefetch_js_elements_ &&
-            prefetch_js_elements_count_ < max_prefetch_js_elements_) {
-          GoogleString escaped_source;
-          if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
-            EscapeToJsStringLiteral(src->DecodedValueOrNull(), false,
-                                    &escaped_source);
-            StrAppend(&prefetch_js_elements_, StringPrintf(
-                      kPrefetchImageTagHtml, escaped_source.c_str()));
-          }
-          prefetch_js_elements_count_++;
-        }
-      }
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
       if (type != NULL) {
         type->set_name(driver()->MakeName(HtmlName::kDataPagespeedOrigType));
@@ -241,9 +195,6 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void JsDisableFilter::EndElementImpl(HtmlElement* element) {
-  if (element->keyword() == HtmlName::kHead) {
-    should_look_for_prefetch_js_elements_ = false;
-  }
 }
 
 void JsDisableFilter::EndDocument() {

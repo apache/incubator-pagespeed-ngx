@@ -220,8 +220,7 @@ class AbstractLogRecord  {
       bool supports_webp_in_place,
       bool supports_webp_rewritten_urls,
       bool supports_webplossless_alpha,
-      bool is_bot,
-      bool can_preload_resources) = 0;
+      bool is_bot) = 0;
 
   // Log whether the request is an XmlHttpRequest.
   void LogIsXhr(bool is_xhr);
@@ -329,7 +328,7 @@ class LogRecord : public AbstractLogRecord {
       ImageType low_res_image_type,
       int low_res_data_size) {}
 
-  virtual void LogDeviceInfo(
+  void LogDeviceInfo(
       int device_type,
       bool supports_image_inlining,
       bool supports_lazyload_images,
@@ -338,10 +337,9 @@ class LogRecord : public AbstractLogRecord {
       bool supports_webp_in_place,
       bool supports_webp_rewritten_urls,
       bool supports_webplossless_alpha,
-      bool is_bot,
-      bool can_preload_resources) {}
+      bool is_bot) override {}
 
-  bool WriteLogImpl() { return true; }
+  bool WriteLogImpl() override { return true; }
 
  private:
   scoped_ptr<LoggingInfo> logging_info_;

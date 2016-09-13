@@ -113,51 +113,6 @@ TEST_F(UserAgentMatcherTest, DoesNotSupportBlink) {
                 kPSPUserAgent, &headers));
 }
 
-TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
-  const RequestHeaders headers;
-  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
-            user_agent_matcher_->GetPrefetchMechanism(
-                "prefetch_image_tag"));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
-            user_agent_matcher_->GetPrefetchMechanism(
-                kChromeUserAgent));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
-            user_agent_matcher_->GetPrefetchMechanism(
-                kIe9UserAgent));
-  for (int i = 0; i < kIe11UserAgentsArraySize; ++i) {
-    EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
-              user_agent_matcher_->GetPrefetchMechanism(
-                  kIe11UserAgents[i]));
-  }
-  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
-            user_agent_matcher_->GetPrefetchMechanism(
-                kSafariUserAgent));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
-            user_agent_matcher_->GetPrefetchMechanism(
-                "prefetch_link_script_tag"));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
-            user_agent_matcher_->GetPrefetchMechanism(
-                NULL));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
-            user_agent_matcher_->GetPrefetchMechanism(""));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
-            user_agent_matcher_->GetPrefetchMechanism(
-                kAndroidChrome21UserAgent));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
-            user_agent_matcher_->GetPrefetchMechanism(
-                kIPhoneUserAgent));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
-            user_agent_matcher_->GetPrefetchMechanism(
-                kIPadUserAgent));
-  // Chrome >= 42 gets awesome link rel=prefetch
-  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
-            user_agent_matcher_->GetPrefetchMechanism(
-                kChrome41UserAgent));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkRelPrefetchTag,
-            user_agent_matcher_->GetPrefetchMechanism(
-                kChrome42UserAgent));
-}
-
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {
   EXPECT_FALSE(user_agent_matcher_->SupportsJsDefer(
       kIe9UserAgent, false));

@@ -64,13 +64,6 @@ class UserAgentMatcher {
     kEndOfDeviceType
   };
 
-  enum PrefetchMechanism {
-    kPrefetchNotSupported,
-    kPrefetchImageTag,
-    kPrefetchLinkScriptTag,
-    kPrefetchLinkRelPrefetchTag,
-  };
-
   UserAgentMatcher();
   virtual ~UserAgentMatcher();
 
@@ -89,9 +82,6 @@ class UserAgentMatcher {
   // supports desktop, mobile and not supported.
   virtual BlinkRequestType GetBlinkRequestType(
       const char* user_agent, const RequestHeaders* request_headers) const;
-
-  // Returns the supported prefetch mechanism depending upon the user agent.
-  PrefetchMechanism GetPrefetchMechanism(const StringPiece& user_agent) const;
 
   // Returns the DeviceType for the given user agent string.
   virtual DeviceType GetDeviceTypeForUA(const StringPiece& user_agent) const;
@@ -170,9 +160,6 @@ class UserAgentMatcher {
   FastWildcardGroup pagespeed_insights_;
   FastWildcardGroup supports_webp_lossless_alpha_;
   FastWildcardGroup supports_webp_animated_;
-  FastWildcardGroup supports_prefetch_link_rel_subresource_;
-  FastWildcardGroup supports_prefetch_image_tag_;
-  FastWildcardGroup supports_prefetch_link_script_tag_;
   FastWildcardGroup supports_dns_prefetch_;
   FastWildcardGroup mobile_user_agents_;
   FastWildcardGroup tablet_user_agents_;

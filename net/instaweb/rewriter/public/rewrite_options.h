@@ -797,7 +797,6 @@ class RewriteOptions {
   static const int64 kDefaultImageWebpRecompressQualityForSmallScreens;
   static const int64 kDefaultImageWebpTimeoutMs;
   static const int kDefaultDomainShardCount;
-  static const int kDefaultMaxPrefetchJsElements;
   static const int64 kDefaultOptionCookiesDurationMs;
   static const int64 kDefaultLoadFromFileCacheTtlMs;
   static const double kDefaultResponsiveImageDensities[];
@@ -2320,13 +2319,6 @@ class RewriteOptions {
 
   void set_follow_flushes(bool x) { set_option(x, &follow_flushes_); }
   bool follow_flushes() const { return follow_flushes_.value(); }
-
-  void set_max_prefetch_js_elements(int x) {
-    set_option(x, &max_prefetch_js_elements_);
-  }
-  int max_prefetch_js_elements() const {
-    return max_prefetch_js_elements_.value();
-  }
 
   void set_enable_defer_js_experimental(bool x) {
     set_option(x, &enable_defer_js_experimental_);
@@ -3876,9 +3868,8 @@ class RewriteOptions {
 
   Option<bool> serve_rewritten_webp_urls_to_any_agent_;
 
-  // Number of script elements to prefetch early. Applicable when defer_js
-  // filter is enabled.
-  Option<int> max_prefetch_js_elements_;
+  // Deprecated. Doesn't do anything any more.
+  Option<int> deprecated_max_prefetch_js_elements_;
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;

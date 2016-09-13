@@ -205,11 +205,6 @@ bool DeviceProperties::IsBot() const {
   return (is_bot_ == kTrue);
 }
 
-bool DeviceProperties::CanPreloadResources() const {
-  return ua_matcher_->GetPrefetchMechanism(user_agent_) !=
-      UserAgentMatcher::kPrefetchNotSupported;
-}
-
 UserAgentMatcher::DeviceType DeviceProperties::GetDeviceType() const {
   if (device_type_set_ == kNotSet) {
     device_type_ = ua_matcher_->GetDeviceTypeForUA(user_agent_);

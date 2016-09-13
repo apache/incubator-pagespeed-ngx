@@ -59,8 +59,6 @@ const char* kImageInliningWhitelist[] = {
   "google command line rewriter",
   "webp",
   "webp-la",
-  "prefetch_image_tag",
-  "prefetch_link_script_tag",
 };
 const char* kImageInliningBlacklist[] = {
   "*Firefox/1.*",
@@ -96,8 +94,6 @@ const char* kPanelSupportDesktopWhitelist[] = {
   "*Safari*",
   // Plus IE, see code below.
   "*Wget*",
-  // The following user agents are used only for internal testing
-  "prefetch_link_script_tag",
 };
 // Note that these are combined with kPanelSupportDesktopWhitelist, which
 // imply defer_javascript support.
@@ -221,8 +217,6 @@ const char* kInsertDnsPrefetchWhitelist[] = {
   "*Safari/*",
   // Plus IE, see code below.
   "*Wget*",
-  // The following user agents are used only for internal testing
-  "prefetch_image_tag",
 };
 
 const char* kInsertDnsPrefetchBlacklist[] = {
@@ -324,21 +318,6 @@ const char* kMobilizationUserAgentBlacklist[] = {
   // Android browser (the old WebKit browser).
   "*U; Android 3.*",
   "*U; Android 4.*"
-};
-
-// TODO(mmohabey): Tune this to include more browsers.
-const char* kSupportsPrefetchImageTag[] = {
-  "*Chrome/*",
-  "*Safari/*",
-  // User agent used only for internal testing
-  "prefetch_image_tag",
-};
-
-const char* kSupportsPrefetchLinkScriptTag[] = {
-  "*Firefox/*",
-  // Plus IE, see code below
-  // User agent used only for internal testing
-  "prefetch_link_script_tag",
 };
 
 // IE 11 and later user agent strings are deliberately difficult.  That would be
@@ -450,15 +429,6 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kWebpAnimatedBlacklist); i < n; ++i) {
     supports_webp_animated_.Disallow(kWebpAnimatedBlacklist[i]);
   }
-  for (int i = 0, n = arraysize(kSupportsPrefetchImageTag); i < n; ++i) {
-    supports_prefetch_image_tag_.Allow(kSupportsPrefetchImageTag[i]);
-  }
-  for (int i = 0, n = arraysize(kSupportsPrefetchLinkScriptTag); i < n; ++i) {
-    supports_prefetch_link_script_tag_.Allow(kSupportsPrefetchLinkScriptTag[i]);
-  }
-  for (int i = 0, n = arraysize(kIeUserAgents); i < n; ++i) {
-    supports_prefetch_link_script_tag_.Allow(kIeUserAgents[i]);
-  }
   for (int i = 0, n = arraysize(kInsertDnsPrefetchWhitelist); i < n; ++i) {
     supports_dns_prefetch_.Allow(kInsertDnsPrefetchWhitelist[i]);
   }
@@ -543,24 +513,6 @@ UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
     return kBlinkWhiteListForDesktop;
   }
   return kDoesNotSupportBlink;
-}
-
-UserAgentMatcher::PrefetchMechanism UserAgentMatcher::GetPrefetchMechanism(
-    const StringPiece& user_agent) const {
-  // Chrome >= 42 has link rel=prefetch that's good at actually using the
-  // prefetch result, prioritize using that.
-  int major, minor, build, patch;
-  if (GetChromeBuildNumber(user_agent, &major, &minor, &build, &patch)
-      && major >= 42) {
-    return kPrefetchLinkRelPrefetchTag;
-  }
-
-  if (supports_prefetch_image_tag_.Match(user_agent, false)) {
-    return kPrefetchImageTag;
-  } else if (supports_prefetch_link_script_tag_.Match(user_agent, false)) {
-    return kPrefetchLinkScriptTag;
-  }
-  return kPrefetchNotSupported;
 }
 
 bool UserAgentMatcher::SupportsDnsPrefetch(
