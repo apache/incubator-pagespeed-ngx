@@ -34,6 +34,7 @@
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
+#include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/system/tcp_server_thread_for_testing.h"
 
@@ -338,21 +339,31 @@ TEST_F(RedisCacheTest, DoesNotReconnectAfterShutdown) {
   CheckNotFound(kSomeKey);
 }
 
+// This server always waits until connection is received to avoid race
+// condition between server destruction and accepting connection (like in
+// ShutDownDuringConnection). Other servers do not do that because tests
+// actually rely on their answers to client.
 class RedisNotRespondingServerThread : public TcpServerThreadForTesting {
  public:
   RedisNotRespondingServerThread(apr_port_t listen_port,
                                  ThreadSystem* thread_system)
       : TcpServerThreadForTesting(listen_port, "redis_not_responding_server",
-                                  thread_system) {}
+                                  thread_system),
+        connection_received_(thread_system) {}
 
   ~RedisNotRespondingServerThread() {
+    connection_received_.Wait();
     ShutDown();
   }
 
  protected:
   void HandleClientConnection(apr_socket_t* sock) override {
     // Do nothing, socket will be closed in destructor
+    connection_received_.Notify();
   }
+
+ private:
+  WorkerTestBase::SyncPoint connection_received_;
 };
 
 // These constants are for timeout tests.
