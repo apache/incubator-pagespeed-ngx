@@ -61,6 +61,7 @@ if [[ -n "$(trap -p EXIT)" ]]; then
 fi
 
 SERVER_CMD="$1"
+SERVER_NAME=$(basename "$1")
 SERVER_PID=""
 SERVER_PORT=""
 SERVER_WORKDIR=$(mktemp -d)
@@ -68,7 +69,7 @@ SERVER_WORKDIR=$(mktemp -d)
 # Function called on bash's termination to clean up
 function kill_server {
   if [[ -n "$SERVER_PID" ]]; then
-    echo "Killing $SERVER_CMD on port $SERVER_PORT running with pid=$SERVER_PID"
+    echo "Killing $SERVER_NAME on port $SERVER_PORT running with pid=$SERVER_PID"
     kill "$SERVER_PID" || true
   fi
   rm -rf "$SERVER_WORKDIR" || true
@@ -85,7 +86,7 @@ while [[ -z "$SERVER_PORT" ]]; do
     continue
   fi
 
-  echo "Trying to start $SERVER_CMD on port $SERVER_PORT"
+  echo "Trying to start $SERVER_NAME on port $SERVER_PORT"
 
   # & is quoted because we want run command in background, not whole eval
   eval "$@" "&"
@@ -95,10 +96,10 @@ while [[ -z "$SERVER_PORT" ]]; do
   echo -n "Waiting for server..."
   if ! wait_cmd_with_timeout 2 \
     'netstat -tanp 2>/dev/null |' \
-    'grep ":$SERVER_PORT .* LISTEN .* $SERVER_PID/$SERVER_CMD" >/dev/null'
+    'grep ":$SERVER_PORT .* LISTEN .* $SERVER_PID/$SERVER_NAME" >/dev/null'
   then
     echo
-    echo "$SERVER_CMD does not listen on port $SERVER_PORT after two" \
+    echo "$SERVER_NAME does not listen on port $SERVER_PORT after two" \
          "seconds, killing it"
     kill "$SERVER_PID" || true
     SERVER_PID=""
@@ -108,4 +109,4 @@ while [[ -z "$SERVER_PORT" ]]; do
   fi
 done
 
-echo $SERVER_CMD is up and running on port $SERVER_PORT with pid=$SERVER_PID
+echo $SERVER_NAME is up and running on port $SERVER_PORT with pid=$SERVER_PID

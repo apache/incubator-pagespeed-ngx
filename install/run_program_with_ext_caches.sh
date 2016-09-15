@@ -17,5 +17,7 @@ set -u
 # line - they are needed to ensure that arguments are expanded in the inner
 # script's eval, not outer's. Otherwise there are problems with having \; in
 # arguments - it would have been expanded by the first eval.
+#
+# TODO(yeputons): add Redis Cluster here when it's supported.
 exec $(dirname "$BASH_SOURCE")/run_program_with_memcached.sh \
   $(dirname "$BASH_SOURCE")/run_program_with_redis.sh \' "$@" \'

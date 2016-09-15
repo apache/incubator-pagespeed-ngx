@@ -224,6 +224,7 @@
         'spriter/libpng_image_library_test.cc',
         '<(DEPTH)/pagespeed/system/apr_mem_cache_test.cc',
         '<(DEPTH)/pagespeed/system/redis_cache_test.cc',
+        '<(DEPTH)/pagespeed/system/redis_cache_cluster_test.cc',
         '<(DEPTH)/pagespeed/system/admin_site_test.cc',
         '<(DEPTH)/pagespeed/system/system_message_handler_test.cc',
         '<(DEPTH)/pagespeed/controller/central_controller_callback_test.cc',
