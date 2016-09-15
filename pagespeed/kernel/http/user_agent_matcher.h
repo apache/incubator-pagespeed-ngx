@@ -46,15 +46,6 @@ class UserAgentMatcher {
   // Note that this must not contain the substring "webp".
   static const char kTestUserAgentNoWebP[];  // non-webp user agent
 
-  enum BlinkRequestType {
-    kBlinkWhiteListForDesktop,
-    kBlinkBlackListForDesktop,
-    kBlinkWhiteListForMobile,
-    kDoesNotSupportBlinkForMobile,
-    kNullOrEmpty,
-    kDoesNotSupportBlink,
-  };
-
   enum DeviceType {
     kDesktop,
     kTablet,
@@ -77,11 +68,6 @@ class UserAgentMatcher {
 
   virtual bool SupportsImageInlining(const StringPiece& user_agent) const;
   bool SupportsLazyloadImages(StringPiece user_agent) const;
-
-  // Returns the request type for the given request. The return type currently
-  // supports desktop, mobile and not supported.
-  virtual BlinkRequestType GetBlinkRequestType(
-      const char* user_agent, const RequestHeaders* request_headers) const;
 
   // Returns the DeviceType for the given user agent string.
   virtual DeviceType GetDeviceTypeForUA(const StringPiece& user_agent) const;
@@ -153,9 +139,7 @@ class UserAgentMatcher {
   FastWildcardGroup supports_image_inlining_;
   FastWildcardGroup supports_lazyload_images_;
   FastWildcardGroup defer_js_whitelist_;
-  FastWildcardGroup blink_desktop_whitelist_;
-  FastWildcardGroup blink_desktop_blacklist_;
-  FastWildcardGroup blink_mobile_whitelist_;
+  FastWildcardGroup defer_js_mobile_whitelist_;
   FastWildcardGroup legacy_webp_;
   FastWildcardGroup pagespeed_insights_;
   FastWildcardGroup supports_webp_lossless_alpha_;

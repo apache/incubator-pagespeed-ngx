@@ -82,26 +82,22 @@ const char* kLazyloadImagesBlacklist[] = {
   kGooglePlusUserAgent
 };
 
-// For Panels and deferJs the list is same as of now.
-// we only allow Firefox4+, IE8+, safari and Chrome
+
+// For defer js we only allow Firefox4+, IE8+, safari and Chrome
 // We'll be updating this as and when required.
 // The blacklist is checked first, then if not in there, the whitelist is
 // checked.
 // Note: None of the following should match a mobile UA.
-const char* kPanelSupportDesktopWhitelist[] = {
+const char* kDeferJSWhitelist[] = {
   "*Chrome/*",
   "*Firefox/*",
   "*Safari*",
   // Plus IE, see code below.
   "*Wget*",
-};
-// Note that these are combined with kPanelSupportDesktopWhitelist, which
-// imply defer_javascript support.
-const char* kDeferJSWhitelist[] = {
   "*Googlebot*",
   "*Mediapartners-Google*"
 };
-const char* kPanelSupportDesktopBlacklist[] = {
+const char* kDeferJSBlacklist[] = {
   "*Firefox/1.*",
   "*Firefox/2.*",
   "*Firefox/3.*",
@@ -110,7 +106,7 @@ const char* kPanelSupportDesktopBlacklist[] = {
   "*MSIE 7.*",
   "*MSIE 8.*",
 };
-const char* kPanelSupportMobileWhitelist[] = {
+const char* kDeferJSMobileWhitelist[] = {
   "*AppleWebKit/*",
 };
 
@@ -359,11 +355,6 @@ const Dimension kKnownScreenDimensions[] = {
 
 }  // namespace
 
-// Note that "blink" here does not mean the new Chrome rendering
-// engine.  It refers to a pre-existing internal name for the
-// technology behind partial HTML caching:
-// https://developers.google.com/speed/pagespeed/service/CacheHtml
-
 UserAgentMatcher::UserAgentMatcher()
     : chrome_version_pattern_(kChromeVersionPattern) {
   // Initialize FastWildcardGroup for image inlining whitelist & blacklist.
@@ -379,13 +370,6 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kLazyloadImagesBlacklist); i < n; ++i) {
     supports_lazyload_images_.Disallow(kLazyloadImagesBlacklist[i]);
   }
-  for (int i = 0, n = arraysize(kPanelSupportDesktopWhitelist); i < n; ++i) {
-    blink_desktop_whitelist_.Allow(kPanelSupportDesktopWhitelist[i]);
-
-    // Explicitly allowed blink UAs should also allow defer_javascript.
-    defer_js_whitelist_.Allow(kPanelSupportDesktopWhitelist[i]);
-  }
-  blink_desktop_whitelist_.Allow(kIeUserAgents[kIEBefore11Index]);
   defer_js_whitelist_.Allow(kIeUserAgents[kIEBefore11Index]);
   for (int i = 0, n = arraysize(kDeferJSWhitelist); i < n; ++i) {
     defer_js_whitelist_.Allow(kDeferJSWhitelist[i]);
@@ -394,14 +378,12 @@ UserAgentMatcher::UserAgentMatcher()
   // https://code.google.com/p/modpagespeed/issues/detail?id=982
   defer_js_whitelist_.Disallow("* MSIE 9.*");
 
-  for (int i = 0, n = arraysize(kPanelSupportDesktopBlacklist); i < n; ++i) {
-    blink_desktop_blacklist_.Allow(kPanelSupportDesktopBlacklist[i]);
-
-    // Explicitly disallowed blink UAs should also disable defer_javascript.
-    defer_js_whitelist_.Disallow(kPanelSupportDesktopBlacklist[i]);
+  for (int i = 0, n = arraysize(kDeferJSBlacklist); i < n; ++i) {
+    defer_js_whitelist_.Disallow(kDeferJSBlacklist[i]);
   }
-  for (int i = 0, n = arraysize(kPanelSupportMobileWhitelist); i < n; ++i) {
-    blink_mobile_whitelist_.Allow(kPanelSupportMobileWhitelist[i]);
+
+  for (int i = 0, n = arraysize(kDeferJSMobileWhitelist); i < n; ++i) {
+    defer_js_mobile_whitelist_.Allow(kDeferJSMobileWhitelist[i]);
   }
 
   // Do the same for webp support.
@@ -495,26 +477,6 @@ bool UserAgentMatcher::SupportsLazyloadImages(StringPiece user_agent) const {
   return supports_lazyload_images_.Match(user_agent, true);
 }
 
-UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
-    const char* user_agent, const RequestHeaders* request_headers) const {
-  if (user_agent == NULL || user_agent[0] == '\0') {
-    return kNullOrEmpty;
-  }
-  if (GetDeviceTypeForUAAndHeaders(user_agent, request_headers) != kDesktop) {
-    if (blink_mobile_whitelist_.Match(user_agent, false)) {
-      return kBlinkWhiteListForMobile;
-    }
-    return kDoesNotSupportBlinkForMobile;
-  }
-  if (blink_desktop_blacklist_.Match(user_agent, false)) {
-    return kBlinkBlackListForDesktop;
-  }
-  if (blink_desktop_whitelist_.Match(user_agent, false)) {
-    return kBlinkWhiteListForDesktop;
-  }
-  return kDoesNotSupportBlink;
-}
-
 bool UserAgentMatcher::SupportsDnsPrefetch(
     const StringPiece& user_agent) const {
   return supports_dns_prefetch_.Match(user_agent, false);
@@ -524,7 +486,7 @@ bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent,
                                        bool allow_mobile) const {
   // TODO(ksimbili): Use IsMobileRequest?
   if (GetDeviceTypeForUA(user_agent) != kDesktop) {
-    return allow_mobile && blink_mobile_whitelist_.Match(user_agent, false);
+    return allow_mobile && defer_js_mobile_whitelist_.Match(user_agent, false);
   }
   return user_agent.empty() || defer_js_whitelist_.Match(user_agent, false);
 }
