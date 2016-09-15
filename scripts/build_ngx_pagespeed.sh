@@ -32,11 +32,11 @@ Options:
   -b, --builddir <directory>
       Where to build.  Defaults to \$HOME.
 
-  -p, --depsinstalled
+  -p, --no-deps-check
       By default, this script checks for the packages it depends on and tries to
       install them.  If you have installed dependencies from source or are on a
-      non-deb non-rpm system, this won't work.  In that case, you can install
-      the dependencies yourself and pass in --depsinstalled to skip this check.
+      non-deb non-rpm system, this won't work.  In that case, install the
+      dependencies yourself and pass --no-deps-check.
 
   -d, --dryrun
       Don't make any changes to the system, just print what changes you
@@ -47,7 +47,7 @@ Options:
   }
 
   opts=$(getopt -o v:n:b:pdh \
-    --longoptions version:,nginx:,buildir:,depsinstalled,dryrun,help \
+    --longoptions version:,nginx:,buildir:,no-deps-check,dryrun,help \
     -n "$(basename "$0")" -- "$@")
   if [ $? != 0 ]; then
     usage
@@ -58,7 +58,7 @@ Options:
   NPS_VERSION=""
   NGINX_VERSION=""
   BUILDDIR="$HOME"
-  DEPSINSTALLED=false
+  DO_DEPS_CHECK=true
   DRYRUN=false
   while true; do
     case "$1" in
@@ -74,8 +74,8 @@ Options:
         BUILDDIR="$1"
         shift
         ;;
-      -p | --depsinstalled) shift
-        DEPSINSTALLED=true
+      -p | --no-deps-check) shift
+        DO_DEPS_CHECK=false
         ;;
       -d | --dryrun) shift
         DRYRUN="true"
@@ -124,15 +124,22 @@ Options:
     dpkg -l $package_name | grep ^ii | grep -q .
   }
 
+  # usage:
+  #  install_dependencies install_pkg_cmd is_pkg_installed_cmd dep1 dep2 ...
+  #
+  # install_pkg_cmd is a command to install a dependency
+  # is_pkg_installed_cmd is a command that returns true if the dependency is
+  #   already installed
+  # each dependency is a package name
   function install_dependencies() {
-    local install="$1"
-    local is_installed="$2"
-    local dependencies="$3"
+    local install_pkg_cmd="$1"
+    local is_pkg_installed_cmd="$2"
+    shift 2
 
     local missing_dependencies=""
 
-    for package_name in $dependencies; do
-      if ! $is_installed $package_name; then
+    for package_name in "$@"; do
+      if ! $is_pkg_installed_cmd $package_name; then
         missing_dependencies+="$package_name "
       fi
     done
@@ -140,7 +147,7 @@ Options:
       echo "Detected that we're missing the following depencencies:"
       echo "  $missing_dependencies"
       echo "Installing them:"
-      run sudo $install $missing_dependencies
+      run sudo $install_pkg_cmd $missing_dependencies
     fi
   }
 
@@ -185,9 +192,7 @@ Options:
   PS_NGX_EXTRA_FLAGS=""
 
   # Now make sure our dependencies are installed.
-  if "$DEPSINSTALLED"; then
-    echo "Not checking whether dependencies are installed."
-  else
+  if "$DO_DEPS_CHECK"; then
     if [ -f /etc/debian_version ]; then
       echo "Detected debian-based distro."
 
@@ -213,15 +218,6 @@ Options:
         "gcc-c++ pcre-devel zlib-devel make unzip wget"
       if gcc_too_old; then
         if [ ! -e /opt/rh/devtoolset-2/root/usr/bin/gcc ]; then
-          echo "Detected that gcc is older than 4.8.  Scientific Linux provides"
-          echo "a gcc package that installs gcc-4.8 into /opt/ and doesn't"
-          echo "affect your global gcc installation."
-          slc_key="https://linux.web.cern.ch/linux/scientific6/docs/repository/"
-          slc_key+="cern/slc6X/i386/RPM-GPG-KEY-cern"
-          slc_key_out="$TEMPDIR/RPM-GPG-KEY-cern"
-          run sudo wget "$slc_key" -O "$slc_key_out"
-          run sudo rpm --import "$slc_key_out"
-
           redhat_major_version=$(
             cat /etc/redhat-release | grep -o -E '[0-9]+' | head -n 1)
           if [ "$redhat_major_version" == 5 ]; then
@@ -235,7 +231,21 @@ Options:
             exit 1
           fi
 
+          echo "Detected that gcc is older than 4.8.  Scientific Linux provides"
+          echo "a gcc package that installs gcc-4.8 into /opt/ and doesn't"
+          echo "affect your global gcc installation."
+          slc_key="https://linux.web.cern.ch/linux/scientific6/docs/repository/"
+          slc_key+="cern/slc6X/i386/RPM-GPG-KEY-cern"
+          slc_key_out="$TEMPDIR/RPM-GPG-KEY-cern"
+          run sudo wget "$slc_key" -O "$slc_key_out"
+          run sudo rpm --import "$slc_key_out"
+
           repo_fname="/etc/yum.repos.d/slc${slc_version}-devtoolset.repo"
+          if [ -e "$repo_fname" ]; then
+            echo "Expected $repo_fname not to exist; aborting."
+            exit 1
+          fi
+
           repo_url="https://linux.web.cern.ch/linux/scientific${slc_version}/"
           repo_url+="/docs/repository/cern/devtoolset/"
           repo_url+="slc${slc_version}-devtoolset.repo"
@@ -251,20 +261,20 @@ Options:
       exit 1
     fi
     echo "Dependencies are all set."
+  else
+    echo "Not checking whether dependencies are installed."
   fi
 
   function delete_if_already_exists() {
     local directory="$1"
     if [ -d "$directory" ]; then
-      echo "$directory already exists."
-
       if [ ${#directory} -lt 8 ]; then
         echo "Not deleting $directory; name is suspiciously short.  Something"
         echo "is wrong."
         exit 1
       fi
 
-      continue_or_exit "Ok to delete?"
+      continue_or_exit "OK to delete $directory?"
       rm -rf "$directory"
     fi
   }
@@ -272,9 +282,7 @@ Options:
   nps_baseurl="https://github.com/pagespeed/ngx_pagespeed/archive"
   nps_fname="release-${NPS_VERSION}-beta"
   nps_downloaded="$TEMPDIR/$nps_fname.zip"
-  if [ ! -e "$nps_downloaded" ]; then
-    run wget "$nps_baseurl/$nps_fname.zip" -O "$nps_downloaded"
-  fi
+  run wget "$nps_baseurl/$nps_fname.zip" -O "$nps_downloaded"
   nps_module_dir="$BUILDDIR/ngx_pagespeed-$nps_fname"
   delete_if_already_exists "$nps_module_dir"
   echo "Extracting ngx_pagespeed..."
@@ -285,7 +293,6 @@ Options:
   run tar -xzf ${NPS_VERSION}.tar.gz  # extracts to psol/
 
   configure_args="--add-module=$nps_module_dir $PS_NGX_EXTRA_FLAGS"
-  echo "$NGINX_VERSION"
   if [ -z "$NGINX_VERSION" ]; then
     # They didn't specify an nginx version, so we're just preparing the
     # module for them to install.
@@ -296,10 +303,7 @@ Options:
     # Download and build nginx.
     nginx_leaf="nginx-${NGINX_VERSION}.tar.gz"
     nginx_fname="$TEMPDIR/$nginx_leaf"
-
-    if [ ! -e "$nginx_fname" ]; then
-      run wget "http://nginx.org/download/$nginx_leaf" -O "$nginx_fname"
-    fi
+    run wget "http://nginx.org/download/$nginx_leaf" -O "$nginx_fname"
     nginx_dir="$BUILDDIR/nginx-${NGINX_VERSION}/"
     delete_if_already_exists "$nginx_dir"
     echo "Extracting nginx..."
