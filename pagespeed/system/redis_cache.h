@@ -19,6 +19,8 @@
 #ifndef PAGESPEED_SYSTEM_REDIS_CACHE_H_
 #define PAGESPEED_SYSTEM_REDIS_CACHE_H_
 
+#include <stdarg.h>
+
 #include <memory>
 #include <initializer_list>
 #include "pagespeed/kernel/base/abstract_mutex.h"
@@ -67,31 +69,27 @@ class RedisCache : public CacheInterface {
 
   GoogleString ServerDescription() const;
 
-#define ALL_LOCKS_EXCLUDED LOCKS_EXCLUDED(redis_mutex_, state_mutex_)
-  void StartUp(bool connect_now = true) ALL_LOCKS_EXCLUDED;
+  void StartUp(bool connect_now = true);
 
   // CacheInterface implementations.
   GoogleString Name() const override { return FormatName(); }
   bool IsBlocking() const override { return true; }
-  bool IsHealthy() const override ALL_LOCKS_EXCLUDED;
-  void ShutDown() override ALL_LOCKS_EXCLUDED;
+  bool IsHealthy() const override;
+  void ShutDown() override;
 
   static GoogleString FormatName() { return "RedisCache"; }
 
   // CacheInterface implementations.
-  void Get(const GoogleString& key,
-           Callback* callback) override ALL_LOCKS_EXCLUDED;
-  void Put(const GoogleString& key,
-           SharedString* value) override ALL_LOCKS_EXCLUDED;
-  void Delete(const GoogleString& key) override ALL_LOCKS_EXCLUDED;
+  void Get(const GoogleString& key, Callback* callback) override;
+  void Put(const GoogleString& key, SharedString* value) override;
+  void Delete(const GoogleString& key) override;
 
   // Appends detailed server status to a string. Returns true if succeeded. If
   // the the server failed to report status, does not change the string.
-  bool GetStatus(GoogleString* status_string) ALL_LOCKS_EXCLUDED;
+  bool GetStatus(GoogleString* status_string);
 
   // Flushes ALL DATA IN REDIS in blocking mode. Used in tests.
-  bool FlushAll() ALL_LOCKS_EXCLUDED;
-#undef ALL_LOCKS_EXCLUDED
+  bool FlushAll();
 
  private:
   struct RedisReplyDeleter {
@@ -111,49 +109,85 @@ class RedisCache : public CacheInterface {
     }
   };
   typedef std::unique_ptr<redisContext, RedisContextDeleter> RedisContext;
-  enum State {
-    kShutDown,
-    kDisconnected,
-    kConnecting,
-    kConnected
+
+  class Connection {
+   public:
+    Connection(RedisCache* redis_cache, StringPiece host, int port);
+
+    void StartUp(bool connect_now = true)
+        LOCKS_EXCLUDED(redis_mutex_, state_mutex_);
+    bool IsHealthy() const LOCKS_EXCLUDED(redis_mutex_, state_mutex_);
+    void ShutDown() LOCKS_EXCLUDED(redis_mutex_, state_mutex_);
+
+    AbstractMutex* GetOperationMutex() const LOCK_RETURNED(redis_mutex_) {
+      return redis_mutex_.get();
+    }
+
+    RedisReply RedisCommand(const char* format, va_list args)
+        EXCLUSIVE_LOCKS_REQUIRED(redis_mutex_) LOCKS_EXCLUDED(state_mutex_);
+
+    bool ValidateRedisReply(const RedisReply& reply,
+                            std::initializer_list<int> valid_types,
+                            const char* command_executed)
+        EXCLUSIVE_LOCKS_REQUIRED(redis_mutex_) LOCKS_EXCLUDED(state_mutex_);
+
+   private:
+    enum State {
+      kShutDown,
+      kDisconnected,
+      kConnecting,
+      kConnected
+    };
+
+    bool IsHealthyLockHeld() const EXCLUSIVE_LOCKS_REQUIRED(state_mutex_);
+    void UpdateState() EXCLUSIVE_LOCKS_REQUIRED(redis_mutex_, state_mutex_);
+
+    bool EnsureConnection() EXCLUSIVE_LOCKS_REQUIRED(redis_mutex_)
+        LOCKS_EXCLUDED(state_mutex_);
+
+    RedisContext TryConnect() LOCKS_EXCLUDED(redis_mutex_, state_mutex_);
+
+    void LogRedisContextError(redisContext* redis, const char* cause);
+
+    const RedisCache* redis_cache_;
+    const GoogleString host_;
+    const int port_;
+    const scoped_ptr<AbstractMutex> redis_mutex_;
+    const scoped_ptr<AbstractMutex> state_mutex_;
+
+    RedisContext redis_ GUARDED_BY(redis_mutex_);
+    State state_ GUARDED_BY(state_mutex_);
+    int64 next_reconnect_at_ms_ GUARDED_BY(state_mutex_);
+
+    DISALLOW_COPY_AND_ASSIGN(Connection);
   };
 
-  bool IsHealthyLockHeld() const EXCLUSIVE_LOCKS_REQUIRED(state_mutex_);
-  void UpdateState() EXCLUSIVE_LOCKS_REQUIRED(redis_mutex_, state_mutex_);
-
-#define LONG_REDIS_OPERATION             \
-  EXCLUSIVE_LOCKS_REQUIRED(redis_mutex_) \
-  LOCKS_EXCLUDED(state_mutex_)
-
-  bool EnsureConnection() LONG_REDIS_OPERATION;
-  RedisReply RedisCommand(const char* format, ...) LONG_REDIS_OPERATION;
-
-  bool ValidateRedisReply(const RedisReply& reply,
-                          std::initializer_list<int> valid_types,
-                          const char* command_executed) LONG_REDIS_OPERATION;
-#undef LONG_REDIS_OPERATION
-
-  RedisContext TryConnect() LOCKS_EXCLUDED(redis_mutex_, state_mutex_);
-
-  void LogRedisContextError(redisContext* redis, const char* cause);
+  // Performs specified command, handling all reconnections, redirections
+  // from Redis Cluster, and other stuff. Then it checks that Redis' reply
+  // has expected type and returns the reply object. If anything fails,
+  // returns nullptr.
+  //
+  // TODO(yeputons): it's expected that destruction of RedisReply is
+  // thread-safe, which is true as of hiredis 0.13. Otherwise it's wrong to
+  // return RedisReply here because lock is released on exit.
+  // See https://github.com/redis/hiredis/issues/465
+  RedisReply RedisCommand(const char* format,
+                          std::initializer_list<int> valid_reply_types, ...);
 
   ThreadSynchronizer* GetThreadSynchronizerForTesting() const {
     return thread_synchronizer_.get();
   }
 
-  const GoogleString host_;
-  const int port_;
-  const scoped_ptr<AbstractMutex> redis_mutex_;
-  const scoped_ptr<AbstractMutex> state_mutex_;
+  const GoogleString main_host_;
+  const int main_port_;
+  ThreadSystem* thread_system_;
   MessageHandler* message_handler_;
   Timer* timer_;
   const int64 reconnection_delay_ms_;
   const int64 timeout_us_;
   const scoped_ptr<ThreadSynchronizer> thread_synchronizer_;
 
-  RedisContext redis_ GUARDED_BY(redis_mutex_);
-  State state_ GUARDED_BY(state_mutex_);
-  int64 next_reconnect_at_ms_ GUARDED_BY(state_mutex_);
+  const scoped_ptr<Connection> main_connection_;
 
   friend class RedisCacheTest;
   DISALLOW_COPY_AND_ASSIGN(RedisCache);

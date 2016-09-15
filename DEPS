@@ -105,6 +105,10 @@ vars = {
   "nanopb_src": "https://github.com/nanopb/nanopb.git",
   "nanopb_revision": "f8ac463766281625ad710900479130c7fcb4d63b",
 
+  # When updating Hiredis please ensure that freeReplyObject() is still
+  # thread-safe, RedisCache relies on that (see comments in redis_cache.cc).
+  # Updates on that matter will probably be tracked here:
+  # https://github.com/redis/hiredis/issues/465.
   "hiredis_src": "https://github.com/redis/hiredis.git",
   "hiredis_revision": "v0.13.3",
 }
