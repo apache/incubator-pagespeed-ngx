@@ -1,4 +1,14 @@
 language: c++
+# Remove broken repo, per: https://github.com/travis-ci/travis-ci/issues/6588
+# Undo this once the repo is fixed.
+before_install:
+  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ main restricted'"
+  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ universe'"
+  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ multiverse'"
+  - "sudo add-apt-repository http://archive.ubuntu.com/ubuntu/"
+  - "sudo add-apt-repository 'http://archive.ubuntu.com/ubuntu/ universe'"
+  - "sudo add-apt-repository 'http://archive.ubuntu.com/ubuntu/ multiverse'"
+  - "sudo apt-get -qq update"
 install:
   - sudo sh -c 'echo "deb http://opensource.wandisco.com/ubuntu precise svn18" >> /etc/apt/sources.list.d/subversion18.list'
   - sudo wget -q http://opensource.wandisco.com/wandisco-debian.gpg -O- | sudo apt-key add -
