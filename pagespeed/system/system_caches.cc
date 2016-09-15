@@ -33,6 +33,7 @@
 #include "pagespeed/system/system_cache_path.h"
 #include "pagespeed/system/system_rewrite_options.h"
 #include "pagespeed/system/system_server_context.h"
+#include "pagespeed/system/external_server_spec.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/abstract_shared_mem.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
@@ -237,11 +238,11 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewMemcached(
 
 SystemCaches::ExternalCacheInterfaces SystemCaches::NewRedis(
     SystemRewriteOptions* config) {
-  const SystemRewriteOptions::RedisServerSpec& server_spec =
-    config->redis_server();
+  const ExternalClusterSpec& cluster_spec = config->redis_server();
+  CHECK_EQ(cluster_spec.servers.size(), 1);
   RedisCache* redis_server = new RedisCache(
-      server_spec.host, server_spec.port, factory_->thread_system(),
-      factory_->message_handler(), factory_->timer(),
+      cluster_spec.servers[0].host, cluster_spec.servers[0].port,
+      factory_->thread_system(), factory_->message_handler(), factory_->timer(),
       config->redis_reconnection_delay_ms(), config->redis_timeout_us());
   factory_->TakeOwnership(redis_server);
   redis_servers_.push_back(redis_server);
@@ -266,6 +267,15 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewExternalCache(
     SystemRewriteOptions* config) {
   bool use_redis = !config->redis_server().empty();
   bool use_memcached = !config->memcached_servers().empty();
+
+  // TODO(yeputons): remove that check when Redis Cluster is supported.
+  if (use_redis && config->redis_server().servers.size() != 1) {
+    factory_->message_handler()->Message(kError,
+                                         "More than one Redis server is "
+                                         "specified, Redis sharding is not "
+                                         "supported, will ignore the setting");
+    use_redis = false;
+  }
   if (use_redis && use_memcached) {
     factory_->message_handler()->Message(kWarning,
                                          "Redis and Memcached are enabled "

@@ -44,8 +44,6 @@ const char SystemRewriteOptions::kRedisReconnectionDelayMs[] =
     "RedisReconnectionDelayMs";
 const char SystemRewriteOptions::kRedisTimeoutUs[] = "RedisTimeoutUs";
 
-const int SystemRewriteOptions::RedisServerSpec::kDefaultPort = 6379;
-
 RewriteOptions::Properties* SystemRewriteOptions::system_properties_ = NULL;
 
 void SystemRewriteOptions::Initialize() {
@@ -103,7 +101,7 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kMemcachedTimeoutUs,
                     "Maximum time in microseconds to allow for memcached "
                         "transactions", true);
-  AddSystemProperty(SystemRewriteOptions::RedisServerSpec(),
+  AddSystemProperty(ExternalClusterSpec(),
                     &SystemRewriteOptions::redis_server_, "rds",
                     SystemRewriteOptions::kRedisServer,
                     "Redis server to use in format: <host>[:<port>]", false);
@@ -408,47 +406,6 @@ void SystemRewriteOptions::FillInStaticAssetCDNConf(
     asset_out->set_debug_hash("dbg");
     asset_out->set_opt_hash("opt");
   }
-}
-
-bool SystemRewriteOptions::RedisServerOption::SetFromString(
-    StringPiece value_string, GoogleString* error_detail) {
-  StringPieceVector host_port;
-  SplitStringPieceToVector(value_string, ":", &host_port, false);
-  if (host_port.size() != 1 && host_port.size() != 2) {
-    *error_detail = "Expected single Redis server in format <host>[:<port>]";
-    return false;
-  }
-
-  GoogleString host = host_port[0].as_string();
-  if (host.empty()) {
-    *error_detail = "Redis server host cannot be empty";
-    return false;
-  }
-
-  int port = RedisServerSpec::kDefaultPort;
-  if (host_port.size() == 2) {
-    if (!StringToInt(host_port[1], &port)) {
-      *error_detail =
-          StrCat("Port specified is not a valid number: '", host_port[1], "'");
-      return false;
-    }
-    if (!(1 <= port && port <= 65535)) {
-      *error_detail = StrCat("Invalid port: ", IntegerToString(value().port));
-      return false;
-    }
-  }
-
-  mutable_value() = RedisServerSpec(host, port);
-  return true;
-}
-
-GoogleString SystemRewriteOptions::RedisServerOption::ToString() const {
-  return value().ToString();
-}
-
-GoogleString SystemRewriteOptions::RedisServerOption::Signature(
-    const Hasher* hasher) const {
-  return hasher->Hash(ToString());
 }
 
 void SystemRewriteOptions::Merge(const RewriteOptions& src) {

@@ -55,6 +55,46 @@ class SystemRewriteOptionsTest
     EXPECT_NE("", msg);
   }
 
+  void TestExternalCacheOption(
+      const char* option_name,
+      std::function<ExternalClusterSpec(SystemRewriteOptions*)> getter,
+      int default_port) {
+    EXPECT_TRUE(getter(&options_).empty());
+    EXPECT_EQ(0, getter(&options_).servers.size());
+
+    GoogleString msg;
+    {
+      auto result = options_.ParseAndSetOptionFromName1(
+          option_name, "host1:1234,host2,host3:4567", &msg, &handler_);
+      EXPECT_EQ(result, RewriteOptions::kOptionOk);
+      EXPECT_EQ(msg, "");
+      const ExternalClusterSpec &spec = getter(&options_);
+      ASSERT_EQ(3, spec.servers.size());
+      EXPECT_EQ("host1", spec.servers[0].host);
+      EXPECT_EQ(1234, spec.servers[0].port);
+      EXPECT_EQ("host2", spec.servers[1].host);
+      EXPECT_EQ(default_port, spec.servers[1].port);
+      EXPECT_EQ("host3", spec.servers[2].host);
+      EXPECT_EQ(4567, spec.servers[2].port);
+    }
+
+    {
+      auto result = options_.ParseAndSetOptionFromName1(
+          option_name, "host4,host5:port", &msg, &handler_);
+      EXPECT_EQ(result, RewriteOptions::kOptionValueInvalid);
+      EXPECT_NE(msg, "");
+      const ExternalClusterSpec &spec = getter(&options_);
+      // No data was overwritten
+      ASSERT_EQ(3, spec.servers.size());
+      EXPECT_EQ("host1", spec.servers[0].host);
+      EXPECT_EQ(1234, spec.servers[0].port);
+      EXPECT_EQ("host2", spec.servers[1].host);
+      EXPECT_EQ(default_port, spec.servers[1].port);
+      EXPECT_EQ("host3", spec.servers[2].host);
+      EXPECT_EQ(4567, spec.servers[2].port);
+    }
+  }
+
   NullThreadSystem thread_system_;
   GoogleMessageHandler handler_;
   SystemRewriteOptions options_;
@@ -172,68 +212,10 @@ TEST_F(SystemRewriteOptionsTest, CentralController) {
                 &SystemRewriteOptions::controller_port);
 }
 
-TEST_F(SystemRewriteOptionsTest, RedisServerEmptyByDefault) {
-  EXPECT_TRUE(options_.redis_server().empty());
-}
-
-TEST_F(SystemRewriteOptionsTest, RedisServerHostPort) {
-  GoogleString msg;
-  RewriteOptions::OptionSettingResult result =
-      options_.ParseAndSetOptionFromName1(
-          SystemRewriteOptions::kRedisServer, "example.com:1234", &msg,
-          &handler_);
-  EXPECT_EQ(result, RewriteOptions::kOptionOk);
-  EXPECT_EQ("example.com", options_.redis_server().host);
-  EXPECT_EQ(1234, options_.redis_server().port);
-  EXPECT_EQ("", msg);
-}
-
-TEST_F(SystemRewriteOptionsTest, RedisServerHostOnly) {
-  GoogleString msg;
-  RewriteOptions::OptionSettingResult result =
-      options_.ParseAndSetOptionFromName1(
-          SystemRewriteOptions::kRedisServer, "example.com", &msg,
-          &handler_);
-  EXPECT_EQ(result, RewriteOptions::kOptionOk);
-  EXPECT_EQ("example.com", options_.redis_server().host);
-  EXPECT_EQ(SystemRewriteOptions::RedisServerSpec::kDefaultPort,
-            options_.redis_server().port);
-  EXPECT_EQ("", msg);
-}
-
-class SystemRewriteOptionsInvalidRedisServerTest
-    : public SystemRewriteOptionsTest {
- public:
-  void TestInvalidSpec(const GoogleString &spec) {
-    GoogleString msg;
-    options_.ParseAndSetOptionFromName1(SystemRewriteOptions::kRedisServer,
-                                        "example.com:1234", &msg, &handler_);
-
-    RewriteOptions::OptionSettingResult result =
-        options_.ParseAndSetOptionFromName1(
-            SystemRewriteOptions::kRedisServer, spec, &msg,
-            &handler_);
-    EXPECT_EQ(result, RewriteOptions::kOptionValueInvalid);
-    EXPECT_EQ("example.com", options_.redis_server().host);
-    EXPECT_EQ(1234, options_.redis_server().port);
-    EXPECT_NE("", msg);
-  }
-};
-
-TEST_F(SystemRewriteOptionsInvalidRedisServerTest, NonNumericPort) {
-  TestInvalidSpec("host:1port");
-}
-
-TEST_F(SystemRewriteOptionsInvalidRedisServerTest, InvalidPortNumber1) {
-  TestInvalidSpec("host:0");
-}
-
-TEST_F(SystemRewriteOptionsInvalidRedisServerTest, InvalidPortNumber2) {
-  TestInvalidSpec("host:100000");
-}
-
-TEST_F(SystemRewriteOptionsInvalidRedisServerTest, MultipleColons) {
-  TestInvalidSpec("host:10:20");
+TEST_F(SystemRewriteOptionsTest, RedisServer) {
+  TestExternalCacheOption(SystemRewriteOptions::kRedisServer,
+                          &SystemRewriteOptions::redis_server,
+                          SystemRewriteOptions::kRedisDefaultPort);
 }
 
 TEST_F(SystemRewriteOptionsTest, RedisReconnectionDelayInitValue) {

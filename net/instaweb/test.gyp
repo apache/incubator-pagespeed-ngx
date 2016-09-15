@@ -437,6 +437,7 @@
         '<(DEPTH)/pagespeed/apache/mock_apache.cc',
         '<(DEPTH)/pagespeed/apache/simple_buffered_apache_fetch_test.cc',
         '<(DEPTH)/pagespeed/system/add_headers_fetcher_test.cc',
+        '<(DEPTH)/pagespeed/system/external_server_spec_test.cc',
         '<(DEPTH)/pagespeed/system/in_place_resource_recorder_test.cc',
         '<(DEPTH)/pagespeed/system/loopback_route_fetcher_test.cc',
         '<(DEPTH)/pagespeed/system/serf_url_async_fetcher_test.cc',

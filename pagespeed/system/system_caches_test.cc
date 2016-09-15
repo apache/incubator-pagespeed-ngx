@@ -43,6 +43,7 @@
 #include "pagespeed/system/system_cache_path.h"
 #include "pagespeed/system/system_rewrite_options.h"
 #include "pagespeed/system/system_server_context.h"
+#include "pagespeed/system/external_server_spec.h"
 #include "net/instaweb/util/public/cache_property_store.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/property_store.h"
@@ -802,7 +803,7 @@ class SystemCachesRedisCacheTest : public SystemCachesExternalCacheTestBase {
 
   // TODO(yeputons): share this code with SystemCachesMemCacheTest or move it to
   // the base class.
-  SystemRewriteOptions::RedisServerSpec ServerSpec() {
+  ExternalClusterSpec ServerSpec() {
     if (server_spec_.empty()) {
       // This matches the logic in apr_mem_cache_test.
       const char* port_string = getenv("REDIS_PORT");
@@ -812,9 +813,9 @@ class SystemCachesRedisCacheTest : public SystemCachesExternalCacheTestBase {
                    << "$REDIS_PORT is not set to a valid integer. Set that to "
                    << "the port number where redis is running to enable the "
                    << "tests.  See install/run_program_with_redis.sh";
-        return SystemRewriteOptions::RedisServerSpec();
+        return ExternalClusterSpec();
       }
-      server_spec_ = SystemRewriteOptions::RedisServerSpec("localhost", port);
+      server_spec_.servers.assign(1, ExternalServerSpec("localhost", port));
     }
     return server_spec_;
   }
@@ -834,7 +835,7 @@ class SystemCachesRedisCacheTest : public SystemCachesExternalCacheTestBase {
   }
 
  private:
-  SystemRewriteOptions::RedisServerSpec server_spec_;
+  ExternalClusterSpec server_spec_;
 };
 
 ADD_EXTERNAL_CACHE_TESTS(SystemCachesRedisCacheTest)
