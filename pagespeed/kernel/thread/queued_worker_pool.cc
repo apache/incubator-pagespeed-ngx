@@ -377,8 +377,10 @@ void QueuedWorkerPool::Sequence::Add(Function* function) {
   {
     ScopedMutex lock(sequence_mutex_.get());
     if (shutdown_) {
+#ifndef NDEBUG
       LOG(WARNING) << "Adding function to sequence " << this
                    << " after shutdown";
+#endif
       cancel = true;
     } else {
       Function* function_to_add = function;
