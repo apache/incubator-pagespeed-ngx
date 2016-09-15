@@ -1,25 +1,12 @@
 #!/bin/bash
 
-# Put everything in one big function so that if this script is executed after a
-# partial download it doesn't do anything.
-function build_ngx_pagespeed() {
-  getopt --test
-  if [ "$?" != 4 ]; then
-    echo "Your version of getopt is too old.  Exiting with no changes made."
-    # Even Centos 5 and Ubuntu 10 LTS have new-style getopt, so I don't expect
-    # this to be hit in practice on systems that are actually able to run
-    # PageSpeed.
-    exit 1
-  fi
-
-  # If we set -e or -u then users of this script will see it silently exit on
-  # failure.  Instead we need to check the exit status of each command
-  # manually.  The run function (see below) handles exit-status checking for
-  # system-changing commands.
-
-  function usage() {
-    echo "
+function usage() {
+  echo "
 Usage: build_ngx_pagespeed.sh [options]
+
+  Installs ngx_pagespeed and its dependencies.  Can optionally build and install
+  nginx as well.
+
 Options:
   -v, --version <ngx_pagespeed version>
       What version of ngx_pagespeed to build.  Required.
@@ -44,7 +31,95 @@ Options:
 
   -h, --help
       Print this message and exit."
-  }
+}
+
+# Intended to be called as:
+#   bash <(curl dl.google.com/.../build_ngx_pagespeed.sh) <args>
+
+# If we set -e or -u then users of this script will see it silently exit on
+# failure.  Instead we need to check the exit status of each command manually.
+# The run function handles exit-status checking for system-changing commands.
+# Additionally, this allows us to easily have a dryrun mode where we don't
+# actually make any changes.
+function run() {
+  if "$DRYRUN"; then
+    echo "would run $@"
+  else
+    if ! "$@"; then
+      echo "Failure running $@, exiting."
+      exit 1
+    fi
+  fi
+}
+
+function redhat_is_installed() {
+  local package_name="$1"
+  rpm -qa $package_name | grep -q .
+}
+
+function debian_is_installed() {
+  local package_name="$1"
+  dpkg -l $package_name | grep ^ii | grep -q .
+}
+
+# Usage:
+#  install_dependencies install_pkg_cmd is_pkg_installed_cmd dep1 dep2 ...
+#
+# install_pkg_cmd is a command to install a dependency
+# is_pkg_installed_cmd is a command that returns true if the dependency is
+#   already installed
+# each dependency is a package name
+function install_dependencies() {
+  local install_pkg_cmd="$1"
+  local is_pkg_installed_cmd="$2"
+  shift 2
+
+  local missing_dependencies=""
+
+  for package_name in "$@"; do
+    if ! $is_pkg_installed_cmd $package_name; then
+      missing_dependencies+="$package_name "
+    fi
+  done
+  if [ -n "$missing_dependencies" ]; then
+    echo "Detected that we're missing the following depencencies:"
+    echo "  $missing_dependencies"
+    echo "Installing them:"
+    run sudo $install_pkg_cmd $missing_dependencies
+  fi
+}
+
+function gcc_too_old() {
+  # We need gcc >= 4.8
+  local gcc_major_version=$(gcc -dumpversion | awk -F. '{print $1}')
+  if [ "$gcc_major_version" -lt 4 ]; then
+    return 0  # too old
+  elif [ "$gcc_major_version" -gt 4 ]; then
+    return 1  # plenty new
+  fi
+  # It's gcc 4.x, check if x >= 8:
+  local gcc_minor_version=$(gcc -dumpversion | awk -F. '{print $2}')
+  test "$gcc_minor_version" -lt 8
+}
+
+function continue_or_exit() {
+  local prompt="$1"
+  read -p "$prompt [Y/n] " yn
+  if [[ "$yn" == N* || "$yn" == n* ]]; then
+    echo "Cancelled."
+    exit 0
+  fi
+}
+
+function build_ngx_pagespeed() {
+  getopt --test
+  if [ "$?" != 4 ]; then
+    echo "Your version of getopt is too old.  Exiting with no changes made."
+    # Even Centos 5 and Ubuntu 10 LTS have new-style getopt, so I don't expect
+    # this to be hit in practice on systems that are actually able to run
+    # PageSpeed.
+    exit 1
+  fi
 
   opts=$(getopt -o v:n:b:pdh \
     --longoptions version:,nginx:,buildir:,no-deps-check,dryrun,help \
@@ -100,78 +175,6 @@ Options:
     usage
     exit 1
   fi
-
-  # We pass all commands through run() so that in a dryrun we don't actually
-  # make any changes.
-  function run() {
-    if "$DRYRUN"; then
-      echo "would run $@"
-    else
-      if ! "$@"; then
-        echo "Failure running $@, exiting."
-        exit 1
-      fi
-    fi
-  }
-
-  function redhat_is_installed() {
-    local package_name="$1"
-    rpm -qa $package_name | grep -q .
-  }
-
-  function debian_is_installed() {
-    local package_name="$1"
-    dpkg -l $package_name | grep ^ii | grep -q .
-  }
-
-  # usage:
-  #  install_dependencies install_pkg_cmd is_pkg_installed_cmd dep1 dep2 ...
-  #
-  # install_pkg_cmd is a command to install a dependency
-  # is_pkg_installed_cmd is a command that returns true if the dependency is
-  #   already installed
-  # each dependency is a package name
-  function install_dependencies() {
-    local install_pkg_cmd="$1"
-    local is_pkg_installed_cmd="$2"
-    shift 2
-
-    local missing_dependencies=""
-
-    for package_name in "$@"; do
-      if ! $is_pkg_installed_cmd $package_name; then
-        missing_dependencies+="$package_name "
-      fi
-    done
-    if [ -n "$missing_dependencies" ]; then
-      echo "Detected that we're missing the following depencencies:"
-      echo "  $missing_dependencies"
-      echo "Installing them:"
-      run sudo $install_pkg_cmd $missing_dependencies
-    fi
-  }
-
-  function gcc_too_old() {
-    # We need gcc >= 4.8
-    local gcc_major_version=$(gcc -dumpversion | awk -F. '{print $1}')
-    if [ "$gcc_major_version" -lt 4 ]; then
-      return 0  # too old
-    elif [ "$gcc_major_version" -gt 4 ]; then
-      return 1  # plenty new
-    fi
-    # It's gcc 4.x, check if x >= 8:
-    local gcc_minor_version=$(gcc -dumpversion | awk -F. '{print $2}')
-    test "$gcc_minor_version" -lt 8
-  }
-
-  function continue_or_exit() {
-    local prompt="$1"
-    read -p "$prompt [Y/n] " yn
-    if [[ "$yn" == N* || "$yn" == n* ]]; then
-      echo "Cancelled."
-      exit 0
-    fi
-  }
 
   if [ ! -d "$BUILDDIR" ]; then
     echo "Told to build in $BUILDDIR, but that directory doesn't exist."
@@ -332,4 +335,6 @@ Options:
   fi
 }
 
+# Start running things from a call at the end so if this script is executed
+# after a partial download it doesn't do anything.
 build_ngx_pagespeed "$@"
