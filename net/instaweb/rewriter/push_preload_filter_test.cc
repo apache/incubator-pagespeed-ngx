@@ -87,10 +87,10 @@ TEST_F(PushPreloadFilterTest, BasicOperation) {
   options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
   rewrite_driver()->AddFilters();
 
-  const char kInput[] = "<link rel=stylesheet href=a.css>"
-                        "<script src=b.js></script>";
+  static const char kInput[] = "<link rel=stylesheet href=a.css>"
+                               "<script src=b.js></script>";
 
-  const char kOutput[] =
+  static const char kOutput[] =
     "<link rel=stylesheet href=A.a.css.pagespeed.cf.0.css>"
     "<script src=b.js.pagespeed.jm.0.js></script>";
 
@@ -112,6 +112,87 @@ TEST_F(PushPreloadFilterTest, BasicOperation) {
                *links[0]);
   EXPECT_STREQ("</b.js.pagespeed.jm.0.js>; rel=\"preload\"; as=script",
                *links[1]);
+}
+
+TEST_F(PushPreloadFilterTest, Invalidation) {
+  // Test for keeping track of us remembering when things expire.
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
+  rewrite_driver()->AddFilters();
+
+  // b.js expires in 200, a.css expires in 100.
+  static const char kInput[] = "<script src=b.js></script>"
+                               "<link rel=stylesheet href=a.css>";
+  static const char kOutput[] =
+    "<script src=b.js.pagespeed.jm.0.js></script>"
+    "<link rel=stylesheet href=A.a.css.pagespeed.cf.0.css>";
+
+  ValidateExpected("invalidation", kInput, kOutput);
+
+  // Enough to invalidate a, but not b.
+  AdvanceTimeMs(150 * 1000);
+  ResetDriver();
+  ValidateExpected("invalidation2", kInput, kOutput);
+
+  ConstStringStarVector links;
+  EXPECT_TRUE(rewrite_driver()->response_headers()->Lookup(
+                  HttpAttributes::kLink, &links));
+
+  // Only b.js should be pushed --- or rather the .pagespeed version.
+  ASSERT_EQ(1, links.size());
+  EXPECT_STREQ("</b.js.pagespeed.jm.0.js>; rel=\"preload\"; as=script",
+               *links[0]);
+}
+
+TEST_F(PushPreloadFilterTest, Invalidation2) {
+  // Test for keeping track of us remembering when things expire.
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
+  rewrite_driver()->AddFilters();
+
+  // b.js expires in 200, a.css expires in 100.
+  static const char kInput[] = "<script src=b.js></script>"
+                               "<link rel=stylesheet href=a.css>";
+  static const char kOutput[] =
+    "<script src=b.js.pagespeed.jm.0.js></script>"
+    "<link rel=stylesheet href=A.a.css.pagespeed.cf.0.css>";
+
+  ValidateExpected("invalidation", kInput, kOutput);
+
+  // Enough to invalidate both a and b.
+  AdvanceTimeMs(250 * 1000);
+  ResetDriver();
+  ValidateExpected("invalidation2", kInput, kOutput);
+
+  ConstStringStarVector links;
+  EXPECT_FALSE(rewrite_driver()->response_headers()->Lookup(
+                   HttpAttributes::kLink, &links));
+}
+
+TEST_F(PushPreloadFilterTest, InvalidationOrder) {
+  // Test for keeping track of us remembering when things expire.
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
+  rewrite_driver()->AddFilters();
+
+  // b.js expires in 200, a.css expires in 100.
+  static const char kInput[] = "<link rel=stylesheet href=a.css>"
+                               "<script src=b.js></script>";
+  static const char kOutput[] =
+    "<link rel=stylesheet href=A.a.css.pagespeed.cf.0.css>"
+    "<script src=b.js.pagespeed.jm.0.js></script>";
+
+  ValidateExpected("invalidation", kInput, kOutput);
+
+  // Enough to invalidate a, but not b. However, since a is before b, nothing
+  // will be hinted.
+  AdvanceTimeMs(150 * 1000);
+  ResetDriver();
+  ValidateExpected("invalidation2", kInput, kOutput);
+
+  ConstStringStarVector links;
+  EXPECT_FALSE(rewrite_driver()->response_headers()->Lookup(
+                   HttpAttributes::kLink, &links));
 }
 
 TEST_F(PushPreloadFilterTest, IndirectCollected) {

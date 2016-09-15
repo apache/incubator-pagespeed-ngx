@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/dependencies.pb.h"
 #include "net/instaweb/rewriter/public/collect_dependencies_filter.h"
 #include "net/instaweb/rewriter/public/dependency_tracker.h"
+#include "net/instaweb/rewriter/public/input_info_utils.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -80,6 +81,19 @@ void PushPreloadFilter::StartDocumentImpl() {
     if (!already_seen.insert(dep.url()).second) {
       // Skip dupes.
       continue;
+    }
+
+    // See if all the inputs are valid.
+    int64 now_ms = driver()->timer()->NowMs();
+    for (int i = 0; i < dep.validity_info_size(); ++i) {
+      const InputInfo& input = dep.validity_info(i);
+      bool purged_ignored, stale_rewrite_ignored;
+      if (!input_info_utils::IsInputValid(
+            server_context(), rewrite_options(), false /* not nested_rewriter*/,
+            input, now_ms, &purged_ignored, &stale_rewrite_ignored)) {
+        // Stop at first invalid entry, to avoid out-of-order hints.
+        return;
+      }
     }
 
     StringPiece rel_url =
