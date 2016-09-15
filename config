@@ -80,10 +80,8 @@ ps_maybe_gpp_base=`basename $CC| sed s/gcc/g++/`
 ps_maybe_gpp="`dirname $CC`/$ps_maybe_gpp_base"
 if [ -n "$NGX_GCC_VER" -a \( -x "$ps_maybe_gpp" \) ]; then
   LINK=$ps_maybe_gpp
-  NGX_TEST_LD_OPT="$NGX_TEST_LD_OPT -lstdc++"
-else
-  pagespeed_libs="-lstdc++"
 fi
+pagespeed_libs="-lstdc++"
 
 # The compiler needs to know that __sync_add_and_fetch_4 is ok,
 # and this requires an instruction that didn't exist on i586 or i386.
@@ -170,7 +168,7 @@ pagespeed_include="\
   $mod_pagespeed_dir/url"
 ngx_feature_path="$pagespeed_include"
 
-pagespeed_libs="$pagespeed_libs $psol_binary -lrt -pthread -lm"
+pagespeed_libs="$psol_binary $pagespeed_libs -lrt -pthread -lm"
 ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="
 
