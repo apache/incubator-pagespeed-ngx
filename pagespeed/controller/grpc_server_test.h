@@ -22,7 +22,6 @@
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/util/grpc.h"
@@ -46,11 +45,7 @@ class GrpcServerTest : public testing::Test {
   // function, ASAP. This call is thread-safe.
   void QueueFunctionForServerThread(Function* func);
 
-  static void SetUpTestCase();
-
-  GoogleString ServerAddress() const {
-    return StrCat("localhost:", IntegerToString(listen_port_));
-  }
+  GoogleString ServerAddress() const;
 
  protected:
   // Holder for various pieces of a client connection.
@@ -85,7 +80,6 @@ class GrpcServerTest : public testing::Test {
   // Override this to call RegisterService on the ServerBuilder.
   virtual void RegisterServices(::grpc::ServerBuilder*) = 0;
 
-  static int listen_port_;
   std::unique_ptr<GrpcServerThread> server_thread_;
   std::unique_ptr<::grpc::Server> server_;
 };

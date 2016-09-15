@@ -274,7 +274,7 @@ void SystemRewriteDriverFactory::PrepareControllerProcess() {
 
 void SystemRewriteDriverFactory::StartController(
     const SystemRewriteOptions& options) {
-  if (options.controller_port() != 0) {
+  if (!options.controller_port().empty()) {
     // TODO(cheesy): Replace constants below with options in a follow-up CL.
     std::unique_ptr<CentralControllerRpcServer> controller(
         new CentralControllerRpcServer(

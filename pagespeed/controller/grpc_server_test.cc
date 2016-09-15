@@ -14,11 +14,9 @@
 //
 // Author: cheesy@google.com (Steve Hill)
 
-#include <sys/time.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <grpc++/alarm.h>
+#include "pagespeed/controller/grpc_server_test.h"
 
+#include <sys/stat.h>
 #include <memory>
 
 #include "base/logging.h"
@@ -26,14 +24,14 @@
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/util/grpc.h"
 #include "pagespeed/kernel/util/platform.h"
 
-#include "pagespeed/controller/grpc_server_test.h"
-
+#include <grpc++/alarm.h>
 
 namespace net_instaweb {
 
@@ -45,15 +43,19 @@ GrpcServerTest::GrpcServerTest()
 GrpcServerTest::~GrpcServerTest() { StopServer(); }
 
 void GrpcServerTest::SetUp() {
+  // This doesn't seem to be created automatically!
+  mkdir(GTestTempDir().c_str(), 0755);
+
   ::grpc::ServerBuilder builder;
+  int bound_port = 0;
   builder.AddListeningPort(ServerAddress(), ::grpc::InsecureServerCredentials(),
-                           &listen_port_);
+                           &bound_port);
   queue_ = builder.AddCompletionQueue();
   RegisterServices(&builder);
   server_ = builder.BuildAndStart();
   CHECK(server_ != nullptr);
-  // listen_port_ may have been 0 first time through. gRPC sets -1 on failure.
-  CHECK_GT(listen_port_, 0);
+  // Unix sockets are 1 on success. gRPC sets -1 on failure.
+  CHECK_GT(bound_port, 0);
 
   server_thread_.reset(
       new GrpcServerThread(queue_.get(), thread_system_.get()));
@@ -110,9 +112,8 @@ void GrpcServerTest::QueueFunctionForServerThread(Function* func) {
   new DelayedCallFunction(thread_system_.get(), queue_.get(), func);
 }
 
-/* static */ void GrpcServerTest::SetUpTestCase() {
-    // When this is 0, gRPC will pick an unused port for us.
-    listen_port_ = 0;
+GoogleString GrpcServerTest::ServerAddress() const {
+  return StrCat("unix:", GTestTempDir(), "/grpc.sock");
 }
 
 GrpcServerTest::GrpcServerThread::GrpcServerThread(
@@ -130,7 +131,5 @@ void GrpcServerTest::GrpcServerThread::Stop() {
 void GrpcServerTest::GrpcServerThread::Run() {
   CentralControllerRpcServer::MainLoop(queue_);
 }
-
-int GrpcServerTest::listen_port_;
 
 }  // namespace net_instaweb

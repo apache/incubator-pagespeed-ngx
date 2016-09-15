@@ -199,11 +199,8 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_fetcher_proxy(const GoogleString& x) {
     set_option(x, &fetcher_proxy_);
   }
-  int controller_port() const {
+  const GoogleString& controller_port() const {
     return controller_port_.value();
-  }
-  void set_controller_port(int x) {
-    return set_option(x, &controller_port_);
   }
 
   // Cache flushing configuration.
@@ -409,6 +406,12 @@ class SystemRewriteOptions : public RewriteOptions {
     }
   };
 
+  class ControllerPortOption : public Option<GoogleString> {
+   public:
+    bool SetFromString(StringPiece value_string,
+                       GoogleString* error_detail) override;
+  };
+
   // Keeps the properties added by this subclass.  These are merged into
   // RewriteOptions::all_properties_ during Initialize().
   static Properties* system_properties_;
@@ -479,7 +482,7 @@ class SystemRewriteOptions : public RewriteOptions {
   // cleartext.  We'll decompress as we read the content if needed.
   Option<bool> fetch_with_gzip_;
 
-  Option<int> controller_port_;
+  ControllerPortOption controller_port_;
   Option<int> memcached_threads_;
   Option<int> memcached_timeout_us_;
   Option<int64> redis_reconnection_delay_ms_;

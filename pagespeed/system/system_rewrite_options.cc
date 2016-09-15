@@ -227,7 +227,7 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kSlurpFlushLimit,
                     "Set the maximum byte size for the slurped content to hold "
                     "before a flush", false);
-  AddSystemProperty(0, &SystemRewriteOptions::controller_port_, "ccp",
+  AddSystemProperty("", &SystemRewriteOptions::controller_port_, "ccp",
                     SystemRewriteOptions::kCentralControllerPort,
                     kProcessScopeStrict,
                     "TCP port for central controller processes", false);
@@ -318,6 +318,26 @@ SystemRewriteOptions* SystemRewriteOptions::DynamicCast(
   SystemRewriteOptions* config = dynamic_cast<SystemRewriteOptions*>(instance);
   DCHECK(config != NULL);
   return config;
+}
+
+bool SystemRewriteOptions::ControllerPortOption::SetFromString(
+    StringPiece value_string, GoogleString* error_detail) {
+  // Valid values are: unix:<path> or a tcp port number.
+  if (value_string.starts_with("unix:") &&
+      value_string.size() > 5 /*strlen("unix:")*/) {
+    set(value_string.as_string());
+    return true;
+  }
+  int port;
+  if (!StringToInt(value_string, &port)) {
+    *error_detail =
+        StrCat("CentralControllerPort is not a valid number or 'unix:' path: '",
+               value_string, "'");
+    return false;
+  }
+  // Prepend the port with localhost: before saving it into the option.
+  set(StrCat("localhost:", value_string));
+  return true;
 }
 
 bool SystemRewriteOptions::HttpsOptions::SetFromString(

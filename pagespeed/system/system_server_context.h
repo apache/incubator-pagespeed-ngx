@@ -27,7 +27,6 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/writer.h"
 #include "pagespeed/kernel/util/copy_on_write.h"
-#include "pagespeed/kernel/util/grpc.h"
 
 namespace net_instaweb {
 
@@ -243,8 +242,6 @@ class SystemServerContext : public ServerContext {
   SystemCaches* system_caches_;
 
   SystemCachePath* cache_path_;
-
-  std::shared_ptr<::grpc::Channel> grpc_channel_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemServerContext);
 };

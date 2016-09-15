@@ -24,6 +24,7 @@
 #include "pagespeed/controller/expensive_operation_controller.h"
 #include "pagespeed/controller/schedule_rewrite_controller.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/util/grpc.h"
 #include "pagespeed/system/controller_process.h"
 
@@ -34,9 +35,12 @@ namespace net_instaweb {
 
 class CentralControllerRpcServer : public ControllerProcess {
  public:
-  // Takes ownership of rewrite_controller.
+  // listen_address is passed directly into ServerBuilder::AddListeningPort,
+  // so theoretically it can be anything gRPC supports. In practice we expect
+  // it to be either "localhost:<port>" or "unix:<path>". This takes ownership
+  // of rewrite_controller.
   CentralControllerRpcServer(
-      int listen_port,
+      const GoogleString& listen_address,
       ExpensiveOperationController* expensive_operation_controller,
       ScheduleRewriteController* rewrite_controller,
       MessageHandler* handler);
@@ -51,7 +55,7 @@ class CentralControllerRpcServer : public ControllerProcess {
   static void MainLoop(::grpc::CompletionQueue* queue);
 
  private:
-  const int listen_port_;
+  const GoogleString listen_address_;
   std::unique_ptr<::grpc::Server> server_;
   std::unique_ptr<::grpc::ServerCompletionQueue> queue_;
   grpc::CentralControllerRpcService::AsyncService service_;

@@ -204,12 +204,43 @@ TEST_F(SystemRewriteOptionsTest, StaticAssetCdn) {
 }
 
 TEST_F(SystemRewriteOptionsTest, CentralControllerInitValue) {
-  EXPECT_EQ(0, options_.controller_port());
+  EXPECT_EQ("", options_.controller_port());
 }
 
-TEST_F(SystemRewriteOptionsTest, CentralController) {
-  TestIntOption(SystemRewriteOptions::kCentralControllerPort,
-                &SystemRewriteOptions::controller_port);
+TEST_F(SystemRewriteOptionsTest, CentralControllerTcpPort) {
+  GoogleString msg;
+  EXPECT_EQ(options_.ParseAndSetOptionFromName1(
+            SystemRewriteOptions::kCentralControllerPort, "1234", &msg,
+            &handler_), RewriteOptions::kOptionOk);
+  EXPECT_EQ(options_.controller_port(), "localhost:1234");
+  EXPECT_EQ("", msg);
+}
+
+TEST_F(SystemRewriteOptionsTest, CentralControllerUnixPort) {
+  GoogleString msg;
+  EXPECT_EQ(options_.ParseAndSetOptionFromName1(
+            SystemRewriteOptions::kCentralControllerPort, "unix:a", &msg,
+            &handler_), RewriteOptions::kOptionOk);
+  EXPECT_EQ(options_.controller_port(), "unix:a");
+  EXPECT_EQ("", msg);
+}
+
+TEST_F(SystemRewriteOptionsTest, CentralControllerTooShortUnixPort) {
+  GoogleString msg;
+  EXPECT_EQ(options_.ParseAndSetOptionFromName1(
+            SystemRewriteOptions::kCentralControllerPort, "unix:", &msg,
+            &handler_), RewriteOptions::kOptionValueInvalid);
+  EXPECT_EQ(options_.controller_port(), "");
+  EXPECT_NE("", msg);
+}
+
+TEST_F(SystemRewriteOptionsTest, CentralControllerBadTcpPort) {
+  GoogleString msg;
+  EXPECT_EQ(options_.ParseAndSetOptionFromName1(
+            SystemRewriteOptions::kCentralControllerPort, "123a", &msg,
+            &handler_), RewriteOptions::kOptionValueInvalid);
+  EXPECT_EQ(options_.controller_port(), "");
+  EXPECT_NE("", msg);
 }
 
 TEST_F(SystemRewriteOptionsTest, RedisServer) {

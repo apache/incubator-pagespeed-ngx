@@ -18,34 +18,31 @@
 
 #include <memory>
 
-#include "base/logging.h"
 #include "pagespeed/controller/controller.grpc.pb.h"
 #include "pagespeed/controller/expensive_operation_rpc_handler.h"
 #include "pagespeed/controller/schedule_rewrite_rpc_handler.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
 CentralControllerRpcServer::CentralControllerRpcServer(
-    int listen_port,
+    const GoogleString& listen_address,
     ExpensiveOperationController* expensive_operation_controller,
     ScheduleRewriteController* rewrite_controller, MessageHandler* handler)
-    : listen_port_(listen_port),
+    : listen_address_(listen_address),
       expensive_operation_controller_(expensive_operation_controller),
       rewrite_controller_(rewrite_controller),
-      handler_(handler) {}
+      handler_(handler) {
+}
 
 int CentralControllerRpcServer::Setup() {
   ::grpc::ServerBuilder builder;
-
-  GoogleString listen_address(
-      StrCat("localhost:", IntegerToString(listen_port_)));
   // InsecureServerCredentials means unencrytped, unauthenticated. In future
   // we may wish to look into different Credentials which would allow us to
   // encrypt and/or authenticate.
-  builder.AddListeningPort(listen_address, ::grpc::InsecureServerCredentials());
+  builder.AddListeningPort(listen_address_,
+                           ::grpc::InsecureServerCredentials());
   builder.RegisterService(&service_);
   queue_ = builder.AddCompletionQueue();
   server_ = builder.BuildAndStart();
@@ -64,8 +61,8 @@ int CentralControllerRpcServer::Setup() {
 
 int CentralControllerRpcServer::Run() {
   PS_LOG_INFO(handler_,
-              "CentralControllerRpcServer processing requests on port %d",
-              listen_port_);
+              "CentralControllerRpcServer processing requests on %s",
+              listen_address_.c_str());
 
   MainLoop(queue_.get());
 

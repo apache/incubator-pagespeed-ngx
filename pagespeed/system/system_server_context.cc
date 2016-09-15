@@ -34,7 +34,6 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_statistics.h"
-#include "pagespeed/kernel/util/grpc.h"
 #include "pagespeed/system/add_headers_fetcher.h"
 #include "pagespeed/system/loopback_route_fetcher.h"
 #include "pagespeed/system/system_cache_path.h"
@@ -291,16 +290,6 @@ void SystemServerContext::ChildInit(SystemRewriteDriverFactory* factory) {
     html_rewrite_time_us_histogram_ = statistics()->GetHistogram(
         kHtmlRewriteTimeUsHistogram);
     html_rewrite_time_us_histogram_->SetMaxValue(2 * Timer::kSecondUs);
-
-    // TODO(cheesy): We don't actually use this right now, but it does verify
-    // that we have correctly linked against gRPC. In future, this will be used
-    // when we connect to a real gRPC server running on the controller process.
-    if (global_system_rewrite_options()->controller_port() != 0) {
-      GoogleString controller_string = StringPrintf(
-          "localhost:%d", global_system_rewrite_options()->controller_port());
-      grpc_channel_ = ::grpc::CreateChannel(
-          controller_string, ::grpc::InsecureChannelCredentials());
-    }
   }
 }
 
