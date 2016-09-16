@@ -8,10 +8,10 @@ Usage: build_ngx_pagespeed.sh [options]
   nginx as well.
 
 Options:
-  -v, --version <ngx_pagespeed version>
+  -v, --ngx-pagespeed-version <ngx_pagespeed version>
       What version of ngx_pagespeed to build.  Required.
 
-  -n, --nginx <nginx version>
+  -n, --nginx-version <nginx version>
       What version of nginx to build.  If not set, this script only prepares the
       ngx_pagespeed module, and expects you to handle including it when you
       build nginx.
@@ -122,7 +122,8 @@ function build_ngx_pagespeed() {
   fi
 
   opts=$(getopt -o v:n:b:pdh \
-    --longoptions version:,nginx:,buildir:,no-deps-check,dryrun,help \
+    --longoptions ngx-pagespeed-version:,nginx-version:,buildir:,no-deps-check \
+    --longoptions dryrun,help \
     -n "$(basename "$0")" -- "$@")
   if [ $? != 0 ]; then
     usage
@@ -137,11 +138,11 @@ function build_ngx_pagespeed() {
   DRYRUN=false
   while true; do
     case "$1" in
-      -v | --version) shift
+      -v | --ngx-pagespeed-version) shift
         NPS_VERSION="$1"
         shift
         ;;
-      -n | --nginx) shift
+      -n | --nginx-version) shift
         NGINX_VERSION="$1"
         shift
         ;;
@@ -171,7 +172,7 @@ function build_ngx_pagespeed() {
   done
 
   if [ -z "$NPS_VERSION" ]; then
-    echo "Please pass --version <ngx_pagespeed version>"
+    echo "Please pass --ngx-pagespeed-version <version>"
     usage
     exit 1
   fi
