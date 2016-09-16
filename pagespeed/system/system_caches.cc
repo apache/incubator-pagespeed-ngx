@@ -198,9 +198,9 @@ SystemCaches::ConstructExternalCacheInterfacesFromBlocking(
 
 SystemCaches::ExternalCacheInterfaces SystemCaches::NewMemcached(
     SystemRewriteOptions* config) {
-  const GoogleString& server_spec = config->memcached_servers();
+  const ExternalClusterSpec& servers_specs = config->memcached_servers();
   AprMemCache* mem_cache =
-      new AprMemCache(server_spec, thread_limit_, &cache_hasher_,
+      new AprMemCache(servers_specs, thread_limit_, &cache_hasher_,
                       factory_->statistics(), factory_->timer(),
                       factory_->message_handler());
   factory_->TakeOwnership(mem_cache);
@@ -292,7 +292,7 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewExternalCache(
                IntegerToString(config->redis_reconnection_delay_ms()), ";",
                IntegerToString(config->redis_timeout_us()));
   } else if (use_memcached) {
-    spec_signature = StrCat("m;", config->memcached_servers(), ";",
+    spec_signature = StrCat("m;", config->memcached_servers().ToString(), ";",
                             IntegerToString(config->memcached_threads()), ";",
                             IntegerToString(config->memcached_timeout_us()));
   } else {
@@ -786,7 +786,7 @@ void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {
       AprMemCache* mem_cache = memcache_servers_[i];
       if (!mem_cache->GetStatus(out)) {
         StrAppend(out, "\nError getting memcached server status for ",
-                  mem_cache->server_spec());
+                  mem_cache->cluster_spec().ToString());
       }
     }
   }

@@ -2096,7 +2096,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedMaxImageSizeLowResolutionBytes 1000
 #ALL_DIRECTIVES ModPagespeedMaxInlinedPreviewImagesIndex 80
 #ALL_DIRECTIVES ModPagespeedMaxSegmentLength 100
-#ALL_DIRECTIVES ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
+#ALL_DIRECTIVES ModPagespeedMemcachedServers localhost:12345
 #ALL_DIRECTIVES ModPagespeedMemcachedThreads 1
 #ALL_DIRECTIVES ModPagespeedMessageBufferSize 100
 #ALL_DIRECTIVES ModPagespeedMinImageSizeLowResolutionBytes 2000

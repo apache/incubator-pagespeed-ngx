@@ -48,6 +48,7 @@
 #include "pagespeed/kernel/thread/blocking_callback.h"
 #include "pagespeed/kernel/util/platform.h"
 #include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/system/external_server_spec.h"
 #include "pagespeed/system/tcp_connection_for_testing.h"
 #include "pagespeed/system/tcp_server_thread_for_testing.h"
 
@@ -81,12 +82,12 @@ class AprMemCacheTest : public CacheTestBase {
 
   // Establishes a connection to a memcached instance; either one
   // on localhost:$MEMCACHED_PORT or, if non-empty, the one in
-  // server_spec_. If the former is used, this method also sends
+  // cluster_spec_. If the former is used, this method also sends
   // 'flush_all' command to the server to erase all entries in the cache.
   bool ConnectToMemcached(bool use_md5_hasher) {
     // See install/run_program_with_memcached.sh where this environment
     // variable is established during development testing flows.
-    if (server_spec_.empty()) {
+    if (cluster_spec_.empty()) {
       const char* kPortString = getenv("MEMCACHED_PORT");
       int port;
       if (kPortString == nullptr || !StringToInt(kPortString, &port)) {
@@ -99,7 +100,7 @@ class AprMemCacheTest : public CacheTestBase {
         // Does not fail the test.
         return false;
       }
-      server_spec_ = StrCat("localhost:", kPortString);
+      cluster_spec_.servers = { ExternalServerSpec("localhost", port) };
       TcpConnectionForTesting connection;
       if (!connection.Connect("localhost", port)) {
         return false;
@@ -115,7 +116,7 @@ class AprMemCacheTest : public CacheTestBase {
     if (use_md5_hasher) {
       hasher = &md5_hasher_;
     }
-    servers_.reset(new AprMemCache(server_spec_, 5, hasher, &statistics_,
+    servers_.reset(new AprMemCache(cluster_spec_, 5, hasher, &statistics_,
                                    &timer_, &handler_));
     cache_.reset(new FallbackCache(servers_.get(), lru_cache_.get(),
                                    kTestValueSizeThreshold,
@@ -131,22 +132,22 @@ class AprMemCacheTest : public CacheTestBase {
 
   // Attempts to initialize the connection to memcached.  It reports a
   // test failure if there is a memcached configuration specified in
-  // server_spec_ or via $MEMCACHED_PORT, but we fail to connect to it.
+  // cluster_spec_ or via $MEMCACHED_PORT, but we fail to connect to it.
   //
   // Consider three scenarios:
   //
   //   Scenario                                Test-status     Return-value
   //   --------------------------------------------------------------------
-  //   server_spec_ empty                      OK              false
-  //   server_spec_ non-empty, memcached ok    OK              true
-  //   server_spec_ non-empty, memcached fail  FAILURE         false
+  //   cluster_spec_ empty                      OK              false
+  //   cluster_spec_ non-empty, memcached ok    OK              true
+  //   cluster_spec_ non-empty, memcached fail  FAILURE         false
   //
   // This helps developers ensure that the memcached interface works, without
   // requiring people who build & run tests to start up memcached.
   bool InitMemcachedOrSkip(bool use_md5_hasher) {
     bool initialized = ConnectToMemcached(use_md5_hasher);
-    EXPECT_TRUE(initialized || server_spec_.empty())
-        << "Please start memcached on " << server_spec_;
+    EXPECT_TRUE(initialized || cluster_spec_.empty())
+        << "Please start memcached on " << cluster_spec_.ToString();
     return initialized;
   }
 
@@ -161,7 +162,7 @@ class AprMemCacheTest : public CacheTestBase {
   scoped_ptr<FallbackCache> cache_;
   scoped_ptr<ThreadSystem> thread_system_;
   SimpleStats statistics_;
-  GoogleString server_spec_;
+  ExternalClusterSpec cluster_spec_;
   static apr_port_t fake_memcache_listen_port_;
 };
 
@@ -194,7 +195,7 @@ TEST_F(AprMemCacheTest, MultiGet) {
 }
 
 TEST_F(AprMemCacheTest, MultiGetWithoutServer) {
-  server_spec_ = "localhost:99999";
+  cluster_spec_.servers = {ExternalServerSpec("localhost", 99999)};
   ASSERT_FALSE(ConnectToMemcached(true)) << "localhost:99999 should not exist";
 
   Callback* n0 = AddCallback();
@@ -565,9 +566,10 @@ TEST_F(AprMemCacheTest, HangingMultigetTest) {
       fake_memcache_listen_port_, thread_system_.get()));
   ASSERT_TRUE(thread->Start());
   apr_port_t port = thread->GetListeningPort();
-  GoogleString apr_str = StrCat("localhost:", Integer64ToString(port));
+  ExternalClusterSpec spec;
+  spec.servers = {ExternalServerSpec("localhost", port)};
   scoped_ptr<AprMemCache> cache(
-      new AprMemCache(apr_str, 3 /* maximal number of client connections */,
+      new AprMemCache(spec, 3 /* maximal number of client connections */,
                       &mock_hasher_, &statistics_, &timer_, &handler_));
   static const char k1[] = "hello";
   static const char k2[] = "hi";

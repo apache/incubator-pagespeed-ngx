@@ -25,7 +25,6 @@
 #include "base/logging.h"
 #include "pagespeed/system/apr_thread_compatible_pool.h"
 #include "pagespeed/kernel/base/hasher.h"
-#include "pagespeed/kernel/base/hostname_util.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/stack_buffer.h"
@@ -42,7 +41,6 @@ namespace {
 
 // Defaults copied from Apache 2.4 src distribution:
 // src/modules/cache/mod_socache_memcache.c
-const int kDefaultMemcachedPort = 11211;
 const int kDefaultServerMin = 0;      // minimum # client sockets to open
 const int kDefaultServerSmax = 1;     // soft max # client connections to open
 const char kMemCacheTimeouts[] = "memcache_timeouts";
@@ -64,10 +62,10 @@ const int kTimeoutUnset = -1;
 
 }  // namespace
 
-AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
-                         Hasher* hasher, Statistics* statistics,
-                         Timer* timer, MessageHandler* handler)
-    : valid_server_spec_(false),
+AprMemCache::AprMemCache(const ExternalClusterSpec& cluster, int thread_limit,
+                         Hasher* hasher, Statistics* statistics, Timer* timer,
+                         MessageHandler* handler)
+    : cluster_spec_(cluster),
       thread_limit_(thread_limit),
       timeout_us_(kTimeoutUnset),
       pool_(NULL),
@@ -75,48 +73,17 @@ AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
       hasher_(hasher),
       timer_(timer),
       timeouts_(statistics->GetVariable(kMemCacheTimeouts)),
-      last_error_checkpoint_ms_(statistics->GetUpDownCounter(
-          kLastErrorCheckpointMs)),
+      last_error_checkpoint_ms_(
+          statistics->GetUpDownCounter(kLastErrorCheckpointMs)),
       error_burst_size_(statistics->GetUpDownCounter(kErrorBurstSize)),
-      is_machine_local_(true),
       message_handler_(handler) {
-  servers.CopyToString(&server_spec_);
   pool_ = AprCreateThreadCompatiblePool(NULL);
 
-  // Get our hostname for the is_machine_local_ analysis below.
-  GoogleString hostname(GetHostname());
-
   // Don't try to connect on construction; we don't want to bother creating
-  // connections to the memcached servers in the root process.  But do parse
-  // the server spec so we can determine its validity.
+  // connections to the memcached servers in the root process.
   //
   // TODO(jmarantz): consider doing an initial connect/disconnect during
   // config parsing to get better error reporting on Apache startup.
-  StringPieceVector server_vector;
-  SplitStringPieceToVector(servers, ",", &server_vector, true);
-  bool success = true;
-  for (int i = 0, n = server_vector.size(); i < n; ++i) {
-    StringPieceVector host_port;
-    int port = kDefaultMemcachedPort;
-    SplitStringPieceToVector(server_vector[i], ":", &host_port, true);
-    bool ok = false;
-    if (host_port.size() == 1) {
-      ok = true;
-    } else if (host_port.size() == 2) {
-      ok = StringToInt(host_port[1], &port);
-    }
-    if (ok) {
-      // If any host isn't "localhost" then the machine isn't local.
-      is_machine_local_ &= IsLocalhost(host_port[0], hostname);
-      host_port[0].CopyToString(StringVectorAdd(&hosts_));
-      ports_.push_back(port);
-    } else {
-      message_handler_->Message(kError, "Invalid memcached sever: %s",
-                                server_vector[i].as_string().c_str());
-      success = false;
-    }
-  }
-  valid_server_spec_ = success && !server_vector.empty();
 }
 
 AprMemCache::~AprMemCache() {
@@ -130,16 +97,17 @@ void AprMemCache::InitStats(Statistics* statistics) {
 }
 
 bool AprMemCache::Connect() {
+  DCHECK(servers_.empty());
+  servers_.clear();
   apr_status_t status =
-      apr_memcache2_create(pool_, hosts_.size(), 0, &memcached_);
+      apr_memcache2_create(pool_, cluster_spec_.servers.size(), 0, &memcached_);
   bool success = false;
-  if ((status == APR_SUCCESS) && !hosts_.empty()) {
+  if ((status == APR_SUCCESS) && !cluster_spec_.empty()) {
     success = true;
-    CHECK_EQ(hosts_.size(), ports_.size());
-    for (int i = 0, n = hosts_.size(); i < n; ++i) {
+    for (const ExternalServerSpec& spec : cluster_spec_.servers) {
       apr_memcache2_server_t* server = NULL;
       status = apr_memcache2_server_create(
-          pool_, hosts_[i].c_str(), ports_[i],
+          pool_, spec.host.c_str(), spec.port,
           kDefaultServerMin, kDefaultServerSmax,
           thread_limit_, kDefaultServerTtlUs, &server);
       if ((status != APR_SUCCESS) ||
@@ -149,7 +117,7 @@ bool AprMemCache::Connect() {
         apr_strerror(status, buf, sizeof(buf));
         message_handler_->Message(
             kError, "Failed to attach memcached server %s:%d %s (%d)",
-            hosts_[i].c_str(), ports_[i], buf, status);
+            spec.host.c_str(), spec.port, buf, status);
         success = false;
       } else {
         if (timeout_us_ != kTimeoutUnset) {
@@ -386,8 +354,9 @@ bool AprMemCache::GetStatus(GoogleString* buffer) {
     apr_memcache2_stats_t* stats;
     apr_status_t status = apr_memcache2_stats(servers_[i], temp_pool, &stats);
     if (status == APR_SUCCESS) {
-      StrAppend(buffer, "memcached server ", hosts_[i], ":",
-                IntegerToString(ports_[i]), " version ", stats->version);
+      StrAppend(buffer, "memcached server ",
+                cluster_spec_.servers[i].ToString(), " version ",
+                stats->version);
       StrAppend(buffer, " pid ", IntegerToString(stats->pid), " up ",
                 IntegerToString(stats->uptime), " seconds \n");
       StrAppend(buffer, "bytes:                 ",

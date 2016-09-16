@@ -88,10 +88,12 @@ void SystemRewriteOptions::AddProperties() {
   AddSystemProperty("", &SystemRewriteOptions::log_dir_, "ald",
                     RewriteOptions::kLogDir,
                     "Directory to store logs in.", false);
-  AddSystemProperty("", &SystemRewriteOptions::memcached_servers_, "ams",
+  AddSystemProperty(ExternalClusterSpec(),
+                    &SystemRewriteOptions::memcached_servers_, "ams",
                     RewriteOptions::kMemcachedServers,
                     "Comma-separated list of servers e.g. "
-                        "host1:port1,host2:port2", false);
+                    "host1:port1,host2:port2",
+                    false);
   AddSystemProperty(1, &SystemRewriteOptions::memcached_threads_, "amt",
                     RewriteOptions::kMemcachedThreads,
                     "Number of background threads to use to run "

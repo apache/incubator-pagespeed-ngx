@@ -47,6 +47,7 @@ class SystemRewriteOptions : public RewriteOptions {
   static const char kRedisReconnectionDelayMs[];
   static const char kRedisTimeoutUs[];
 
+  static constexpr int kMemcachedDefaultPort = 11211;
   static constexpr int kRedisDefaultPort = 6379;
 
   static void Initialize();
@@ -151,10 +152,10 @@ class SystemRewriteOptions : public RewriteOptions {
   }
   const GoogleString& log_dir() const { return log_dir_.value(); }
   void set_log_dir(const GoogleString& x) { set_option(x, &log_dir_); }
-  const GoogleString& memcached_servers() const {
+  const ExternalClusterSpec& memcached_servers() const {
     return memcached_servers_.value();
   }
-  void set_memcached_servers(const GoogleString& x) {
+  void set_memcached_servers(const ExternalClusterSpec& x) {
     set_option(x, &memcached_servers_);
   }
   int memcached_threads() const {
@@ -450,9 +451,7 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<GoogleString> file_cache_path_;
   Option<GoogleString> log_dir_;
 
-  // comma-separated list of host[:port].  See AprMemCache::AprMemCache
-  // for code that parses it.
-  Option<GoogleString> memcached_servers_;
+  ExternalServersOption<kMemcachedDefaultPort> memcached_servers_;
   ExternalServersOption<kRedisDefaultPort> redis_server_;
   Option<GoogleString> statistics_logging_charts_css_;
   Option<GoogleString> statistics_logging_charts_js_;

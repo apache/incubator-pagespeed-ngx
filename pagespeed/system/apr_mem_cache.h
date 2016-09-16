@@ -26,9 +26,9 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
+#include "pagespeed/system/external_server_spec.h"
 
 struct apr_memcache2_t;
 struct apr_memcache2_server_t;
@@ -67,18 +67,16 @@ class AprMemCache : public CacheInterface {
   // kHealthCheckpointIntervalMs.
   static const int64 kMaxErrorBurst = 4;
 
-  // servers is a comma-separated list of host[:port] where port defaults
-  // to 11211, the memcached default.
-  //
   // thread_limit is used to provide apr_memcache2_server_create with
   // a hard maximum number of client connections to open.
-  AprMemCache(const StringPiece& servers, int thread_limit, Hasher* hasher,
-              Statistics* statistics, Timer* timer, MessageHandler* handler);
+  AprMemCache(const ExternalClusterSpec& cluster, int thread_limit,
+              Hasher* hasher, Statistics* statistics, Timer* timer,
+              MessageHandler* handler);
   ~AprMemCache();
 
   static void InitStats(Statistics* statistics);
 
-  const GoogleString& server_spec() const { return server_spec_; }
+  const ExternalClusterSpec& cluster_spec() const { return cluster_spec_; }
 
   // As mentioned above, Get and MultiGet are blocking in this implementation.
   virtual void Get(const GoogleString& key, Callback* callback);
@@ -133,9 +131,7 @@ class AprMemCache : public CacheInterface {
   // PutWithKeyInValue, which will do the health check.
   void PutHelper(const GoogleString& key, SharedString* key_and_value);
 
-  StringVector hosts_;
-  std::vector<int> ports_;
-  GoogleString server_spec_;
+  ExternalClusterSpec cluster_spec_;
   bool valid_server_spec_;
   int thread_limit_;
   int timeout_us_;
@@ -150,7 +146,6 @@ class AprMemCache : public CacheInterface {
   UpDownCounter* last_error_checkpoint_ms_;
   UpDownCounter* error_burst_size_;
 
-  bool is_machine_local_;
   MessageHandler* message_handler_;
 
   // When memcached is killed, we will generate errors for every cache

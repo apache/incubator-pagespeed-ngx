@@ -601,20 +601,21 @@ class SystemCachesMemCacheTest : public SystemCachesExternalCacheTestBase {
     return ServerSpec().empty();
   }
 
-  GoogleString ServerSpec() {
-    if (server_spec_.empty()) {
+  ExternalClusterSpec ServerSpec() {
+    if (cluster_spec_.empty()) {
       // This matches the logic in apr_mem_cache_test.
       const char* port_string = getenv("MEMCACHED_PORT");
-      if (port_string == NULL) {
+      int port;
+      if (port_string == nullptr || !StringToInt(port_string, &port)) {
         LOG(ERROR) << "SystemCachesMemCacheTest is skipped because env var "
-                   << "$MEMCACHED_PORT is not set.  Set that to the port "
-                   << "number where memcached is running to enable the "
-                   << "tests.  See install/run_program_with_memcached.sh";
-        return "";
+                   << "$MEMCACHED_PORT is not set to a valid integer. Set that "
+                   << "to the port number where memcached is running to enable "
+                   << "the tests.  See install/run_program_with_memcached.sh";
+        return cluster_spec_;
       }
-      server_spec_ = StrCat("localhost:", port_string);
+      cluster_spec_.servers.push_back(ExternalServerSpec("localhost", port));
     }
-    return server_spec_;
+    return cluster_spec_;
   }
 
   GoogleString AssembledAsyncCacheWithStats() override {
@@ -639,7 +640,7 @@ class SystemCachesMemCacheTest : public SystemCachesExternalCacheTestBase {
                                  int num_threads_expected);
 
  private:
-  GoogleString server_spec_;
+  ExternalClusterSpec cluster_spec_;
 };
 
 ADD_EXTERNAL_CACHE_TESTS(SystemCachesMemCacheTest)
