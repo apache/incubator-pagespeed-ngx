@@ -335,8 +335,8 @@ function build_ngx_pagespeed() {
     echo
     echo "Nginx installed with ngx_pagespeed support."
     echo
-    echo "If this is a new installation you You probably need an init script"
-    echo "to manage starting and stopping the nginx service.  See:"
+    echo "If this is a new installation you probably need an init script to"
+    echo "manage starting and stopping the nginx service.  See:"
     echo "  https://www.nginx.com/resources/wiki/start/topics/examples/initscripts/"
     echo
     echo "You'll also need to configure ngx_pagespeed if you haven't yet:"
