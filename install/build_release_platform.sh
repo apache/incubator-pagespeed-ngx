@@ -95,40 +95,34 @@ PATH=~/bin/depot_tools:$PATH
 #
 # If the force directives are not included, then the installation will
 # fail if run a second time.
-if [ "$(grep CentOS /etc/issue)" ]; then
-  echo Making sure FCGI is installed ...
-  httpd -M | grep -q fcgid_module
-  if [ $? != 0 ]; then
-    #TODO(jmarantz): find the appropriate installation snippet for CentOS
-    # rather than just asking the user to do it.
-    echo You must install mod_fcgid to run tests that require PHP.
-    exit 1
-  fi
-
-  httpd -M | grep -q php5_module
-  if [ $? != 0 ]; then
-    #TODO(jmarantz): ditto
-    echo You must install mod_php5 to run tests that require PHP.
-    exit 1
-  fi
+if grep -q CentOS /etc/issue; then
+  # We redirect stderr to stdout because on Centos5 "httpd -M" writes to stderr
+  # for some reason.
+  # TODO(jmarantz): find the appropriate installation snippet for CentOS
+  # rather than just asking the user to do it.
+  /usr/sbin/httpd -M 2>&1 | grep -q php5_module || \
+    { echo You must install mod_php5 to run tests that require PHP; exit 1; }
 
   EXT=rpm
   INSTALL="rpm --install"
   RESTART="./centos.sh apache_debug_restart"
   TEST="./centos.sh enable_ports_and_file_access apache_vm_system_tests"
+
+  # To build on Centos 5/6 we need gcc 4.8 from scientific linux.  We can't
+  # export CC and CXX because some steps still use a literal "g++".  But #$%^
+  # devtoolset includes its own sudo, and we don't want that because it doesn't
+  # support -E, so rename it if it exists before updating PATH.
+  DEVTOOLSET_BIN=/opt/rh/devtoolset-2/root/usr/bin/
+  if [ -e "$DEVTOOLSET_BIN/sudo" ]; then
+    sudo mv "$DEVTOOLSET_BIN/sudo" "$DEVTOOLSET_BIN/sudo.ignored"
+  fi
+  export PATH="$DEVTOOLSET_BIN:$PATH"
+
   echo We appear to be running on CentOS.  Building rpm...
 else
-  echo Making sure FCGI is installed ...
-  apache2ctl -M | grep -q fcgid_module
-  if [ $? != 0 ]; then
-    sudo apt-get install libapache2-mod-fcgid
-  fi
-
   echo Making sure PHP is installed ...
-  apache2ctl -M | grep -q php5_module
-  if [ $? != 0 ]; then
+  apache2ctl -M | grep -q php5_module || \
     sudo apt-get install libapache2-mod-php5
-  fi
 
   EXT=deb
   INSTALL="dpkg --install"
@@ -164,12 +158,13 @@ if [[ "$RELEASE" == 1.9.32.* || "$RELEASE" == 1.10.33.* ]]; then
   export DISABLE_FONT_API_TESTS=1
 fi
 
-build_dir="$HOME/build/$RELEASE"
+build_dir="$HOME/build/$RELEASE/$BIT_SIZE_NAME"
+release_dir="$HOME/release/$RELEASE/$BIT_SIZE_NAME"
 log_dir="$build_dir/log"
 rm -rf $log_dir
 mkdir -p $log_dir
-rm -rf "$HOME/release/$RELEASE"
-mkdir -p "$HOME/release/$RELEASE"
+rm -rf "$release_dir"
+mkdir -p "$release_dir"
 
 # Usage:
 #    check log_filename.log command args...
@@ -200,13 +195,13 @@ function check() {
 # We put what we want to ship into release/ so that it can be scp'd onto
 # the signing server with only one password.
 mkdir -p $build_dir
-if [ ! -d "$build_dir/src" ]; then
-  cd $build_dir && git clone https://github.com/pagespeed/mod_pagespeed.git src
-fi
-cd $build_dir/src && git reset --hard HEAD && git pull --ff-only
+rm -rf "$build_dir/src"
+cd $build_dir && git clone https://github.com/pagespeed/mod_pagespeed.git src
+cd $build_dir/src
 if [ "$TAG" != "trunk" ]; then  # Just treat "trunk" as master.
   git checkout "$TAG"
 fi
+
 if [ "$EXT" = "rpm" ] ; then
   # On the centos buildbot we need to patch the Makefile to make
   # apache_debug_restart to a killall -9 httpd.
@@ -224,7 +219,8 @@ index 376def9..29fa72e 100644
  >\$(APACHE_CONTROL_PROGRAM) restart
 
  apache_debug_stop : stop
-EOF)
+EOF
+)
   echo "$killall_patch" | tr '>' '\t' | git apply
 fi
 cd $build_dir
@@ -266,8 +262,8 @@ MODPAGESPEED_ENABLE_UPDATES=1 check build.log \
     linux_package_$EXT mod_pagespeed_test pagespeed_automatic_test
 
 ls -l $PWD/out/Release/mod-pagespeed-${CHANNEL}*
-mkdir -p ~/release/$RELEASE
-mv $PWD/out/Release/mod-pagespeed-${CHANNEL}* ~/release/$RELEASE
+mkdir -p "$release_dir"
+mv $PWD/out/Release/mod-pagespeed-${CHANNEL}* "$release_dir"
 
 if [ "$EXT" = "rpm" ] ; then
   export SSL_CERT_DIR=/etc/pki/tls/certs
@@ -293,7 +289,7 @@ else
 fi
 
 echo Installing release ...
-check install.log sudo $INSTALL $HOME/release/$RELEASE/*.$EXT
+check install.log sudo $INSTALL "$release_dir"/*.$EXT
 
 echo Test restart to make sure config file is valid ...
 cd $build_dir/src/install
@@ -304,18 +300,13 @@ check system_test.log sudo -E $TEST
 
 echo Copy the unstripped .so files to a safe place for easier debugging later.
 cp $build_dir/src/out/Release/libmod_pagespeed.so \
-  ${HOME}/release/${RELEASE}/unstripped_libmodpagespeed_${NBITS}_${EXT}.so
+  "$release_dir"/unstripped_libmodpagespeed_${NBITS}_${EXT}.so
 cp $build_dir/src/out/Release/libmod_pagespeed_ap24.so \
-  ${HOME}/release/${RELEASE}/unstripped_libmodpagespeed_ap24_${NBITS}_${EXT}.so
+  "$release_dir"/unstripped_libmodpagespeed_ap24_${NBITS}_${EXT}.so
 
 # Because we now build on the build-bots which are not on the internal network,
-# we can't just scp to the signing server. The copying step must be pulled from
-# there.
+# you need to manually pull the builds from ~/release on each server.
 echo Build succeeded at $(date)
-cd
-echo Pull the release directory from the signing server.
-echo $ scp -r buildbot@centos-buildbot:${HOMEDIR}/release/${RELEASE} ~/release
-
 
 # This doesn't necessarily need to be limited to CentOS, but we only need to
 # build PSOL libraries on one system, and CentOS has the oldest GCC, so we
