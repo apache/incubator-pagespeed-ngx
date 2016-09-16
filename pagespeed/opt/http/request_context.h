@@ -50,13 +50,6 @@ typedef RefCountedPtr<RequestContext> RequestContextPtr;
 // explicit transfer of ownership in these cases.
 class RequestContext : public RefCounted<RequestContext> {
  public:
-  // Types of split html request.
-  enum SplitRequestType {
-    SPLIT_FULL,
-    SPLIT_ABOVE_THE_FOLD,
-    SPLIT_BELOW_THE_FOLD,
-  };
-
   // |logging_mutex| will be passed to the request context's AbstractLogRecord,
   // which will take ownership of it. If you will be doing logging in a real
   // (threaded) environment, pass in a real mutex. If not, a NullMutex is fine.
@@ -163,14 +156,6 @@ class RequestContext : public RefCounted<RequestContext> {
   void SetAcceptsGzip(bool x);
   bool accepts_gzip() const { return accepts_gzip_; }
 
-  // Indicates the type of split html request.
-  SplitRequestType split_request_type() const {
-    return split_request_type_;
-  }
-  void set_split_request_type(SplitRequestType type) {
-    split_request_type_ = type;
-  }
-
   int64 request_id() const {
     return request_id_;
   }
@@ -274,7 +259,6 @@ class RequestContext : public RefCounted<RequestContext> {
   bool frozen_;
   GoogleString minimal_private_suffix_;
 
-  SplitRequestType split_request_type_;
   int64 request_id_;
 
   // The token specified by query parameter or header that must match the

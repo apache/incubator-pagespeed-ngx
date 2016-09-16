@@ -33,7 +33,6 @@ RequestContext::RequestContext(const HttpOptions& options,
     : log_record_(new LogRecord(logging_mutex)),
       // TODO(gee): Move ownership of mutex to TimingInfo.
       timing_info_(timer, logging_mutex),
-      split_request_type_(SPLIT_FULL),
       request_id_(0),
       options_set_(true),
       options_(options) {
@@ -44,7 +43,6 @@ RequestContext::RequestContext(AbstractMutex* logging_mutex, Timer* timer)
     : log_record_(new LogRecord(logging_mutex)),
       // TODO(gee): Move ownership of mutex to TimingInfo.
       timing_info_(timer, logging_mutex),
-      split_request_type_(SPLIT_FULL),
       request_id_(0),
       options_set_(false),
       // Note: We use default here, just in case, even though we expect
@@ -60,7 +58,6 @@ RequestContext::RequestContext(const HttpOptions& options,
     : log_record_(log_record),
       // TODO(gee): Move ownership of mutex to TimingInfo.
       timing_info_(timer, mutex),
-      split_request_type_(SPLIT_FULL),
       options_set_(true),
       options_(options) {
   Init();
