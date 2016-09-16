@@ -228,6 +228,7 @@
         '<(DEPTH)/pagespeed/system/admin_site_test.cc',
         '<(DEPTH)/pagespeed/system/system_message_handler_test.cc',
         '<(DEPTH)/pagespeed/controller/central_controller_callback_test.cc',
+        '<(DEPTH)/pagespeed/controller/context_registry_test.cc',
         '<(DEPTH)/pagespeed/controller/expensive_operation_rpc_context_test.cc',
         '<(DEPTH)/pagespeed/controller/expensive_operation_rpc_handler_test.cc',
         '<(DEPTH)/pagespeed/controller/grpc_server_test.cc',
