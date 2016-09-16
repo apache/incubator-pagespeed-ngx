@@ -108,10 +108,12 @@ TEST_F(PushPreloadFilterTest, BasicOperation) {
   rewrite_driver()->FinishParse();
 
   ASSERT_EQ(2, links.size());
-  EXPECT_STREQ("</A.a.css.pagespeed.cf.0.css>; rel=\"preload\"; as=style",
-               *links[0]);
-  EXPECT_STREQ("</b.js.pagespeed.jm.0.js>; rel=\"preload\"; as=script",
-               *links[1]);
+  EXPECT_STREQ(
+      "</A.a.css.pagespeed.cf.0.css>; rel=\"preload\"; as=style; nopush",
+      *links[0]);
+  EXPECT_STREQ(
+      "</b.js.pagespeed.jm.0.js>; rel=\"preload\"; as=script; nopush",
+      *links[1]);
 }
 
 TEST_F(PushPreloadFilterTest, Invalidation) {
@@ -140,7 +142,7 @@ TEST_F(PushPreloadFilterTest, Invalidation) {
 
   // Only b.js should be pushed --- or rather the .pagespeed version.
   ASSERT_EQ(1, links.size());
-  EXPECT_STREQ("</b.js.pagespeed.jm.0.js>; rel=\"preload\"; as=script",
+  EXPECT_STREQ("</b.js.pagespeed.jm.0.js>; rel=\"preload\"; as=script; nopush",
                *links[0]);
 }
 
@@ -228,19 +230,23 @@ TEST_F(PushPreloadFilterTest, IndirectCollected) {
   ASSERT_EQ(5, links.size());
   // These should be in preorder wrt to the dependencies between
   // CSS and things in it
-  EXPECT_STREQ("</A.c.css.pagespeed.cf.0.css>; rel=\"preload\"; as=style",
-               *links[0]);
-  EXPECT_STREQ("</i1.css>; rel=\"preload\"; as=style",
-               *links[1]);
-  EXPECT_STREQ("</i2.css>; rel=\"preload\"; as=style",
-               *links[2]);
-  EXPECT_STREQ("</A.d.css.pagespeed.cf.0.css>; rel=\"preload\"; as=style",
-               *links[3]);
+  EXPECT_STREQ(
+        "</A.c.css.pagespeed.cf.0.css>; rel=\"preload\"; as=style; nopush",
+        *links[0]);
+  EXPECT_STREQ(
+        "</i1.css>; rel=\"preload\"; as=style; nopush",
+        *links[1]);
+  EXPECT_STREQ(
+        "</i2.css>; rel=\"preload\"; as=style; nopush",
+        *links[2]);
+  EXPECT_STREQ(
+        "</A.d.css.pagespeed.cf.0.css>; rel=\"preload\"; as=style; nopush",
+        *links[3]);
   // not i3, since it's print only.
 
   // i1 already hinted.
   // i4 isn't, though.
-  EXPECT_STREQ("</i4.css>; rel=\"preload\"; as=style", *links[4]);
+  EXPECT_STREQ("</i4.css>; rel=\"preload\"; as=style; nopush", *links[4]);
 }
 
 }  // namespace

@@ -113,6 +113,10 @@ void PushPreloadFilter::StartDocumentImpl() {
         LOG(DFATAL) << dep.content_type();
     }
 
+    // We don't want pushes now, since we can't tell for sure when they're
+    // a good idea.
+    StrAppend(&link_val, "; nopush");
+
     headers->Add(HttpAttributes::kLink, link_val);
   }
 }
