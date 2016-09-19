@@ -520,9 +520,9 @@ void RewriteDriver::WaitForShutDown() {
 
 void RewriteDriver::BoundedWaitFor(WaitMode mode, int64 timeout_ms) {
   SchedulerBlockingFunction wait(scheduler_);
-
   {
     ScopedMutex lock(rewrite_mutex());
+    ref_counts_.AddRefMutexHeld(kRefUser);
     CheckForCompletionAsync(mode, timeout_ms, &wait);
   }
   wait.Block();
@@ -532,6 +532,7 @@ void RewriteDriver::BoundedWaitFor(WaitMode mode, int64 timeout_ms) {
     CHECK_EQ(waiting_, kNoWait);
   }
 #endif
+  DropReference(kRefUser);
 }
 
 void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
