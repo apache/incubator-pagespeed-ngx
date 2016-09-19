@@ -16,6 +16,9 @@ Options:
       ngx_pagespeed module, and expects you to handle including it when you
       build nginx.
 
+  -m, --dynamic-module
+      Build ngx_pagespeed as a dynamic module.
+
   -b, --builddir <directory>
       Where to build.  Defaults to \$HOME.
 
@@ -128,9 +131,9 @@ function build_ngx_pagespeed() {
     exit 1
   fi
 
-  opts=$(getopt -o v:n:b:pdh \
-    --longoptions ngx-pagespeed-version:,nginx-version:,buildir:,no-deps-check \
-    --longoptions dryrun,help \
+  opts=$(getopt -o v:n:mb:pdh \
+    --longoptions ngx-pagespeed-version:,nginx-version:,dynamic-module \
+    --longoptions buildir:,no-deps-check,dryrun,help \
     -n "$(basename "$0")" -- "$@")
   if [ $? != 0 ]; then
     usage
@@ -143,6 +146,7 @@ function build_ngx_pagespeed() {
   BUILDDIR="$HOME"
   DO_DEPS_CHECK=true
   DRYRUN=false
+  DYNAMIC_MODULE=false
   while true; do
     case "$1" in
       -v | --ngx-pagespeed-version) shift
@@ -152,6 +156,9 @@ function build_ngx_pagespeed() {
       -n | --nginx-version) shift
         NGINX_VERSION="$1"
         shift
+        ;;
+      -m | --dynamic-module) shift
+        DYNAMIC_MODULE=true
         ;;
       -b | --builddir) shift
         BUILDDIR="$1"
@@ -288,6 +295,8 @@ function build_ngx_pagespeed() {
   fi
 
   function delete_if_already_exists() {
+    if "$DRYRUN"; then return; fi
+
     local directory="$1"
     if [ -d "$directory" ]; then
       if [ ${#directory} -lt 8 ]; then
@@ -297,7 +306,7 @@ function build_ngx_pagespeed() {
       fi
 
       continue_or_exit "OK to delete $directory?"
-      rm -rf "$directory"
+      run rm -rf "$directory"
     fi
   }
 
@@ -314,13 +323,27 @@ function build_ngx_pagespeed() {
   echo "Extracting PSOL..."
   run tar -xzf ${NPS_VERSION}.tar.gz  # extracts to psol/
 
-  configure_args="--add-module=$nps_module_dir $PS_NGX_EXTRA_FLAGS"
+  if "$DYNAMIC_MODULE"; then
+    configure_args="--add-dynamic-module=$nps_module_dir $PS_NGX_EXTRA_FLAGS"
+  else
+    configure_args="--add-module=$nps_module_dir $PS_NGX_EXTRA_FLAGS"
+  fi
+
+  echo
   if [ -z "$NGINX_VERSION" ]; then
     # They didn't specify an nginx version, so we're just preparing the
     # module for them to install.
-    echo "ngx_pagespeed is ready to be installed."
+    echo "ngx_pagespeed is ready to be built against nginx."
     echo "When running ./configure pass in:"
     echo "  $configure_args"
+    if [ -z "$PS_NGX_EXTRA_FLAGS" ]; then
+      echo "If this is for integration with an already-built nginx, make sure"
+      echo "to include any other arguments you originally passed to ./configure"
+    else
+      echo "Note: because we need to set $PS_NGX_EXTRA_FLAGS on this platform,"
+      echo "if you want to integrate ngx_pagespeed with an already-built nginx"
+      echo "you're going to need to rebuild your nginx with those flags set."
+    fi
   else
     # Download and build nginx.
     nginx_leaf="nginx-${NGINX_VERSION}.tar.gz"
@@ -351,11 +374,20 @@ function build_ngx_pagespeed() {
     run sudo make install
 
     echo
-    echo "Nginx installed with ngx_pagespeed support."
+    if "$DYNAMIC_MODULE"; then
+      echo "Nginx installed with ngx_pagespeed support available as a"
+      echo "loadable module."
+      echo
+      echo "To load the ngx_pagespeed module, you'll need to add:"
+      echo "  load_module \"modules/ngx_pagespeed.so\";"
+      echo "at the top of your main nginx configuration file."
+    else
+      echo "Nginx installed with ngx_pagespeed support compiled-in."
+    fi
     echo
     echo "If this is a new installation you probably need an init script to"
     echo "manage starting and stopping the nginx service.  See:"
-    echo "  https://www.nginx.com/resources/wiki/start/topics/examples/initscripts/"
+    echo "  http://wiki.nginx.org/InitScripts"
     echo
     echo "You'll also need to configure ngx_pagespeed if you haven't yet:"
     echo "  https://developers.google.com/speed/pagespeed/module/configuration"
