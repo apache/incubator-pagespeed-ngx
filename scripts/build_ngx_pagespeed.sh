@@ -33,6 +33,13 @@ Options:
       Print this message and exit."
 }
 
+function pass_h_for_usage() {
+  # Normally I'd use $0 here, but since most people will be running this via
+  # curl, that wouldn't actually give something useful.
+  echo
+  echo "For usage information, run this script with --help"
+}
+
 # Intended to be called as:
 #   bash <(curl dl.google.com/.../build_ngx_pagespeed.sh) <args>
 
@@ -173,13 +180,24 @@ function build_ngx_pagespeed() {
 
   if [ -z "$NPS_VERSION" ]; then
     echo "Please pass --ngx-pagespeed-version <version>"
-    usage
+    pass_h_for_usage
     exit 1
   fi
 
   if [ ! -d "$BUILDDIR" ]; then
     echo "Told to build in $BUILDDIR, but that directory doesn't exist."
-    usage
+    pass_h_for_usage
+    exit 1
+  fi
+
+  # In our instructions we give a demo with 0.0.1 as an "obviously invalid"
+  # nginx version number.  If someone copies and pastes the command as is, we
+  # should give a friendly error message.
+  if [ "$NGINX_VERSION" = "0.0.1" ]; then
+    echo "You passed 0.0.1 for the version of nginx, but 0.0.1 is just a"
+    echo "placeholder.  Check http://nginx.org/en/download.html for the"
+    echo "latest version of nginx, and replace '0.0.1' with that."
+    pass_h_for_usage
     exit 1
   fi
 
