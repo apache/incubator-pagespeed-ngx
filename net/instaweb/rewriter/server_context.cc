@@ -306,7 +306,12 @@ ServerContext::~ServerContext() {
   // We scan for "leaked_rewrite_drivers" in install/Makefile.tests
   if (!active_rewrite_drivers_.empty()) {
     message_handler_->Message(
-        kInfo, "ServerContext: %d leaked_rewrite_drivers on destruction",
+#ifdef NDEBUG
+        kInfo,
+#else
+        kError,
+#endif
+        "ServerContext: %d leaked_rewrite_drivers on destruction",
         static_cast<int>(active_rewrite_drivers_.size()));
 #ifndef NDEBUG
     for (RewriteDriverSet::iterator p = active_rewrite_drivers_.begin(),
@@ -841,22 +846,28 @@ void ServerContext::ShutDownDrivers() {
                               static_cast<int>(active_rewrite_drivers_.size()));
   }
 
-  for (RewriteDriverSet::iterator i = active_rewrite_drivers_.begin();
-       i != active_rewrite_drivers_.end(); ++i) {
-    // Warning: the driver may already have been mostly cleaned up except for
-    // not getting into ReleaseRewriteDriver before our lock acquisition at
-    // the start of this function; this code is relying on redundant
-    // BoundedWaitForCompletion and Cleanup being safe when
-    // trying_to_cleanup_rewrite_drivers_ is true.
-    // ServerContextTest.ShutDownAssumptions() exists to cover this scenario.
-    RewriteDriver* active = *i;
-    int64 timeout_ms = Timer::kSecondMs;
-    if (RunningOnValgrind()) {
-      timeout_ms *= 20;
+  // In the startup phase, we can be shutdown without having had a timer set.
+  // In that case we'll have no drivers, so we just bail.
+  if (active_rewrite_drivers_.empty()) {
+    return;
+  }
+
+  int timeout_secs = RunningOnValgrind() ? 20 : 1;
+  int64 cutoff_time_ms = timer_->NowMs() + timeout_secs * Timer::kSecondMs;
+
+  for (RewriteDriver* active : active_rewrite_drivers_) {
+    // Negative wait means forever, so we must guard against that.
+    int64 wait_ms = cutoff_time_ms - timer_->NowMs();
+    if (wait_ms > 0) {
+      active->BoundedWaitFor(RewriteDriver::kWaitForShutDown, wait_ms);
+    } else {
+      break;
     }
-    active->BoundedWaitFor(RewriteDriver::kWaitForShutDown, timeout_ms);
-    active->Cleanup();  // Note: only cleans up if the rewrites are complete.
-    // TODO(jmarantz): rename RewriteDriver::Cleanup to CleanupIfDone.
+    // Note: It is not safe to call Cleanup() on the driver here. Something
+    // else is planning to do that and if it happens after this point, they
+    // can DCHECK fail because the refcount is already 0. Instead we just cross
+    // our fingers and wait. If the driver is still active by the time we get
+    // to the destructor, we will log a warning and force delete it.
   }
 }
 
