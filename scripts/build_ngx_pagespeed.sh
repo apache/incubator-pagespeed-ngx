@@ -383,7 +383,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     nps_url_fname="v${NPS_VERSION}-beta"
     nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}-beta"
   else
-    # We've been given a tag name.  Download that directly.
+    # We've been given a tag name, like latest-beta.  Download that directly.
     nps_url_fname="$NPS_VERSION"
     nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}"
   fi
