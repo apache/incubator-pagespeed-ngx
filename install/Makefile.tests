@@ -30,6 +30,9 @@ export APACHE_DEBUG_PAGESPEED_CONF
 export APACHE_LOG
 export APACHE_DOC_ROOT
 export MOD_PAGESPEED_CACHE
+export APACHE_SECONDARY_PORT
+export APACHE_TERTIARY_PORT
+export SERVER_NAME = apache
 
 PAGESPEED_DIR = $(realpath $(shell \
   if [ -f $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh ]; then \
@@ -50,6 +53,8 @@ apache_vm_system_tests : setup_doc_root
 	$(MAKE) FAST_RESTART=1 apache_debug_slurp_test
 	$(MAKE) FAST_RESTART=1 apache_debug_speling_test
 	$(MAKE) FAST_RESTART=1 apache_debug_gzip_test
+	# TODO(cheesy): uncomment when ready.
+	# $(MAKE) FAST_RESTART=1 apache_debug_controller_test
 	$(MAKE) FAST_RESTART=1 apache_debug_process_scope_test
 	$(MAKE) FAST_RESTART=1 apache_debug_remote_config_test
 	$(MAKE) FAST_RESTART=1 apache_debug_experiment_test
@@ -105,23 +110,18 @@ APACHE_REMOTE_CONFIG_TEST = $(PAGESPEED_DIR)/system/remote_config_test.sh
 # This will blow away your existing pagespeed.conf,
 # and clear the cache.  It will also run with statistics off at the end,
 # restoring it at the end
-apache_debug_smoke_test : apache_install_conf apache_debug_restart
+apache_debug_smoke_test : apache_install_conf apache_debug_install
 	@echo '***' System-test with cold cache
 	$(MAKE) stop
+	rm -f "$(APACHE_LOG)"
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 	$(MAKE) start
 	CACHE_FLUSH_TEST=on \
-	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
-	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	FIRST_RUN=true \
 	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	@echo '***' System-test with warm cache
 	CACHE_FLUSH_TEST=on \
-	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
-	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test with statistics off
 	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
@@ -132,9 +132,6 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	grep ModPagespeedInheritVHostConfig $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) stop
 	$(MAKE) start
-	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
-	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	CACHE_FLUSH_TEST=on \
 	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
@@ -149,9 +146,6 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	$(MAKE) start
 	CACHE_FLUSH_TEST=on \
 	NO_VHOST_MERGE=on \
-	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
-	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Restore config
@@ -163,6 +157,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 apache_debug_remote_config_test :
 	@echo '***' Remote-config test
 	$(MAKE) stop
+	rm -f "$(APACHE_LOG)"
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
 	$(MAKE) apache_install_conf OPTIONS="$(OPTIONS) REMOTE_CONFIG_TEST=1"
@@ -176,10 +171,7 @@ apache_debug_remote_config_test :
 	RCPORT6=$(RCPORT6) \
 	RCPORT7=$(RCPORT7) \
 	SECONDARY_HOSTNAME=localhost:$(APACHE_SECONDARY_PORT) \
-	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
-	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-	FIRST_RUN=true SERVER_NAME=apache \
+	FIRST_RUN=true \
 	    $(APACHE_REMOTE_CONFIG_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Restore config
@@ -210,10 +202,8 @@ apache_debug_process_scope_test :
 	$(MAKE) apache_install_conf OPTIONS="$(OPTIONS) PROCESS_SCOPE_TEST=1"
 	$(MAKE) start
 	SECONDARY_HOSTNAME=localhost:$(APACHE_SECONDARY_PORT) \
-	SERVER_NAME=apache \
-	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	    $(PAGESPEED_DIR)/apache/process_scope_test.sh \
-		$(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	        $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Restore config
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
@@ -242,9 +232,8 @@ apache_debug_memcached_test :
 	# right ModPagespeedMemcachedServers setup.  MEMCACHED_PORT will
 	# be different on each run, which makes it easier for people to
 	# run system-tests and unit-tests in parallel with one another.
-	env APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-		$(INSTALL_DATA_DIR)/run_program_with_memcached.sh \
-			$(MAKE) apache_debug_memcached_test_run
+	$(INSTALL_DATA_DIR)/run_program_with_memcached.sh \
+	    $(MAKE) apache_debug_memcached_test_run
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 	@echo PASS
@@ -254,9 +243,7 @@ apache_debug_memcached_test_run :
 	$(MAKE) apache_debug_restart
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	CACHE_FLUSH_TEST=on \
-	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
-	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 
 apache_debug_redis_test :
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
@@ -265,9 +252,8 @@ apache_debug_redis_test :
 	# right redis server config.  REDIS_PORT will be different
 	# on each run, which makes it easier for people to run
 	# system-tests and unit-tests in parallel with one another.
-	env APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
-		$(INSTALL_DATA_DIR)/run_program_with_redis.sh \
-			$(MAKE) apache_debug_redis_test_run
+	$(INSTALL_DATA_DIR)/run_program_with_redis.sh \
+	    $(MAKE) apache_debug_redis_test_run
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 	@echo PASS
@@ -277,9 +263,21 @@ apache_debug_redis_test_run :
 	$(MAKE) apache_debug_restart
 	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	CACHE_FLUSH_TEST=on \
-	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
-	APACHE_TERTIARY_PORT=$(APACHE_TERTIARY_PORT) \
-	$(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+
+apache_debug_controller_test :
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
+	$(MAKE) apache_debug_controller_test_run
+	$(MAKE) apache_debug_stop
+	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
+	@echo PASS
+
+apache_debug_controller_test_run :
+	$(MAKE) apache_install_conf OPTIONS="$(OPTIONS) CONTROLLER_TEST=1"
+	$(MAKE) apache_debug_restart
+	SECONDARY_HOSTNAME=localhost:$(APACHE_SECONDARY_PORT) \
+	RUN_CONTROLLER_TEST=on \
+	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 
 # This test checks that when ModPagespeedFetchWithGzip is enabled we
 # fetch resources from origin with the gzip flag.  Note that big.css
@@ -293,8 +291,6 @@ apache_debug_redis_test_run :
 apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
     apache_debug_restart
 	SECONDARY_HOSTNAME=localhost:$(APACHE_SECONDARY_PORT) \
-	SERVER_NAME=apache \
-	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	    $(PAGESPEED_DIR)/apache/gzip_test.sh \
 		$(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 

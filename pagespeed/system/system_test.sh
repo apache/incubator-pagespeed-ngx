@@ -5,6 +5,17 @@
 # See automatic/system_test_helpers.sh for usage.
 #
 
+# Default to not running the controller, unless specified to
+# do so via an environment variable.
+RUN_CONTROLLER_TEST=${RUN_CONTROLLER_TEST:-off}
+
+FIRST_RUN=${FIRST_RUN:-false}
+
+# To fetch from the secondary test root, we must set
+# http_proxy=${SECONDARY_HOSTNAME} during fetches.
+SECONDARY_ROOT="http://secondary.example.com"
+SECONDARY_TEST_ROOT="$SECONDARY_ROOT/mod_pagespeed_test"
+
 # Run the automatic/ system tests.
 #
 # We need to know the directory this file is located in.  Unfortunately,
@@ -274,7 +285,7 @@ check test -f "$WGET_DIR$PAGESPEED_GIF"
 # us to rewrite the resource from origin, we grab this resource from a
 # virtual host attached to a different cache.
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
-  SECONDARY_HOST="http://secondary.example.com/gstatic_images"
+  SECONDARY_HOST="$SECONDARY_ROOT/gstatic_images"
   PROXIED_IMAGE="$SECONDARY_HOST$PAGESPEED_GIF"
   start_test $PROXIED_IMAGE expecting one year cache.
 
@@ -373,16 +384,18 @@ echo $WGET_DUMP $TEST_ROOT/ipro/instant/deadline/purple.css
 OUT=$($WGET_DUMP $TEST_ROOT/ipro/instant/deadline/purple.css)
 check_from "$OUT" fgrep -q 'body{background:#9370db}'
 
-start_test IPRO requests are routed through the controller API
+if [ "$RUN_CONTROLLER_TEST" = "on" ]; then
+  start_test IPRO requests are routed through the controller API
 
-STATS=$OUTDIR/controller_stats
-$WGET_DUMP $GLOBAL_STATISTICS_URL > $STATS.0
+  STATS=$OUTDIR/controller_stats
+  $WGET_DUMP $GLOBAL_STATISTICS_URL > $STATS.0
 
-OUT=$($WGET_DUMP $TEST_ROOT/ipro/instant/wait/purple.css?random=$RANDOM)
-check_from "$OUT" fgrep -q 'body{background:#9370db}'
+  OUT=$($WGET_DUMP $TEST_ROOT/ipro/instant/wait/purple.css?random=$RANDOM)
+  check_from "$OUT" fgrep -q 'body{background:#9370db}'
 
-$WGET_DUMP $GLOBAL_STATISTICS_URL > $STATS.1
-check_stat $STATS.0 $STATS.1 named-lock-rewrite-scheduler-granted 1
+  $WGET_DUMP $GLOBAL_STATISTICS_URL > $STATS.1
+  check_stat $STATS.0 $STATS.1 named-lock-rewrite-scheduler-granted 1
+fi
 
 start_test json keeps its content type
 URL="$TEST_ROOT/example.json"
@@ -2369,65 +2382,74 @@ start_test long url handling
 OUT=$($CURL -sS -D- "$TEST_ROOT/$(head -c 10000 < /dev/zero | tr '\0' 'a')")
 check_from "$OUT" grep -q "414 Request-URI Too Large\|414 Request-URI Too Long"
 
-start_test babysitter process restarts controller when killed
-
 function get_controller_pid() {
   grep "Controller running with PID " $ERROR_LOG | tail -n 1 | awk '{print $NF}'
 }
 
-controller_pid=$(get_controller_pid)
-check [ ! -z "$controller_pid" ]  # Controller PID should be in log.
+if [ "$RUN_CONTROLLER_TEST" = "on" ]; then
+  start_test babysitter process restarts controller when killed
 
-# We should see the babysitter process starting too.
-check grep "Babysitter running with PID " $ERROR_LOG
+  controller_pid=$(get_controller_pid)
+  check [ ! -z "$controller_pid" ]  # Controller PID should be in log.
 
-function count_watcher_messages() {
-  grep -c "Watching the root process to exit if it dies." $ERROR_LOG
-}
+  # We should see the babysitter process starting too.
+  check grep "Babysitter running with PID " $ERROR_LOG
 
-# And the ProcessDeathWatcherThread should be running.
-echo "Checking that we're watching the right processes."
-initial_watcher_count=$(count_watcher_messages)
-# On nginx this will be 1; on apache it will be 2 because apache starts twice to
-# check its config.
-check [ $initial_watcher_count -gt 0 ]
+  function count_watcher_messages() {
+    grep -c "Watching the root process to exit if it dies." $ERROR_LOG
+  }
 
-# Now kill the controller and verify that it gets restarted.
-kill "$controller_pid"
+  # And the ProcessDeathWatcherThread should be running.
+  echo "Checking that we're watching the right processes."
+  initial_watcher_count=$(count_watcher_messages)
+  # On nginx this will be 1; on apache it will be 2 because apache starts twice to
+  # check its config.
+  check [ $initial_watcher_count -gt 0 ]
 
-function did_controller_restart() {
-  new_controller_pid=$(get_controller_pid)
+  # Now kill the controller and verify that it gets restarted.
+  kill "$controller_pid"
 
-  # If there's a new PID, that means it was restarted.
-  test ! -z "$new_controller_pid" -a "$new_controller_pid" != "$controller_pid"
-}
+  function did_controller_restart() {
+    new_controller_pid=$(get_controller_pid)
 
-echo -n "Waiting for babysitter to restart controller ..."
-SECONDS=0
-while ! did_controller_restart && [ $SECONDS -lt 10 ]; do
-  echo -n .
-  sleep 0.1
-done
-echo
+    # If there's a new PID, that means it was restarted.
+    test ! -z "$new_controller_pid" -a "$new_controller_pid" != "$controller_pid"
+  }
 
-check did_controller_restart
+  echo -n "Waiting for babysitter to restart controller ..."
+  SECONDS=0
+  while ! did_controller_restart && [ $SECONDS -lt 10 ]; do
+    echo -n .
+    sleep 0.1
+  done
+  echo
 
-echo "Checking that babysitter reported controller death..."
-grep "Controller process $controller_pid exited with wait status" \
-  $ERROR_LOG > /dev/null
+  check did_controller_restart
 
-# The ProcessDeathWatcherThread should have been restarted (it's hosted by the
-# controller thread, not the babysitter). This message may be delayed slightly
-# under valgrind, so allow a few retries.
-echo "Checking again that we're watching the right processes."
-final_watcher_count=$(count_watcher_messages)
-SECONDS=0
-while [ $final_watcher_count -eq $initial_watcher_count -a\
-        $SECONDS -lt 2 ]; do
-  sleep 0.1
+  echo "Checking that babysitter reported controller death..."
+  grep "Controller process $controller_pid exited with wait status" \
+    $ERROR_LOG > /dev/null
+
+  # The ProcessDeathWatcherThread should have been restarted (it's hosted by the
+  # controller thread, not the babysitter). This message may be delayed slightly
+  # under valgrind, so allow a few retries.
+  echo "Checking again that we're watching the right processes."
   final_watcher_count=$(count_watcher_messages)
-done
-check [ $final_watcher_count -eq $(($initial_watcher_count + 1)) ]
+  SECONDS=0
+  while [ $final_watcher_count -eq $initial_watcher_count -a\
+          $SECONDS -lt 2 ]; do
+    sleep 0.1
+    final_watcher_count=$(count_watcher_messages)
+  done
+  check [ $final_watcher_count -eq $((initial_watcher_count + 1)) ]
+elif [ "$FIRST_RUN" = "true" ]; then
+  start_test With controller off, there should be no pid.
+  # This should only be checked in the first frun because there may
+  # be a leftover pid from an earlier run in the error.log.  Related:
+  # we must ensure that whenever FIRST_RUN is true, the logs must
+  # be cleared before running the test script.
+  check [ "$(get_controller_pid)" = "" ];
+fi
 
 start_test Strip subresources default behaviour
 URL="$TEST_ROOT/strip_subresource_hints/default/index.html"

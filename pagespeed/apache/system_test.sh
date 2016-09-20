@@ -50,14 +50,9 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   if [ "$SECONDARY_HOSTNAME" = "$1" ]; then
     SECONDARY_HOSTNAME=${1}:$APACHE_SECONDARY_PORT
   fi
-
-  # To fetch from the secondary test root, we must set
-  # http_proxy=${SECONDARY_HOSTNAME} during fetches.
-  SECONDARY_ROOT="http://secondary.example.com"
-  SECONDARY_TEST_ROOT="$SECONDARY_ROOT/mod_pagespeed_test"
 else
   # Force the variable to be set albeit blank so tests don't fail.
-  : ${SECONDARY_HOSTNAME:=}
+  SECONDARY_HOSTNAME=${SECONDARY_HOSTNAME:-}
 fi
 
 # Inform system/system_tests.sh and the rest of this script whether statistics
