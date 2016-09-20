@@ -16,6 +16,9 @@ Options:
       ngx_pagespeed module, and expects you to handle including it when you
       build nginx.
 
+      If you pass in 'latest' then this script scrapes the nginx download page
+      and attempts to determine the latest version automatically.
+
   -m, --dynamic-module
       Build ngx_pagespeed as a dynamic module.
 
@@ -77,6 +80,12 @@ function debian_is_installed() {
   dpkg -l $package_name | grep ^ii | grep -q .
 }
 
+function version_sort() {
+  # We'd rather use sort -V, but that's not available on Centos 5.  This works
+  # for versions in the form A.B.C.D or shorter, which is enough for our use.
+  sort -t '.' -k 1,1 -k 2,2 -k 3,3 -k 4,4 -g
+}
+
 # Compare two numeric versions in the form "A.B.C".  Works with version numbers
 # having up to four components, since that's enough to handle both nginx (3) and
 # ngx_pagespeed (4).
@@ -84,11 +93,41 @@ function version_older_than() {
   local test_version="$1"
   local compare_to="$2"
 
-  # We'd rather use sort -V, but that's not available on Centos 5.
-  local older_version=$(
-    echo $@ | tr ' ' '\n' | sort -t '.' -k 1,1 -k 2,2 -k 3,3 -k 4,4 -g | \
-    head -n 1)
+  local older_version=$(echo $@ | tr ' ' '\n' | version_sort | head -n 1)
   test "$older_version" != "$compare_to"
+}
+
+function determine_latest_nginx_version() {
+  # Scrape nginx's download page to try to find the most recent nginx version.
+
+  nginx_download_url="https://nginx.org/en/download.html"
+  function report_error() {
+    fail "
+Couldn't automatically determine the latest nginx version: failed to $@
+$nginx_download_url"
+  }
+
+  nginx_download_page=$(curl -sS --fail "$nginx_download_url") || \
+    report_error "download"
+
+  download_refs=$(echo "$nginx_download_page" | \
+    grep -o '/download/nginx-[0-9.]*[.]tar[.]gz') || \
+    report_error "parse"
+
+  versions_available=$(echo "$download_refs" | \
+    sed -e 's~^/download/nginx-~~' -e 's~\.tar\.gz$~~') || \
+    report_error "extract versions from"
+
+  latest_version=$(echo "$versions_available" | version_sort | tail -n 1) || \
+    report_error "determine latest version from"
+
+  if version_older_than "$latest_version" "1.11.4"; then
+    fail "
+Expected the latest version of nginx to be at least 1.11.4 but found
+$latest_version on $nginx_download_url"
+  fi
+
+  echo "$latest_version"
 }
 
 # Usage:
@@ -211,14 +250,10 @@ function build_ngx_pagespeed() {
     fail "Told to build in $BUILDDIR, but that directory doesn't exist."
   fi
 
-  # In our instructions we give a demo with 0.0.1 as an "obviously invalid"
-  # nginx version number.  If someone copies and pastes the command as is, we
-  # should give a friendly error message.
-  if [ "$NGINX_VERSION" = "0.0.1" ]; then
-    fail "
-You passed 0.0.1 for the version of nginx, but 0.0.1 is just a placeholder.
-Check http://nginx.org/en/download.html for the latest version of nginx, and
-replace '0.0.1' with that."
+  if [ "$NGINX_VERSION" = "latest" ]; then
+    # When this function fails it prints the debugging information needed first
+    # to stderr.
+    NGINX_VERSION=$(determine_latest_nginx_version) || exit 1
   fi
 
   if "$DYNAMIC_MODULE"; then
@@ -348,7 +383,6 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     nps_url_fname="v${NPS_VERSION}-beta"
     nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}-beta"
   else
-    fail not expected
     # We've been given a tag name.  Download that directly.
     nps_url_fname="$NPS_VERSION"
     nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}"
