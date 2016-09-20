@@ -608,16 +608,6 @@ function find_exactly_once {
   test $(grep -c "$1") -eq 1
 }
 
-# Wait for the new worker process with the new configuration to get ready, or
-# else the sudden reset of the shared mem statistics/cache might catch upcoming
-# tests unaware.
-function wait_for_new_worker() {
-  while [ $(scrape_stat image_rewrite_total_original_bytes) -gt 0 ]; do
-    echo "Waiting for new worker to get ready..."
-    sleep .1
-  done
-}
-
 if [ "$RUN_CONTROLLER_TEST" = "on" ]; then
   function check_process_names() {
     if ! $USE_VALGRIND; then
@@ -641,6 +631,15 @@ URL="$EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css"
 check wget "$URL" -O /dev/null
 check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
 
+# Wait for the new worker process with the new configuration to get ready, or
+# else the sudden reset of the shared mem statistics/cache might catch upcoming
+# tests unaware.
+function wait_for_new_worker() {
+  while [ $(scrape_stat image_rewrite_total_original_bytes) -gt 0 ]; do
+    echo "Waiting for new worker to get ready..."
+    sleep .1
+  done
+}
 wait_for_new_worker
 check wget "$URL" -O /dev/null
 if [ "$AB_PID" != "0" ]; then
