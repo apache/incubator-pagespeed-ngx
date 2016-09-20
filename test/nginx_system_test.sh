@@ -629,26 +629,27 @@ if [ "$RUN_CONTROLLER_TEST" = "on" ]; then
       check_from "$running" find_exactly_once "nginx: pagespeed controller"
     fi
   }
-
   check_process_names
+fi
 
-  # Fire up some heavy load if ab is available to test a stressed reload.
-  # TODO(oschaaf): make sure we wait for the new worker to get ready to accept
-  # requests.
-  fire_ab_load
+# Fire up some heavy load if ab is available to test a stressed reload.
+# TODO(oschaaf): make sure we wait for the new worker to get ready to accept
+# requests.
+fire_ab_load
 
-  URL="$EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css"
-  check wget "$URL" -O /dev/null
-  check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
+URL="$EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css"
+check wget "$URL" -O /dev/null
+check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
 
-  wait_for_new_worker
-  check wget "$URL" -O /dev/null
-  if [ "$AB_PID" != "0" ]; then
-      echo "Kill ab (pid: $AB_PID)"
-      kill -s KILL $AB_PID &>/dev/null || true
-  fi
+wait_for_new_worker
+check wget "$URL" -O /dev/null
+if [ "$AB_PID" != "0" ]; then
+    echo "Kill ab (pid: $AB_PID)"
+    kill -s KILL $AB_PID &>/dev/null || true
+fi
 
-  # There should still be just one babysitter and controller running.
+# There should still be just one babysitter and controller running.
+if [ "$RUN_CONTROLLER_TEST" = "on" ]; then
   check_process_names
 
   check grep "Writing a byte to a pipe to tell the old controller to exit." \
