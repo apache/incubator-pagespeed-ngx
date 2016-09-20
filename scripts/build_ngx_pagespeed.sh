@@ -438,6 +438,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     if [ -z "$PS_NGX_EXTRA_FLAGS" ]; then
       echo "If this is for integration with an already-built nginx, make sure"
       echo "to include any other arguments you originally passed to ./configure"
+      echo "You can see these with 'nginx -V'."
     else
       echo "Note: because we need to set $PS_NGX_EXTRA_FLAGS on this platform,"
       echo "if you want to integrate ngx_pagespeed with an already-built nginx"
