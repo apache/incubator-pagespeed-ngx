@@ -36,11 +36,16 @@ Options:
       Print this message and exit."
 }
 
-function pass_h_for_usage() {
-  # Normally I'd use $0 here, but since most people will be running this via
-  # curl, that wouldn't actually give something useful.
-  echo
-  echo "For usage information, run this script with --help"
+# Prints an error message and exits with an error code.
+function fail() {
+  local error_message="$@"
+  echo "$@" >&2
+
+  # Normally I'd use $0 in "usage" here, but since most people will be running
+  # this via curl, that wouldn't actually give something useful.
+  echo >&2
+  echo "For usage information, run this script with --help" >&2
+  exit 1
 }
 
 # Intended to be called as:
@@ -70,6 +75,20 @@ function redhat_is_installed() {
 function debian_is_installed() {
   local package_name="$1"
   dpkg -l $package_name | grep ^ii | grep -q .
+}
+
+# Compare two numeric versions in the form "A.B.C".  Works with version numbers
+# having up to four components, since that's enough to handle both nginx (3) and
+# ngx_pagespeed (4).
+function version_older_than() {
+  local test_version="$1"
+  local compare_to="$2"
+
+  # We'd rather use sort -V, but that's not available on Centos 5.
+  local older_version=$(
+    echo $@ | tr ' ' '\n' | sort -t '.' -k 1,1 -k 2,2 -k 3,3 -k 4,4 -g | \
+    head -n 1)
+  test "$older_version" != "$compare_to"
 }
 
 # Usage:
@@ -124,11 +143,10 @@ function continue_or_exit() {
 function build_ngx_pagespeed() {
   getopt --test
   if [ "$?" != 4 ]; then
-    echo "Your version of getopt is too old.  Exiting with no changes made."
     # Even Centos 5 and Ubuntu 10 LTS have new-style getopt, so I don't expect
     # this to be hit in practice on systems that are actually able to run
     # PageSpeed.
-    exit 1
+    fail "Your version of getopt is too old.  Exiting with no changes made."
   fi
 
   opts=$(getopt -o v:n:mb:pdh \
@@ -186,26 +204,39 @@ function build_ngx_pagespeed() {
   done
 
   if [ -z "$NPS_VERSION" ]; then
-    echo "Please pass --ngx-pagespeed-version <version>"
-    pass_h_for_usage
-    exit 1
+    fail "Please pass --ngx-pagespeed-version <version>"
   fi
 
   if [ ! -d "$BUILDDIR" ]; then
-    echo "Told to build in $BUILDDIR, but that directory doesn't exist."
-    pass_h_for_usage
-    exit 1
+    fail "Told to build in $BUILDDIR, but that directory doesn't exist."
   fi
 
   # In our instructions we give a demo with 0.0.1 as an "obviously invalid"
   # nginx version number.  If someone copies and pastes the command as is, we
   # should give a friendly error message.
   if [ "$NGINX_VERSION" = "0.0.1" ]; then
-    echo "You passed 0.0.1 for the version of nginx, but 0.0.1 is just a"
-    echo "placeholder.  Check http://nginx.org/en/download.html for the"
-    echo "latest version of nginx, and replace '0.0.1' with that."
-    pass_h_for_usage
-    exit 1
+    fail "
+You passed 0.0.1 for the version of nginx, but 0.0.1 is just a placeholder.
+Check http://nginx.org/en/download.html for the latest version of nginx, and
+replace '0.0.1' with that."
+  fi
+
+  if "$DYNAMIC_MODULE"; then
+    # Check that ngx_pagespeed and nginx are recent enough to support dynamic
+    # modules.
+    if version_older_than "$NPS_VERSION" "1.10.33.5"; then
+      fail "
+You're trying to build ngx_pagespeed $NPS_VERSION as a dynamic module, but
+ngx_pagespeed didn't add support for dynamic modules until 1.10.33.5."
+    fi
+
+    if [ ! -z "NGINX_VERSION" ]; then
+      if version_older_than "$NGINX_VERSION" "1.9.11"; then
+        fail "
+You're trying to build nginx $NGINX_VERSION as a dynamic module but nginx didn't
+add support for dynamic modules until 1.9.11."
+      fi
+    fi
   fi
 
   if "$DRYRUN"; then
@@ -254,10 +285,9 @@ function build_ngx_pagespeed() {
           elif [ "$redhat_major_version" == 6 ]; then
             slc_version=6
           else
-            echo "Unexpected major version $redhat_major_version in"
-            echo "/etc/redhat-release: $(cat /etc/redhat-release)"
-            echo "Expected 5 or 6."
-            exit 1
+            fail "
+Unexpected major version $redhat_major_version in /etc/redhat-release:
+$(cat /etc/redhat-release) Expected 5 or 6."
           fi
 
           echo "Detected that gcc is older than 4.8.  Scientific Linux provides"
@@ -271,8 +301,7 @@ function build_ngx_pagespeed() {
 
           repo_fname="/etc/yum.repos.d/slc${slc_version}-devtoolset.repo"
           if [ -e "$repo_fname" ]; then
-            echo "Expected $repo_fname not to exist; aborting."
-            exit 1
+            fail "Expected $repo_fname not to exist; aborting."
           fi
 
           repo_url="https://linux.web.cern.ch/linux/scientific${slc_version}/"
@@ -284,10 +313,10 @@ function build_ngx_pagespeed() {
         PS_NGX_EXTRA_FLAGS="--with-cc=/opt/rh/devtoolset-2/root/usr/bin/gcc"
       fi
     else
-      echo "This doesn't appear to be a deb-based distro or an rpm-based one."
-      echo "Not going to be able to install dependencies.  Please install"
-      echo "dependencies manually and rerun with --depsinstalled."
-      exit 1
+      fail "
+This doesn't appear to be a deb-based distro or an rpm-based one.  Not going to
+be able to install dependencies.  Please install dependencies manually and rerun
+with --depsinstalled."
     fi
     echo "Dependencies are all set."
   else
@@ -300,8 +329,8 @@ function build_ngx_pagespeed() {
     local directory="$1"
     if [ -d "$directory" ]; then
       if [ ${#directory} -lt 8 ]; then
-        echo "Not deleting $directory; name is suspiciously short.  Something"
-        echo "is wrong."
+        fail "
+Not deleting $directory; name is suspiciously short.  Something is wrong."
         exit 1
       fi
 
@@ -353,7 +382,7 @@ function build_ngx_pagespeed() {
     delete_if_already_exists "$nginx_dir"
     echo "Extracting nginx..."
     run tar -xzf "$nginx_fname" --directory "$BUILDDIR"
-    cd "$nginx_dir"
+    "$DRYRUN" || cd "$nginx_dir"
 
     echo "About to build nginx.  Do you have any additional ./configure"
     echo "arguments you would like to set?  For example, if you would like"
@@ -392,6 +421,7 @@ function build_ngx_pagespeed() {
     echo "You'll also need to configure ngx_pagespeed if you haven't yet:"
     echo "  https://developers.google.com/speed/pagespeed/module/configuration"
   fi
+  "$DRYRUN" && echo "[this was a dry run; your system is unchanged]"
 }
 
 # Start running things from a call at the end so if this script is executed
