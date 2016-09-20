@@ -340,17 +340,53 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
   }
 
   nps_baseurl="https://github.com/pagespeed/ngx_pagespeed/archive"
-  nps_fname="release-${NPS_VERSION}-beta"
-  nps_downloaded="$TEMPDIR/$nps_fname.zip"
-  run wget "$nps_baseurl/$nps_fname.zip" -O "$nps_downloaded"
-  nps_module_dir="$BUILDDIR/ngx_pagespeed-$nps_fname"
+  # In general, the zip github builds for tag foo unzips to ngx_pagespeed-foo,
+  # but it looks like they special case vVERSION tags to ngx_pagespeed-VERSION.
+  if [[ "$NPS_VERSION" =~ ^[0-9]*[.][0-9]*[.][0-9]*[.][0-9]*$ ]]; then
+    # We've been given a numeric version number.  This has an associated tag in
+    # the form vVERSION-beta.
+    nps_url_fname="v${NPS_VERSION}-beta"
+    nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}-beta"
+  else
+    fail not expected
+    # We've been given a tag name.  Download that directly.
+    nps_url_fname="$NPS_VERSION"
+    nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}"
+  fi
+
+  nps_downloaded="$TEMPDIR/$nps_downloaded_fname.zip"
+  run wget "$nps_baseurl/$nps_url_fname.zip" -O "$nps_downloaded"
+  nps_module_dir="$BUILDDIR/$nps_downloaded_fname"
   delete_if_already_exists "$nps_module_dir"
   echo "Extracting ngx_pagespeed..."
   run unzip -q "$nps_downloaded" -d "$BUILDDIR"
   run cd "$nps_module_dir"
-  run wget "https://dl.google.com/dl/page-speed/psol/${NPS_VERSION}.tar.gz"
+
+  # Now we need to figure out what precompiled version of PSOL to build
+  # ngx_pagespeed against.
+  if "$DRYRUN"; then
+    psol_url="https://psol.example.com/cant-get-psol-version-in-dry-run.tar.gz"
+  elif [ -e PSOL_BINARY_URL ]; then
+    # Releases after 1.11.33.4 there is a PSOL_BINARY_URL file that tells us
+    # where to look.
+    psol_url="$(cat PSOL_BINARY_URL)"
+    if [[ "$psol_url" != https://* ]]; then
+      fail "Got bad psol binary location information: $psol_url"
+    fi
+  else
+    # For past releases we have to grep it from the config file.  The url has
+    # always looked like this, and the config file has contained it since before
+    # we started tagging our ngx_pagespeed releases.
+    psol_url="$(
+      grep -o "https://dl.google.com/dl/page-speed/psol/[0-9.]*.tar.gz" config)"
+    if [ -z "$psol_url" ]; then
+      fail "Couldn't find PSOL url in $PWD/config"
+    fi
+  fi
+
+  run wget "$psol_url"
   echo "Extracting PSOL..."
-  run tar -xzf ${NPS_VERSION}.tar.gz  # extracts to psol/
+  run tar -xzf $(basename "$psol_url")  # extracts to psol/
 
   if "$DYNAMIC_MODULE"; then
     configure_args="--add-dynamic-module=$nps_module_dir $PS_NGX_EXTRA_FLAGS"
