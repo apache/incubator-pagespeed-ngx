@@ -23,6 +23,7 @@
 
 #include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -41,7 +42,10 @@ class ContextRegistry {
   ContextRegistry(ThreadSystem* thread_system);
   virtual ~ContextRegistry();
 
-  void RegisterContext(ContextT* ctx) LOCKS_EXCLUDED(mutex_);
+  // Returns whether the ContextT was registered or not. Will only fail once
+  // CancelAllActive has been called.
+  bool TryRegisterContext(ContextT* ctx)
+      LOCKS_EXCLUDED(mutex_) WARN_UNUSED_RESULT;
   void RemoveContext(ContextT* ctx) LOCKS_EXCLUDED(mutex_);
 
   // Calls TryCancel on all contained Contexts and then blocks until all have
@@ -51,6 +55,13 @@ class ContextRegistry {
   // cancellations asynchronously afer TryCancel() has returned, so that is not
   // a problem for the intended use.
   void CancelAllActive() LOCKS_EXCLUDED(mutex_);
+
+  // Whether CancelAllActive has been called yet. Once this starts returning
+  // true, it will never again return false. Because of this, a true return
+  // can safely be used to skip work on the assumption that TryRegisterContext
+  // will fail. However the converse is NOT true: You must use
+  // TryRegisterContext to check if it is safe to to work.
+  bool IsShutdown() const LOCKS_EXCLUDED(mutex_);
 
   // For use in tests.
   bool Empty() const LOCKS_EXCLUDED(mutex_);
@@ -83,13 +94,22 @@ bool ContextRegistry<ContextT>::Empty() const {
 }
 
 template <typename ContextT>
-void ContextRegistry<ContextT>::RegisterContext(ContextT* context) {
+bool ContextRegistry<ContextT>::IsShutdown() const {
   ScopedMutex lock(mutex_.get());
-  // If we're shutdown, the Context is about to have its world ripped out
-  // from under it, so it will probably crash. Better to CHECK fail here.
-  CHECK(!shutdown_);
-  bool inserted = contexts_.insert(context).second;
-  DCHECK(inserted);
+  return shutdown_;
+}
+
+template <typename ContextT>
+bool ContextRegistry<ContextT>::TryRegisterContext(ContextT* context) {
+  CHECK(context != nullptr);
+
+  ScopedMutex lock(mutex_.get());
+  bool inserted = false;
+  if (!shutdown_) {
+    inserted = contexts_.insert(context).second;
+    DCHECK(inserted);
+  }
+  return inserted;
 }
 
 template <typename ContextT>

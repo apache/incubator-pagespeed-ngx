@@ -80,9 +80,18 @@ class ContextRegistryTest : public testing::Test {
 
 TEST_F(ContextRegistryTest, CancelEmptyDoesntBlock) {
   EXPECT_THAT(registry_.Empty(), Eq(true));
+  EXPECT_THAT(registry_.IsShutdown(), Eq(false));
   registry_.CancelAllActive();
   // We're verifying that Cancel doesn't wait indefinitely when empty. If that
   // happens the test will hang and require ^C or some other timeout.
+  EXPECT_THAT(registry_.Empty(), Eq(true));
+  EXPECT_THAT(registry_.IsShutdown(), Eq(true));
+}
+
+TEST_F(ContextRegistryTest, CantRegisterAfterShutdown) {
+  MockContext ctx;
+  registry_.CancelAllActive();
+  EXPECT_THAT(registry_.TryRegisterContext(&ctx), Eq(false));
   EXPECT_THAT(registry_.Empty(), Eq(true));
 }
 
@@ -90,7 +99,7 @@ TEST_F(ContextRegistryTest, DoesntCancelOldEntries) {
   MockContext ctx;
   EXPECT_CALL(ctx, TryCancel()).Times(0);
 
-  registry_.RegisterContext(&ctx);
+  EXPECT_THAT(registry_.TryRegisterContext(&ctx), Eq(true));
   EXPECT_THAT(registry_.Empty(), Eq(false));
 
   registry_.RemoveContext(&ctx);
@@ -111,7 +120,7 @@ TEST_F(ContextRegistryTest, CancelsContainedItems) {
         MakeFunction(&registry_, &MockRegistry::RemoveContext, &ctx));
   }));
 
-  registry_.RegisterContext(&ctx);
+  EXPECT_THAT(registry_.TryRegisterContext(&ctx), Eq(true));
   EXPECT_THAT(registry_.Empty(), Eq(false));
 
   registry_.CancelAllActive();  // Should block.
@@ -136,7 +145,7 @@ TEST_F(ContextRegistryTest, RemovalsWhileCanceling) {
         // Calls to TryCancel are in series via this thread, so there's no
         // concurrency issue on num_canceled.
         .WillOnce(Invoke([&num_canceled]() { ++num_canceled; }));
-    registry_.RegisterContext(&context);
+    ASSERT_THAT(registry_.TryRegisterContext(&context), Eq(true));
   }
 
   // Queue the task that unregisters everything from the registry.
