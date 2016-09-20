@@ -313,7 +313,6 @@ SERVER_NAME=nginx
 # thought as we don't currently have a multi-phase test flow in ngx_pagespeeed,
 # as far as I can tell, and we really have to update the config and restart
 # since the controller is a global setting.
-CONTROLLER_TEST=${CONTROLLER_TEST:-off}
 
 # run generic system tests
 SYSTEM_TEST_FILE="$MOD_PAGESPEED_DIR/src/pagespeed/system/system_test.sh"
