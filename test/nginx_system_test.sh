@@ -309,6 +309,12 @@ CACHE_PURGE_METHODS="PURGE GET"
 
 SERVER_NAME=nginx
 
+# TODO(cheesy): add an nginx controller test variant.  Actually requires some
+# thought as we don't currently have a multi-phase test flow in ngx_pagespeeed,
+# as far as I can tell, and we really have to update the config and restart
+# since the controller is a global setting.
+RUN_CONTROLLER_TEST=${RUN_CONTROLLER_TEST:-off}
+
 # run generic system tests
 PAGESPEED_DIR="$MOD_PAGESPEED_DIR/src/pagespeed"
 SYSTEM_TEST_FILE="$PAGESPEED_DIR/system/system_test.sh"
@@ -605,26 +611,27 @@ function find_exactly_once {
   test $(grep -c "$1") -eq 1
 }
 
-function check_process_names() {
-  if ! $USE_VALGRIND; then
-    # There should be one babysitter and controller running.  Under valgrind
-    # process labels are confused, so skip the check then.
+if [ "$RUN_CONTROLLER_TEST" = "on" ]; then
+  function check_process_names() {
+    if ! $USE_VALGRIND; then
+      # There should be one babysitter and controller running.  Under valgrind
+      # process labels are confused, so skip the check then.
 
-    running=$(ps auxww | grep 'ngin[x]')
-    check_from "$running" find_exactly_once "nginx: pagespeed babysitter"
-    check_from "$running" find_exactly_once "nginx: pagespeed controller"
-  fi
-}
-
-check_process_names
+      running=$(ps auxww | grep 'ngin[x]')
+      check_from "$running" find_exactly_once "nginx: pagespeed babysitter"
+      check_from "$running" find_exactly_once "nginx: pagespeed controller"
+    fi
+  }
+  check_process_names
+fi
 
 # Fire up some heavy load if ab is available to test a stressed reload.
 # TODO(oschaaf): make sure we wait for the new worker to get ready to accept
 # requests.
 fire_ab_load
 
-check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
-  -O /dev/null
+URL="$EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css"
+check wget "$URL" -O /dev/null
 check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
 
 # Wait for the new worker process with the new configuration to get ready, or
@@ -637,20 +644,21 @@ function wait_for_new_worker() {
   done
 }
 wait_for_new_worker
-check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css \
-  -O /dev/null
+check wget "$URL" -O /dev/null
 if [ "$AB_PID" != "0" ]; then
     echo "Kill ab (pid: $AB_PID)"
     kill -s KILL $AB_PID &>/dev/null || true
 fi
 
 # There should still be just one babysitter and controller running.
-check_process_names
+if [ "$RUN_CONTROLLER_TEST" = "on" ]; then
+  check_process_names
 
-check grep "Writing a byte to a pipe to tell the old controller to exit." \
-  $ERROR_LOG
-check grep "Root process is starting a new controller; shutting down." \
-  $ERROR_LOG
+  check grep "Writing a byte to a pipe to tell the old controller to exit." \
+    $ERROR_LOG
+  check grep "Root process is starting a new controller; shutting down." \
+    $ERROR_LOG
+fi
 
 start_test "Shared memory checkpointing"
 
