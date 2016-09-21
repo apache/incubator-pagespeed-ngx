@@ -266,5 +266,69 @@ TEST_F(QueuedExpensiveOperationTest, QueueSizeNegative) {
   EXPECT_EQ(funcs.size(), permitted_operations());
 }
 
+TEST_F(QueuedExpensiveOperationTest, ImmediateRunIsReentrant) {
+  InitQueueWithSize(2);
+
+  TrackCallsFunction inner_function;
+  // This function will queue inner_function when run. If the controller is
+  // holding its own lock when it runs inner_function, the test will deadlock.
+  Function* outer_function = MakeFunction(
+      controller_.get(),
+      &QueuedExpensiveOperationController::ScheduleExpensiveOperation,
+      static_cast<Function*>(&inner_function));
+  // Should run outer_function, and thus inner_function, immediately.
+  controller_->ScheduleExpensiveOperation(outer_function);
+  EXPECT_TRUE(inner_function.run_called_);
+  EXPECT_EQ(2, permitted_operations());
+  EXPECT_EQ(2, active_operations());
+
+  controller_->NotifyExpensiveOperationComplete();
+  controller_->NotifyExpensiveOperationComplete();
+  EXPECT_EQ(0, active_operations());
+}
+
+TEST_F(QueuedExpensiveOperationTest, ImmediateCancelIsReentrant) {
+  InitQueueWithSize(0);
+
+  TrackCallsFunction inner_function;
+  // This function will queue inner_function when run or canceled. We have set
+  // the queue to immediately reject all additions. If the queue holds it own
+  // lock when rejecting this function, the test will deadlock.
+  Function* outer_function = MakeFunction(
+      controller_.get(),
+      &QueuedExpensiveOperationController::ScheduleExpensiveOperation,
+      &QueuedExpensiveOperationController::ScheduleExpensiveOperation,
+      static_cast<Function*>(&inner_function));
+  // Should cancel outer_function and then inner_function, immediately.
+  controller_->ScheduleExpensiveOperation(outer_function);
+  EXPECT_FALSE(inner_function.run_called_);
+  EXPECT_TRUE(inner_function.cancel_called_);
+  EXPECT_EQ(0, active_operations());
+}
+
+TEST_F(QueuedExpensiveOperationTest, QueuePopIsReentrant) {
+  TrackCallsFunction inner_function;
+  // This function will queue inner_function when run. If the controller is
+  // holding its own lock when it runs inner_function, the test will deadlock.
+  Function* outer_function = MakeFunction(
+      controller_.get(),
+      &QueuedExpensiveOperationController::ScheduleExpensiveOperation,
+      &QueuedExpensiveOperationController::ScheduleExpensiveOperation,
+      static_cast<Function*>(&inner_function));
+  controller_->ScheduleExpensiveOperation(outer_function);
+  EXPECT_FALSE(inner_function.run_called_);
+  EXPECT_EQ(1, active_operations());
+  EXPECT_EQ(1, permitted_operations());
+
+  // Pop outer_function, which should run inner_function immediately.
+  controller_->NotifyExpensiveOperationComplete();
+  EXPECT_TRUE(inner_function.run_called_);
+  EXPECT_EQ(1, active_operations());
+  EXPECT_EQ(2, permitted_operations());
+
+  controller_->NotifyExpensiveOperationComplete();
+  EXPECT_EQ(0, active_operations());
+}
+
 }  // namespace
 }  // namespace net_instaweb

@@ -71,6 +71,7 @@ void QueuedExpensiveOperationController::ScheduleExpensiveOperation(
   // If we are configured to disallow all expensive operations, immediately deny
   // the request and don't queue it.
   if (max_in_progress_ == 0) {
+    lock.Release();
     callback->CallCancel();
     return;
   }
@@ -78,7 +79,9 @@ void QueuedExpensiveOperationController::ScheduleExpensiveOperation(
   // If we have a spare slot, run the callback immediately.
   if (max_in_progress_ < 0 || num_in_progress_ < max_in_progress_) {
     IncrementInProgress();
+    lock.Release();
     callback->CallRun();
+    return;
   } else {
     // No slot, so enqueue the callback for later.
     Enqueue(callback);
@@ -97,7 +100,9 @@ void QueuedExpensiveOperationController::NotifyExpensiveOperationComplete() {
   Function* callback = Dequeue();
   if (callback != NULL) {
     IncrementInProgress();
+    lock.Release();
     callback->CallRun();
+    return;
   }
 }
 
