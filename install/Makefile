@@ -390,8 +390,12 @@ setup_test_machine :
 apache_debug_restart :
 	$(APACHE_CONTROL_PROGRAM) restart
 
+# The 'stop' command here is used for the 'install' target in order
+# to ensure that apache is shut down when we are adding new debugging
+# configuration and updating the binary.  The old binary might not
+# be able to start up with new configuration-file commands.
 apache_debug_install :
-	$(APACHE_CONTROL_PROGRAM) install
+	$(APACHE_CONTROL_PROGRAM) stop
 
 apache_debug_stop : stop
 
