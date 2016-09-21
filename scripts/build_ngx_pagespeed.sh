@@ -266,10 +266,11 @@ ngx_pagespeed didn't add support for dynamic modules until 1.10.33.5."
     fi
 
     if [ ! -z "NGINX_VERSION" ]; then
-      if version_older_than "$NGINX_VERSION" "1.9.11"; then
+      if version_older_than "$NGINX_VERSION" "1.9.13"; then
         fail "
 You're trying to build nginx $NGINX_VERSION as a dynamic module but nginx didn't
-add support for dynamic modules until 1.9.11."
+add support for dynamic modules in a way compatible with ngx_pagespeed until
+1.9.13."
       fi
     fi
   fi
