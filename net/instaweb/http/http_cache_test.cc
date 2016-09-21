@@ -27,7 +27,6 @@
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/google_message_handler.h"
 #include "pagespeed/kernel/base/gtest.h"
-#include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_hasher.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -56,6 +55,16 @@ const char kUrl3[] = "http://www.test.com/3";
 const char kHttpsUrl[] = "https://www.test.com/";
 const char kFragment[] = "www.test.com";
 const char kFragment2[] = "www.other.com";
+const char kCssText[] = ".a         {color:blue;}                    "
+    "                                                                "
+    "                                                                "
+    "                                                                "
+    "                                                                "
+    "                                                                "
+    "                                                                ";
+
+const size_t kPayloadSizeWithoutHeaders = STATIC_STRLEN(kUrl) +
+    STATIC_STRLEN(kFragment) + STATIC_STRLEN(kCssText);
 }  // namespace
 
 namespace net_instaweb {
@@ -188,12 +197,43 @@ class HTTPCacheTest : public testing::Test {
 
   void PopulateGzippedEntry(const char* cache_control,
                             ResponseHeaders* response_headers) {
+    PutGzippedEntry(cache_control, response_headers, false, 9);
+  }
+
+  void PutGzippedEntry(const char* cache_control,
+                       ResponseHeaders* response_headers,
+                       bool gzip_data_first,
+                       int compression_level) {
     InitHeaders(response_headers, cache_control);
     response_headers->Add(HttpAttributes::kContentType, "text/css");
-    static const char kCssText[] = ".a         {color:blue;}                  ";
-    http_cache_->SetCompressionLevel(9);
+    GoogleString value;
+    if (gzip_data_first) {
+      StringWriter writer(&value);
+      ASSERT_TRUE(GzipInflater::Deflate(
+          kCssText, GzipInflater::InflateType::kGzip, &writer));
+      response_headers->Add(HttpAttributes::kContentEncoding, "gzip");
+    } else {
+      value = kCssText;
+    }
+    http_cache_->SetCompressionLevel(compression_level);
     response_headers->ComputeCaching();
-    Put(kUrl, kFragment, response_headers, kCssText);
+    Put(kUrl, kFragment, response_headers, value);
+  }
+
+  size_t CacheSizeAfterPut(int cache_compression_level,
+                           bool compress_before_put) {
+    ResponseHeaders response_headers;
+    PutGzippedEntry("max-age:300", &response_headers, compress_before_put,
+                    cache_compression_level);
+    HTTPValue value;
+    response_headers.Clear();
+    HTTPCache::FindResult found = Find(kUrl, kFragment, &value,
+                                       &response_headers);
+    StringPiece contents;
+    CHECK(value.ExtractContents(&contents));
+    EXPECT_STREQ(kCssText, contents);
+    EXPECT_EQ(kFoundResult, found);
+    return lru_cache_.size_bytes();
   }
 
   scoped_ptr<ThreadSystem> thread_system_;
@@ -932,6 +972,46 @@ TEST_F(HTTPCacheTest, LeaveFallbackCompressed) {
       &response_headers, &message_handler_));
   EXPECT_TRUE(response_headers.HasValue(
       HttpAttributes::kContentEncoding, "gzip"));
+}
+
+TEST_F(HTTPCacheTest, PutAlreadyCompressedWithCompressionOff) {
+  size_t cache_size = CacheSizeAfterPut(0, true);
+  // The physical cache entry includes the key, fragment, and value, which
+  // we know exactly.  It also includes the serialized headers, and we
+  // don't know the exact size of that, as HTTPValue does not expose it.
+  // But what we can say safely is that even though we passed a compressed
+  // value to HTTPCache, by uncompressing it and adding the header size,
+  // it will be larger than kPayloadSizeWithoutHeaders.
+  EXPECT_LT(kPayloadSizeWithoutHeaders, cache_size);
+}
+
+TEST_F(HTTPCacheTest, PutAlreadyCompressedWithCompressionOn) {
+  size_t cache_size = CacheSizeAfterPut(9, true);
+  // Here we are storing compressed values into the cache, and kCssText is
+  // highly compressible.  So the stored size will be less than the
+  // kPayloadSizeWithoutHeaders, despite the fact that we are also storing
+  // the headers.
+  EXPECT_GT(kPayloadSizeWithoutHeaders, cache_size);
+}
+
+TEST_F(HTTPCacheTest, PutUncompressedWithCompressionOff) {
+  size_t cache_size = CacheSizeAfterPut(0, false);
+  // The physical cache entry includes the key, fragment, and value, which
+  // we know exactly.  It also includes the serialized headers, and we
+  // don't know the exact size of that, as HTTPValue does not expose it.
+  // But what we can say safely is that even though we passed a compressed
+  // value to HTTPCache, by uncompressing it and adding the header size,
+  // it will be larger than kPayloadSizeWithoutHeaders.
+  EXPECT_LT(kPayloadSizeWithoutHeaders, cache_size);
+}
+
+TEST_F(HTTPCacheTest, PutUncompressedWithCompressionOn) {
+  size_t cache_size = CacheSizeAfterPut(9, false);
+  // Here we are storing compressed values into the cache, and kCssText is
+  // highly compressible.  So the stored size will be less than the
+  // kPayloadSizeWithoutHeaders, despite the fact that we are also storing
+  // the headers.
+  EXPECT_GT(kPayloadSizeWithoutHeaders, cache_size);
 }
 
 class HTTPCacheWriteThroughTest : public HTTPCacheTest {
