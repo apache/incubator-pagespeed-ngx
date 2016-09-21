@@ -55,6 +55,7 @@
       'type': '<(library)',
       'sources': [
         'controller/central_controller.cc',
+        'controller/central_controller_rpc_client.cc',
         'controller/central_controller_rpc_server.cc',
         'controller/compatible_central_controller.cc',
         'controller/expensive_operation_callback.cc',

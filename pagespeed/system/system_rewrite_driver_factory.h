@@ -18,11 +18,14 @@
 #define PAGESPEED_SYSTEM_SYSTEM_REWRITE_DRIVER_FACTORY_H_
 
 #include <map>
+#include <memory>
 #include <set>
 #include <vector>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "pagespeed/controller/central_controller.h"
+#include "pagespeed/controller/central_controller_rpc_client.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -324,6 +327,10 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
 
   bool thread_counts_finalized() { return thread_counts_finalized_; }
 
+  // Delegate from RewriteDriverFactory to construct CentralController.
+  std::shared_ptr<CentralController> GetCentralController(
+      NamedLockManager* lock_manager) override;
+
  private:
   // Build global shared-memory statistics, taking ownership.  This is invoked
   // if at least one server context (global or VirtualHost) enables statistics.
@@ -405,6 +412,8 @@ class SystemRewriteDriverFactory : public RewriteDriverFactory {
   // These are <= 0 if we should autodetect.
   int num_rewrite_threads_;
   int num_expensive_rewrite_threads_;
+
+  std::shared_ptr<CentralControllerRpcClient> central_controller_;
 
   DISALLOW_COPY_AND_ASSIGN(SystemRewriteDriverFactory);
 };

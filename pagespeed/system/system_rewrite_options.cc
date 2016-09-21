@@ -38,6 +38,10 @@ const char kFetchHttps[] = "FetchHttps";
 
 const char SystemRewriteOptions::kCentralControllerPort[] =
     "CentralControllerPort";
+const char SystemRewriteOptions::kPopularityContestMaxInFlight[] =
+    "PopularityContestMaxInFlight";
+const char SystemRewriteOptions::kPopularityContestMaxQueueSize[] =
+    "PopularityContestMaxQueueSize";
 const char SystemRewriteOptions::kStaticAssetCDN[] = "StaticAssetCDN";
 const char SystemRewriteOptions::kRedisServer[] = "ExperimentalRedisServer";
 const char SystemRewriteOptions::kRedisReconnectionDelayMs[] =
@@ -233,6 +237,15 @@ void SystemRewriteOptions::AddProperties() {
                     SystemRewriteOptions::kCentralControllerPort,
                     kProcessScopeStrict,
                     "TCP port for central controller processes", false);
+  AddSystemProperty(
+      10, &SystemRewriteOptions::popularity_contest_max_inflight_requests_,
+      "pci", SystemRewriteOptions::kPopularityContestMaxInFlight,
+      kProcessScopeStrict, "Max simultaneous requests allowed to proceed "
+      "out of the popularity contest", false);
+  AddSystemProperty(
+      1000, &SystemRewriteOptions::popularity_contest_max_queue_size_, "pcq",
+      SystemRewriteOptions::kPopularityContestMaxQueueSize, kProcessScopeStrict,
+      "Max number of queued rewrites allowed in the popularity contest", false);
   AddSystemProperty(false, &SystemRewriteOptions::disable_loopback_routing_,
                     "adlr",
                     "DangerPermitFetchFromUnknownHosts",

@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "pagespeed/controller/central_controller_rpc_client.h"
 #include "pagespeed/controller/central_controller_rpc_server.h"
 #include "pagespeed/controller/popularity_contest_schedule_rewrite_controller.h"
 #include "pagespeed/controller/queued_expensive_operation_controller.h"
@@ -275,15 +276,15 @@ void SystemRewriteDriverFactory::PrepareControllerProcess() {
 void SystemRewriteDriverFactory::StartController(
     const SystemRewriteOptions& options) {
   if (!options.controller_port().empty()) {
-    // TODO(cheesy): Replace constants below with options in a follow-up CL.
     std::unique_ptr<CentralControllerRpcServer> controller(
         new CentralControllerRpcServer(
             options.controller_port(), new QueuedExpensiveOperationController(
                                            options.image_max_rewrites_at_once(),
                                            thread_system(), statistics()),
             new PopularityContestScheduleRewriteController(
-                thread_system(), statistics(), timer(), 10 /* max_in_flight */,
-                1000 /* max_in_queue */),
+                thread_system(), statistics(), timer(),
+                options.popularity_contest_max_inflight_requests(),
+                options.popularity_contest_max_queue_size()),
             message_handler()));
     // In the forked process, this call starts a new event loop and never
     // returns.
@@ -358,6 +359,22 @@ void SystemRewriteDriverFactory::ChildInit() {
     server_context->ChildInit(this);
   }
   uninitialized_server_contexts_.clear();
+}
+
+std::shared_ptr<CentralController>
+SystemRewriteDriverFactory::GetCentralController(
+    NamedLockManager* lock_manager) {
+  const SystemRewriteOptions* conf =
+      SystemRewriteOptions::DynamicCast(default_options());
+  if (conf->controller_port().empty()) {
+    return RewriteDriverFactory::GetCentralController(lock_manager);
+  }
+
+  if (central_controller_ == nullptr) {
+    central_controller_ = std::make_shared<CentralControllerRpcClient>(
+        conf->controller_port(), thread_system(), message_handler());
+  }
+  return central_controller_;
 }
 
 // TODO(jmarantz): make this per-vhost.
@@ -540,6 +557,17 @@ void SystemRewriteDriverFactory::ShutDown() {
     child_shutdown_count->Add(1);
     message_handler()->MessageS(kInfo, "Shutting down PageSpeed child");
   }
+
+  if (central_controller_ != nullptr) {
+    // This can unblock a bunch of Rewrites which then start trying to process
+    // things on Sequences. Unfortunately, all the workers are then almost
+    // immediately shutdown by the call to RewriteDriverFactory::ShutDown()
+    // below. This causes a bunch of "Adding function to sequence after
+    // shutdown" log spam. Not sure much can be done about that.
+    central_controller_->Shutdown();
+    central_controller_ = nullptr;  // Must be freed before the thread_system.
+  }
+
   StopCacheActivity();
 
   // Next, we shutdown the fetchers before killing the workers in

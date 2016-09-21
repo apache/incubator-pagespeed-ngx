@@ -42,6 +42,8 @@ class SystemRewriteOptions : public RewriteOptions {
   typedef std::set<StaticAssetEnum::StaticAsset> StaticAssetSet;
 
   static const char kCentralControllerPort[];
+  static const char kPopularityContestMaxInFlight[];
+  static const char kPopularityContestMaxQueueSize[];
   static const char kStaticAssetCDN[];
   static const char kRedisServer[];
   static const char kRedisReconnectionDelayMs[];
@@ -200,8 +202,15 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_fetcher_proxy(const GoogleString& x) {
     set_option(x, &fetcher_proxy_);
   }
+
   const GoogleString& controller_port() const {
     return controller_port_.value();
+  }
+  int popularity_contest_max_inflight_requests() const {
+    return popularity_contest_max_inflight_requests_.value();
+  }
+  int popularity_contest_max_queue_size() const {
+    return popularity_contest_max_queue_size_.value();
   }
 
   // Cache flushing configuration.
@@ -482,6 +491,9 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<bool> fetch_with_gzip_;
 
   ControllerPortOption controller_port_;
+  Option<int> popularity_contest_max_inflight_requests_;
+  Option<int> popularity_contest_max_queue_size_;
+
   Option<int> memcached_threads_;
   Option<int> memcached_timeout_us_;
   Option<int64> redis_reconnection_delay_ms_;

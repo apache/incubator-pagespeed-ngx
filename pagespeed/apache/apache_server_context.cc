@@ -16,6 +16,9 @@
 
 #include "pagespeed/apache/apache_server_context.h"
 
+// http_protocol.h includes httpd.h. We need to include httpd_includes.h, which
+// works around a conflicting definition of OK in gRPC.
+#include "pagespeed/apache/apache_httpd_includes.h"
 #include "http_protocol.h"          // NOLINT
 #include "pagespeed/apache/apache_config.h"
 #include "pagespeed/apache/apache_request_context.h"
