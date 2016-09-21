@@ -390,6 +390,9 @@ setup_test_machine :
 apache_debug_restart :
 	$(APACHE_CONTROL_PROGRAM) restart
 
+apache_debug_install :
+	$(APACHE_CONTROL_PROGRAM) install
+
 apache_debug_stop : stop
 
 # Enables a few ports that are needed by system tests.  This is needed on
