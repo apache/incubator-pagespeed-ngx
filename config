@@ -25,18 +25,27 @@ if [ "$mod_pagespeed_dir" = "unset" ] ; then
 
   if [ ! -e "$mod_pagespeed_dir" ] ; then
     echo "ngx_pagespeed: pagespeed optimization library not found:"
-    echo ""
-    echo "   You need to separately download the pagespeed library:"
-    echo ""
-    echo "     $ cd /path/to/ngx_pagespeed"
-    echo "     $ wget https://dl.google.com/dl/page-speed/psol/1.9.32.1.tar.gz"
-    echo "     $ tar -xzvf 1.9.32.1.tar.gz # expands to psol/"
-    echo ""
-    echo "   Or see the installation instructions:"
-    echo "     https://github.com/pagespeed/ngx_pagespeed#how-to-build"
+
+    psol_binary_url="$(cat $ngx_addon_dir/PSOL_BINARY_URL)"
+    if [[ "$psol_binary_url" != https://* ]]; then
+      echo "
+  This is a development branch of ngx_pagespeed, which means there is no
+  precompiled PSOL library available to link against.  Either build from a
+  release tag, like latest-beta, or build PSOL from source:
+    https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source"
+      exit 1
+    fi
+
+    echo "
+  You need to separately download the pagespeed library:
+     $ cd $ngx_addon_dir
+     $ wget $psol_binary_url
+     $ tar -xzvf $(basename $psol_binary_url) # expands to psol/
+
+  Or see the installation instructions:
+     https://developers.google.com/speed/pagespeed/module/build_ngx_pagespeed_from_source"
     exit 1
   fi
-
 else
   build_from_source=true
 fi

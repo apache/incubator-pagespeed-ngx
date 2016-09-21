@@ -1,0 +1,4 @@
+In a release this file would contain the URL to download the pre-compiled PSOL
+binary, but on development branches (like this one) you have to build PSOL from
+source yourself.  See:
+  https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source
