@@ -52,6 +52,16 @@ using base::StringPrintf;
 
 typedef StringPiece::size_type stringpiece_ssize_type;
 
+namespace strings {
+inline bool StartsWith(StringPiece a, StringPiece b) {
+  return a.starts_with(b);
+}
+inline bool EndsWith(StringPiece a, StringPiece b) {
+  return a.ends_with(b);
+}
+}
+
+
 // Quick macro to get the size of a static char[] without trailing '\0'.
 // Note: Cannot be used for char*, std::string, etc.
 #define STATIC_STRLEN(static_string) (arraysize(static_string) - 1)
@@ -662,7 +672,9 @@ bool SplitStringPieceToIntegerVector(StringPiece src, StringPiece separators,
                                      std::vector<int>* ints);
 
 // Does a path end in slash?
-inline bool EndsInSlash(StringPiece path) { return path.ends_with("/"); }
+inline bool EndsInSlash(StringPiece path) {
+  return strings::EndsWith(path, "/");
+}
 
 // Make sure directory's path ends in '/'.
 inline void EnsureEndsInSlash(GoogleString* dir) {

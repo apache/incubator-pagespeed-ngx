@@ -437,7 +437,7 @@ bool StringCaseEndsWith(StringPiece str, StringPiece suffix) {
 
 bool StringEqualConcat(StringPiece str, StringPiece first, StringPiece second) {
   return (str.size() == first.size() + second.size()) &&
-      str.starts_with(first) && str.ends_with(second);
+         strings::StartsWith(str, first) && strings::EndsWith(str, second);
 }
 
 StringPiece PieceAfterEquals(StringPiece piece) {
@@ -573,10 +573,10 @@ bool TrimCasePattern(StringPiece pattern, StringPiece* str) {
 
 void TrimQuote(StringPiece* str) {
   TrimWhitespace(str);
-  if (str->starts_with("\"") || str->starts_with("'")) {
+  if (strings::StartsWith(*str, "\"") || strings::StartsWith(*str, "'")) {
     str->remove_prefix(1);
   }
-  if (str->ends_with("\"") || str->ends_with("'")) {
+  if (strings::EndsWith(*str, "\"") || strings::EndsWith(*str, "'")) {
     str->remove_suffix(1);
   }
   TrimWhitespace(str);
