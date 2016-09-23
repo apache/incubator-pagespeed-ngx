@@ -52,6 +52,23 @@ cd $WORKDIR
 git clone https://github.com/pagespeed/ngx_pagespeed.git
 cd ngx_pagespeed
 git checkout release-$VERSION-beta
+
+# We now include the url for the PSOL binary that goes with a release in a
+# separate file.
+if [ ! -e PSOL_BINARY_URL ]; then
+  echo "$PWD/PSOL_BINARY_URL is missing"
+  exit 1
+else
+  predicted_psol_binary_url="https://dl.google.com/dl/page-speed/psol/"
+  predicted_psol_binary_url+="$VERSION.tar.gz"
+  psol_binary_url=$(cat PSOL_BINARY_URL)
+  if [ "$predicted_psol_binary_url" != "$psol_binary_url" ]; then
+    echo "PSOL_BINARY_URL is wrong; did you forget to update it?  Got:"
+    echo "$psol_binary_url"
+    exit 1
+  fi
+fi
+
 tar -xzf "$TARBALL"
 
 cd $WORKDIR
