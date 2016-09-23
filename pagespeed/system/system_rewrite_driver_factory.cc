@@ -21,6 +21,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <map>
+#include <memory>
 #include <set>
 #include <utility>  // for pair
 
@@ -204,6 +205,7 @@ void SystemRewriteDriverFactory::InitStats(Statistics* statistics) {
                                  statistics);
   InPlaceResourceRecorder::InitStats(statistics);
   RateController::InitStats(statistics);
+  CentralControllerRpcClient::InitStats(statistics);
 
   statistics->AddVariable(kShutdownCount);
 }
@@ -372,7 +374,10 @@ SystemRewriteDriverFactory::GetCentralController(
 
   if (central_controller_ == nullptr) {
     central_controller_ = std::make_shared<CentralControllerRpcClient>(
-        conf->controller_port(), thread_system(), message_handler());
+        conf->controller_port(),
+        conf->popularity_contest_max_queue_size() +
+            conf->popularity_contest_max_inflight_requests(),
+        thread_system(), timer(), statistics(), message_handler());
   }
   return central_controller_;
 }

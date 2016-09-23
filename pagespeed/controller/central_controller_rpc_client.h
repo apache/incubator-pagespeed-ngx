@@ -25,47 +25,90 @@
 #include "pagespeed/controller/central_controller.h"
 #include "pagespeed/controller/expensive_operation_callback.h"
 #include "pagespeed/controller/schedule_rewrite_callback.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/util/grpc.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
-#include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
-#include "pagespeed/kernel/base/thread.h"
+#include "pagespeed/kernel/base/timer.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 
 namespace net_instaweb {
 
 // CentralController implementation that forwards all requests to a gRPC server.
+// RewriteDrivers wait for the controller response (possibly detaching) before
+// proceeding to rewrite. If the controller stops responding but requests keep
+// coming in, we could keep creating RewriteDrivers indefinitely and eat all
+// available memory. To guard against this we looks at the number of outstanding
+// gRPC requests. If that ever exceeds the max possible number, we declare the
+// controller to have hung, cancel all outstanding requests and stop talking to
+// it. We signal this via a statistic, so all processes can notice and do the
+// same.
 
 class CentralControllerRpcClient : public CentralController {
  public:
+  static const char kControllerReconnectTimeStatistic[];
+  static const int kControllerReconnectDelayMs;
+
   CentralControllerRpcClient(const GoogleString& server_address,
-                             ThreadSystem* thread_system,
+                             int panic_threshold, ThreadSystem* thread_system,
+                             Timer* timer, Statistics* statistics,
                              MessageHandler* handler);
   virtual ~CentralControllerRpcClient();
 
-  // Shut down the request handling thread.
-  void Shutdown();
+  void Shutdown() LOCKS_EXCLUDED(mutex_);
 
   // CentralController implementation.
   void ScheduleExpensiveOperation(
       ExpensiveOperationCallback* callback) override;
   void ScheduleRewrite(ScheduleRewriteCallback* callback) override;
 
+  static void InitStats(Statistics* stats);
+
  private:
+  enum State {
+    DISCONNECTED,  // Temporary shutdown, can be revived.
+    RUNNING,
+    SHUTDOWN,  // Permanent shutdown.
+  };
+
+  class GrpcClientThread;
   class ClientRegistry;
 
+  // Common code that checks shutdown status before creating a new ContextT.
+  template <typename ContextT, typename CallbackT>
+  void StartContext(CallbackT* callback) LOCKS_EXCLUDED(mutex_);
+
+  // If we're not connected and kControllerReconnectDelay has passed, attempt
+  // to reconnect.
+  void ConsiderConnecting(int64 now_ms) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
+  // Have we passed reconnect_time_ms_ and reconnect_time_ms_statistic_?
+  bool TimestampsAllowConnection(int64 now) EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+
   ThreadSystem* thread_system_;
+  Timer* timer_;
   std::unique_ptr<AbstractMutex> mutex_;
+  // TODO(cheesy): This should probably by guarded by mutex_ but I'm worried
+  // about deadlock in Shutdown() while the clients are draining. It *might*
+  // be OK because the lock you absolutely cannot hold is the one in the
+  // registry and that does get released.
   std::unique_ptr<ClientRegistry> clients_;
   MessageHandler* handler_;
 
-  ::grpc::CompletionQueue queue_;
+  State state_ GUARDED_BY(mutex_);
+  const int controller_panic_threshold_;
+  int64 reconnect_time_ms_ GUARDED_BY(mutex_);
+  UpDownCounter* reconnect_time_ms_statistic_;
+
+  std::unique_ptr<::grpc::CompletionQueue> queue_;
   std::shared_ptr<::grpc::ChannelInterface> channel_;
   std::unique_ptr<grpc::CentralControllerRpcService::Stub> stub_;
 
   // This must be last so that it's destructed first.
-  std::unique_ptr<ThreadSystem::Thread> client_thread_ GUARDED_BY(mutex_);
+  std::unique_ptr<GrpcClientThread> client_thread_ GUARDED_BY(mutex_);
 
   DISALLOW_COPY_AND_ASSIGN(CentralControllerRpcClient);
 };

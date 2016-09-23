@@ -58,6 +58,10 @@ class ThreadSystem::Thread {
   // you want to create another thread.
   bool Start();
 
+  // Whether Start() ran successfully on this object, useful if your Thread
+  // may want to call Join() in it's destructor.
+  bool Started() const { return started_; }
+
   // Waits for the thread executing Run() to exit. This must be called on
   // every thread created with kJoinable.
   void Join();

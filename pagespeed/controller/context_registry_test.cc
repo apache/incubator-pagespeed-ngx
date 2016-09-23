@@ -81,7 +81,7 @@ class ContextRegistryTest : public testing::Test {
 TEST_F(ContextRegistryTest, CancelEmptyDoesntBlock) {
   EXPECT_THAT(registry_.Empty(), Eq(true));
   EXPECT_THAT(registry_.IsShutdown(), Eq(false));
-  registry_.CancelAllActive();
+  registry_.CancelAllActiveAndWait();
   // We're verifying that Cancel doesn't wait indefinitely when empty. If that
   // happens the test will hang and require ^C or some other timeout.
   EXPECT_THAT(registry_.Empty(), Eq(true));
@@ -106,15 +106,15 @@ TEST_F(ContextRegistryTest, DoesntCancelOldEntries) {
   EXPECT_THAT(registry_.Empty(), Eq(true));
 
   // Should do precisely nothing.
-  registry_.CancelAllActive();
+  registry_.CancelAllActiveAndWait();
 }
 
 TEST_F(ContextRegistryTest, CancelsContainedItems) {
   MockContext ctx;
-  // CancelAllActive blocks until the registry is empty, so we need to call
-  // RemoveContext on another thread. Here we setup "ctx" so that it expects
-  // TryCancel to be called once. Once that happens, it will queue a task on
-  // sequence_ that removes ctx from the registry.
+  // CancelAllActiveAndWait blocks until the registry is empty, so we need to
+  // call RemoveContext on another thread. Here we setup "ctx" so that it
+  // expects TryCancel to be called once. Once that happens, it will queue a
+  // task on sequence_ that removes ctx from the registry.
   EXPECT_CALL(ctx, TryCancel()).WillOnce(Invoke([this, &ctx]() {
     sequence_->Add(
         MakeFunction(&registry_, &MockRegistry::RemoveContext, &ctx));
@@ -123,17 +123,31 @@ TEST_F(ContextRegistryTest, CancelsContainedItems) {
   EXPECT_THAT(registry_.TryRegisterContext(&ctx), Eq(true));
   EXPECT_THAT(registry_.Empty(), Eq(false));
 
-  registry_.CancelAllActive();  // Should block.
+  registry_.CancelAllActiveAndWait();  // Should block.
+  EXPECT_THAT(registry_.Empty(), Eq(true));
+}
+
+TEST_F(ContextRegistryTest, NoWaitDoesnWait) {
+  MockContext ctx;
+  EXPECT_CALL(ctx, TryCancel());
+
+  EXPECT_THAT(registry_.TryRegisterContext(&ctx), Eq(true));
+  EXPECT_THAT(registry_.Empty(), Eq(false));
+
+  registry_.CancelAllActive();  // Must not block, even though not empty.
+  EXPECT_THAT(registry_.Empty(), Eq(false));
+
+  registry_.RemoveContext(&ctx);
   EXPECT_THAT(registry_.Empty(), Eq(true));
 }
 
 TEST_F(ContextRegistryTest, RemovalsWhileCanceling) {
   // We want to verify that nothing bad happens if a context is removed by
-  // another thread while CancelAllActive() is running. So, we put a bunch of
-  // things in the registry, start a thread that removes them and call
-  // CancelAllActive() in parallel. It would be nice to force synchronization
-  // here, but that's tricky because we can't call back into the registry from
-  // TryCancel() because the lock is held.
+  // another thread while CancelAllActiveAndWait() is running. So, we put a
+  // bunch of things in the registry, start a thread that removes them and call
+  // CancelAllActiveAndWait() in parallel. It would be nice to force
+  // synchronization here, but that's tricky because we can't call back into the
+  // registry from TryCancel() because the lock is held.
   static const int kNumContexts = 1000;
 
   int num_canceled = 0;
@@ -156,7 +170,7 @@ TEST_F(ContextRegistryTest, RemovalsWhileCanceling) {
   // Wait for the task to start, then start notifying everything in the
   // registry.
   sync.Wait();
-  registry_.CancelAllActive();
+  registry_.CancelAllActiveAndWait();
 
   EXPECT_THAT(registry_.Empty(), Eq(true));
 

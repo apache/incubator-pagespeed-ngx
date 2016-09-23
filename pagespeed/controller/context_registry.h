@@ -54,6 +54,11 @@ class ContextRegistry {
   // TryCancel must not call back into this registry. gRPC delivers
   // cancellations asynchronously afer TryCancel() has returned, so that is not
   // a problem for the intended use.
+  void CancelAllActiveAndWait() LOCKS_EXCLUDED(mutex_);
+
+  // Calls TryCancel on all Contained Contexts and then returns immediately.
+  // As above, mutex_ is held while TryCancel is called, so TryCancel must
+  // not call back into the registry.
   void CancelAllActive() LOCKS_EXCLUDED(mutex_);
 
   // Whether CancelAllActive has been called yet. Once this starts returning
@@ -62,6 +67,9 @@ class ContextRegistry {
   // will fail. However the converse is NOT true: You must use
   // TryRegisterContext to check if it is safe to to work.
   bool IsShutdown() const LOCKS_EXCLUDED(mutex_);
+
+  // Number of contained contexts.
+  int Size() const LOCKS_EXCLUDED(mutex_);
 
   // For use in tests.
   bool Empty() const LOCKS_EXCLUDED(mutex_);
@@ -94,6 +102,12 @@ bool ContextRegistry<ContextT>::Empty() const {
 }
 
 template <typename ContextT>
+int ContextRegistry<ContextT>::Size() const {
+  ScopedMutex lock(mutex_.get());
+  return static_cast<int>(contexts_.size());
+}
+
+template <typename ContextT>
 bool ContextRegistry<ContextT>::IsShutdown() const {
   ScopedMutex lock(mutex_.get());
   return shutdown_;
@@ -118,7 +132,7 @@ void ContextRegistry<ContextT>::RemoveContext(ContextT* context) {
   int num_erased = contexts_.erase(context);
   DCHECK_EQ(num_erased, 1);
   if (num_erased > 0 && contexts_.empty() && shutdown_) {
-    condvar_->Signal();
+    condvar_->Broadcast();
   }
 }
 
@@ -133,6 +147,12 @@ void ContextRegistry<ContextT>::CancelAllActive() {
     // This cannot use the usual "swap" trick because we want to wait for the
     // contexts to be removed via calls to RemoveContext on another thread.
     old_contexts = contexts_;
+  }
+
+  // If there is nothing to do, we might as well avoid taking the lock a second
+  // time, below.
+  if (old_contexts.empty()) {
+    return;
   }
 
   for (ContextT* ctx : old_contexts) {
@@ -151,6 +171,11 @@ void ContextRegistry<ContextT>::CancelAllActive() {
     mutex_->Unlock();
     usleep(1);  // yield to other threads.
   }
+}
+
+template <typename ContextT>
+void ContextRegistry<ContextT>::CancelAllActiveAndWait() {
+  CancelAllActive();
 
   // Now wait for contexts_ to drain as the Cancel events are processed.
   {
