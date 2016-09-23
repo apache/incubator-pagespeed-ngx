@@ -26,7 +26,7 @@ AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 #MEMCACHED ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
 #REDIS
 #REDIS # Do testing using redis instead of file cache
-#REDIS ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
+#REDIS ModPagespeedRedisServer localhost:@@REDIS_PORT@@
 #EXTCACHE
 # If X-PSA-Blocking-Rewrite request header is present and its value matches the
 # value of ModPagespeedBlockingRewriteKey below, the response will be fully
@@ -540,7 +540,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   # This is the same external cache instance as the root configuration,
   # but with a different file-cache path.
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
-#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
+#REDIS  ModPagespeedRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedCacheFlushFilename cache.flush
   # If you uncomment this, the test will fail, proving we can disable
@@ -1276,7 +1276,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_with_shm" 8
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_lrud_lrum"
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
-#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
+#REDIS  ModPagespeedRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedLRUCacheKbPerProcess 1024
   ModPagespeedLRUCacheByteLimit 2000
@@ -1291,7 +1291,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_lrud_shmm" 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_lrud_shmm"
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
-#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
+#REDIS  ModPagespeedRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedLRUCacheKbPerProcess 1024
   ModPagespeedLRUCacheByteLimit 2000
@@ -1306,7 +1306,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
-#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
+#REDIS  ModPagespeedRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedEnableFilters rewrite_images
   ModPagespeedCriticalImagesBeaconEnabled false
@@ -1318,7 +1318,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@_noned_shmm"
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@_noned_nonem"
 #MEMCACHED  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
-#REDIS  ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
+#REDIS  ModPagespeedRedisServer localhost:@@REDIS_PORT@@
 
   ModPagespeedEnableFilters rewrite_images
   ModPagespeedCriticalImagesBeaconEnabled false
@@ -1578,7 +1578,7 @@ ModPagespeedMessagesDomains Allow localhost
 #IPRO_PRESERVE_LOADTEST ModPagespeedJsPreserveURLS on
 #LOADTEST
 #MEMCACHED_LOADTEST  ModPagespeedMemcachedServers localhost:@@MEMCACHED_PORT@@
-#REDIS_LOADTEST      ModPagespeedExperimentalRedisServer localhost:@@REDIS_PORT@@
+#REDIS_LOADTEST      ModPagespeedRedisServer localhost:@@REDIS_PORT@@
 #PURGING_LOADTEST    ModPagespeedEnableCachePurge on
 #PURGING_LOADTEST    ModPagespeedCompressMetadataCache on
 #LOADTEST   ModPagespeedFileCachePath       "@@MOD_PAGESPEED_CACHE@@_load_test"
@@ -2109,7 +2109,7 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedPreserveUrlRelativity on
 #ALL_DIRECTIVES ModPagespeedProgressiveJpegMinBytes 1000
 #ALL_DIRECTIVES ModPagespeedRateLimitBackgroundFetches true
-#ALL_DIRECTIVES ModPagespeedExperimentalRedisServer localhost:55555
+#ALL_DIRECTIVES ModPagespeedRedisServer localhost:55555
 #ALL_DIRECTIVES ModPagespeedRedisReconnectionDelayMs 1000
 #ALL_DIRECTIVES ModPagespeedRedisTimeoutUs 50000
 #ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
