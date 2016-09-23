@@ -66,6 +66,7 @@ struct FilterMap {
 "fix_reflows",                       RewriteOptions::kFixReflows
 "flatten_css_imports",               RewriteOptions::kFlattenCssImports
 "flush_subresources",                RewriteOptions::kFlushSubresources
+"hint_preload_subresources",         RewriteOptions::kHintPreloadSubresources
 "in_place_optimize_for_browser",     RewriteOptions::kInPlaceOptimizeForBrowser
 "include_js_source_maps",            RewriteOptions::kIncludeJsSourceMaps
 "inline_css",                        RewriteOptions::kInlineCss

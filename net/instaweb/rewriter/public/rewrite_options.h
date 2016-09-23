@@ -147,6 +147,7 @@ class RewriteOptions {
     kFlattenCssImports,
     kFlushSubresources,
     kHandleNoscriptRedirect,
+    kHintPreloadSubresources,
     kHtmlWriterFilter,
     kIncludeJsSourceMaps,
     kInlineCss,
@@ -2989,9 +2990,7 @@ class RewriteOptions {
 
   // Returns true if this configuration turns on options that may need
   // the dependencies cohort to operate.
-  bool NeedsDependenciesCohort() const {
-    return Enabled(kExperimentHttp2);
-  }
+  bool NeedsDependenciesCohort() const;
 
  protected:
   // Helper class to represent an Option, whose value is held in some class T.

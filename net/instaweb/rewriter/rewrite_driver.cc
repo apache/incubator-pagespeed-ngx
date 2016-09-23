@@ -1329,7 +1329,7 @@ void RewriteDriver::AddPostRenderFilters() {
     // Remove excess whitespace in HTML.
     AddOwnedPostRenderFilter(new CollapseWhitespaceFilter(this));
   }
-  if (options()->NeedsDependenciesCohort()) {
+  if (options()->Enabled(RewriteOptions::kHintPreloadSubresources)) {
     AppendOwnedPreRenderFilter(new PushPreloadFilter(this));
   }
 

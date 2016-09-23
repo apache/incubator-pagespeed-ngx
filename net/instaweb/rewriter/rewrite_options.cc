@@ -779,6 +779,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
         {RewriteOptions::kFlushSubresources, "fs", "Flush Subresources"},
         {RewriteOptions::kHandleNoscriptRedirect, "hn",
          "Handles Noscript Redirects"},
+        {RewriteOptions::kHintPreloadSubresources, "hpsr",
+         "Hint Preload of Subresources"},
         {RewriteOptions::kHtmlWriterFilter, "hw", "Flushes html"},
         {RewriteOptions::kIncludeJsSourceMaps,
          RewriteOptions::kJavascriptMinSourceMapId, "Include JS Source Maps"},
@@ -5123,6 +5125,11 @@ HttpOptions RewriteOptions::ComputeHttpOptions() const {
   options.respect_vary = respect_vary();
   options.implicit_cache_ttl_ms = implicit_cache_ttl_ms();
   return options;
+}
+
+bool RewriteOptions::NeedsDependenciesCohort() const {
+  return Enabled(kExperimentHttp2) ||
+         Enabled(kHintPreloadSubresources);
 }
 
 bool RewriteOptions::CacheFragmentOption::SetFromString(

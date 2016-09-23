@@ -42,7 +42,7 @@ class PushPreloadFilterTest : public RewriteTestBase {
  protected:
   void SetUp() override {
     RewriteTestBase::SetUp();
-    options()->EnableFilter(RewriteOptions::kExperimentHttp2);
+    options()->EnableFilter(RewriteOptions::kHintPreloadSubresources);
 
     // Setup pcache.
     pcache_ = rewrite_driver()->server_context()->page_property_cache();
