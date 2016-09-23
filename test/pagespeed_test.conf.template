@@ -105,6 +105,34 @@ http {
     pagespeed MaxCacheableContentLength 85;
   }
 
+  # Test how load from file handles maximum sizes.
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name lff-large-files.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed MaxCacheableContentLength 4096;
+    pagespeed LoadFromFile
+      "http://lff-large-files.example.com/"
+      "@@SERVER_ROOT@@/";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name lff-large-files-no-fallback.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel PassThrough;
+    pagespeed MaxCacheableContentLength 4096;
+    # http://lff-large-files-no-fallback.example.com/foo.css won't load, because
+    # we've configured a LoadFromFile pattern that doesn't match the path the
+    # webserver would take.
+    pagespeed LoadFromFile
+      "http://lff-large-files-no-fallback.example.com/"
+      "@@SERVER_ROOT@@/mod_pagespeed_example/styles/";
+  }
+
   pagespeed UseNativeFetcher "@@NATIVE_FETCHER@@";
   @@RESOLVER@@
 
