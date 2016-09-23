@@ -149,6 +149,34 @@ TEST_F(RedisCacheTest, PutGetDelete) {
   CheckNotFound("Name");
 }
 
+// Make sure curly braces in keys aren't treated specially.
+TEST_F(RedisCacheTest, CurlyBraces) {
+  if (!InitRedisOrSkip()) {
+    return;
+  }
+  CheckPut("{1}NameA", "Value1A");
+  CheckPut("{2}NameB", "Value2B");
+  CheckPut("{2}NameC", "Value2C");
+
+  CheckGet("{1}NameA", "Value1A");
+  CheckGet("{2}NameB", "Value2B");
+  CheckGet("{2}NameC", "Value2C");
+}
+
+// And spaces
+TEST_F(RedisCacheTest, Spaces) {
+  if (!InitRedisOrSkip()) {
+    return;
+  }
+  CheckPut("1 NameA", "Value1A");
+  CheckPut("2 NameB", "Value2B");
+  CheckPut("2 NameC", "Value2C");
+
+  CheckGet("1 NameA", "Value1A");
+  CheckGet("2 NameB", "Value2B");
+  CheckGet("2 NameC", "Value2C");
+}
+
 TEST_F(RedisCacheTest, MultiGet) {
   if (!InitRedisOrSkip()) {
     return;

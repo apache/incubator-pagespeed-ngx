@@ -43,7 +43,7 @@ const char SystemRewriteOptions::kPopularityContestMaxInFlight[] =
 const char SystemRewriteOptions::kPopularityContestMaxQueueSize[] =
     "PopularityContestMaxQueueSize";
 const char SystemRewriteOptions::kStaticAssetCDN[] = "StaticAssetCDN";
-const char SystemRewriteOptions::kRedisServer[] = "ExperimentalRedisServer";
+const char SystemRewriteOptions::kRedisServer[] = "RedisServer";
 const char SystemRewriteOptions::kRedisReconnectionDelayMs[] =
     "RedisReconnectionDelayMs";
 const char SystemRewriteOptions::kRedisTimeoutUs[] = "RedisTimeoutUs";
