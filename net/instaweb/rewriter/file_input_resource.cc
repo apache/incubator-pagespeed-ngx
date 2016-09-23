@@ -47,6 +47,8 @@ FileInputResource::FileInputResource(const RewriteDriver* driver,
       url_(url.data(), url.size()),
       filename_(filename.data(), filename.size()),
       last_modified_time_sec_(kTimestampUnset),
+      max_file_size_(
+          driver->options()->max_cacheable_response_content_length()),
       load_from_file_cache_ttl_ms_(
           driver->options()->load_from_file_cache_ttl_ms()),
       load_from_file_ttl_set_(
@@ -145,10 +147,13 @@ void FileInputResource::LoadAndCallback(
     // same file-handle we use for reading, rather than doing two
     // distinct file lookups, which is both slower and can introduce
     // skew.
+    // TODO(jefftk): Refactor the FileSystem API to allow you to Open() a handle
+    // and then make a series of calls on it.  Probably caching stat responses.
     FileSystem* file_system = server_context_->file_system();
     if (file_system->Mtime(filename_, &last_modified_time_sec_, handler) &&
-        (last_modified_time_sec_ != kTimestampUnset) &&
-        file_system->ReadFile(filename_.c_str(), &value_, handler)) {
+        last_modified_time_sec_ != kTimestampUnset &&
+        file_system->ReadFile(
+            filename_.c_str(), max_file_size_, &value_, handler)) {
       SetDefaultHeaders(type_, &response_headers_, handler);
       value_.SetHeaders(&response_headers_);
     } else {
@@ -157,6 +162,8 @@ void FileInputResource::LoadAndCallback(
       last_modified_time_sec_ = kTimestampUnset;
     }
   }
+  // If we failed to load the file above then loaded() will return false, and
+  // we'll fall back to http-based loading.
   callback->Done(false /* lock_failure */, loaded());
 }
 

@@ -117,13 +117,15 @@ class StdioInputFile : public FileSystem::InputFile {
       : file_helper_(f, filename, fs) {
   }
 
-  virtual bool ReadFile(GoogleString* buf, MessageHandler* message_handler) {
+  bool ReadFile(GoogleString* buf, int64 max_file_size,
+                MessageHandler* message_handler) override {
     bool ret = false;
     struct stat statbuf;
     file_helper_.StartTimer();
     if ((fstat(fileno(file_helper_.file_), &statbuf) < 0)) {
       file_helper_.ReportError(message_handler, "stating file");
-    } else {
+    } else if (max_file_size == FileSystem::kUnlimitedSize ||
+               statbuf.st_size <= max_file_size) {
       buf->resize(statbuf.st_size);
       int nread = fread(&(*buf)[0], 1, statbuf.st_size, file_helper_.file_);
       if (nread != statbuf.st_size) {
@@ -136,7 +138,7 @@ class StdioInputFile : public FileSystem::InputFile {
     return ret;
   }
 
-  virtual int Read(char* buf, int size, MessageHandler* message_handler) {
+  int Read(char* buf, int size, MessageHandler* message_handler) override {
     file_helper_.StartTimer();
     int ret = fread(buf, 1, size, file_helper_.file_);
     if ((ret == 0) && (ferror(file_helper_.file_) != 0)) {
@@ -146,11 +148,11 @@ class StdioInputFile : public FileSystem::InputFile {
     return ret;
   }
 
-  virtual bool Close(MessageHandler* message_handler) {
+  bool Close(MessageHandler* message_handler) override {
     return file_helper_.Close(message_handler);
   }
 
-  virtual const char* filename() { return file_helper_.filename_.c_str(); }
+  const char* filename() override { return file_helper_.filename_.c_str(); }
 
  private:
   StdioFileHelper file_helper_;

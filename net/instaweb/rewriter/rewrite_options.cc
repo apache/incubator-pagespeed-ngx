@@ -483,9 +483,8 @@ const int64 RewriteOptions::kDefaultImageWebpQualityForSaveData = 50;
 // image. If negative, does not time out.
 const int64 RewriteOptions::kDefaultImageWebpTimeoutMs = -1;
 
-// Setting the maximum length for the cacheable response content to -1
-// indicates that there is no size limit.
-const int64 RewriteOptions::kDefaultMaxCacheableResponseContentLength = -1;
+const int64 RewriteOptions::kDefaultMaxCacheableResponseContentLength =
+    16777216;  // 16 MB in bytes
 
 // See http://code.google.com/p/modpagespeed/issues/detail?id=9.  By
 // default, Apache evidently limits each URL path segment (between /)
@@ -1275,7 +1274,8 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::max_cacheable_response_content_length_, "rcl",
       kMaxCacheableResponseContentLength,
       kServerScope,
-      "Maximum length of a cacheable response content.", true);
+      "Maximum length of a cacheable response content. "
+      "To remove this limit, use -1.", true);
   AddBaseProperty(kDefaultMaxHtmlCacheTimeMs,
                   &RewriteOptions::max_html_cache_time_ms_, "hc",
                   kMaxHtmlCacheTimeMs, kDirectoryScope, NULL, true);

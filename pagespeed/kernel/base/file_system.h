@@ -75,6 +75,9 @@ class Writer;
 //     in a place where multiple Apache servers can see them.
 class FileSystem {
  public:
+  // This is documented as -1 in user-facing documentation, so don't change it.
+  static const int64 kUnlimitedSize = -1;
+
   virtual ~FileSystem();
 
   class File {
@@ -95,8 +98,12 @@ class FileSystem {
     // Note: This returns num bytes read, NOT a success bool.
     virtual int Read(char* buf, int size, MessageHandler* handler) = 0;
 
-    // Reads entire file into buf, returning true if successful.
-    virtual bool ReadFile(GoogleString* buf, MessageHandler* handler) = 0;
+    // Reads entire file into buf, returning true if successful.  Calling this
+    // with max_file_size=kUnlimitedSize doesn't limit the read size, but it's
+    // dangerous, since we can OOM if the file somehow ended up being much
+    // larger than expected, so you should set a reasonable limit.
+    virtual bool ReadFile(GoogleString* buf, int64 max_file_size,
+                          MessageHandler* handler) = 0;
 
    protected:
     friend class FileSystem;
@@ -153,16 +160,38 @@ class FileSystem {
   virtual int MaxPathLength(const StringPiece& base) const;
 
   // High level support to read/write entire files in one shot.  The input_file
-  // versions accept a NULL input_file, in which case they report failure.  All
-  // routines close the file.
+  // versions accept a NULL input_file, in which case they report failure.  If
+  // the file is larget than max_file_size, return false.  All routines close
+  // the file.
   virtual bool ReadFile(const char* filename,
+                        int64 max_file_size,
+                        Writer* writer,
+                        MessageHandler* handler);
+  virtual bool ReadFile(InputFile* input_file,
+                        int64 max_file_size,
+                        Writer* writer,
+                        MessageHandler* handler);
+  virtual bool ReadFile(const char* filename,
+                        int64 max_file_size,
+                        GoogleString* buffer,
+                        MessageHandler* handler);
+  virtual bool ReadFile(InputFile* input_file,
+                        int64 max_file_size,
+                        GoogleString* buffer,
+                        MessageHandler* handler);
+  // Deprecated versions of ReadFile, because they can OOM if the file they're
+  // trying to read happens to be surprisingly large.  Instead, call ReadFile
+  // with a limit.  If you can guarantee that you'll never encounter a large
+  // file with this call, perhaps because you're reading a file you created,
+  // then call ReadFile with an explicit limit of kUnlimitedSize.
+  virtual bool ReadFile(const char* filename,
+                        GoogleString* buffer,
+                        MessageHandler* handler);
+  virtual bool ReadFile(InputFile* input_file,
                         GoogleString* buffer,
                         MessageHandler* handler);
   virtual bool ReadFile(const char* filename,
                         Writer* writer,
-                        MessageHandler* handler);
-  virtual bool ReadFile(InputFile* input_file,
-                        GoogleString* buffer,
                         MessageHandler* handler);
   virtual bool ReadFile(InputFile* input_file,
                         Writer* writer,

@@ -48,35 +48,65 @@ int FileSystem::MaxPathLength(const StringPiece& base) const {
 
 bool FileSystem::ReadFile(const char* filename, GoogleString* buffer,
                           MessageHandler* message_handler) {
-  InputFile* input_file = OpenInputFile(filename, message_handler);
-  return ReadFile(input_file, buffer, message_handler);
+  return ReadFile(filename, kUnlimitedSize, buffer, message_handler);
 }
 
 bool FileSystem::ReadFile(const char* filename, Writer* writer,
                           MessageHandler* message_handler) {
+  return ReadFile(filename, kUnlimitedSize, writer, message_handler);
+}
+
+bool FileSystem::ReadFile(const char* filename, int64 max_file_size,
+                          GoogleString* buffer,
+                          MessageHandler* message_handler) {
   InputFile* input_file = OpenInputFile(filename, message_handler);
-  return ReadFile(input_file, writer, message_handler);
+  return ReadFile(input_file, max_file_size, buffer, message_handler);
+}
+
+bool FileSystem::ReadFile(const char* filename, int64 max_file_size,
+                          Writer* writer, MessageHandler* message_handler) {
+  InputFile* input_file = OpenInputFile(filename, message_handler);
+  return ReadFile(input_file, max_file_size, writer, message_handler);
 }
 
 bool FileSystem::ReadFile(InputFile* input_file, GoogleString* buffer,
                           MessageHandler* message_handler) {
+  return ReadFile(input_file, kUnlimitedSize, buffer, message_handler);
+}
+
+bool FileSystem::ReadFile(InputFile* input_file, Writer* writer,
+                          MessageHandler* message_handler) {
+  return ReadFile(input_file, kUnlimitedSize, writer, message_handler);
+}
+
+bool FileSystem::ReadFile(
+    InputFile* input_file, int64 max_file_size, GoogleString* buffer,
+    MessageHandler* message_handler) {
   bool ret = false;
-  if (input_file != NULL) {
-    ret = input_file->ReadFile(buffer, message_handler);
+  if (input_file != nullptr) {
+    ret = input_file->ReadFile(buffer, max_file_size, message_handler);
     ret &= Close(input_file, message_handler);
   }
   return ret;
 }
 
-bool FileSystem::ReadFile(InputFile* input_file, Writer* writer,
-                          MessageHandler* message_handler) {
+bool FileSystem::ReadFile(InputFile* input_file, int64 max_file_size,
+                          Writer* writer, MessageHandler* message_handler) {
   bool ret = false;
-  if (input_file != NULL) {
+  if (input_file != nullptr) {
     char buf[kStackBufferSize];
     int nread;
     ret = true;
+    int64 total_size = 0;
     while (ret && ((nread = input_file->Read(
                buf, sizeof(buf), message_handler)) > 0)) {
+      if (max_file_size != kUnlimitedSize) {
+        total_size += nread;
+        if (total_size > max_file_size) {
+          ret = false;
+          break;
+        }
+      }
       ret = writer->Write(StringPiece(buf, nread), message_handler);
     }
     ret &= (nread == 0);
@@ -89,7 +119,7 @@ bool FileSystem::WriteFile(const char* filename, const StringPiece& buffer,
                            MessageHandler* message_handler) {
   OutputFile* output_file = OpenOutputFile(filename, message_handler);
   bool ret = false;
-  if (output_file != NULL) {
+  if (output_file != nullptr) {
     ret = output_file->Write(buffer, message_handler);
     ret &= output_file->SetWorldReadable(message_handler);
     ret &= Close(output_file, message_handler);
@@ -102,7 +132,7 @@ bool FileSystem::WriteTempFile(const StringPiece& prefix_name,
                                GoogleString* filename,
                                MessageHandler* message_handler) {
   OutputFile* output_file = OpenTempFile(prefix_name, message_handler);
-  bool ok = (output_file != NULL);
+  bool ok = (output_file != nullptr);
   if (ok) {
     // Store filename early, since it's invalidated by Close.
     *filename = output_file->filename();

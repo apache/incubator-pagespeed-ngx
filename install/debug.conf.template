@@ -643,6 +643,30 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedMaxCacheableContentLength 85
 </VirtualHost>
 
+# Test how load from file handles maximum sizes.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName lff-large-files.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedMaxCacheableContentLength 4096
+  ModPagespeedLoadFromFile "http://lff-large-files.example.com/" \
+                           "@@APACHE_DOC_ROOT@@/"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName lff-large-files-no-fallback.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedMaxCacheableContentLength 4096
+  # http://lff-large-files-no-fallback.example.com/foo.css won't load, because
+  # we've configured a LoadFromFile pattern that doesn't match the path the
+  # webserver would take.
+  ModPagespeedLoadFromFile "http://lff-large-files-no-fallback.example.com/" \
+                           "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/styles/"
+</VirtualHost>
+
 # Set the value of the X-Mod-Pagespeed header
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName xheader.example.com

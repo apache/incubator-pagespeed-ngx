@@ -43,14 +43,14 @@ class MemInputFile : public FileSystem::InputFile {
         offset_(0) {
   }
 
-  virtual bool Close(MessageHandler* message_handler) {
+  bool Close(MessageHandler* message_handler) override {
     offset_ = contents_.length();
     return true;
   }
 
-  virtual const char* filename() { return filename_.c_str(); }
+  const char* filename() override { return filename_.c_str(); }
 
-  virtual int Read(char* buf, int size, MessageHandler* message_handler) {
+  int Read(char* buf, int size, MessageHandler* message_handler) override {
     if (size + offset_ > static_cast<int>(contents_.length())) {
       size = contents_.length() - offset_;
     }
@@ -59,7 +59,12 @@ class MemInputFile : public FileSystem::InputFile {
     return size;
   }
 
-  virtual bool ReadFile(GoogleString* buf, MessageHandler* message_handler) {
+  bool ReadFile(GoogleString* buf, int64 max_file_size,
+                MessageHandler* message_handler) override {
+    if (max_file_size != FileSystem::kUnlimitedSize &&
+        contents_.length() > static_cast<size_t>(max_file_size)) {
+      return false;
+    }
     *buf = contents_;
     return true;
   }

@@ -73,7 +73,7 @@ void FileSystemTest::CheckInputFileRead(const GoogleString& filename,
                                         const GoogleString& expected_contents) {
   FileSystem::InputFile* file =
       file_system()->OpenInputFile(filename.c_str(), &handler_);
-  ASSERT_TRUE(file != NULL);
+  ASSERT_TRUE(file != nullptr);
   GoogleString buffer;
   ASSERT_TRUE(file_system()->ReadFile(file, &buffer, &handler_));
   EXPECT_EQ(buffer, expected_contents);
@@ -98,11 +98,24 @@ void FileSystemTest::TestWriteRead() {
   DeleteRecursively(filename);
   FileSystem::OutputFile* ofile = file_system()->OpenOutputFile(
       filename.c_str(), &handler_);
-  ASSERT_TRUE(ofile != NULL);
+  ASSERT_TRUE(ofile != nullptr);
   EXPECT_TRUE(ofile->Write(msg, &handler_));
   EXPECT_TRUE(file_system()->Close(ofile, &handler_));
   CheckRead(filename, msg);
   CheckInputFileRead(filename, msg);
+
+  // Now check that if we set a low limit we can't read it.
+  GoogleString buffer;
+  EXPECT_FALSE(file_system()->ReadFile(filename.c_str(),
+                                       5,  // limit to 5 bytes
+                                       &buffer, &handler_));
+
+  FileSystem::InputFile* ifile =
+      file_system()->OpenInputFile(filename.c_str(), &handler_);
+  ASSERT_TRUE(ifile != nullptr);
+  EXPECT_FALSE(file_system()->ReadFile(ifile,
+                                       5,  // limit to 5 bytes
+                                       &buffer, &handler_));
 }
 
 // Write a temp file, then read it.
@@ -110,7 +123,7 @@ void FileSystemTest::TestTemp() {
   GoogleString prefix = StrCat(test_tmpdir(), "/temp_prefix");
   FileSystem::OutputFile* ofile = file_system()->OpenTempFile(
       prefix, &handler_);
-  ASSERT_TRUE(ofile != NULL);
+  ASSERT_TRUE(ofile != nullptr);
   GoogleString filename(ofile->filename());
   GoogleString msg("Hello, world!");
   EXPECT_TRUE(ofile->Write(msg, &handler_));
@@ -124,7 +137,7 @@ void FileSystemTest::TestAppend() {
   GoogleString prefix = StrCat(test_tmpdir(), "/temp_prefix");
   FileSystem::OutputFile* ofile = file_system()->OpenTempFile(
       prefix, &handler_);
-  ASSERT_TRUE(ofile != NULL);
+  ASSERT_TRUE(ofile != nullptr);
   const GoogleString filename(ofile->filename());
   EXPECT_TRUE(ofile->Write("Hello", &handler_));
   EXPECT_TRUE(file_system()->Close(ofile, &handler_));
@@ -170,7 +183,7 @@ void FileSystemTest::TestCreateFileInDir() {
 
   FileSystem::OutputFile* file =
       file_system()->OpenOutputFile(filename.c_str(), &handler_);
-  ASSERT_TRUE(file != NULL);
+  ASSERT_TRUE(file != nullptr);
   file_system()->Close(file, &handler_);
 }
 
@@ -185,7 +198,7 @@ void FileSystemTest::TestMakeDir() {
   // ... but we can open a file after we've created the directory.
   FileSystem::OutputFile* file =
       file_system()->OpenOutputFile(filename.c_str(), &handler_);
-  ASSERT_TRUE(file != NULL);
+  ASSERT_TRUE(file != nullptr);
   file_system()->Close(file, &handler_);
 }
 
@@ -202,7 +215,7 @@ void FileSystemTest::TestRemoveDir() {
   // First test that non-empty directories don't get deleted
   FileSystem::OutputFile* file =
       file_system()->OpenOutputFile(filename.c_str(), &handler_);
-  EXPECT_TRUE(file != NULL);
+  EXPECT_TRUE(file != nullptr);
   file_system()->Close(file, &handler_);
   EXPECT_FALSE(file_system()->RemoveDir(dir_name.c_str(), &handler_));
   EXPECT_TRUE(file_system()->Exists(filename.c_str(), &handler_).is_true());
