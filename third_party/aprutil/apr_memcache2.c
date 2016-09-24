@@ -18,6 +18,7 @@
 #include "apr_poll.h"
 #include "apr_version.h"
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define BUFFER_SIZE 512
@@ -240,6 +241,25 @@ APU_DECLARE(apr_memcache2_server_t *) apr_memcache2_find_server(apr_memcache2_t 
     return NULL;
 }
 
+/*
+ * TODO(jmarantz): plumb in proper logging hooks and run this unconditionally
+ * as a warning.
+ */
+#ifdef NDEBUG
+#define PRINT_WARNING(rv, name)
+#else
+#define PRINT_WARNING(rv, name) print_warning(rv, name, __FILE__, __LINE__)
+
+static void print_warning(apr_status_t rv, const char* name,
+                          const char* filename, int line_number) {
+    char buf[10000];
+    apr_strerror(rv, buf, sizeof(buf));
+    fprintf(stderr, "%s:%d: %s returned %d(%s)\n", filename, line_number,
+            name, rv, buf);
+}
+
+#endif
+
 static apr_status_t ms_find_conn(apr_memcache2_server_t *ms, apr_memcache2_conn_t **conn)
 {
     apr_status_t rv;
@@ -254,6 +274,7 @@ static apr_status_t ms_find_conn(apr_memcache2_server_t *ms, apr_memcache2_conn_
 #endif
 
     if (rv != APR_SUCCESS) {
+        PRINT_WARNING(rv, "ms_find_conn/apr_reslist_acquire");
         return rv;
     }
 
@@ -318,6 +339,25 @@ static void disable_server_and_connection(apr_memcache2_server_t *ms,
     mark_server_dead(ms, lock_status);
 }
 
+static apr_status_t poll_handling_interrupts(
+    apr_pollset_t* pollset, apr_int32_t timeout, apr_int32_t* queries_recvd,
+    const apr_pollfd_t** activefds) {
+    /*
+     * Handle EINTR during this poll call.  Failure to do this causes flakes
+     * when unit-testing this in the Google test framework, with occasional
+     * "interrupted system call" failures at this point.  These flakes cause
+     * unit-tests to fail about 5% fo the time.
+     */
+    apr_status_t rv;
+    int count = 0;
+    while (((rv = apr_pollset_poll(pollset, timeout, queries_recvd, activefds))
+            == APR_EINTR) &&
+           (count < 20)) {
+        ++count;
+    }
+    return rv;
+}
+
 /*
  * Polls a socket to see whether the next I/O operation call will block.
  * The status returned is based on apr_pollset_poll:
@@ -334,14 +374,15 @@ static apr_status_t poll_server_releasing_connection_on_failure(
     apr_memcache2_conn_t *conn) {
     apr_int32_t queries_recvd;
     const apr_pollfd_t* activefds;
-    apr_status_t rv = apr_pollset_poll(conn->pollset,
-                                       ms->memcache->timeout_microseconds,
-                                       &queries_recvd, &activefds);
+    apr_status_t rv = poll_handling_interrupts(
+        conn->pollset, ms->memcache->timeout_microseconds, &queries_recvd,
+        &activefds);
     if (rv == APR_SUCCESS) {
         assert(queries_recvd == 1);
         assert(activefds->desc.s == conn->sock);
         assert(activefds->client_data == NULL);
     } else {
+        PRINT_WARNING(rv, "poll_server_releasing_connection_on_failure");
         disable_server_and_connection(ms, lock_status, conn);
     }
     return rv;
@@ -675,12 +716,14 @@ static apr_status_t get_server_line(apr_memcache2_conn_t *conn)
     rv = apr_brigade_split_line(conn->tb, conn->bb, APR_BLOCK_READ, BUFFER_SIZE);
 
     if (rv != APR_SUCCESS) {
+        PRINT_WARNING(rv, "get_server_line/apr_brigade_split_line");
         return rv;
     }
 
     rv = apr_brigade_flatten(conn->tb, conn->buffer, &bsize);
 
     if (rv != APR_SUCCESS) {
+        PRINT_WARNING(rv, "get_server_line/apr_brigade_flatten");
         return rv;
     }
 
@@ -697,20 +740,24 @@ static apr_status_t sendv_and_get_server_line_with_timeout(
     int vec_size,
     lock_status_t lock_status) {
 
-    apr_size_t written;
+    apr_size_t written = 0;
     apr_status_t rv = apr_socket_sendv(conn->sock, vec, vec_size, &written);
+
     if (rv != APR_SUCCESS) {
+        PRINT_WARNING(rv, "sendv_and_get_server_line_with_timeout");
         disable_server_and_connection(ms, lock_status, conn);
         return rv;
     }
 
     rv = poll_server_releasing_connection_on_failure(ms, lock_status, conn);
     if (rv != APR_SUCCESS) {
+        PRINT_WARNING(rv, "poll_server...");
         return rv;
     }
 
     rv = get_server_line(conn);
     if (rv != APR_SUCCESS) {
+        PRINT_WARNING(rv, "get_server_line...");
         disable_server_and_connection(ms, LOCK_NOT_HELD, conn);
     }
 
@@ -745,6 +792,7 @@ static apr_status_t storage_cmd_write(apr_memcache2_t *mc,
     rv = ms_find_conn(ms, &conn);
 
     if (rv != APR_SUCCESS) {
+        PRINT_WARNING(rv, "storage_cmd_write/ms_find_conn");
         apr_memcache2_disable_server(mc, ms);
         return rv;
     }
@@ -922,6 +970,7 @@ apr_memcache2_getp(apr_memcache2_t *mc,
             rv = apr_brigade_partition(conn->bb, len+2, &e);
 
             if (rv != APR_SUCCESS) {
+                PRINT_WARNING(rv, "apr_memcache2_getp/apr_brigade_partition");
                 ms_bad_conn(ms, conn);
                 apr_memcache2_disable_server(mc, ms);
                 return rv;
@@ -932,6 +981,7 @@ apr_memcache2_getp(apr_memcache2_t *mc,
             rv = apr_brigade_pflatten(conn->bb, baton, &len, p);
 
             if (rv != APR_SUCCESS) {
+                PRINT_WARNING(rv, "apr_memcache2_getp/apr_brigade_pflatten");
                 ms_bad_conn(ms, conn);
                 apr_memcache2_disable_server(mc, ms);
                 return rv;
@@ -939,6 +989,7 @@ apr_memcache2_getp(apr_memcache2_t *mc,
 
             rv = apr_brigade_destroy(conn->bb);
             if (rv != APR_SUCCESS) {
+                PRINT_WARNING(rv, "apr_memcache2_getp/apr_brigade_destroy");
                 ms_bad_conn(ms, conn);
                 apr_memcache2_disable_server(mc, ms);
                 return rv;
@@ -1361,6 +1412,7 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
     rv = apr_pollset_create(&pollset, server_count, temp_pool, 0);
 
     if (rv != APR_SUCCESS) {
+        PRINT_WARNING(rv, "apr_memcache2_multgetp/apr_pollset_create");
         query_hash_index = apr_hash_first(temp_pool, server_queries);
 
         while (query_hash_index) {
@@ -1395,6 +1447,7 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
         }
 
         if (rv != APR_SUCCESS) {
+            PRINT_WARNING(rv, "apr_memcache2_multgetp/apr_socket_sendv");
             mget_conn_result(FALSE, FALSE, rv, mc, ms, conn,
                              server_query, values, server_queries);
             continue;
@@ -1411,11 +1464,12 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
     }
 
     while (queries_sent) {
-        rv = apr_pollset_poll(pollset, mc->timeout_microseconds, &queries_recvd,
-                              &activefds);
+        rv = poll_handling_interrupts(pollset, mc->timeout_microseconds,
+                                      &queries_recvd, &activefds);
 
         if (rv != APR_SUCCESS) {
             /* timeout */
+            PRINT_WARNING(rv, "apr_memcache2_multgetp/apr_pollset_poll");
             queries_sent = 0;
             continue;
         }
@@ -1459,6 +1513,7 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
                  rv = apr_brigade_partition(conn->bb, len+2, &e);
                }
                if (rv != APR_SUCCESS) {
+                 PRINT_WARNING(rv, "apr_memcache2_multgetp");
                  apr_pollset_remove (pollset, &activefds[i]);
                  mget_conn_result(FALSE, FALSE, rv, mc, ms, conn,
                                   server_query, values, server_queries);
@@ -1476,6 +1531,7 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
                                              data_pool);
 
                    if (rv != APR_SUCCESS) {
+                       PRINT_WARNING(rv, "apr_memcache2_multgetp/apr_brigade_pflatten");
                        apr_pollset_remove (pollset, &activefds[i]);
                        mget_conn_result(FALSE, FALSE, rv, mc, ms, conn,
                                        server_query, values, server_queries);
@@ -1485,6 +1541,7 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
 
                    rv = apr_brigade_destroy(conn->bb);
                    if (rv != APR_SUCCESS) {
+                       PRINT_WARNING(rv, "apr_memcache2_multgetp/apr_brigade_destroy");
                        apr_pollset_remove (pollset, &activefds[i]);
                        mget_conn_result(FALSE, FALSE, rv, mc, ms, conn,
                                        server_query, values, server_queries);
@@ -1760,6 +1817,7 @@ apr_memcache2_stats(apr_memcache2_server_t *ms,
     rv = apr_socket_sendv(conn->sock, vec, 2, &written);
 
     if (rv != APR_SUCCESS) {
+        PRINT_WARNING(rv, "apr_memcache2_stats/apr_socket_sendv");
         ms_bad_conn(ms, conn);
         return rv;
     }

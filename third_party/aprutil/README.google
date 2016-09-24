@@ -1,12 +1,22 @@
-Modified version of apr_memcache.c
-
-URL: http://apr.apache.org/download.cgi
+URL: http://svn.apache.org/repos/asf/apr/apr-util/tags/1.4.2/memcache/apr_memcache.c
+     http://svn.apache.org/repos/asf/apr/apr-util/tags/1.4.2/include/apr_memcache.h
 License: Apache2
 License File: LICENSE
+Version: aprutil 1.4
+
+Description:
+Modified version of apr_memcache.c
 
 apr_memcache2.c started out as an almost-exact clone of apr_memcache.c
 from the Apache HTTPD distribution.  It was initially checked in with
 only some (char*) casts to avoid const-errors in the blaze build.
 
-It has been modified to poll server-connections prior to reading to
-reduce the possibility of freezing Apache if memcached is wedged.
+Local Modifications (https://github.com/pagespeed/mod_pagespeed/commit/...)
+7c51262   Clone apr_memcache.c into apr_memcache2.c, with trivial cleanups.
+a8c41fd   Add polling & timeouts to apr_memcache.
+58aceed   Test/fix a case where MultiGet is called with no servers available,
+          which SEGVd in apr due to strange handling of that corner case.
+a0d1755   Add configurable timeout control
+a105c8f   Eliminate write-only member variables.
+19b09fe   Fix spin-loop with apr_memcache2_multgetp and HAProxy intermediary
+[...]     Add EINTR loop around calls to apr_pollset_poll to deflake unit tests
