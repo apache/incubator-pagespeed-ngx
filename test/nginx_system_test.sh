@@ -43,6 +43,7 @@
 : ${NGINX_EXECUTABLE:?"Set NGINX_EXECUTABLE"}
 : ${PAGESPEED_TEST_HOST:?"Set PAGESPEED_TEST_HOST"}
 POSITION_AUX="${POSITION_AUX:-unset}"
+RUN_CONTROLLER_TEST="${RUN_CONTROLLER_TEST:-off}"
 
 PRIMARY_HOSTNAME="localhost:$PRIMARY_PORT"
 SECONDARY_HOSTNAME="localhost:$SECONDARY_PORT"
@@ -195,6 +196,12 @@ else
   RESOLVER=""
 fi
 
+if [ "$RUN_CONTROLLER_TEST" = "on" ]; then
+  CONTROLLER="pagespeed CentralControllerPort $CONTROLLER_PORT;"
+else
+  CONTROLLER=""
+fi
+
 # set up the config file for the test
 PAGESPEED_CONF="$TEST_TMP/pagespeed_test.conf"
 PAGESPEED_CONF_TEMPLATE="$this_dir/pagespeed_test.conf.template"
@@ -219,7 +226,7 @@ cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@SERVER_ROOT@@#'"$SERVER_ROOT"'#' \
   | sed 's#@@PRIMARY_PORT@@#'"$PRIMARY_PORT"'#' \
   | sed 's#@@SECONDARY_PORT@@#'"$SECONDARY_PORT"'#' \
-  | sed 's#@@CONTROLLER_PORT@@#'"$CONTROLLER_PORT"'#' \
+  | sed 's#@@CONTROLLER@@#'"$CONTROLLER"'#' \
   | sed 's#@@NATIVE_FETCHER@@#'"$NATIVE_FETCHER"'#' \
   | sed 's#@@RESOLVER@@#'"$RESOLVER"'#' \
   | sed 's#@@RCPORT1@@#'"$RCPORT1"'#' \

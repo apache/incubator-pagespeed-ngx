@@ -85,9 +85,8 @@ http {
   pagespeed StatisticsLogging on;
   pagespeed LogDir "@@TEST_TMP@@/logdir";
 
-  # TODO(cheesy): configure the controller port only when
-  # $RUN_CONTROLLER_TEST = "on".
-  # pagespeed CentralControllerPort @@CONTROLLER_PORT@@;
+  # Expanded to CentralControllerPort directive when RUN_CONTROLLER_TEST=on
+  @@CONTROLLER@@
 
   server {
     # Sets up a logical home-page server on
