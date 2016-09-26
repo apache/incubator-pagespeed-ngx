@@ -3,6 +3,16 @@
 case "$1" in
     remove)
         test -e /etc/apache2/mods-enabled/pagespeed.load && a2dismod pagespeed
+        if hash a2disconf 2> /dev/null; then
+          # a2disconf is available; use it.
+          test -L /etc/apache2/conf-enabled/pagespeed_libraries.conf && \
+            a2disconf pagespeed_libraries
+        else
+          # If we don't have a2disconf, then the symlink is in conf.d instead of
+          # conf-enabled.
+          test -L /etc/apache2/conf.d/pagespeed_libraries.conf && \
+               rm /etc/apache2/conf.d/pagespeed_libraries.conf
+        fi
     ;;
     upgrade|deconfigure|failed-upgrade)
     ;;

@@ -19,6 +19,26 @@ case "$1" in
 
         test ! -e /etc/apache2/mods-enabled/pagespeed.load && \
             a2enmod pagespeed
+
+        # Enable pagespeed-libraries.conf.  On recent systems you install config
+        # files into /etc/apache2/conf-available and then use a2enconf to
+        # symlink it into /etc/apache2/conf-enabled.  On older systems there's
+        # just /etc/apache2/conf.d/, so we manually symlink it there instead.
+        # See https://github.com/pagespeed/mod_pagespeed/issues/1389
+        if hash a2enconf 2> /dev/null; then
+          # a2enconf is available; use it.
+          a2enconf pagespeed_libraries
+        elif [ -d /etc/apache2/conf.d/ ]; then
+          # this ubuntu is too old for that; manually symlink it
+          if [ -e /etc/apache2/conf.d/pagespeed_libraries.conf ]; then
+            echo "Not symlinking on top of existing pagespeed_libraries.conf"
+          else
+            ln -s ../conf-available/pagespeed_libraries.conf \
+                  /etc/apache2/conf.d/
+          fi
+        else
+          echo "failed to configure pagespeed_libraries.conf" >&2
+        fi
     ;;
     abort-upgrade|abort-remove|abort-deconfigure)
     ;;
