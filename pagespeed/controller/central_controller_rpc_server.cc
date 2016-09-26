@@ -85,8 +85,12 @@ void CentralControllerRpcServer::MainLoop(::grpc::CompletionQueue* queue) {
 
 void CentralControllerRpcServer::Stop() {
   PS_LOG_INFO(handler_, "Shutting down CentralControllerRpcServer.");
-  // This blocks indefinitely for all outstanding RPCs to complete.
-  server_->Shutdown();
+  // Stop accepting new RPCs and forcibly terminate all outstanding ones. Blocks
+  // until cancel callbacks have been invoked on all oustanding RPCs.
+  // It doesn't make much sense to try and wait here, since mostly the client
+  // is waiting for us and a clean shutdown doesn't make any difference since we
+  // don't actually write any state to disk.
+  server_->Shutdown(gpr_inf_past(GPR_CLOCK_MONOTONIC));
   // This should terminate the event loop immediately.
   queue_->Shutdown();
 }
