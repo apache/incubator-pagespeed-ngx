@@ -17,6 +17,7 @@
 
 #include "pagespeed/opt/ads/show_ads_snippet_parser.h"
 
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/js/js_keywords.h"
 #include "pagespeed/kernel/js/js_tokenizer.h"
@@ -47,7 +48,7 @@ bool IsValid(StringPiece attribute_name, StringPiece attribute_value) {
 
 // Removes the enclosing comment tag for JS 'input'.
 StringPiece StripAnyEnclosingCommentTag(StringPiece input) {
-  if (input.starts_with("<!--") && input.ends_with("//-->")) {
+  if (strings::StartsWith(input, "<!--") && strings::EndsWith(input, "//-->")) {
     return input.substr(4, input.length() - 9);
   }
   return input;
@@ -55,8 +56,8 @@ StringPiece StripAnyEnclosingCommentTag(StringPiece input) {
 
 // Removes enclosing quotes for string 'input'.
 StringPiece StripAnyEnclosingQuotes(StringPiece input) {
-  if ((input.starts_with("\"") && input.starts_with( "\"")) ||
-      (input.starts_with("\'") && input.starts_with("\'"))) {
+  if ((strings::StartsWith(input, "\"") && strings::StartsWith(input, "\"")) ||
+      (strings::StartsWith(input, "\'") && strings::StartsWith(input, "\'"))) {
     return input.substr(1, input.length() - 2);
   }
   return input;
