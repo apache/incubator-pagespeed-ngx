@@ -105,7 +105,8 @@ TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
 
 APACHE_SYSTEM_TEST = $(PAGESPEED_DIR)/apache/system_test.sh
 APACHE_REMOTE_CONFIG_TEST = $(PAGESPEED_DIR)/system/remote_config_test.sh
-CLEAN_SLATE_FOR_TESTS = $(PAGESPEED_DIR)/install/clean_slate_for_tests.sh
+INSTALL_DIR = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+CLEAN_SLATE_FOR_TESTS = $(INSTALL_DIR)/clean_slate_for_tests.sh
 
 # Installs debug configuration and runs a smoke test against it.
 # This will blow away your existing pagespeed.conf,
