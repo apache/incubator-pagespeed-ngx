@@ -243,7 +243,8 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewRedis(
   RedisCache* redis_server = new RedisCache(
       cluster_spec.servers[0].host, cluster_spec.servers[0].port,
       factory_->thread_system(), factory_->message_handler(), factory_->timer(),
-      config->redis_reconnection_delay_ms(), config->redis_timeout_us());
+      config->redis_reconnection_delay_ms(), config->redis_timeout_us(),
+      factory_->statistics());
   factory_->TakeOwnership(redis_server);
   redis_servers_.push_back(redis_server);
   if (redis_pool_.get() == NULL) {
@@ -762,6 +763,7 @@ void SystemCaches::InitStats(Statistics* statistics) {
   CacheStats::InitStats(kRedisBlocking, statistics);
   CompressedCache::InitStats(statistics);
   PurgeContext::InitStats(statistics);
+  RedisCache::InitStats(statistics);
 }
 
 void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {

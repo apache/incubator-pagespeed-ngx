@@ -30,12 +30,15 @@
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/posix_timer.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/thread/worker_test_base.h"
 #include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_stats.h"
+#include "pagespeed/system/tcp_connection_for_testing.h"
 #include "pagespeed/system/tcp_server_thread_for_testing.h"
 
 namespace net_instaweb {
@@ -55,7 +58,10 @@ class RedisCacheTest : public CacheTestBase {
  protected:
   RedisCacheTest()
       : thread_system_(Platform::CreateThreadSystem()),
-        timer_(new NullMutex, 0) {}
+        statistics_(thread_system_.get()),
+        timer_(new NullMutex, 0) {
+    RedisCache::InitStats(&statistics_);
+  }
 
   bool InitRedisOrSkip() {
     const char* portString = getenv("REDIS_PORT");
@@ -68,17 +74,26 @@ class RedisCacheTest : public CacheTestBase {
       return false;
     }
 
+    {
+      TcpConnectionForTesting conn;
+      CHECK(conn.Connect("localhost", port))
+          << "Cannot connect to Redis server";
+      conn.Send("FLUSHALL\r\n");
+      CHECK_EQ("+OK\r\n", conn.ReadLineCrLf());
+    }
+
     cache_.reset(new RedisCache("localhost", port, thread_system_.get(),
                                 &handler_, &timer_, kReconnectionDelayMs,
-                                kTimeoutUs));
+                                kTimeoutUs, &statistics_));
     cache_->StartUp();
-    return cache_->FlushAll();
+    return true;
   }
 
   void InitRedisWithCustomServer() {
     cache_.reset(new RedisCache("localhost", custom_server_port_,
                                 thread_system_.get(), &handler_, &timer_,
-                                kReconnectionDelayMs, kTimeoutUs));
+                                kReconnectionDelayMs, kTimeoutUs,
+                                &statistics_));
   }
 
   void InitRedisWithUnreachableServer() {
@@ -87,7 +102,7 @@ class RedisCacheTest : public CacheTestBase {
     // machine should ever be routable in that subnet.
     cache_.reset(new RedisCache("192.0.2.1", 12345, thread_system_.get(),
                                 &handler_, &timer_, kReconnectionDelayMs,
-                                kTimeoutUs));
+                                kTimeoutUs, &statistics_));
   }
 
   static void SetUpTestCase() {
@@ -124,6 +139,7 @@ class RedisCacheTest : public CacheTestBase {
 
   scoped_ptr<RedisCache> cache_;
   scoped_ptr<ThreadSystem> thread_system_;
+  SimpleStats statistics_;
   MockTimer timer_;
   GoogleMessageHandler handler_;
 
@@ -147,6 +163,11 @@ TEST_F(RedisCacheTest, PutGetDelete) {
 
   CheckDelete("Name");
   CheckNotFound("Name");
+
+  // We're not running against redis cluster, so we don't expect to ever be
+  // redirected, and we should never ask for cluster slots.
+  EXPECT_EQ(0, cache_->Redirections());
+  EXPECT_EQ(0, cache_->ClusterSlotsFetches());
 }
 
 // Make sure curly braces in keys aren't treated specially.
@@ -213,18 +234,6 @@ TEST_F(RedisCacheTest, GetStatus) {
   EXPECT_THAT(status, HasSubstr("connected_clients:"));
   EXPECT_THAT(status, HasSubstr("tcp_port:"));
   EXPECT_THAT(status, HasSubstr("used_memory:"));
-}
-
-TEST_F(RedisCacheTest, FlushAll) {
-  if (!InitRedisOrSkip()) {
-    return;
-  }
-
-  CheckPut("Name1", "Value1");
-  CheckPut("Name2", "Value2");
-  cache_->FlushAll();
-  CheckNotFound("Name1");
-  CheckNotFound("Name2");
 }
 
 // Two following tests are identical and ensure that no keys are leaked between

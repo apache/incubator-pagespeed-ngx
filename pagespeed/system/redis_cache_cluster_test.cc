@@ -21,6 +21,7 @@
 #include "pagespeed/system/redis_cache.h"
 
 #include <cstdlib>
+#include <algorithm>
 #include <vector>
 
 #include "base/logging.h"
@@ -32,12 +33,14 @@
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/cache/cache_test_base.h"
 #include "pagespeed/kernel/util/platform.h"
+#include "pagespeed/kernel/util/simple_stats.h"
 #include "pagespeed/system/tcp_connection_for_testing.h"
 
 namespace net_instaweb {
@@ -46,21 +49,173 @@ namespace {
   static const int kReconnectionDelayMs = 10;
   static const int kTimeoutUs = 100 * Timer::kMsUs;
   static const int kSlaveNodesFlushingTimeoutMs = 1000;
+  static const int kReconfigurationPropagationTimeoutMs = 5000;
 
   // One can check following constants with CLUSTER KEYSLOT command.
   // For testing purposes, both KEY and {}KEY should be in the same slot range.
-  // TODO(yeputons): why?
+  // Implementation may or may not prepend {} to all keys processed to avoid
+  // keys distribution due to hash tags. We want tests to work in both
+  // situations. See http://redis.io/topics/cluster-spec#keys-hash-tags.
+  //
+  // TODO(yeputons): add static assertion that these keys really belong to
+  // corresponding slots.
   static const char kKeyOnNode1[] = "Foobar";        // Slots 0-5499
+  static const char kKeyOnNode1b[] = "Coolkey";      // Slots 0-5499
   static const char kKeyOnNode2[] = "SomeOtherKey";  // Slots 5500-10999
   static const char kKeyOnNode3[] = "Key";           // Slots 11000-16383
+  static const char kValue1[] = "Value1";
+  static const char kValue2[] = "Value2";
+  static const char kValue3[] = "Value3";
+  static const char kValue4[] = "Value4";
 }  // namespace
 
 class RedisCacheClusterTest : public CacheTestBase {
  protected:
   RedisCacheClusterTest()
       : thread_system_(Platform::CreateThreadSystem()),
-        timer_(new NullMutex, 0) {}
+        statistics_(thread_system_.get()),
+        timer_(new NullMutex, 0) {
+    RedisCache::InitStats(&statistics_);
+  }
 
+  // This function checks that node reports cluster as healthy and returns its
+  // knowledge about cluster configuration. Returns empty vector in case of
+  // failure.
+  // TODO(yeputons): there is alternative command CLUSTER SLOTS which will
+  // produces better machine-readable result which we will have to parse inside
+  // RedisCache anyway to load cluster map in some C++ structure in advance.
+  // We can probably re-use that parser here. You may find hiredis' functions
+  // redisReaderCreate, redisReaderFree and redisReaderGetReply useful.
+  StringVector GetNodeClusterConfig(TcpConnectionForTesting* conn) {
+    conn->Send("CLUSTER INFO\r\n");
+    GoogleString cluster_info = ReadBulkString(conn);
+    if (cluster_info.find("cluster_state:ok\r\n") == GoogleString::npos) {
+      return {};
+    }
+
+    conn->Send("CLUSTER NODES\r\n");
+    GoogleString config_csv = ReadBulkString(conn);
+    StringPieceVector lines;
+    SplitStringPieceToVector(config_csv, "\r\n", &lines,
+                             true /* omit_empty_strings */);
+    CHECK_EQ(lines.size(), connections_.size());
+
+    StringVector current_config;
+    for (StringPiece line : lines) {
+      StringPieceVector fields;
+      SplitStringPieceToVector(line, " ", &fields,
+                               true /* omit_empty_strings */);
+      CHECK_GE(fields.size(), 8);
+      GoogleString node_descr;
+      // See http://redis.io/commands/cluster-nodes. We take three fields
+      // from node description (node id, ip:port, master/slave) plus
+      // information about slots served.
+      StrAppend(&node_descr, fields[0], " ", fields[1], " ", fields[3]);
+      for (int i = 8; i < fields.size(); i++) {
+        StrAppend(&node_descr, " ", fields[i]);
+      }
+      current_config.push_back(node_descr);
+    }
+    std::sort(current_config.begin(), current_config.end());
+    return current_config;
+  }
+
+  // Reset cluster configuration to our testing default.  This is duplicated in
+  // run_program_with_redis_cluster.sh for manual testing, and any changes here
+  // should be copied to there.
+  //
+  // TODO(jefftk): We should have a binary target that sets up the cluster for
+  // tests, and then run_program_with_redis_cluster.sh can call that binary.
+  // Then we don't have to duplicate the configuration.
+  void ResetClusterConfiguration() {
+    LOG(INFO) << "Resetting Redis Cluster configuration back to default";
+
+    // First, flush all data from the cluster and reset all nodes.
+    for (auto& conn : connections_) {
+      conn->Send("FLUSHALL\r\nCLUSTER RESET SOFT\r\n");
+    }
+    for (auto& conn : connections_) {
+      GoogleString flushall_reply = conn->ReadLineCrLf();
+      // We'll get READONLY from slave nodes, which isn't a problem.
+      CHECK(flushall_reply == "+OK\r\n" ||
+            StringPiece(flushall_reply).starts_with("-READONLY"));
+      CHECK_EQ("+OK\r\n", conn->ReadLineCrLf());
+    }
+
+    // Now make nodes know about each other.
+    for (auto& conn : connections_) {
+      for (int port : ports_) {
+        conn->Send(
+            StrCat("CLUSTER MEET 127.0.0.1 ", IntegerToString(port), "\r\n"));
+      }
+      for (int i = 0, n = ports_.size(); i < n; ++i) {
+        CHECK_EQ("+OK\r\n", conn->ReadLineCrLf());
+      }
+    }
+
+    // TODO(yeputons): should we wait between introducing nodes to each other
+    // and configuring slaves? Look like they retrieve information about nodes
+    // met asynchronously.
+
+    // And finally load slots configuration.
+    CHECK_EQ(6, connections_.size());
+    static const int slot_ranges[] = { 0, 5500, 11000, 16384 };
+    for (int i = 0; i < 3; i++) {
+      GoogleString command = "CLUSTER ADDSLOTS";
+      for (int slot = slot_ranges[i]; slot < slot_ranges[i + 1]; slot++) {
+        StrAppend(&command, " ", IntegerToString(slot));
+      }
+      StrAppend(&command, "\r\n");
+
+      auto& conn = connections_[i];
+      conn->Send(command);
+      CHECK_EQ("+OK\r\n", conn->ReadLineCrLf());
+    }
+    for (int i = 3; i < 6; i++) {
+      auto& conn = connections_[i];
+      conn->Send(StrCat("CLUSTER REPLICATE ", node_ids_[i - 3], "\r\n"));
+      CHECK_EQ("+OK\r\n", conn->ReadLineCrLf());
+    }
+
+    // Now wait until all nodes report cluster as healthy and report same
+    // cluster configuration.
+    LOG(INFO) << "Reset Redis Cluster configuration back to default, "
+                 "waiting for propagation...";
+    PosixTimer timer;
+    int64 timeout_at_ms = timer.NowMs() + kReconfigurationPropagationTimeoutMs;
+    bool cluster_is_up = false;
+    while (!cluster_is_up) {
+      CHECK_LE(timer.NowMs(), timeout_at_ms)
+          << "Redis Cluster configuration did not propagate in time";
+
+      StringVector first_node_config;
+      cluster_is_up = true;
+      for (auto& conn : connections_) {
+        StringVector current_config = GetNodeClusterConfig(conn.get());
+        if (current_config.empty()) {
+          cluster_is_up = false;
+          break;
+        }
+        // Check the all configs are same between nodes.
+        if (first_node_config.empty()) {
+          first_node_config = current_config;
+        }
+        if (first_node_config != current_config) {
+          cluster_is_up = false;
+          break;
+        }
+      }
+      if (!cluster_is_up) {
+        timer.SleepMs(50);
+      }
+    }
+    LOG(INFO) << "Redis Cluster is reset";
+  }
+
+  // TODO(jefftk): setting all of this up for each unit test is slow, and if we
+  // add a lot of unit tests it could be pretty painful.  It would be more
+  // efficient to set things up once in a TestCaseSetUp() and then use them
+  // throughout.
   bool InitRedisClusterOrSkip() {
     // Parsing environment variables.
     const char* ports_env = getenv("REDIS_CLUSTER_PORTS");
@@ -87,82 +242,111 @@ class RedisCacheClusterTest : public CacheTestBase {
                                                   "different amount of items";
     CHECK_EQ(port_strs.size(), 6) << "Six Redis Cluster nodes are expected";
 
-    std::vector<int> ports;
+    ports_.clear();
     for (auto port_str : port_strs) {
       int port;
       CHECK(StringToInt(port_str, &port)) << "Invalid port: " << port_str;
-      ports.push_back(port);
+      ports_.push_back(port);
     }
-    nodes_ids_.clear();
+    node_ids_.clear();
     for (StringPiece id : id_strs) {
-      nodes_ids_.push_back(id.as_string());
+      node_ids_.push_back(id.as_string());
     }
 
-    // Flushing all data on master nodes.
-    for (int port : ports) {
-      TcpConnectionForTesting conn;
-      CHECK(conn.Connect("localhost", port))
+    connections_.clear();
+    for (int port : ports_) {
+       connections_.emplace_back(new TcpConnectionForTesting());
+      CHECK(connections_.back()->Connect("localhost", port))
           << "Cannot connect to Redis Cluster node";
-      conn.Send("FLUSHDB\r\n");
-      GoogleString answer = conn.ReadLineCrLf();
-      if (StringPiece(answer).starts_with("-READONLY")) {
-        // Looks like slave node, skipping.
-      } else {
-        CHECK_EQ("+OK\r\n", answer)
-            << "Redis Cluster node failed to flush all data";
-      }
     }
 
-    // Wait until all nodes (including slaves) report zero keys.
-    // Typically it happens instantly after flushing master nodes,
-    // but we want to be sure.
-    PosixTimer timer;
-    int64 timeout_at_ms = timer.NowMs() + kSlaveNodesFlushingTimeoutMs;
-    for (int port : ports) {
-      TcpConnectionForTesting conn;
-      CHECK(conn.Connect("localhost", port))
-         << "Cannot connect to Redis Cluster node";
-      while (true) {
-        CHECK_LE(timer.NowMs(), timeout_at_ms)
-            << "Redis Cluster node did not flush data in time";
-        conn.Send("DBSIZE\r\n");
-        GoogleString answer = conn.ReadLineCrLf();
-        CHECK(StringPiece(answer).starts_with(":"));
-        if (answer == ":0\r\n") {
-          break;
-        }
-        timer.SleepMs(20);
-      }
-    }
+    ResetClusterConfiguration();
 
     // Setting up cache.
-    cache_.reset(new RedisCache("localhost", ports[0], thread_system_.get(),
+    cache_.reset(new RedisCache("localhost", ports_[0], thread_system_.get(),
                                 &handler_, &timer_, kReconnectionDelayMs,
-                                kTimeoutUs));
+                                kTimeoutUs, &statistics_));
     cache_->StartUp();
     return true;
+  }
+
+  static GoogleString ReadBulkString(TcpConnectionForTesting* conn) {
+    GoogleString length_str_storage = conn->ReadLineCrLf();
+    StringPiece length_str = length_str_storage;
+    // Check that Redis answered with Bulk String
+    CHECK(length_str.starts_with("$"));
+    length_str.remove_prefix(1);
+    CHECK(length_str.ends_with("\r\n"));
+    length_str.remove_suffix(2);
+    int length;
+    CHECK(StringToInt(length_str, &length));
+    GoogleString result =  conn->ReadBytes(length);
+    CHECK_EQ("\r\n", conn->ReadLineCrLf());
+    return result;
   }
 
   CacheInterface* Cache() override { return cache_.get(); }
 
   scoped_ptr<RedisCache> cache_;
   scoped_ptr<ThreadSystem> thread_system_;
+  SimpleStats statistics_;
   MockTimer timer_;
   GoogleMessageHandler handler_;
 
-  StringVector nodes_ids_;
+  StringVector node_ids_;
+  std::vector<int> ports_;
+  std::vector<std::unique_ptr<TcpConnectionForTesting>> connections_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(RedisCacheClusterTest);
 };
+
+TEST_F(RedisCacheClusterTest, HashSlot) {
+  // Expected crc16 hashes taken from running RedisClusterCRC16.crc16 from
+  // https://github.com/antirez/redis-rb-cluster/blob/master/crc16.rb
+
+  EXPECT_EQ(15332, RedisCache::HashSlot("hello world"));
+
+  // If there's curly brace section, only that section is considered for the
+  // key.
+  EXPECT_EQ(7855, RedisCache::HashSlot("curly"));
+  EXPECT_EQ(7855, RedisCache::HashSlot("hello {curly} world"));
+  // Only take the first such section.
+  EXPECT_EQ(7855, RedisCache::HashSlot("hello {curly} world {ignored}"));
+  // Any other junk doesn't matter.
+  EXPECT_EQ(7855, RedisCache::HashSlot(
+      "hello {curly} world {nothing here matters"));
+  EXPECT_EQ(7855, RedisCache::HashSlot(
+      "}}} hello {curly} world {nothing else matters"));
+  // Incomplete curlies are ignored.
+  EXPECT_EQ(8673, RedisCache::HashSlot("hello {curly world"));
+  EXPECT_EQ(950, RedisCache::HashSlot("hello }curly{ world"));
+  EXPECT_EQ(3940, RedisCache::HashSlot("hello curly world{"));
+  // Empty string is fine.
+  EXPECT_EQ(0, RedisCache::HashSlot(""));
+  // While {a} means to only consider a, {} means consider the whole message
+  // when hashing.  (Otherwise this would return 0, the hash of "".)
+  EXPECT_EQ(13934, RedisCache::HashSlot("hello {} world"));
+  // After an empty curly, all other curlies are still ignored.  (Otherwise
+  // this would return 7855.)
+  EXPECT_EQ(2795, RedisCache::HashSlot("{}hello {curly} world"));
+}
 
 TEST_F(RedisCacheClusterTest, FirstNodePutGetDelete) {
   if (!InitRedisClusterOrSkip()) {
     return;
   }
 
-  CheckPut(kKeyOnNode1, "Value");
-  CheckGet(kKeyOnNode1, "Value");
+  CheckPut(kKeyOnNode1, kValue1);
+  CheckGet(kKeyOnNode1, kValue1);
 
   CheckDelete(kKeyOnNode1);
   CheckNotFound(kKeyOnNode1);
+
+  // All requests are for node1, which is the main node, so we should never be
+  // redirected or have to fetch slots.
+  EXPECT_EQ(0, cache_->Redirections());
+  EXPECT_EQ(0, cache_->ClusterSlotsFetches());
 }
 
 TEST_F(RedisCacheClusterTest, OtherNodesPutGetDelete) {
@@ -170,17 +354,144 @@ TEST_F(RedisCacheClusterTest, OtherNodesPutGetDelete) {
     return;
   }
 
-  CheckPut(kKeyOnNode2, "Value");
-  CheckPut(kKeyOnNode3, "Value");
+  CheckPut(kKeyOnNode2, kValue1);
+  // This should have redirected us from node1 to node2, and prompted us to
+  // update our cluster map.
+  EXPECT_EQ(1, cache_->Redirections());
+  EXPECT_EQ(1, cache_->ClusterSlotsFetches());
 
-  CheckGet(kKeyOnNode2, "Value");
-  CheckGet(kKeyOnNode3, "Value");
+  CheckPut(kKeyOnNode3, kValue2);
+
+  CheckGet(kKeyOnNode2, kValue1);
+  CheckGet(kKeyOnNode3, kValue2);
 
   CheckDelete(kKeyOnNode2);
   CheckDelete(kKeyOnNode3);
 
   CheckNotFound(kKeyOnNode2);
   CheckNotFound(kKeyOnNode3);
+
+  // No more redirections or slots fetches triggered after the first one above.
+  EXPECT_EQ(1, cache_->Redirections());
+  EXPECT_EQ(1, cache_->ClusterSlotsFetches());
+}
+
+class RedisCacheClusterTestWithReconfiguration : public RedisCacheClusterTest {
+ protected:
+  void TearDown() override {
+    ResetClusterConfiguration();
+  }
+};
+
+TEST_F(RedisCacheClusterTestWithReconfiguration, HandlesMigrations) {
+  if (!InitRedisClusterOrSkip()) {
+    return;
+  }
+
+  LOG(INFO) << "Putting value on the first node";
+  CheckPut(kKeyOnNode1, kValue1);
+  CheckPut(kKeyOnNode1b, kValue2);
+  CheckGet(kKeyOnNode1, kValue1);
+  CheckGet(kKeyOnNode1b, kValue2);
+
+  // No redirections or slot fetches needed.
+  EXPECT_EQ(0, cache_->Redirections());
+  EXPECT_EQ(0, cache_->ClusterSlotsFetches());
+
+  // Now trigger a redirection and slot fetch.
+  CheckPut(kKeyOnNode3, kValue3);
+  CheckGet(kKeyOnNode3, kValue3);
+  EXPECT_EQ(1, cache_->Redirections());
+  EXPECT_EQ(1, cache_->ClusterSlotsFetches());
+
+  LOG(INFO) << "Starting migration of the first node";
+  for (int i = 0; i < 5000; i++) {
+    connections_[1]->Send(StrCat("CLUSTER SETSLOT ", IntegerToString(i),
+                                 " IMPORTING ", node_ids_[0], "\r\n"));
+  }
+  for (int i = 0; i < 5000; i++) {
+    CHECK_EQ("+OK\r\n", connections_[1]->ReadLineCrLf());
+  }
+  for (int i = 0; i < 5000; i++) {
+    connections_[0]->Send(StrCat("CLUSTER SETSLOT ", IntegerToString(i),
+                                 " MIGRATING ", node_ids_[1], "\r\n"));
+  }
+  for (int i = 0; i < 5000; i++) {
+    CHECK_EQ("+OK\r\n", connections_[0]->ReadLineCrLf());
+  }
+
+  LOG(INFO) << "Checking availability before actually moving the key";
+  // The key should still be available on the first node, where it was.
+  CheckGet(kKeyOnNode1, kValue1);
+  CheckPut(kKeyOnNode1, kValue2);
+  CheckGet(kKeyOnNode1, kValue2);
+
+  // No additional redirects or slot fetches.
+  EXPECT_EQ(1, cache_->Redirections());
+  EXPECT_EQ(1, cache_->ClusterSlotsFetches());
+
+  connections_[0]->Send(StrCat("MIGRATE 127.0.0.1 ", IntegerToString(ports_[1]),
+                               " ", kKeyOnNode1, " 0 5000\r\n"));
+  CHECK_EQ("+OK\r\n", connections_[0]->ReadLineCrLf());
+
+  LOG(INFO) << "Checking availability after actually moving the key";
+  // This is ugly: because we moved the key and now it's not where it should be
+  // for the slot it's in, we see redirections with ASK on every
+  // interaction. They're ASKs, though, so they're just temporary and we
+  // shouldn't reload mappings.
+  CheckGet(kKeyOnNode1, kValue2);
+  EXPECT_EQ(2, cache_->Redirections());
+  EXPECT_EQ(1, cache_->ClusterSlotsFetches());
+
+  CheckPut(kKeyOnNode1, kValue3);
+  EXPECT_EQ(3, cache_->Redirections());
+  EXPECT_EQ(1, cache_->ClusterSlotsFetches());
+
+  CheckGet(kKeyOnNode1, kValue3);
+  EXPECT_EQ(4, cache_->Redirections());
+  EXPECT_EQ(1, cache_->ClusterSlotsFetches());
+
+  // But not for the second key, which is still on the first node.
+  CheckGet(kKeyOnNode1b, kValue2);
+  CheckPut(kKeyOnNode1b, kValue3);
+  CheckGet(kKeyOnNode1b, kValue3);
+  EXPECT_EQ(4, cache_->Redirections());
+  EXPECT_EQ(1, cache_->ClusterSlotsFetches());
+
+  LOG(INFO) << "Moving the second key as well";
+  connections_[0]->Send(StrCat("MIGRATE 127.0.0.1 ", IntegerToString(ports_[1]),
+                               " ", kKeyOnNode1b, " 0 5000\r\n"));
+  CHECK_EQ("+OK\r\n", connections_[0]->ReadLineCrLf());
+
+  LOG(INFO) << "Ending migration";
+  for (int c = 0; c < 3; c++) {
+    auto &conn = connections_[c];
+    for (int i = 0; i < 5000; i++) {
+      conn->Send(StrCat("CLUSTER SETSLOT ", IntegerToString(i), " NODE ",
+                        node_ids_[1], "\r\n"));
+    }
+    for (int i = 0; i < 5000; i++) {
+      CHECK_EQ("+OK\r\n", conn->ReadLineCrLf());
+    }
+  }
+
+  LOG(INFO) << "Checking availability after migration";
+  CheckGet(kKeyOnNode1, kValue3);
+  // Now that the migration is complete and we've called SETSLOT we'll get a
+  // MOVED instead of an ASK, so we'll fetch slots.
+  EXPECT_EQ(5, cache_->Redirections());
+  EXPECT_EQ(2, cache_->ClusterSlotsFetches());
+
+  CheckPut(kKeyOnNode1, kValue4);
+  CheckGet(kKeyOnNode1, kValue4);
+
+  CheckGet(kKeyOnNode1b, kValue3);
+  CheckPut(kKeyOnNode1b, kValue4);
+  CheckGet(kKeyOnNode1b, kValue4);
+
+  // No more redirections or slots fetches.
+  EXPECT_EQ(5, cache_->Redirections());
+  EXPECT_EQ(2, cache_->ClusterSlotsFetches());
 }
 
 }  // namespace net_instaweb

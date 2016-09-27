@@ -23,11 +23,13 @@
 
 #include <memory>
 #include <initializer_list>
+#include <map>
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
+#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
@@ -35,6 +37,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 #include "pagespeed/kernel/thread/thread_synchronizer.h"
+#include "pagespeed/system/external_server_spec.h"
 #include "third_party/hiredis/src/hiredis.h"
 
 namespace net_instaweb {
@@ -54,6 +57,16 @@ namespace net_instaweb {
 //
 // See redis_cache.cc for details on different locks that the class has.
 //
+// When using clustering, to be efficient we need to know what redis cluster
+// machine to talk to for a given key.  There are two steps:
+// 1) hash the key in a redis-specific way determine the hash slot.
+// 2) consult our cached copy of the slot-to-server mapping to see which
+//    server to send to.
+// If we get a redirection after following that approach, our cached mapping
+// is invalid and should be refreshed.
+//
+// http://redis.io/topics/cluster-spec explains this all.
+//
 // TODO(yeputons): consider extracting a common interface with AprMemCache.
 // TODO(yeputons): consider making Redis-reported errors treated as failures.
 // TODO(yeputons): add redis AUTH command support.
@@ -64,8 +77,11 @@ class RedisCache : public CacheInterface {
   // that these pointers are valid throughout full lifetime of RedisCache.
   RedisCache(StringPiece host, int port, ThreadSystem* thread_system,
              MessageHandler* message_handler, Timer* timer,
-             int64 reconnection_delay_ms, int64 timeout_us);
+             int64 reconnection_delay_ms, int64 timeout_us,
+             Statistics* stats);
   ~RedisCache() override { ShutDown(); }
+
+  static void InitStats(Statistics* stats);
 
   GoogleString ServerDescription() const;
 
@@ -88,8 +104,20 @@ class RedisCache : public CacheInterface {
   // the the server failed to report status, does not change the string.
   bool GetStatus(GoogleString* status_string);
 
-  // Flushes ALL DATA IN REDIS in blocking mode. Used in tests.
-  bool FlushAll();
+  // Redis spec defined hasher for keys.  Static, since it's a pure function.
+  static int HashSlot(StringPiece key);
+
+  // Total number of times we hit one server and were redirected to a different
+  // one.
+  int64 Redirections() {
+    return redirections_->Get();
+  }
+
+  // Total number of times we looked up the cluster slots mappings to avoid
+  // redirections.
+  int64 ClusterSlotsFetches() {
+    return cluster_slots_fetches_->Get();
+  }
 
  private:
   struct RedisReplyDeleter {
@@ -123,7 +151,10 @@ class RedisCache : public CacheInterface {
       return redis_mutex_.get();
     }
 
+    // Must be followed by ValidateRedisReply() under the same lock.
     RedisReply RedisCommand(const char* format, va_list args)
+        EXCLUSIVE_LOCKS_REQUIRED(redis_mutex_) LOCKS_EXCLUDED(state_mutex_);
+    RedisReply RedisCommand(const char* format, ...)
         EXCLUSIVE_LOCKS_REQUIRED(redis_mutex_) LOCKS_EXCLUDED(state_mutex_);
 
     bool ValidateRedisReply(const RedisReply& reply,
@@ -161,6 +192,20 @@ class RedisCache : public CacheInterface {
 
     DISALLOW_COPY_AND_ASSIGN(Connection);
   };
+  typedef std::map<GoogleString, std::unique_ptr<Connection>> ConnectionsMap;
+
+  struct ClusterMapping {
+    // We only ever add connections, so it's ok for us to save raw pointers.
+    ClusterMapping(int start_slot_range,
+                   int end_slot_range,
+                   Connection* connection) :
+        start_slot_range_(start_slot_range),
+        end_slot_range_(end_slot_range),
+        connection_(connection) {}
+    int start_slot_range_;
+    int end_slot_range_;
+    Connection* connection_;
+  };
 
   // Performs specified command, handling all reconnections, redirections
   // from Redis Cluster, and other stuff. Then it checks that Redis' reply
@@ -171,12 +216,29 @@ class RedisCache : public CacheInterface {
   // thread-safe, which is true as of hiredis 0.13. Otherwise it's wrong to
   // return RedisReply here because lock is released on exit.
   // See https://github.com/redis/hiredis/issues/465
-  RedisReply RedisCommand(const char* format,
+  RedisReply RedisCommand(Connection* connection, const char* format,
                           std::initializer_list<int> valid_reply_types, ...);
 
   ThreadSynchronizer* GetThreadSynchronizerForTesting() const {
     return thread_synchronizer_.get();
   }
+
+  ExternalServerSpec ParseRedirectionError(StringPiece error);
+
+  // Must not be called under Connection::GetOperationLock(), that will cause
+  // lock inversion and potential theoretical deadlock.
+  Connection* GetOrCreateConnection(ExternalServerSpec spec);
+
+  // Ask redis what keys should go to which servers.
+  void FetchClusterSlotMapping(Connection* connection)
+      LOCKS_EXCLUDED(cluster_map_lock_);
+
+  // If we have a cached copy of the connection slot mapping from
+  // LookupClusterSlots then return the connection this key goes with.  If we
+  // don't have it, or if this slot isn't in the mapping, return
+  // main_connection_.
+  Connection* LookupConnection(StringPiece key)
+      LOCKS_EXCLUDED(cluster_map_lock_);
 
   const GoogleString main_host_;
   const int main_port_;
@@ -186,8 +248,18 @@ class RedisCache : public CacheInterface {
   const int64 reconnection_delay_ms_;
   const int64 timeout_us_;
   const scoped_ptr<ThreadSynchronizer> thread_synchronizer_;
+  const scoped_ptr<ThreadSystem::RWLock> connections_lock_;
+  const scoped_ptr<ThreadSystem::RWLock> cluster_map_lock_;
+  Variable* redirections_;
+  Variable* cluster_slots_fetches_;
 
-  const scoped_ptr<Connection> main_connection_;
+  // It's expected that connections are only added to the map. That way we can
+  // safely use raw pointers to them during RedisCache lifetime.
+  ConnectionsMap connections_ GUARDED_BY(connections_lock_);
+  std::vector<ClusterMapping> cluster_mappings_ GUARDED_BY(cluster_map_lock_);
+
+  // Not guarded, but should only be modified in StartUp().
+  Connection* main_connection_;
 
   friend class RedisCacheTest;
   DISALLOW_COPY_AND_ASSIGN(RedisCache);

@@ -19,6 +19,7 @@
 
 #include "apr_pools.h"
 #include "apr_network_io.h"
+#include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 
@@ -36,6 +37,9 @@ class TcpConnectionForTesting {
 
   void Send(StringPiece data);
 
+  // Reads specific amount of bytes, fais if EOF happens before.
+  GoogleString ReadBytes(int length);
+
   // LF is included unless EOF happened before it.
   GoogleString ReadLine() {
     return ReadUntil("\n");
@@ -52,6 +56,8 @@ class TcpConnectionForTesting {
  private:
   apr_pool_t* pool_;
   apr_socket_t* socket_;
+
+  DISALLOW_COPY_AND_ASSIGN(TcpConnectionForTesting);
 };
 
 }  // namespace net_instaweb

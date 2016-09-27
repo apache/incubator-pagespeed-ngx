@@ -1,0 +1,16 @@
+name: "redis-crc"
+description:
+    "redis-crc is the crc routine from redis"
+
+third_party {
+  url {
+    type: ARCHIVE
+    value: "http://download.redis.io/releases/redis-3.2.4.tar.gz"
+  }
+  version: "3.2.4"
+  last_upgrade_date: {
+    year: 2016
+    month: 9
+    day: 26
+  }
+}

@@ -77,6 +77,8 @@ echo Starting replicas...
       echo "CLUSTER MEET 127.0.0.1 $b"
     done | send_command $a
   done
+  # This configuration should match one in redis_cache_cluster_test.cc, and any
+  # changes here should be copied there.
   echo "CLUSTER ADDSLOTS $(seq -s" " 0 5499)" | send_command ${PORTS[0]}
   echo "CLUSTER ADDSLOTS $(seq -s" " 5500 10999)" | send_command ${PORTS[1]}
   echo "CLUSTER ADDSLOTS $(seq -s" " 11000 16383)" | send_command ${PORTS[2]}
@@ -87,10 +89,15 @@ echo Starting replicas...
   export REDIS_CLUSTER_IDS="${IDS[*]}"
   echo done
 
+  # Although cluster cannot be marked healthy until all slots are covered (e.g.
+  # each slave knows all masters), we want all nodes (including slaves) to know
+  # about every other node before we start unit tests.
   echo -n "Waiting for configurations to propagate..."
   wait_cmd_with_timeout 3 is_config_consistent
   echo
 
+  # Even if each node received full information about the rest of cluster, it
+  # can still wait a little before going into 'healthy' mode.
   echo -n "Waiting for cluster to become healthy..."
   wait_cmd_with_timeout 3 is_cluster_healthy
   echo

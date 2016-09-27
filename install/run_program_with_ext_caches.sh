@@ -1,23 +1,16 @@
 #!/bin/bash
 #
 # Starts all external cache servers and sets environment appropriately, then
-# runs commands in $@ with `eval` builtin and shuts down all servers afterwards.
+# runs single command in $@. There should be no substitutions in $@, as they may
+# happen in between starts of different servers.
 #
-# Example (mind single quotes in the second command so substitution is
-# performed inside the script, not when you run it):
-#     .../run_program_with_ext_caches.sh \
-#       echo Starting client \; \
-#       nc localhost '$MEMCACHED_PORT' \; \
-#       redis-cli '$REDIS_PORT'
+# Typically this should be used to run single executables with some parameters.
 
 set -e
 set -u
 
-# Let's make one script run another. Mind extra single quotes on the second
-# line - they are needed to ensure that arguments are expanded in the inner
-# script's eval, not outer's. Otherwise there are problems with having \; in
-# arguments - it would have been expanded by the first eval.
-#
-# TODO(yeputons): add Redis Cluster here when it's supported.
+# Let's make one script run another. We really do not want to deal with proper
+# escaping of quotes and bash commands on three levels.
 exec $(dirname "$BASH_SOURCE")/run_program_with_memcached.sh \
-  $(dirname "$BASH_SOURCE")/run_program_with_redis.sh \' "$@" \'
+  $(dirname "$BASH_SOURCE")/run_program_with_redis.sh \
+    $(dirname "$BASH_SOURCE")/run_program_with_redis_cluster.sh "$@"

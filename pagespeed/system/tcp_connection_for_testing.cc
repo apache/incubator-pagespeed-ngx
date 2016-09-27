@@ -33,6 +33,21 @@ void TcpConnectionForTesting::Send(StringPiece data) {
   CHECK_EQ(length, data.size());
 }
 
+GoogleString TcpConnectionForTesting::ReadBytes(int length) {
+  CHECK(socket_);
+
+  GoogleString result;
+  result.resize(length);
+  int read = 0;
+  while (read < length) {
+    apr_size_t l = length - read;
+    // 'l' is buffer size on input, amount of bytes received on output.
+    CHECK(apr_socket_recv(socket_, &result[read], &l) == APR_SUCCESS);
+    read += l;
+  }
+  return result;
+}
+
 GoogleString TcpConnectionForTesting::ReadUntil(StringPiece marker) {
   CHECK(socket_);
   GoogleString result;
