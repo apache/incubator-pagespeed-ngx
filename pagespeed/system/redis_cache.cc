@@ -455,12 +455,6 @@ void RedisCache::FetchClusterSlotMapping(Connection* connection) {
   // Now they are sorted, verify that the slot ranges don't overlap.
   // Note: This starts at 1, not 0, because we are looking backwards.
   for (size_t i = 1; i < new_cluster_mappings.size(); ++i) {
-    if (new_cluster_mappings[i].start_slot_range_ ==
-            new_cluster_mappings[i - 1].start_slot_range_) {
-      message_handler_->Message(
-          kError, "Redis returned redundant slot ranges for CLUSTER SLOTS");
-      return;
-    }
     if (new_cluster_mappings[i].start_slot_range_ <=
         new_cluster_mappings[i - 1].end_slot_range_) {
       message_handler_->Message(
