@@ -19,4 +19,4 @@ a8c41fd   Add polling & timeouts to apr_memcache.
 a0d1755   Add configurable timeout control
 a105c8f   Eliminate write-only member variables.
 19b09fe   Fix spin-loop with apr_memcache2_multgetp and HAProxy intermediary
-[...]     Add EINTR loop around calls to apr_pollset_poll to deflake unit tests
+25e0928   Add EINTR loop around calls to apr_pollset_poll to deflake unit tests
