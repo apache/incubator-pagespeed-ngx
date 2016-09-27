@@ -159,6 +159,8 @@ class RedisCacheClusterTest : public CacheTestBase {
 
     // And finally load slots configuration.
     CHECK_EQ(6, connections_.size());
+    // Some of these boundaries are explicitly probed in the SlotBoundaries
+    // test. If you change the cluster layout, you must also change that test.
     static const int slot_ranges[] = { 0, 5500, 11000, 16384 };
     for (int i = 0; i < 3; i++) {
       GoogleString command = "CLUSTER ADDSLOTS";
@@ -374,6 +376,41 @@ TEST_F(RedisCacheClusterTest, OtherNodesPutGetDelete) {
   // No more redirections or slots fetches triggered after the first one above.
   EXPECT_EQ(1, cache_->Redirections());
   EXPECT_EQ(1, cache_->ClusterSlotsFetches());
+}
+
+TEST_F(RedisCacheClusterTest, SlotBoundaries) {
+  // These are designed to exercise the slot lookup code at slot boundaries.
+  // 0 and 16384 are min/max slot. Slot 10999 is on node 2 and 11000 is on node
+  // 3.
+  const char kHashesTo0[] = "";
+  const char kHashesTo10999[] = "AFKb";
+  const char kHashesTo11000[] = "PNP";
+  const char kHashesTo16383[] = "C0p";
+
+  if (!InitRedisClusterOrSkip()) {
+    return;
+  }
+
+  ASSERT_EQ(0, RedisCache::HashSlot(kHashesTo0));
+  ASSERT_EQ(10999, RedisCache::HashSlot(kHashesTo10999));
+  ASSERT_EQ(11000, RedisCache::HashSlot(kHashesTo11000));
+  ASSERT_EQ(16383, RedisCache::HashSlot(kHashesTo16383));
+
+  // Do one lookup with a redirection, to prime the table.
+  CheckPut(kKeyOnNode2, kValue1);
+  EXPECT_EQ(1, cache_->Redirections());
+  EXPECT_EQ(1, cache_->ClusterSlotsFetches());
+
+  for (const GoogleString& key :
+       {kHashesTo0, kHashesTo10999, kHashesTo11000, kHashesTo16383}) {
+    CheckPut(key, key);
+    CheckGet(key, key);
+
+    // If our cluster lookup code is correct, there shouldn't be any
+    // redirections.
+    EXPECT_EQ(1, cache_->Redirections()) << " for key " << key;
+    EXPECT_EQ(1, cache_->ClusterSlotsFetches()) << " for key " << key;
+  }
 }
 
 class RedisCacheClusterTestWithReconfiguration : public RedisCacheClusterTest {

@@ -19,6 +19,7 @@
 #include "pagespeed/system/redis_cache.h"
 
 #include <sys/time.h>
+#include <algorithm>
 #include <cstddef>
 #include <utility>
 
@@ -432,6 +433,11 @@ void RedisCache::FetchClusterSlotMapping(Connection* connection) {
           kError, "Wrong type in master spec from CLUSTER SLOTS");
       return;
     }
+    if (start_slot_range->integer > end_slot_range->integer) {
+      message_handler_->Message(
+          kError, "Got range with start > end from CLUSTER SLOTS");
+      return;
+    }
     // Everything is there and is the right type.  Store it.
     new_cluster_mappings.push_back(ClusterMapping(
         start_slot_range->integer, end_slot_range->integer,
@@ -439,23 +445,57 @@ void RedisCache::FetchClusterSlotMapping(Connection* connection) {
             master_ip->str, master_port->integer))));
   }
 
-  // We don't verify that it's a complete mapping, though we could.  The
-  // thinking is that (a) an incomplete mapping would be a redis bug and (b) for
-  // bits of the range that aren't in the mapping we'll just fall back to the
-  // main connection
+  // Sort new_cluster_mappings based on start_slot_range_.
+  sort(new_cluster_mappings.begin(), new_cluster_mappings.end(),
+       [](const RedisCache::ClusterMapping& a,
+          const RedisCache::ClusterMapping& b) {
+         return a.start_slot_range_ < b.start_slot_range_;
+       });
+
+  // Now they are sorted, verify that the slot ranges don't overlap.
+  // Note: This starts at 1, not 0, because we are looking backwards.
+  for (size_t i = 1; i < new_cluster_mappings.size(); ++i) {
+    if (new_cluster_mappings[i].start_slot_range_ ==
+            new_cluster_mappings[i - 1].start_slot_range_) {
+      message_handler_->Message(
+          kError, "Redis returned redundant slot ranges for CLUSTER SLOTS");
+      return;
+    }
+    if (new_cluster_mappings[i].start_slot_range_ <=
+        new_cluster_mappings[i - 1].end_slot_range_) {
+      message_handler_->Message(
+          kError, "Redis returned overlapping slot ranges for CLUSTER SLOTS");
+      return;
+    }
+  }
+
+  // We don't verify that it's a complete mapping, because Redis allows the
+  // slot ranges to not cover the entire space. For slots that's aren't in the
+  // mapping, we just fall back to the main connection
 
   ScopedMutex lock(cluster_map_lock_.get());
   cluster_mappings_.swap(new_cluster_mappings);
 }
 
 RedisCache::Connection* RedisCache::LookupConnection(StringPiece key) {
-  // TODO(jefftk): sort the mapping when we get it and use std::binary_search.
-  // Though there are usually <10 mappings and can't possibly be more than
-  // 16384, so cluster_mappings_ will usually be small and can't be enormous.
   int slot = HashSlot(key);
   ScopedMutex lock(cluster_map_lock_.get());
-  for (const ClusterMapping& cluster_mapping : cluster_mappings_) {
-    // slot ranges are inclusive
+  // Find the first element not less than 'slot' in cluster_mappings_.
+  // This depends on cluster_mappings_ being sorted.
+  auto it =
+      std::lower_bound(cluster_mappings_.begin(), cluster_mappings_.end(), slot,
+                       [](const RedisCache::ClusterMapping& mapping, int slot) {
+                         // lower_bound returns the first entry that is "not
+                         // less than", so we must define our comparison such
+                         // that it's true when slot is in the range (which is
+                         // inclusive).
+                         return mapping.end_slot_range_ < slot;
+                       });
+
+  if (it != cluster_mappings_.end()) {
+    const ClusterMapping& cluster_mapping = *it;
+    // The slot mapping is discontinuous, so the returned mapping still might
+    // not match. slot ranges are inclusive.
     if (slot >= cluster_mapping.start_slot_range_ &&
         slot <= cluster_mapping.end_slot_range_) {
       return cluster_mapping.connection_;
