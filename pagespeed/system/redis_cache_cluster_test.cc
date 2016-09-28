@@ -416,7 +416,9 @@ TEST_F(RedisCacheClusterTest, SlotBoundaries) {
 class RedisCacheClusterTestWithReconfiguration : public RedisCacheClusterTest {
  protected:
   void TearDown() override {
-    ResetClusterConfiguration();
+    if (!connections_.empty()) {
+      ResetClusterConfiguration();
+    }
   }
 };
 
