@@ -69,6 +69,8 @@ namespace {
   static const char kValue4[] = "Value4";
 }  // namespace
 
+typedef std::vector<std::unique_ptr<TcpConnectionForTesting>> ConnectionList;
+
 class RedisCacheClusterTest : public CacheTestBase {
  protected:
   RedisCacheClusterTest()
@@ -76,6 +78,15 @@ class RedisCacheClusterTest : public CacheTestBase {
         statistics_(thread_system_.get()),
         timer_(new NullMutex, 0) {
     RedisCache::InitStats(&statistics_);
+  }
+
+  static void SetUpTestCase() {
+    StringVector node_ids;
+    std::vector<int> ports;
+    ConnectionList connections;
+
+    ASSERT_TRUE(LoadClusterConfiguration(&node_ids, &ports, &connections));
+    ResetClusterConfiguration(&node_ids, &ports, &connections);
   }
 
   // This function checks that node reports cluster as healthy and returns its
@@ -86,7 +97,8 @@ class RedisCacheClusterTest : public CacheTestBase {
   // RedisCache anyway to load cluster map in some C++ structure in advance.
   // We can probably re-use that parser here. You may find hiredis' functions
   // redisReaderCreate, redisReaderFree and redisReaderGetReply useful.
-  StringVector GetNodeClusterConfig(TcpConnectionForTesting* conn) {
+  static StringVector GetNodeClusterConfig(TcpConnectionForTesting* conn,
+                                           ConnectionList* connections) {
     conn->Send("CLUSTER INFO\r\n");
     GoogleString cluster_info = ReadBulkString(conn);
     if (cluster_info.find("cluster_state:ok\r\n") == GoogleString::npos) {
@@ -98,7 +110,7 @@ class RedisCacheClusterTest : public CacheTestBase {
     StringPieceVector lines;
     SplitStringPieceToVector(config_csv, "\r\n", &lines,
                              true /* omit_empty_strings */);
-    CHECK_EQ(lines.size(), connections_.size());
+    CHECK_EQ(lines.size(), connections->size());
 
     StringVector current_config;
     for (StringPiece line : lines) {
@@ -127,14 +139,16 @@ class RedisCacheClusterTest : public CacheTestBase {
   // TODO(jefftk): We should have a binary target that sets up the cluster for
   // tests, and then run_program_with_redis_cluster.sh can call that binary.
   // Then we don't have to duplicate the configuration.
-  void ResetClusterConfiguration() {
+  static void ResetClusterConfiguration(StringVector* node_ids,
+                                       std::vector<int>* ports,
+                                       ConnectionList* connections) {
     LOG(INFO) << "Resetting Redis Cluster configuration back to default";
 
     // First, flush all data from the cluster and reset all nodes.
-    for (auto& conn : connections_) {
+    for (auto& conn : *connections) {
       conn->Send("FLUSHALL\r\nCLUSTER RESET SOFT\r\n");
     }
-    for (auto& conn : connections_) {
+    for (auto& conn : *connections) {
       GoogleString flushall_reply = conn->ReadLineCrLf();
       // We'll get READONLY from slave nodes, which isn't a problem.
       CHECK(flushall_reply == "+OK\r\n" ||
@@ -143,12 +157,12 @@ class RedisCacheClusterTest : public CacheTestBase {
     }
 
     // Now make nodes know about each other.
-    for (auto& conn : connections_) {
-      for (int port : ports_) {
+    for (auto& conn : *connections) {
+      for (int port : *ports) {
         conn->Send(
             StrCat("CLUSTER MEET 127.0.0.1 ", IntegerToString(port), "\r\n"));
       }
-      for (int i = 0, n = ports_.size(); i < n; ++i) {
+      for (int i = 0, n = ports->size(); i < n; ++i) {
         CHECK_EQ("+OK\r\n", conn->ReadLineCrLf());
       }
     }
@@ -158,7 +172,7 @@ class RedisCacheClusterTest : public CacheTestBase {
     // met asynchronously.
 
     // And finally load slots configuration.
-    CHECK_EQ(6, connections_.size());
+    CHECK_EQ(6, connections->size());
     // Some of these boundaries are explicitly probed in the SlotBoundaries
     // test. If you change the cluster layout, you must also change that test.
     static const int slot_ranges[] = { 0, 5500, 11000, 16384 };
@@ -169,13 +183,13 @@ class RedisCacheClusterTest : public CacheTestBase {
       }
       StrAppend(&command, "\r\n");
 
-      auto& conn = connections_[i];
+      auto& conn = (*connections)[i];
       conn->Send(command);
       CHECK_EQ("+OK\r\n", conn->ReadLineCrLf());
     }
     for (int i = 3; i < 6; i++) {
-      auto& conn = connections_[i];
-      conn->Send(StrCat("CLUSTER REPLICATE ", node_ids_[i - 3], "\r\n"));
+      auto& conn = (*connections)[i];
+      conn->Send(StrCat("CLUSTER REPLICATE ", (*node_ids)[i - 3], "\r\n"));
       CHECK_EQ("+OK\r\n", conn->ReadLineCrLf());
     }
 
@@ -192,8 +206,9 @@ class RedisCacheClusterTest : public CacheTestBase {
 
       StringVector first_node_config;
       cluster_is_up = true;
-      for (auto& conn : connections_) {
-        StringVector current_config = GetNodeClusterConfig(conn.get());
+      for (auto& conn : *connections) {
+        StringVector current_config =
+            GetNodeClusterConfig(conn.get(), connections);
         if (current_config.empty()) {
           cluster_is_up = false;
           break;
@@ -214,11 +229,9 @@ class RedisCacheClusterTest : public CacheTestBase {
     LOG(INFO) << "Redis Cluster is reset";
   }
 
-  // TODO(jefftk): setting all of this up for each unit test is slow, and if we
-  // add a lot of unit tests it could be pretty painful.  It would be more
-  // efficient to set things up once in a TestCaseSetUp() and then use them
-  // throughout.
-  bool InitRedisClusterOrSkip() {
+  static bool LoadClusterConfiguration(StringVector* node_ids,
+                                       std::vector<int>* ports,
+                                       ConnectionList* connections) {
     // Parsing environment variables.
     const char* ports_env = getenv("REDIS_CLUSTER_PORTS");
     const char* ids_env = getenv("REDIS_CLUSTER_IDS");
@@ -244,25 +257,27 @@ class RedisCacheClusterTest : public CacheTestBase {
                                                   "different amount of items";
     CHECK_EQ(port_strs.size(), 6) << "Six Redis Cluster nodes are expected";
 
-    ports_.clear();
     for (auto port_str : port_strs) {
       int port;
       CHECK(StringToInt(port_str, &port)) << "Invalid port: " << port_str;
-      ports_.push_back(port);
+      ports->push_back(port);
     }
-    node_ids_.clear();
     for (StringPiece id : id_strs) {
-      node_ids_.push_back(id.as_string());
+      node_ids->push_back(id.as_string());
     }
 
-    connections_.clear();
-    for (int port : ports_) {
-       connections_.emplace_back(new TcpConnectionForTesting());
-      CHECK(connections_.back()->Connect("localhost", port))
+    for (int port : *ports) {
+      connections->emplace_back(new TcpConnectionForTesting());
+      CHECK(connections->back()->Connect("localhost", port))
           << "Cannot connect to Redis Cluster node";
     }
+    return true;
+  }
 
-    ResetClusterConfiguration();
+  bool InitRedisClusterOrSkip() {
+    if (!LoadClusterConfiguration(&node_ids_, &ports_, &connections_)) {
+      return false;  // Already logged an error.
+    }
 
     // Setting up cache.
     cache_.reset(new RedisCache("localhost", ports_[0], thread_system_.get(),
@@ -297,7 +312,7 @@ class RedisCacheClusterTest : public CacheTestBase {
 
   StringVector node_ids_;
   std::vector<int> ports_;
-  std::vector<std::unique_ptr<TcpConnectionForTesting>> connections_;
+  ConnectionList connections_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RedisCacheClusterTest);
@@ -417,7 +432,7 @@ class RedisCacheClusterTestWithReconfiguration : public RedisCacheClusterTest {
  protected:
   void TearDown() override {
     if (!connections_.empty()) {
-      ResetClusterConfiguration();
+      ResetClusterConfiguration(&node_ids_, &ports_, &connections_);
     }
   }
 };
