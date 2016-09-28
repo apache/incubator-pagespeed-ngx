@@ -740,8 +740,26 @@ apr_status_t instaweb_in_place_filter(ap_filter_t* filter,
         first = false;
         ResponseHeaders response_headers(recorder->http_options());
         ApacheRequestToResponseHeaders(*request, &response_headers, NULL);
+
+        // The content-type is likely to be missing from the Apache response
+        // headers until AP_FTYPE_PROTOCOL, and this filter is run earlier, at
+        // AP_FTYPE_CONTENT_SET + 1.  However, the content-type may be in
+        // the request object, and if we populate it into the response headers
+        // early, we can check for uninteresting content-types in
+        // ConsiderResponseHeaders and avoid the overhead of collecting the
+        // content into memory.
+        if ((request->content_type != nullptr) &&
+            (response_headers.DetermineContentType() == nullptr)) {
+          response_headers.Replace(
+              HttpAttributes::kContentType, request->content_type);
+        }
+
         recorder->ConsiderResponseHeaders(
             InPlaceResourceRecorder::kPreliminaryHeaders, &response_headers);
+      }
+
+      if (recorder->failed()) {
+        break;
       }
 
       // Content bucket.
@@ -843,7 +861,7 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
     return ap_pass_brigade(filter->next, bb);
   }
 
-  // This should always be set by handle_as_in_place() in instaweb_handler.cc.
+  // This should always be set by Instaweb::HandleAsInPlace().
   InPlaceResourceRecorder* recorder =
       static_cast<InPlaceResourceRecorder*>(filter->ctx);
 
@@ -1147,13 +1165,19 @@ void mod_pagespeed_register_hooks(apr_pool_t* pool) {
       static_cast<ap_filter_type>(AP_FTYPE_CONTENT_SET + 1));
 
   // Run after contents are set, but before mod_deflate, which runs at
-  // AP_FTYPE_CONTENT_SET.
+  // AP_FTYPE_CONTENT_SET.  We use a separate filter rather
+  // than just adding logic to instaweb_fix_headers_filter because the
+  // recorder gets passed in as the filter->ctx when it is registered
+  // in InstawebHandler::HandleAsInPlace.
   ap_register_output_filter(
       kModPagespeedInPlaceFilterName, instaweb_in_place_filter, NULL,
       static_cast<ap_filter_type>(AP_FTYPE_CONTENT_SET - 1));
   // Run after headers are set by mod_headers, mod_expires, etc. and
   // after Content-Type has been set (which appears to be at
-  // AP_FTYPE_PROTOCOL).
+  // AP_FTYPE_PROTOCOL).  We cannot simply collect the bytes at
+  // AP_FTYPE_PROTOCOL+1 because, it appears, at that time the headers
+  // have been serialized into the content, and it's rather embarassing
+  // to have to rescan for the end of the headers.
   ap_register_output_filter(
       kModPagespeedInPlaceCheckHeadersName,
       instaweb_in_place_check_headers_filter, NULL,

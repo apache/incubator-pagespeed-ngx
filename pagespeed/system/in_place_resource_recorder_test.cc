@@ -84,7 +84,8 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
 
     ResponseHeaders final_headers;
     SetDefaultLongCacheHeaders(&kContentTypeCss, &final_headers);
-    if (header_time == kLateGzipHeader) {
+    if ((header_time == kLateGzipHeader) ||
+        (header_time == kPrelimGzipHeader)) {
       final_headers.Add(HttpAttributes::kContentEncoding,
                         HttpAttributes::kGzip);
     }
@@ -144,7 +145,33 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
     EXPECT_EQ(
         HTTPCache::FindResult(HTTPCache::kRecentFailure,
                               kFetchStatusUncacheable200),
-        HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
+        HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out))
+        << content_type->mime_type();
+  }
+
+  const char* BailsForContentType(const char* mime_type) {
+    ResponseHeaders headers;
+    headers.set_status_code(HttpStatus::kOK);
+    SetDefaultLongCacheHeaders(&kContentTypeCss, &headers);
+    if (mime_type == nullptr) {
+      headers.RemoveAll(HttpAttributes::kContentType);
+    } else {
+      headers.Replace(HttpAttributes::kContentType, mime_type);
+    }
+    headers.ComputeCaching();
+
+    scoped_ptr<InPlaceResourceRecorder> recorder(MakeRecorder(kTestUrl));
+    recorder->ConsiderResponseHeaders(
+        InPlaceResourceRecorder::kPreliminaryHeaders, &headers);
+    if (recorder->failed()) {
+      return "prelim";
+    }
+    recorder->ConsiderResponseHeaders(
+        InPlaceResourceRecorder::kFullHeaders, &headers);
+    if (recorder->failed()) {
+      return "full";
+    }
+    return "none";
   }
 };
 
@@ -312,6 +339,25 @@ TEST_F(InPlaceResourceRecorderTest, SplitOperationWithGzipWithCompressedCache) {
   // Test that gzip on non-prelim headers don't cause gunzip'ing.
   // This is to permit capture of headers after mod_deflate has run.
   TestWithGzip(kLateGzipHeader);
+}
+
+TEST_F(InPlaceResourceRecorderTest, BailEarlyOnUnexpectedContentType) {
+  EXPECT_STREQ("prelim", BailsForContentType(kContentTypeHtml.mime_type()));
+  EXPECT_STREQ("prelim", BailsForContentType(kContentTypePdf.mime_type()));
+  EXPECT_STREQ("prelim", BailsForContentType(kContentTypeText.mime_type()));
+  EXPECT_STREQ("prelim", BailsForContentType("bogus"));
+  EXPECT_STREQ("none", BailsForContentType(kContentTypeCss.mime_type()));
+  EXPECT_STREQ("none", BailsForContentType(kContentTypeJavascript.mime_type()));
+  EXPECT_STREQ("none", BailsForContentType(kContentTypeGif.mime_type()));
+  EXPECT_STREQ("none", BailsForContentType(kContentTypePng.mime_type()));
+  EXPECT_STREQ("none", BailsForContentType(kContentTypeJpeg.mime_type()));
+  EXPECT_STREQ("none", BailsForContentType(kContentTypeWebp.mime_type()));
+
+  // Note that if the content-type is missing in the first round, we
+  // don't bail early, but we will bail late.  This is because in
+  // the preliminary round, we may not know the correct content type
+  // yet, so we need to be conservative and let the processing continue.
+  EXPECT_STREQ("full", BailsForContentType(nullptr));
 }
 
 }  // namespace
