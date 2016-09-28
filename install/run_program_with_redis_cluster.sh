@@ -63,6 +63,21 @@ function is_cluster_healthy() {
   return 0
 }
 
+function add_slots() {
+  local port=$1
+  local start=$2
+  local end=$3
+
+  # Older versions of redis-cli don't seem to like enormous commands.
+  # We break these up into chunks of 500 slots so they will "fit".
+  while [ $(( end - start )) -ge 500 ]; do
+    echo "CLUSTER ADDSLOTS $(seq -s" " $start $(( start + 499 )) )" |\
+      send_command $port
+    (( start += 500 ))
+  done
+  echo "CLUSTER ADDSLOTS $(seq -s" " $start $end)" | send_command $port
+}
+
 echo Starting replicas...
 
 # new_redis calls start_background_server.sh, which sets EXIT trap in current
@@ -79,9 +94,9 @@ echo Starting replicas...
   done
   # This configuration should match one in redis_cache_cluster_test.cc, and any
   # changes here should be copied there.
-  echo "CLUSTER ADDSLOTS $(seq -s" " 0 5499)" | send_command ${PORTS[0]}
-  echo "CLUSTER ADDSLOTS $(seq -s" " 5500 10999)" | send_command ${PORTS[1]}
-  echo "CLUSTER ADDSLOTS $(seq -s" " 11000 16383)" | send_command ${PORTS[2]}
+  add_slots ${PORTS[0]} 0 5499
+  add_slots ${PORTS[1]} 5500 10999
+  add_slots ${PORTS[2]} 11000 16383
   echo "CLUSTER REPLICATE ${IDS[0]}" | send_command ${PORTS[3]}
   echo "CLUSTER REPLICATE ${IDS[1]}" | send_command ${PORTS[4]}
   echo "CLUSTER REPLICATE ${IDS[2]}" | send_command ${PORTS[5]}
