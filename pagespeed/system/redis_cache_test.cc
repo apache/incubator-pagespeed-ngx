@@ -226,7 +226,7 @@ TEST_F(RedisCacheTest, GetStatus) {
   }
 
   GoogleString status;
-  ASSERT_TRUE(cache_->GetStatus(&status));
+  cache_->GetStatus(&status);
 
   // Check that some reasonable info is present.
   EXPECT_THAT(status, HasSubstr(cache_->ServerDescription()));

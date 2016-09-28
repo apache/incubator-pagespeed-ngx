@@ -785,10 +785,9 @@ void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {
 
   if (flags & kIncludeRedis) {
     for (RedisCache* redis : redis_servers_) {
-      if (!redis->GetStatus(out)) {
-        StrAppend(out, "\nError getting redis server status for ",
-                  redis->ServerDescription());
-      }
+      // We can have partial failures, where some cluster machines give errors
+      // and others don't, so have GetStatus handle error reporting.
+      redis->GetStatus(out);
     }
   }
 }

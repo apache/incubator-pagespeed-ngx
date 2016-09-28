@@ -100,9 +100,9 @@ class RedisCache : public CacheInterface {
   void Put(const GoogleString& key, SharedString* value) override;
   void Delete(const GoogleString& key) override;
 
-  // Appends detailed server status to a string. Returns true if succeeded. If
-  // the the server failed to report status, does not change the string.
-  bool GetStatus(GoogleString* status_string);
+  // Appends detailed status for each server to a string.  If a server fails to
+  // report a status, then for that server we append an error message instead.
+  void GetStatus(GoogleString* status_string);
 
   // Redis spec defined hasher for keys.  Static, since it's a pure function.
   static int HashSlot(StringPiece key);
@@ -146,6 +146,10 @@ class RedisCache : public CacheInterface {
         LOCKS_EXCLUDED(redis_mutex_, state_mutex_);
     bool IsHealthy() const LOCKS_EXCLUDED(redis_mutex_, state_mutex_);
     void ShutDown() LOCKS_EXCLUDED(redis_mutex_, state_mutex_);
+
+    GoogleString ToString() {
+      return StrCat(host_, ":", IntegerToString(port_));
+    }
 
     AbstractMutex* GetOperationMutex() const LOCK_RETURNED(redis_mutex_) {
       return redis_mutex_.get();

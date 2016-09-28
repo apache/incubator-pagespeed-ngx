@@ -428,6 +428,59 @@ TEST_F(RedisCacheClusterTest, SlotBoundaries) {
   }
 }
 
+int CountSubstring(const GoogleString& haystack, const GoogleString& needle) {
+  size_t pos = -1;
+  int count = 0;
+  while (true) {
+    pos = haystack.find(needle, pos+1);
+    if (pos == haystack.npos) {
+      return count;
+    }
+    count++;
+  }
+}
+
+TEST_F(RedisCacheClusterTest, GetStatus) {
+  if (!InitRedisClusterOrSkip()) {
+    return;
+  }
+
+  // We're only connected to the main node right now.
+  GoogleString status;
+  cache_->GetStatus(&status);
+  EXPECT_EQ(1, CountSubstring(status, "redis_version:"));
+  EXPECT_EQ(1, CountSubstring(status, "connected_clients:"));
+
+  CheckPut(kKeyOnNode1, kValue1);
+
+  // Still only on the main node.
+  status.clear();
+  cache_->GetStatus(&status);
+  EXPECT_EQ(1, CountSubstring(status, "redis_version:"));
+  EXPECT_EQ(1, CountSubstring(status, "connected_clients:"));
+
+  CheckPut(kKeyOnNode2, kValue2);
+  CheckPut(kKeyOnNode3, kValue1);
+
+  // Now we're connected to all the nodes.
+  status.clear();
+  cache_->GetStatus(&status);
+  LOG(INFO) << status;
+  // Either three or four is ok here, because the connections map isn't fully
+  // deduplicated.  Specifically, when we originally connect to redis we do it
+  // by some name (host:port) and then when we learn about other nodes they
+  // have other names (ip1:port1, ip2:port2, ...)  We can often learn about the
+  // original node by whatever IP redis uses for it instead of the hostname or
+  // IP we originally used for it, in which case we'll get a single duplicate
+  // connection.  It would be possible to fix this by paying attention to node
+  // ids, which newer versions of redis cluster give you, but it would be kind
+  // of a pain just to reduce our connection count by 1.
+  EXPECT_LE(3, CountSubstring(status, "redis_version:"));
+  EXPECT_GE(4, CountSubstring(status, "redis_version:"));
+  EXPECT_LE(3, CountSubstring(status, "connected_clients:"));
+  EXPECT_GE(4, CountSubstring(status, "connected_clients:"));
+}
+
 class RedisCacheClusterTestWithReconfiguration : public RedisCacheClusterTest {
  protected:
   void TearDown() override {

@@ -200,16 +200,31 @@ void RedisCache::Delete(const GoogleString& key) {
                "DEL %b", {REDIS_REPLY_INTEGER}, key.data(), key.length());
 }
 
-bool RedisCache::GetStatus(GoogleString* buffer) {
-  RedisReply reply = RedisCommand(main_connection_,
-                                  "INFO", {REDIS_REPLY_STRING});
-  if (!reply) {
-    return false;
+void RedisCache::GetStatus(GoogleString* buffer) {
+  StrAppend(buffer, "Statistics for Redis (", ServerDescription(), "):\n");
+
+  // We don't want to hold the connections lock while querying all the servers
+  // and connections_ is guaranteed only to grow, so take the lock briefly while
+  // we make a copy.
+  std::vector<Connection*> connections_copy;
+  {
+    ScopedMutex lock(connections_lock_.get());
+    for (auto& entry : connections_) {
+      Connection* connection = entry.second.get();
+      connections_copy.push_back(connection);
+    }
   }
 
-  StrAppend(buffer, "Statistics for Redis (", ServerDescription(), "):\n");
-  StrAppend(buffer, reply->str);
-  return true;
+  for (Connection* connection : connections_copy) {
+    StrAppend(buffer, "\nConnection ", connection->ToString(), ":\n");
+
+    RedisReply reply = RedisCommand(connection, "INFO", {REDIS_REPLY_STRING});
+    if (reply != nullptr) {
+      StrAppend(buffer, reply->str);
+    } else {
+      StrAppend(buffer, "Error calling INFO");
+    }
+  }
 }
 
 RedisCache::RedisReply RedisCache::RedisCommand(
@@ -339,10 +354,8 @@ RedisCache::Connection* RedisCache::GetOrCreateConnection(
     ConnectionsMap::iterator it = connections_.find(name);
     if (it == connections_.end()) {
       LOG(INFO) << "Initiating connection Redis server at " << spec.ToString();
-      it = connections_
-               .emplace(name, std::unique_ptr<Connection>(
-                                  new Connection(this, spec.host, spec.port)))
-               .first;
+      it = connections_.emplace(name, std::unique_ptr<Connection>(
+          new Connection(this, spec.host, spec.port))).first;
       should_start_up = true;
     }
     result = it->second.get();
