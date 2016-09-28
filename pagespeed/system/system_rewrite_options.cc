@@ -107,7 +107,7 @@ void SystemRewriteOptions::AddProperties() {
                     RewriteOptions::kMemcachedTimeoutUs,
                     "Maximum time in microseconds to allow for memcached "
                         "transactions", true);
-  AddSystemProperty(ExternalClusterSpec(),
+  AddSystemProperty(ExternalServerSpec(),
                     &SystemRewriteOptions::redis_server_, "rds",
                     SystemRewriteOptions::kRedisServer,
                     "Redis server to use in format: <host>[:<port>]", false);

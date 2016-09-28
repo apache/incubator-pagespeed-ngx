@@ -804,7 +804,7 @@ class SystemCachesRedisCacheTest : public SystemCachesExternalCacheTestBase {
 
   // TODO(yeputons): share this code with SystemCachesMemCacheTest or move it to
   // the base class.
-  ExternalClusterSpec ServerSpec() {
+  ExternalServerSpec ServerSpec() {
     if (server_spec_.empty()) {
       // This matches the logic in apr_mem_cache_test.
       const char* port_string = getenv("REDIS_PORT");
@@ -814,9 +814,10 @@ class SystemCachesRedisCacheTest : public SystemCachesExternalCacheTestBase {
                    << "$REDIS_PORT is not set to a valid integer. Set that to "
                    << "the port number where redis is running to enable the "
                    << "tests.  See install/run_program_with_redis.sh";
-        return ExternalClusterSpec();
+        return ExternalServerSpec();
       }
-      server_spec_.servers.assign(1, ExternalServerSpec("localhost", port));
+      server_spec_.host = "localhost";
+      server_spec_.port = port;
     }
     return server_spec_;
   }
@@ -836,7 +837,7 @@ class SystemCachesRedisCacheTest : public SystemCachesExternalCacheTestBase {
   }
 
  private:
-  ExternalClusterSpec server_spec_;
+  ExternalServerSpec server_spec_;
 };
 
 ADD_EXTERNAL_CACHE_TESTS(SystemCachesRedisCacheTest)

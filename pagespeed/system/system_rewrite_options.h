@@ -175,10 +175,10 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_memcached_timeout_us(int x) {
     set_option(x, &memcached_timeout_us_);
   }
-  const ExternalClusterSpec& redis_server() const {
+  const ExternalServerSpec& redis_server() const {
     return redis_server_.value();
   }
-  void set_redis_server(const ExternalClusterSpec& x) {
+  void set_redis_server(const ExternalServerSpec& x) {
     set_option(x, &redis_server_);
   }
   int64 redis_reconnection_delay_ms() const {
@@ -400,16 +400,16 @@ class SystemRewriteOptions : public RewriteOptions {
     CopyOnWrite<StaticAssetSet> static_assets_to_cdn_;
   };
 
-  template<int default_port>
-  class ExternalServersOption : public OptionTemplateBase<ExternalClusterSpec> {
+  template<typename Spec, int default_port>
+  class ExternalServersOption : public OptionTemplateBase<Spec> {
    public:
     bool SetFromString(StringPiece value_string,
                        GoogleString* error_detail) override {
-      return mutable_value().SetFromString(value_string, default_port,
-                                           error_detail);
+      return this->mutable_value().SetFromString(value_string, default_port,
+                                                 error_detail);
     }
     GoogleString ToString() const override {
-      return value().ToString();
+      return this->value().ToString();
     }
     GoogleString Signature(const Hasher* hasher) const override {
       return hasher->Hash(ToString());
@@ -460,8 +460,9 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<GoogleString> file_cache_path_;
   Option<GoogleString> log_dir_;
 
-  ExternalServersOption<kMemcachedDefaultPort> memcached_servers_;
-  ExternalServersOption<kRedisDefaultPort> redis_server_;
+  ExternalServersOption<ExternalClusterSpec, kMemcachedDefaultPort>
+      memcached_servers_;
+  ExternalServersOption<ExternalServerSpec, kRedisDefaultPort> redis_server_;
   Option<GoogleString> statistics_logging_charts_css_;
   Option<GoogleString> statistics_logging_charts_js_;
   Option<GoogleString> cache_flush_filename_;

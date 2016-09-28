@@ -55,7 +55,36 @@ class SystemRewriteOptionsTest
     EXPECT_NE("", msg);
   }
 
-  void TestExternalCacheOption(
+  void TestExternalCacheSingleOption(
+      const char* option_name,
+      std::function<ExternalServerSpec(SystemRewriteOptions*)> getter,
+      int default_port) {
+    EXPECT_TRUE(getter(&options_).empty());
+
+    GoogleString msg;
+    {
+      auto result = options_.ParseAndSetOptionFromName1(
+          option_name, "host1:1234", &msg, &handler_);
+      EXPECT_EQ(result, RewriteOptions::kOptionOk);
+      EXPECT_EQ(msg, "");
+      const ExternalServerSpec &spec = getter(&options_);
+      EXPECT_EQ("host1", spec.host);
+      EXPECT_EQ(1234, spec.port);
+    }
+
+    {
+      auto result = options_.ParseAndSetOptionFromName1(
+          option_name, "host5:port", &msg, &handler_);
+      EXPECT_EQ(result, RewriteOptions::kOptionValueInvalid);
+      EXPECT_NE(msg, "");
+      const ExternalServerSpec &spec = getter(&options_);
+      // No data was overwritten
+      EXPECT_EQ("host1", spec.host);
+      EXPECT_EQ(1234, spec.port);
+    }
+  }
+
+  void TestExternalCacheMultipleOption(
       const char* option_name,
       std::function<ExternalClusterSpec(SystemRewriteOptions*)> getter,
       int default_port) {
@@ -244,9 +273,15 @@ TEST_F(SystemRewriteOptionsTest, CentralControllerBadTcpPort) {
 }
 
 TEST_F(SystemRewriteOptionsTest, RedisServer) {
-  TestExternalCacheOption(SystemRewriteOptions::kRedisServer,
-                          &SystemRewriteOptions::redis_server,
-                          SystemRewriteOptions::kRedisDefaultPort);
+  TestExternalCacheSingleOption(SystemRewriteOptions::kRedisServer,
+                                &SystemRewriteOptions::redis_server,
+                                SystemRewriteOptions::kRedisDefaultPort);
+}
+
+TEST_F(SystemRewriteOptionsTest, MemcachedServer) {
+  TestExternalCacheMultipleOption(SystemRewriteOptions::kMemcachedServers,
+                                  &SystemRewriteOptions::memcached_servers,
+                                  SystemRewriteOptions::kMemcachedDefaultPort);
 }
 
 TEST_F(SystemRewriteOptionsTest, RedisReconnectionDelayInitValue) {

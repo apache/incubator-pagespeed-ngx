@@ -238,11 +238,10 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewMemcached(
 
 SystemCaches::ExternalCacheInterfaces SystemCaches::NewRedis(
     SystemRewriteOptions* config) {
-  const ExternalClusterSpec& cluster_spec = config->redis_server();
-  CHECK_EQ(cluster_spec.servers.size(), 1);
+  const ExternalServerSpec& server_spec = config->redis_server();
   RedisCache* redis_server = new RedisCache(
-      cluster_spec.servers[0].host, cluster_spec.servers[0].port,
-      factory_->thread_system(), factory_->message_handler(), factory_->timer(),
+      server_spec.host, server_spec.port, factory_->thread_system(),
+      factory_->message_handler(), factory_->timer(),
       config->redis_reconnection_delay_ms(), config->redis_timeout_us(),
       factory_->statistics());
   factory_->TakeOwnership(redis_server);
@@ -269,19 +268,10 @@ SystemCaches::ExternalCacheInterfaces SystemCaches::NewExternalCache(
   bool use_redis = !config->redis_server().empty();
   bool use_memcached = !config->memcached_servers().empty();
 
-  // TODO(yeputons): remove that check when Redis Cluster is supported.
-  if (use_redis && config->redis_server().servers.size() != 1) {
-    factory_->message_handler()->Message(kError,
-                                         "More than one Redis server is "
-                                         "specified, Redis sharding is not "
-                                         "supported, will ignore the setting");
-    use_redis = false;
-  }
   if (use_redis && use_memcached) {
-    factory_->message_handler()->Message(kWarning,
-                                         "Redis and Memcached are enabled "
-                                         "simultaneously, will use Redis and "
-                                         "ignore Memcached");
+    factory_->message_handler()->Message(
+        kWarning, "Redis and Memcached are enabled simultaneously, will use "
+        "Redis and ignore Memcached");
     use_memcached = false;
   }
 
