@@ -31,9 +31,21 @@ function new_redis() {
 }
 
 function send_command() {
-  if $REDIS_CLI -p "$1" | grep -v OK; then
-    exit 1
+  local rc=0
+  # Capture the output and exit status of the $REDIS_CLI command, guarding
+  # against set -e failures.
+  local redis_out=$($REDIS_CLI -p "$1" || { rc=$?; true; })
+
+  if [ -n "$redis_out" ]; then
+    # Output any non-"OK" messages to STDOUT. If any were output, grep returns
+    # true and we record failure. || true masks grep "failure" from set -e.
+    grep -vw OK <<< "$redis_out" && rc=1 || true
+  else
+    # No output, failure.
+    rc=1
   fi
+
+  return $rc
 }
 
 function is_config_consistent() {
