@@ -1490,10 +1490,17 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         arg);
   } else if (StringCaseEqual(directive, kModPagespeedInheritVHostConfig)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
-    if (ret == NULL) {
+    if (ret == nullptr) {
       ret = ParseOption<bool>(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_inherit_vhost_config, arg);
+      if (ret == nullptr && !factory->inherit_vhost_config()) {
+        handler->Message(kWarning,
+                         "%s has been deprecated and will be forced to \"on\" "
+                         "in the next major mod_pagespeed release. You should "
+                         "update your config",
+                         kModPagespeedInheritVHostConfig);
+      }
     }
   } else if (StringCaseEqual(directive,
                              kModPagespeedCollectRefererStatistics) ||

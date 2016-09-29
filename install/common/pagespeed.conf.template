@@ -3,9 +3,9 @@
     # can set this to "off".
     ModPagespeed on
 
-    # We want VHosts to inherit global configuration.
-    # If this is not included, they'll be independent (except for inherently
-    # global options), at least for backwards compatibility.
+    # VHosts should inherit global configuration.
+    # This option is only for backwards compatibility and will be removed
+    # in the next major mod_pagespeed release.
     ModPagespeedInheritVHostConfig on
 
     # Direct Apache to send all HTML output to the mod_pagespeed
