@@ -85,8 +85,9 @@ class RedisCacheClusterTest : public CacheTestBase {
     std::vector<int> ports;
     ConnectionList connections;
 
-    ASSERT_TRUE(LoadClusterConfiguration(&node_ids, &ports, &connections));
-    ResetClusterConfiguration(&node_ids, &ports, &connections);
+    if (LoadClusterConfiguration(&node_ids, &ports, &connections)) {
+      ResetClusterConfiguration(&node_ids, &ports, &connections);
+    }
   }
 
   // This function checks that node reports cluster as healthy and returns its
