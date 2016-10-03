@@ -199,6 +199,8 @@ const char kModPagespeedHashRefererStatistics[] =
 const char kModPagespeedRefererStatisticsOutputLevel[] =
     "ModPagespeedRefererStatisticsOutputLevel";
 
+static bool warned_about_inherit_deprecation = false;
+
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 
 // TODO(sligocki): Move inside PSOL.
@@ -1495,13 +1497,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       ret = ParseOption<bool>(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_inherit_vhost_config, arg);
-      if (ret == nullptr && !factory->inherit_vhost_config()) {
-        handler->Message(kWarning,
-                         "%s has been deprecated and will be forced to \"on\" "
-                         "in the next major mod_pagespeed release. You should "
-                         "update your config",
-                         kModPagespeedInheritVHostConfig);
-      }
     }
   } else if (StringCaseEqual(directive,
                              kModPagespeedCollectRefererStatistics) ||
@@ -1970,6 +1965,13 @@ void* merge_server_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
       vhost_context->set_non_spdy_config_overlay(
           new_non_spdy_overlay.release());
     }
+  } else if (!warned_about_inherit_deprecation) {
+    warned_about_inherit_deprecation = true;
+    global_context->apache_factory()->message_handler()->Message(
+        kWarning,
+        "%s will be forced to \"on\" in the next major mod_pagespeed release. "
+        "You should add this to your config.",
+        kModPagespeedInheritVHostConfig);
   }
 
   return new_conf;
