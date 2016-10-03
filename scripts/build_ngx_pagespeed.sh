@@ -9,7 +9,12 @@ Usage: build_ngx_pagespeed.sh [options]
 
 Options:
   -v, --ngx-pagespeed-version <ngx_pagespeed version>
-      What version of ngx_pagespeed to build.  Required.
+      What version of ngx_pagespeed to build.  Valid options include:
+      * latest-beta
+      * latest-stable
+      * a version number, such as 1.11.33.4
+
+      If you don't specify a version, defaults to latest-beta.
 
   -n, --nginx-version <nginx version>
       What version of nginx to build.  If not set, this script only prepares the
@@ -198,7 +203,7 @@ function build_ngx_pagespeed() {
   fi
   eval set -- "$opts"
 
-  NPS_VERSION=""
+  NPS_VERSION="latest-beta"
   NGINX_VERSION=""
   BUILDDIR="$HOME"
   DO_DEPS_CHECK=true
@@ -241,10 +246,6 @@ function build_ngx_pagespeed() {
         ;;
     esac
   done
-
-  if [ -z "$NPS_VERSION" ]; then
-    fail "Please pass --ngx-pagespeed-version <version>"
-  fi
 
   if [ ! -d "$BUILDDIR" ]; then
     fail "Told to build in $BUILDDIR, but that directory doesn't exist."
