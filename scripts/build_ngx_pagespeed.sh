@@ -14,7 +14,7 @@ Options:
       * latest-stable
       * a version number, such as 1.11.33.4
 
-      If you don't specify a version, defaults to latest-beta.
+      If you don't specify a version, defaults to latest-stable.
 
   -n, --nginx-version <nginx version>
       What version of nginx to build.  If not set, this script only prepares the
@@ -203,7 +203,7 @@ function build_ngx_pagespeed() {
   fi
   eval set -- "$opts"
 
-  NPS_VERSION="latest-beta"
+  NPS_VERSION="latest-stable"
   NGINX_VERSION=""
   BUILDDIR="$HOME"
   DO_DEPS_CHECK=true
