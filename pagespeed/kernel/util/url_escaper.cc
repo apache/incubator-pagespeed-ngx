@@ -18,8 +18,9 @@
 
 #include "pagespeed/kernel/util/url_escaper.h"
 
-#include <cstddef>
 #include <cctype>
+#include <cstddef>
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -43,7 +44,7 @@ const char kPassThroughChars[] = "._=+-";
 bool ReplaceSubstring(const StringPiece& search, const char* replacement,
                       StringPiece* src, GoogleString* out) {
   bool ret = false;
-  if (src->starts_with(search)) {
+  if (strings::StartsWith(*src, search)) {
     out->append(replacement);
     src->remove_prefix(search.size());
     ret = true;

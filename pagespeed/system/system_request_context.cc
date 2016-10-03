@@ -17,6 +17,7 @@
 #include "pagespeed/system/system_request_context.h"
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/http/domain_registry.h"
 
 namespace net_instaweb {
@@ -28,7 +29,8 @@ GoogleString BracketIpv6(StringPiece local_ip) {
   // We assume the IP address is either IPv4 aa.bb.cc.dd or IPv6 with or without
   // brackets.  We add brackets if we see a : indicating an IPv6 address.
   GoogleString result;
-  if (!local_ip.starts_with("[") && local_ip.find(':') != StringPiece::npos) {
+  if (!strings::StartsWith(local_ip, "[") &&
+      local_ip.find(':') != StringPiece::npos) {
     StrAppend(&result, "[", local_ip, "]");
   } else {
     local_ip.CopyToString(&result);

@@ -25,6 +25,7 @@
 #include <cstdio>
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_element.h"
@@ -583,7 +584,7 @@ void HtmlLexer::EvalScriptTag(char c) {
   // http://lists.w3.org/Archives/Public/public-html/2009Aug/0452.html
   // for a bit of backstory.
   if (c == '-') {
-    if (StringPiece(literal_).ends_with("<!--")) {
+    if (strings::EndsWith(StringPiece(literal_), "<!--")) {
       script_html_comment_ = true;
     }
   }
@@ -626,7 +627,7 @@ void HtmlLexer::EvalScriptTag(char c) {
       // Inside a comment, what looks like a 'terminated' <script>
       // gets us into an another level of escaping.
       script_html_comment_script_ = true;
-    } else if (c == '>' && StringPiece(literal_).ends_with("-->")) {
+    } else if (c == '>' && strings::EndsWith(StringPiece(literal_), "-->")) {
       // --> exits both level of escaping.
       script_html_comment_ = false;
       script_html_comment_script_ = false;

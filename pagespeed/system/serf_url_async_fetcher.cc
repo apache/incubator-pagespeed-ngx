@@ -35,7 +35,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
-#include "pagespeed/system/apr_thread_compatible_pool.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/condvar.h"
@@ -50,6 +50,7 @@
 #include "pagespeed/kernel/http/http_names.h"
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
+#include "pagespeed/system/apr_thread_compatible_pool.h"
 
 // This is an easy way to turn on lots of debug messages. Note that this
 // is somewhat verbose.
@@ -618,7 +619,7 @@ void SerfFetch::FixUserAgent() {
   GoogleString version = StrCat(
       " (", kModPagespeedSubrequestUserAgent,
       "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING ")");
-  if (!StringPiece(user_agent).ends_with(version)) {
+  if (!strings::EndsWith(StringPiece(user_agent), version)) {
     user_agent += version;
   }
   request_headers->Add(HttpAttributes::kUserAgent, user_agent);

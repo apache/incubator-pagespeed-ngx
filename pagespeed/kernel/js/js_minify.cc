@@ -15,6 +15,7 @@
 #include "pagespeed/kernel/js/js_minify.h"
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/source_map.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -432,13 +433,14 @@ void Minifier<OutputConsumer>::Minify() {
     } else if (IsIdentifierChar(ch)) {
       // Identifiers, keywords, and numeric literals:
       ConsumeNameOrNumber();
-    } else if (ch == '<' && input_.substr(index_).starts_with("<!--")) {
+    } else if (ch == '<' &&
+               strings::StartsWith(input_.substr(index_), "<!--")) {
       // Treat <!-- as a line comment.  Note that the substr() here is very
       // efficient because input_ is a StringPiece, not a string.
       ConsumeLineComment();
     } else if (ch == '-' &&
                (whitespace_ == kLinebreak || prev_token_ == kStartToken) &&
-               input_.substr(index_).starts_with("-->")) {
+               strings::StartsWith(input_.substr(index_), "-->")) {
       // Treat --> as a line comment if it's at the start of a line.
       ConsumeLineComment();
     } else if (ch == '+' && Peek() == '+') {
@@ -672,8 +674,8 @@ JsKeywords::Type JsMinifyingTokenizer::NextTokenHelper(
       //   all comments matching a user-specified pattern.  It might also be
       //   nice to make retaining of IE conditional compilation comments
       //   optional, so we can turn it off for non-IE browsers.
-      if (token.size() >= 6 && token.starts_with("/*@") &&
-          token.ends_with("@*/")) {
+      if (token.size() >= 6 && strings::StartsWith(token, "/*@") &&
+          strings::EndsWith(token, "@*/")) {
         *token_out = token;
         *position_out = first_position;  // Beginning of whitespace/comments.
         return type;
@@ -722,19 +724,19 @@ bool JsMinifyingTokenizer::WhitespaceNeededBefore(
             // ...doesn't already have a decimal point or exponent, and...
             prev_token_.find_first_of(".eE") == StringPiece::npos &&
             // ...either doesn't start with a zero digit, or...
-            (!prev_token_.starts_with("0") ||
+            (!strings::StartsWith(prev_token_, "0") ||
              // ...does start with a zero digit, but is neither hex nor octal.
              (prev_token_.find_first_of("xX") == StringPiece::npos &&
               prev_token_.find_first_of("89") != StringPiece::npos)));
-  } else if (prev_token_.ends_with("/")) {
-    return token.starts_with("/");
-  } else if (prev_token_.ends_with("+")) {
-    return token.starts_with("+");
-  } else if (prev_token_.ends_with("<")) {
-    return token.starts_with("!");
-  } else if (prev_token_.ends_with("!") ||
-             prev_token_.ends_with("-")) {
-    return token.starts_with("-");
+  } else if (strings::EndsWith(prev_token_, "/")) {
+    return strings::StartsWith(token, "/");
+  } else if (strings::EndsWith(prev_token_, "+")) {
+    return strings::StartsWith(token, "+");
+  } else if (strings::EndsWith(prev_token_, "<")) {
+    return strings::StartsWith(token, "!");
+  } else if (strings::EndsWith(prev_token_, "!") ||
+             strings::EndsWith(prev_token_, "-")) {
+    return strings::StartsWith(token, "-");
   }
   return false;
 }

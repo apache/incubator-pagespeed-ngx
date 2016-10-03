@@ -76,6 +76,7 @@
 // includes, and not be in abc-order with the net/instaweb/... includes.
 #include "pagespeed/apache/apache_logging_includes.h"
 
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/apache/log_message_handler.h"
 #include "unixd.h"                                                 // NOLINT
 
@@ -1446,7 +1447,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     directive = kModPagespeedImageMaxRewritesAtOnce;
   }
 
-  if (directive.starts_with(prefix)) {
+  if (strings::StartsWith(directive, prefix)) {
     StringPiece option = directive.substr(prefix.size());
     GoogleString msg;
 
@@ -1624,7 +1625,7 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
   StringPiece prefix(RewriteQuery::kModPagespeed);
   StringPiece directive = cmd->directive->directive;
   // Go through generic path first.
-  if (directive.starts_with(prefix)) {
+  if (strings::StartsWith(directive, prefix)) {
     GoogleString msg;
     StringPiece option = directive.substr(prefix.size());
     RewriteOptions::OptionSettingResult result =
@@ -1662,7 +1663,7 @@ static const char* ParseDirective3(
   StringPiece prefix(RewriteQuery::kModPagespeed);
   StringPiece directive = cmd->directive->directive;
   // Go through generic path first.
-  if (directive.starts_with(prefix)) {
+  if (strings::StartsWith(directive, prefix)) {
     GoogleString msg;
     RewriteOptions::OptionSettingResult result =
         config->ParseAndSetOptionFromName3(

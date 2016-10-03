@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/http/data_url.h"
 
 #include <cstddef>
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/base64_util.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -64,11 +65,11 @@ void DataUrl(const ContentType& content_type,
 }
 
 bool IsDataUrl(const StringPiece url) {
-  return url.starts_with("data:");
+  return strings::StartsWith(url, "data:");
 }
 
 bool IsDataImageUrl(const StringPiece url) {
-  return url.starts_with("data:image/");
+  return strings::StartsWith(url, "data:image/");
 }
 
 bool ParseDataUrl(const StringPiece& url,
@@ -84,7 +85,7 @@ bool ParseDataUrl(const StringPiece& url,
   *encoding = UNKNOWN;
   *encoded_content = StringPiece();
   size_t header_boundary = url.find(',');
-  if (header_boundary == url.npos || !url.starts_with(kData)) {
+  if (header_boundary == url.npos || !strings::StartsWith(url, kData)) {
     return false;
   }
   StringPiece header(url.data(), header_boundary);
@@ -94,7 +95,7 @@ bool ParseDataUrl(const StringPiece& url,
     mime_boundary = header_boundary;
     *encoding = PLAIN;
   } else if (header_boundary >= mime_boundary + kBase64Size) {
-    if (header.ends_with(kBase64)) {
+    if (strings::EndsWith(header, kBase64)) {
       *encoding = BASE64;
     } else {
       *encoding = PLAIN;

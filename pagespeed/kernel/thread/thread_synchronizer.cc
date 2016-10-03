@@ -21,6 +21,7 @@
 #include "pagespeed/kernel/thread/thread_synchronizer.h"
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/condvar.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -137,7 +138,7 @@ void ThreadSynchronizer::DoSignal(const char* key) {
 bool ThreadSynchronizer::MatchesPrefix(const char* key) const {
   StringPiece key_piece(key);
   for (int i = 0, n = prefixes_.size(); i < n; ++i) {
-    if (key_piece.starts_with(prefixes_[i])) {
+    if (strings::StartsWith(key_piece, prefixes_[i])) {
       return true;
     }
   }

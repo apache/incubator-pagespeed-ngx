@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/cache/cache_key_prepender.h"
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -44,7 +45,7 @@ class CacheKeyPrepender::KeyPrependerCallback : public DelegatingCacheCallback {
 
   bool ValidateCandidate(const GoogleString& key,
                          CacheInterface::KeyState state) override {
-    if (!HasPrefixString(key, prefix_.Value())) {
+    if (!strings::StartsWith(key, prefix_.Value())) {
       LOG(DFATAL) << "KeyPrependerCallback has received a key without expected "
                  << "prefix, treating as cache miss";
       return false;

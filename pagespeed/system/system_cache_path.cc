@@ -19,8 +19,7 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "pagespeed/system/system_rewrite_options.h"
-#include "pagespeed/system/system_server_context.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/callback.h"
@@ -35,6 +34,8 @@
 #include "pagespeed/kernel/cache/threadsafe_cache.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_lock_manager.h"
 #include "pagespeed/kernel/util/file_system_lock_manager.h"
+#include "pagespeed/system/system_rewrite_options.h"
+#include "pagespeed/system/system_server_context.h"
 
 namespace net_instaweb {
 
@@ -90,8 +91,7 @@ SystemCachePath::SystemCachePath(const StringPiece& path,
     // of the higher-level server block.
     StringPiece path(config->file_cache_path());
     cache_flush_filename_ = StrCat(
-        path, (path.size() > 0 &&
-        path.ends_with("/")) ? "" : "/",
+        path, (path.size() > 0 && strings::EndsWith(path, "/")) ? "" : "/",
         cache_flush_filename_);
   }
 

@@ -24,11 +24,12 @@
 #include <utility>                      // for pair
 #include <vector>
 
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/escaping.h"
-#include "pagespeed/kernel/base/file_writer.h"
 #include "pagespeed/kernel/base/file_system.h"
+#include "pagespeed/kernel/base/file_writer.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
@@ -431,7 +432,8 @@ bool StatisticsLogfileReader::ReadNextDataBlock(int64* timestamp,
   size_t offset = 0;
   // The first line should always be "timestamp: xxx".
   // If it's not, we're done; otherwise, we grab the timestamp value.
-  while (StringPiece(buffer_).substr(offset).starts_with("timestamp: ")) {
+  while (
+      strings::StartsWith(StringPiece(buffer_).substr(offset), "timestamp: ")) {
     int64 old_timestamp = *timestamp;
     // If the timestamp was cut off in the middle of the buffer, we need to
     // read more into the buffer.

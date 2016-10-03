@@ -38,13 +38,13 @@
 #include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/automatic/proxy_interface_test_base.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/gtest.h"
-#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/null_message_handler.h"
@@ -58,6 +58,7 @@
 #include "pagespeed/kernel/base/timer.h"
 #include "pagespeed/kernel/cache/lru_cache.h"
 #include "pagespeed/kernel/html/empty_html_filter.h"
+#include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/html/html_filter.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
 #include "pagespeed/kernel/http/content_type.h"
@@ -3560,10 +3561,10 @@ TEST_F(ProxyInterfaceOriginPropertyPageTest, Basic) {
   ResponseHeaders headers;
   GoogleString body;
   FetchFromProxy(kPageUrl, true, &body, &headers);
-  EXPECT_TRUE(HasPrefixString(body, "<!--Site visit:0-->")) << body;
+  EXPECT_TRUE(strings::StartsWith(body, "<!--Site visit:0-->")) << body;
 
   FetchFromProxy(kPageUrl, true, &body, &headers);
-  EXPECT_TRUE(HasPrefixString(body, "<!--Site visit:1-->")) << body;
+  EXPECT_TRUE(strings::StartsWith(body, "<!--Site visit:1-->")) << body;
 
   // Count increases on a different page, too.
   GoogleString other_page = StrCat("totally/different/from/", kPageUrl);
@@ -3571,7 +3572,7 @@ TEST_F(ProxyInterfaceOriginPropertyPageTest, Basic) {
                                 "<div><p></p></div>", 0);
 
   FetchFromProxy(other_page, true, &body, &headers);
-  EXPECT_TRUE(HasPrefixString(body, "<!--Site visit:2-->")) << body;
+  EXPECT_TRUE(strings::StartsWith(body, "<!--Site visit:2-->")) << body;
 }
 
 TEST_F(ProxyInterfaceOriginPropertyPageTest, PostWithDelayCache) {

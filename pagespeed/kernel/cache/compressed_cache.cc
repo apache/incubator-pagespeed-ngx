@@ -19,6 +19,7 @@
 #include "pagespeed/kernel/cache/compressed_cache.h"
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -68,8 +69,8 @@ class CompressedCallback : public CacheInterface::Callback {
       GoogleString uncompressed;
       StringWriter writer(&uncompressed);
       StringPiece compressed = value()->Value();
-      if (compressed.ends_with(
-              StringPiece(kTrailer, STATIC_STRLEN(kTrailer))) &&
+      if (strings::EndsWith(compressed,
+                            StringPiece(kTrailer, STATIC_STRLEN(kTrailer))) &&
           GzipInflater::Inflate(
               compressed.substr(0, compressed.size() - STATIC_STRLEN(kTrailer)),
               GzipInflater::kDeflate, &writer)) {

@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/content_type.h"
@@ -87,7 +88,7 @@ bool DocType::Parse(const StringPiece& directive,
       }
     } else if (parts.size() == 5 && StringCaseEqual(parts[2], "public")) {
       const StringPiece parts3(parts[3]);
-      if (parts3.starts_with("-//W3C//DTD XHTML")) {
+      if (strings::StartsWith(parts3, "-//W3C//DTD XHTML")) {
         if (parts3 == "-//W3C//DTD XHTML 1.1//EN") {
           doctype_ = XHTML_1_1;
         } else if (parts3 == "-//W3C//DTD XHTML 1.0 Strict//EN") {

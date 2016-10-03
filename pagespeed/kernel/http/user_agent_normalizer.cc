@@ -17,6 +17,7 @@
 #include "pagespeed/kernel/http/user_agent_normalizer.h"
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/util/re2.h"
 
@@ -102,12 +103,12 @@ GoogleString IEUserAgentNormalizer::Normalize(const GoogleString& in) const {
     SplitStringUsingSubstr(Re2ToStringPiece(match2), "; ", &fragments);
     for (int i = 0, n = fragments.size(); i < n; ++i) {
       StringPiece fragment = fragments[i];
-      if (HasPrefixString(fragment, "Trident") ||
-          HasPrefixString(fragment, "Windows ") ||
-          HasPrefixString(fragment, "WOW64 ") ||
-          HasPrefixString(fragment, "chromeframe") ||
-          HasPrefixString(fragment, "IEMobile") ||
-          HasPrefixString(fragment, "Media Center PC")) {
+      if (strings::StartsWith(fragment, "Trident") ||
+          strings::StartsWith(fragment, "Windows ") ||
+          strings::StartsWith(fragment, "WOW64 ") ||
+          strings::StartsWith(fragment, "chromeframe") ||
+          strings::StartsWith(fragment, "IEMobile") ||
+          strings::StartsWith(fragment, "Media Center PC")) {
         StrAppend(&out, "; ", fragment);
       }
     }

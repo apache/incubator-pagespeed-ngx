@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/stl_util.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -275,17 +276,17 @@ void CachingHeaders::ParseCacheControlIfNecessary() {
         StringPiece value = values[i];
         if (value == "public") {
           public_ = true;
-        } else if (value.starts_with("private")) {
+        } else if (strings::StartsWith(value, "private")) {
           // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html :
           // "private" [ "=" <"> 1#field-name <"> ] ; Section 14.9.1
           // So we must use 'starts_with' rather than test for equality.
           private_ = true;
-        } else if (value.starts_with("no-cache")) {
+        } else if (strings::StartsWith(value, "no-cache")) {
           // "no-cache" [ "=" <"> 1#field-name <"> ]; Section 14.9.1
           no_cache_ = true;
         } else if (value == "no-store") {
           no_store_ = true;
-        } else if (value.starts_with("max-age=")) {
+        } else if (strings::StartsWith(value, "max-age=")) {
           int max_age_value = 0;
           StringPiece max_age_piece = value.substr(STATIC_STRLEN("max-age="));
           if (StringToInt(max_age_piece, &max_age_value)) {

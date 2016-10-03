@@ -24,6 +24,7 @@
 #include <utility>  // for pair
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/rde_hash_map.h"
 #include "pagespeed/kernel/base/string.h"
@@ -220,7 +221,7 @@ class LRUCacheBase {
   void DeleteWithPrefixForTesting(StringPiece prefix) {
     typename Map::iterator p = map_.begin();
     while (p != map_.end()) {
-      if (HasPrefixString(p->first, prefix)) {
+      if (strings::StartsWith(p->first, prefix)) {
         typename Map::iterator next = p;
         ++next;
         DeleteAt(p);

@@ -16,6 +16,7 @@
 
 #include "pagespeed/kernel/html/doctype.h"
 
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/http/content_type.h"
@@ -48,8 +49,8 @@ class DocTypeTest : public testing::Test {
  private:
   // Trim the "<!" and ">" off of a "<!...>" string.
   StringPiece TrimDirective(const StringPiece& directive) {
-    EXPECT_TRUE(directive.starts_with("<!"));
-    EXPECT_TRUE(directive.ends_with(">"));
+    EXPECT_TRUE(strings::StartsWith(directive, "<!"));
+    EXPECT_TRUE(strings::EndsWith(directive, ">"));
     return directive.substr(2, directive.size() - 3);
   }
 };

@@ -20,6 +20,7 @@
 
 #include <cstddef>
 
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
@@ -73,7 +74,7 @@ void EscapeToJsStringLiteral(const StringPiece& original,
         // (See the "script data escaped" HTML lexer states in the HTML5 spec).
         StringPiece rest_of_input = original.substr(c);
         if (StringCaseStartsWith(rest_of_input, "<script") ||
-            HasPrefixString(rest_of_input, "<!--")) {
+            strings::StartsWith(rest_of_input, "<!--")) {
           *(escaped) += "\\u003c";
         } else {
           *(escaped) += '<';
@@ -82,7 +83,7 @@ void EscapeToJsStringLiteral(const StringPiece& original,
       }
       case '-': {
         // Similarly to <!-- (see above) --> can be special.
-        if (HasPrefixString(original.substr(c), "-->")) {
+        if (strings::StartsWith(original.substr(c), "-->")) {
           *(escaped) += "\\u002d";
         } else {
           *(escaped) += '-';

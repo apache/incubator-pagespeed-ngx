@@ -146,6 +146,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/js/js_keywords.h"
@@ -600,12 +601,13 @@ JsKeywords::Type JsTokenizer::ConsumeLineComment(StringPiece* token_out) {
 bool JsTokenizer::TryConsumeComment(
     JsKeywords::Type* type_out, StringPiece* token_out) {
   DCHECK(!input_.empty());
-  if (input_.starts_with("/*")) {
+  if (strings::StartsWith(input_, "/*")) {
     *type_out = ConsumeBlockComment(token_out);
     return true;
   }
-  if (input_.starts_with("//") || input_.starts_with("<!--") ||
-      (start_of_line_ && input_.starts_with("-->"))) {
+  if (strings::StartsWith(input_, "//") ||
+      strings::StartsWith(input_, "<!--") ||
+      (start_of_line_ && strings::StartsWith(input_, "-->"))) {
     *type_out = ConsumeLineComment(token_out);
     return true;
   }

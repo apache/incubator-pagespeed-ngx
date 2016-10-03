@@ -18,6 +18,7 @@
 
 #include "pagespeed/kernel/base/charset_util.h"
 
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 

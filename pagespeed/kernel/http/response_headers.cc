@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/string.h"
@@ -932,7 +933,7 @@ bool ResponseHeaders::ParseDateHeader(
 }
 
 void ResponseHeaders::ParseFirstLine(const StringPiece& first_line) {
-  if (first_line.starts_with("HTTP/")) {
+  if (strings::StartsWith(first_line, "HTTP/")) {
     ParseFirstLineHelper(first_line.substr(5));
   } else {
     LOG(WARNING) << "Could not parse first line: " << first_line;

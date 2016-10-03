@@ -27,11 +27,9 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "pagespeed/system/system_cache_path.h"
-#include "pagespeed/system/system_caches.h"
-#include "pagespeed/system/system_rewrite_options.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/property_store.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/callback.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -49,6 +47,9 @@
 #include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/util/statistics_logger.h"
+#include "pagespeed/system/system_cache_path.h"
+#include "pagespeed/system/system_caches.h"
+#include "pagespeed/system/system_rewrite_options.h"
 
 namespace net_instaweb {
 
@@ -862,7 +863,7 @@ void AdminSite::PurgeHandler(StringPiece url, SystemCachePath* cache_path,
       new PurgeFetchCallbackGasket(fetch, message_handler_);
   PurgeContext::PurgeCallback* callback = NewCallback(
       gasket, &PurgeFetchCallbackGasket::Done);
-  if (url.ends_with("*")) {
+  if (strings::EndsWith(url, "*")) {
     // If the url is "*" we'll just purge everything.  Note that we will
     // ignore any sub-paths in the expression.  We can only purge the
     // entire cache, or specific URLs, not general wildcards.
