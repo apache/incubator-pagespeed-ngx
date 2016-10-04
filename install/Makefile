@@ -309,12 +309,10 @@ install_except_module : mod_pagespeed_file_root
 	cat $(CONF_SOURCES) > $(APACHE_CONF_DIR)/pagespeed.conf
 	cp -f $(STAGING_DIR)/pagespeed_libraries.conf \
 	      $(APACHE_CONF_D)/pagespeed_libraries.conf
-	rm -rf $(APACHE_DOC_ROOT)/mod_pagespeed_example \
-	       $(APACHE_DOC_ROOT)/mod_pagespeed_test
-	cp -r $(STAGING_DIR)/mod_pagespeed_example \
-	      $(STAGING_DIR)/mod_pagespeed_test $(APACHE_DOC_ROOT)
-	chown -R $(APACHE_USER) $(APACHE_DOC_ROOT)/mod_pagespeed_example \
-	 			$(APACHE_DOC_ROOT)/mod_pagespeed_test
+	ln -Tsf $(STAGING_DIR)/mod_pagespeed_example \
+	        $(APACHE_DOC_ROOT)/mod_pagespeed_example
+	ln -Tsf $(STAGING_DIR)/mod_pagespeed_test \
+	        $(APACHE_DOC_ROOT)/mod_pagespeed_test
 
 # To install the mod_pagespeed configuration into the system, you must
 # run this as root, or under sudo.
@@ -420,7 +418,7 @@ enable_ports_and_file_access :
 	           $(MOD_PAGESPEED_LOG) ; do \
 	  mkdir -p $$dir; \
 	  chown $(APACHE_USER) $$dir; \
-	  chcon -R --reference=$(APACHE_DOC_ROOT) $$dir; \
+	  chcon -R --reference=$(APACHE_DOC_ROOT) $$dir || true; \
 	done
 
 # Hooks for tests we can only run in development due to needing extensive

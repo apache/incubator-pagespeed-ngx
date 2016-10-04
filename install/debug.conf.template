@@ -2033,9 +2033,10 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
 # is needed to allow automatic/system_tests/resource_content_type_html.sh
 # to work, as that is needed for
 # automatic/system_tests/resource_content_type_html.sh to work.
-<FilesMatch "\.(webp)$">
-  Header add Content-Type image/webp
-</FilesMatch>
+AddType image/webp .webp
+
+# As above, for verifying JSON content-type in system/system_test.sh
+AddType application/json .json
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
 #ALL_DIRECTIVES ModPagespeedAllow foo

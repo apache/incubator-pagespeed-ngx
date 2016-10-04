@@ -46,19 +46,25 @@ TAG=$RELEASE
 
 do_patch="0"
 
-if [ -d /var/www/html/do_not_modify ] || \
-   [ -d /var/www/html/mod_pagespeed_example ] || \
-   [ -d /var/www/html/mod_pagespeed_test ]; then
+DOC_ROOT=/var/www
+[ -d /var/www/html ] && DOC_ROOT=/var/www/html
+
+if [ -d $DOC_ROOT/do_not_modify -a
+     ! -L $DOC_ROOT/do_not_modify ] || \
+   [ -d $DOC_ROOT/mod_pagespeed_example -a
+     ! -L $DOC_ROOT/mod_pagespeed_example ] || \
+   [ -d $DOC_ROOT/mod_pagespeed_test -a
+     ! -L $DOC_ROOT/mod_pagespeed_test ]; then
   if [ $clean -eq 0 ]; then
-    echo Stale directories in /var/www/html/ exist.  Clean them
+    echo Stale directories in $DOC_ROOT exist.  Clean them
     echo yourself or specify -clean as first arg to let the script do that
     echo for you.
     exit 1
   fi
   set -x
-  sudo rm -rf /var/www/html/do_not_modify
-  sudo rm -rf /var/www/html/mod_pagespeed_example
-  sudo rm -rf /var/www/html/mod_pagespeed_test
+  sudo rm -rf $DOC_ROOT/do_not_modify
+  sudo rm -rf $DOC_ROOT/mod_pagespeed_example
+  sudo rm -rf $DOC_ROOT/mod_pagespeed_test
 else
   set -x
 fi
@@ -98,10 +104,8 @@ PATH=~/bin/depot_tools:$PATH
 if grep -q CentOS /etc/issue; then
   # We redirect stderr to stdout because on Centos5 "httpd -M" writes to stderr
   # for some reason.
-  # TODO(jmarantz): find the appropriate installation snippet for CentOS
-  # rather than just asking the user to do it.
   /usr/sbin/httpd -M 2>&1 | grep -q php5_module || \
-    { echo You must install mod_php5 to run tests that require PHP; exit 1; }
+    sudo yum install php php-mbstring
 
   EXT=rpm
   INSTALL="rpm --install"
@@ -128,22 +132,12 @@ else
   INSTALL="dpkg --install"
   RESTART="./ubuntu.sh apache_debug_restart"
   TEST="./ubuntu.sh apache_vm_system_tests"
-  echo We appear to NOT be running on CentOS.  Building deb...
-fi
 
-NBITS=$(getconf LONG_BIT)
-if [ "$EXT" = "rpm" ]; then
-  if [ $NBITS = "32" ]; then
-    HOMEDIR="/var/chroot/centos_i386/home/buildbot"
-  else
-    HOMEDIR="/home/buildbot"
+  if [ -d /usr/lib/gcc-mozilla/bin ]; then
+    export PATH=/usr/lib/gcc-mozilla/bin:$PATH
   fi
-else
-  if [ $NBITS = "32" ]; then
-    HOMEDIR="/var/chroot/lucid_i386/home/buildbot"
-  else
-    HOMEDIR="/home/buildbot"
-  fi
+
+  echo We appear to NOT be running on CentOS.  Building deb...
 fi
 
 if [ $(uname -m) = x86_64 ]; then
@@ -180,8 +174,9 @@ function check() {
   echo "[$(date '+%k:%M:%S')] $@ >> $log_filename"
   echo $@ >> "$log_filename"
   $@ >> "$log_filename" 2>&1
-  if [ $? != 0 ]; then
-    echo '***' status is $?
+  rc=$?
+  if [ $rc != 0 ]; then
+    echo '***' status is $rc
     tail "$log_filename"
     echo Failed at $(date)
     exit 1
@@ -203,6 +198,10 @@ if [ "$TAG" != "trunk" ]; then  # Just treat "trunk" as master.
 fi
 
 if [ "$EXT" = "rpm" ] ; then
+  # MANYLINUX1 is required for CentOS 5 (but probably not newer CentOS):
+  # https://github.com/grpc/grpc/issues/7147
+  export CFLAGS='-DGPR_MANYLINUX1 -std=gnu99'
+
   # On the centos buildbot we need to patch the Makefile to make
   # apache_debug_restart to a killall -9 httpd.
   cd $build_dir/src
@@ -299,6 +298,7 @@ echo Testing release ...
 check system_test.log sudo -E $TEST
 
 echo Copy the unstripped .so files to a safe place for easier debugging later.
+NBITS=$(getconf LONG_BIT)
 cp $build_dir/src/out/Release/libmod_pagespeed.so \
   "$release_dir"/unstripped_libmodpagespeed_${NBITS}_${EXT}.so
 cp $build_dir/src/out/Release/libmod_pagespeed_ap24.so \
