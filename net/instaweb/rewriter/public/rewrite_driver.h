@@ -227,6 +227,16 @@ class RewriteDriver : public HtmlParse {
     write_property_cache_dom_cohort_ = x;
   }
 
+  // Returns the list of cohorts that should be read in based on
+  // our options.
+  static PropertyCache::CohortVector GetCohortList(
+      const PropertyCache* pcache, const RewriteOptions* options,
+      const ServerContext* server_context);
+
+  // Should be called once everything in the property cache has been read,
+  // and the pages set on the object.
+  void PropertyCacheSetupDone();
+
   RequestContextPtr request_context() { return request_context_; }
   void set_request_context(const RequestContextPtr& x);
 

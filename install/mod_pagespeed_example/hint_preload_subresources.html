@@ -1,0 +1,12 @@
+<html>
+  <head>
+    <title>hint_preload_subresources example</title>
+    <link rel="stylesheet" type="text/css" href="styles/all_using_imports.css">
+  </head>
+  <body>
+    <img src="./images/Puzzle.jpg">
+    <p><script src="inline_javascript.js"></script>
+    if hint_preload_subresources is on, this page should get Link: headers
+    describing stylesheets and JavaScript it uses (but not the image).
+  </body>
+</html>

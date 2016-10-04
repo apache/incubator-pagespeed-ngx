@@ -79,6 +79,7 @@ class CollectDependenciesFilterTest : public RewriteTestBase {
     page_ = NewMockPage(kRequestUrl);
     rewrite_driver()->set_property_page(page_);
     pcache_->Read(page_);
+    rewrite_driver()->PropertyCacheSetupDone();
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
   }
 

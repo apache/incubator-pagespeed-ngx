@@ -97,10 +97,12 @@ class CachePropertyStore : public PropertyStore {
 
   virtual GoogleString Name() const;
 
-  static GoogleString FormatName2(StringPiece cohort_name1,
+  static GoogleString FormatName3(StringPiece cohort_name1,
                                   StringPiece cohort_cache1,
                                   StringPiece cohort_name2,
-                                  StringPiece cohort_cache2);
+                                  StringPiece cohort_cache2,
+                                  StringPiece cohort_name3,
+                                  StringPiece cohort_cache3);
 
  private:
   GoogleString cache_key_prefix_;

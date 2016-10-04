@@ -940,6 +940,23 @@ void RewriteDriver::SetServerContext(ServerContext* server_context)
   url_trim_filter_.reset(new UrlLeftTrimFilter(this, statistics()));
 }
 
+PropertyCache::CohortVector RewriteDriver::GetCohortList(
+    const PropertyCache* pcache, const RewriteOptions* options,
+    const ServerContext* server_context) {
+  bool need_deps = options->NeedsDependenciesCohort();
+  PropertyCache::CohortVector filtered_cohorts;
+  for (const PropertyCache::Cohort* cohort : pcache->GetAllCohorts()) {
+    if (need_deps || cohort != server_context->dependencies_cohort()) {
+      filtered_cohorts.push_back(cohort);
+    }
+  }
+  return filtered_cohorts;
+}
+
+void RewriteDriver::PropertyCacheSetupDone() {
+  dependency_tracker_->Start();
+}
+
 RequestTrace* RewriteDriver::trace_context() {
   return request_context_.get() == NULL ? NULL :
       request_context_->root_trace_context();
@@ -2315,8 +2332,6 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   }
   start_time_ms_ = server_context_->timer()->NowMs();
   set_log_rewrite_timing(options()->log_rewrite_timing());
-
-  dependency_tracker_->Start();
 
   if (debug_filter_ != NULL) {
     debug_filter_->InitParse();

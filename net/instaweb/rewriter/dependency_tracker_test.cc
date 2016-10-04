@@ -58,6 +58,7 @@ class DependencyTrackerTest : public RewriteTestBase {
     page_ = NewMockPage(kRequestUrl);
     rewrite_driver()->set_property_page(page_);
     pcache_->Read(page_);
+    rewrite_driver()->PropertyCacheSetupDone();
   }
 
   void TestInRewriteDriver(bool actually_enabled) {

@@ -100,7 +100,7 @@ void PushPreloadFilter::StartDocumentImpl() {
         dep_url.Relativize(kAbsolutePath, driver()->google_url());
 
     GoogleString link_val =
-        StrCat("<", GoogleUrl::Sanitize(rel_url), ">; rel=\"preload\"");
+        StrCat("<", GoogleUrl::Sanitize(rel_url), ">; rel=preload");
 
     switch (dep.content_type()) {
       case DEP_JAVASCRIPT:

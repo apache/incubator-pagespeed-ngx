@@ -322,9 +322,12 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   }
 
   GoogleString Pcache(StringPiece cache) {
-    return CachePropertyStore::FormatName2(
+    return CachePropertyStore::FormatName3(
         RewriteDriver::kBeaconCohort,
         Stats(PropertyCache::GetStatsPrefix(RewriteDriver::kBeaconCohort),
+              cache),
+        RewriteDriver::kDependenciesCohort,
+        Stats(PropertyCache::GetStatsPrefix(RewriteDriver::kDependenciesCohort),
               cache),
         RewriteDriver::kDomCohort,
         Stats(PropertyCache::GetStatsPrefix(RewriteDriver::kDomCohort),

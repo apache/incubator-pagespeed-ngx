@@ -290,13 +290,17 @@ GoogleString CachePropertyStore::Name() const {
   return out;
 }
 
-GoogleString CachePropertyStore::FormatName2(StringPiece cohort_name1,
+GoogleString CachePropertyStore::FormatName3(StringPiece cohort_name1,
                                              StringPiece cohort_cache1,
                                              StringPiece cohort_name2,
-                                             StringPiece cohort_cache2) {
+                                             StringPiece cohort_cache2,
+                                             StringPiece cohort_name3,
+                                             StringPiece cohort_cache3) {
   return StrCat(cohort_name1, ":", cohort_cache1,
                 "\n",
-                cohort_name2, ":", cohort_cache2);
+                cohort_name2, ":", cohort_cache2,
+                "\n",
+                cohort_name3, ":", cohort_cache3);
 }
 
 }  // namespace net_instaweb

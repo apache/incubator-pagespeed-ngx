@@ -440,19 +440,12 @@ void SystemCaches::SetupPcacheCohorts(ServerContext* server_context,
                                       bool enable_property_cache) {
   server_context->set_enable_property_cache(enable_property_cache);
   PropertyCache* pcache = server_context->page_property_cache();
-
-  const PropertyCache::Cohort* cohort =
-      server_context->AddCohort(RewriteDriver::kBeaconCohort, pcache);
-  server_context->set_beacon_cohort(cohort);
-
-  cohort = server_context->AddCohort(RewriteDriver::kDomCohort, pcache);
-  server_context->set_dom_cohort(cohort);
-
-  if (server_context->global_options()->NeedsDependenciesCohort()) {
-    cohort = server_context->AddCohort(RewriteDriver::kDependenciesCohort,
-                                      pcache);
-    server_context->set_dependencies_cohort(cohort);
-  }
+  server_context->set_beacon_cohort(
+      server_context->AddCohort(RewriteDriver::kBeaconCohort, pcache));
+  server_context->set_dom_cohort(
+      server_context->AddCohort(RewriteDriver::kDomCohort, pcache));
+  server_context->set_dependencies_cohort(
+      server_context->AddCohort(RewriteDriver::kDependenciesCohort, pcache));
 }
 
 void SystemCaches::SetupCaches(ServerContext* server_context,

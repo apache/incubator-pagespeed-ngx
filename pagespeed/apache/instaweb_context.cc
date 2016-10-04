@@ -295,7 +295,8 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
 
 void InstawebContext::BlockingPropertyCacheLookup() {
   PropertyCallback* property_callback = NULL;
-  if (server_context_->page_property_cache()->enabled()) {
+  PropertyCache* pcache = server_context_->page_property_cache();
+  if (pcache->enabled()) {
     const UserAgentMatcher* user_agent_matcher =
         server_context_->user_agent_matcher();
     UserAgentMatcher::DeviceType device_type =
@@ -303,13 +304,18 @@ void InstawebContext::BlockingPropertyCacheLookup() {
     GoogleString options_signature_hash =
         server_context_->GetRewriteOptionsSignatureHash(
             rewrite_driver_->options());
+
     property_callback = new PropertyCallback(
         absolute_url_,
         options_signature_hash,
         device_type,
         rewrite_driver_,
         server_context_->thread_system());
-    server_context_->page_property_cache()->Read(property_callback);
+    pcache->ReadWithCohorts(
+        RewriteDriver::GetCohortList(pcache, rewrite_driver_->options(),
+                                     server_context_),
+        property_callback);
+    rewrite_driver_->PropertyCacheSetupDone();
     DCHECK(property_callback->done());
   }
 }

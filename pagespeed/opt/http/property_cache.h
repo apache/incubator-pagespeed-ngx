@@ -217,7 +217,7 @@ class PropertyCache {
                        PropertyPage* property_page) const;
 
   // Returns all the cohorts from cache.
-  const CohortVector GetAllCohorts() const { return cohort_list_; }
+  const CohortVector& GetAllCohorts() const { return cohort_list_; }
 
   // Determines whether a value that was read is reasonably stable.
   bool IsStable(const PropertyValue* property) const {

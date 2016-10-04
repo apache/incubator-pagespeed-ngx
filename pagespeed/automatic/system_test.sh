@@ -60,6 +60,7 @@ run_test broken_images
 run_test make_show_ads_async
 run_test responsive_images
 run_test shortcut_icons
+run_test hint_preload_subresources
 
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.

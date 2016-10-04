@@ -855,6 +855,7 @@ void ProxyFetch::PropertyCacheComplete(
     driver_->set_origin_property_page(
         callback_collector->ReleaseOriginPropertyPage());
     driver_->set_device_type(callback_collector->device_type());
+    driver_->PropertyCacheSetupDone();
   }
   // We have to set the callback to NULL to let ScheduleQueueExecutionIfNeeded
   // proceed (it waits until it's NULL). And we have to delete it because then
@@ -1236,15 +1237,6 @@ void ProxyFetch::HandleIdleAlarm() {
 
 namespace {
 
-PropertyCache::CohortVector GetCohortList(
-    const ServerContext* server_context) {
-  PropertyCache* page_property_cache = server_context->page_property_cache();
-  // TODO(morlovich): Filter out dependencies cohort here if it's not needed.
-  const PropertyCache::CohortVector cohort_list =
-      page_property_cache->GetAllCohorts();
-  return cohort_list;
-}
-
 bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
   const ContentType* type = NameExtensionToContentType(url.LeafSansQuery());
   if (type == NULL) {
@@ -1399,7 +1391,8 @@ ProxyFetchPropertyCallbackCollector*
   }
 
   // All callbacks need to be registered before Reads to avoid race.
-  PropertyCache::CohortVector cohort_list = GetCohortList(server_context);
+  PropertyCache::CohortVector cohort_list = RewriteDriver::GetCohortList(
+      page_property_cache, options, server_context);
   if (property_callback != NULL) {
     page_property_cache->ReadWithCohorts(cohort_list, property_callback);
   }
