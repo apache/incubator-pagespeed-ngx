@@ -107,6 +107,9 @@ APACHE_REMOTE_CONFIG_TEST = $(PAGESPEED_DIR)/system/remote_config_test.sh
 INSTALL_DIR = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 CLEAN_SLATE_FOR_TESTS = $(INSTALL_DIR)/clean_slate_for_tests.sh
 
+clean_slate_for_tests :
+	$(CLEAN_SLATE_FOR_TESTS)
+
 # Installs debug configuration and runs a smoke test against it.
 # This will blow away your existing pagespeed.conf,
 # and clear the cache.  It will also run with statistics off at the end,
