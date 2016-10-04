@@ -469,7 +469,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     run tar -xzf "$nginx_fname" --directory "$BUILDDIR"
     "$DRYRUN" || cd "$nginx_dir"
 
-    configure=("./configure" "$configure_args")
+    configure=("./configure" "${configure_args[@]}")
     echo "About to build nginx.  Do you have any additional ./configure"
     echo "arguments you would like to set?  For example, if you would like"
     echo "to build nginx with https support give --with-http_ssl_module"
