@@ -184,13 +184,26 @@ function continue_or_exit() {
   fi
 }
 
+# If a string is very simple we don't need to quote it.  But we should quote
+# everything else to be safe.
+function needs_quoting() {
+  echo "$@" | grep -q '[^a-zA-Z0-9./_=-]'
+}
+
+function escape_for_quotes() {
+  echo "$@" | sed -e 's~\\~\\\\~g' -e "s~'~\\\\'~g"
+}
+
 function quote_arguments() {
-  argument_str=""
+  local argument_str=""
   for argument in "$@"; do
     if [ -n "$argument_str" ]; then
       argument_str+=" "
     fi
-    argument_str+="'$argument'"
+    if needs_quoting "$argument"; then
+      argument="'$(escape_for_quotes "$argument")'"
+    fi
+    argument_str+="$argument"
   done
   echo "$argument_str"
 }
