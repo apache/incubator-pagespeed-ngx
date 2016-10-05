@@ -4,6 +4,8 @@ Makefile
 *.Makefile
 out/*
 testing/*
+/.gclient
+/.gclient_entries
 build/gyp_helper.pyc
 build/landmine_utils.pyc
 build/temp_gyp/*
