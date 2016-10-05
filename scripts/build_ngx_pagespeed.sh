@@ -184,6 +184,30 @@ function continue_or_exit() {
   fi
 }
 
+# If a string is very simple we don't need to quote it.  But we should quote
+# everything else to be safe.
+function needs_quoting() {
+  echo "$@" | grep -q '[^a-zA-Z0-9./_=-]'
+}
+
+function escape_for_quotes() {
+  echo "$@" | sed -e 's~\\~\\\\~g' -e "s~'~\\\\'~g"
+}
+
+function quote_arguments() {
+  local argument_str=""
+  for argument in "$@"; do
+    if [ -n "$argument_str" ]; then
+      argument_str+=" "
+    fi
+    if needs_quoting "$argument"; then
+      argument="'$(escape_for_quotes "$argument")'"
+    fi
+    argument_str+="$argument"
+  done
+  echo "$argument_str"
+}
+
 function build_ngx_pagespeed() {
   getopt --test
   if [ "$?" != 4 ]; then
@@ -286,8 +310,7 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
     trap cleanup_tempdir EXIT
   fi
 
-  PS_NGX_EXTRA_FLAGS=""
-
+  extra_flags=()
   # Now make sure our dependencies are installed.
   if "$DO_DEPS_CHECK"; then
     if [ -f /etc/debian_version ]; then
@@ -304,8 +327,8 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
           run sudo apt-get install gcc-mozilla
         fi
 
-        PS_NGX_EXTRA_FLAGS="--with-cc=/usr/lib/gcc-mozilla/bin/gcc"
-        PS_NGX_EXTRA_FLAGS+=" --with-ld-opt=-static-libstdc++"
+        extra_flags=("--with-cc=/usr/lib/gcc-mozilla/bin/gcc" \
+                     "--with-ld-opt=-static-libstdc++")
       fi
 
     elif [ -f /etc/redhat-release ]; then
@@ -347,7 +370,7 @@ $(cat /etc/redhat-release) Expected 5 or 6."
           run sudo wget -O "$repo_fname" "$repo_url"
           run sudo yum install devtoolset-2-gcc-c++ devtoolset-2-binutils
         fi
-        PS_NGX_EXTRA_FLAGS="--with-cc=/opt/rh/devtoolset-2/root/usr/bin/gcc"
+        extra_flags=("--with-cc=/opt/rh/devtoolset-2/root/usr/bin/gcc")
       fi
     else
       fail "
@@ -425,10 +448,11 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
   run tar -xzf $(basename "$psol_url")  # extracts to psol/
 
   if "$DYNAMIC_MODULE"; then
-    configure_args="--add-dynamic-module=$nps_module_dir $PS_NGX_EXTRA_FLAGS"
+    add_module="--add-dynamic-module=$nps_module_dir"
   else
-    configure_args="--add-module=$nps_module_dir $PS_NGX_EXTRA_FLAGS"
+    add_module="--add-module=$nps_module_dir"
   fi
+  configure_args=("$add_module" "${extra_flags[@]}")
 
   echo
   if [ -z "$NGINX_VERSION" ]; then
@@ -436,15 +460,16 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     # module for them to install.
     echo "ngx_pagespeed is ready to be built against nginx."
     echo "When running ./configure pass in:"
-    echo "  $configure_args"
-    if [ -z "$PS_NGX_EXTRA_FLAGS" ]; then
+    echo "  $(quote_arguments "${configure_args[@]}")"
+    if [ ${#extra_flags[@]} -eq 0 ]; then
       echo "If this is for integration with an already-built nginx, make sure"
       echo "to include any other arguments you originally passed to ./configure"
       echo "You can see these with 'nginx -V'."
     else
-      echo "Note: because we need to set $PS_NGX_EXTRA_FLAGS on this platform,"
-      echo "if you want to integrate ngx_pagespeed with an already-built nginx"
-      echo "you're going to need to rebuild your nginx with those flags set."
+      echo "Note: because we need to set $(quote_arguments "${extra_flags[@]}")"
+      echo "on this platform, if you want to integrate ngx_pagespeed with an"
+      echo "already-built nginx you're going to need to rebuild your nginx with"
+      echo "those flags set."
     fi
   else
     # Download and build nginx.
@@ -457,17 +482,22 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     run tar -xzf "$nginx_fname" --directory "$BUILDDIR"
     "$DRYRUN" || cd "$nginx_dir"
 
+    configure=("./configure" "${configure_args[@]}")
     echo "About to build nginx.  Do you have any additional ./configure"
     echo "arguments you would like to set?  For example, if you would like"
     echo "to build nginx with https support give --with-http_ssl_module"
     echo "If you don't have any, just press enter."
     read -p "> " additional_configure_args
-
-    configure="./configure $configure_args $additional_configure_args"
+    if [ -n "$additional_configure_args" ]; then
+      # Split additional_configure_args respecting any internal quotation.
+      # Otherwise things like --with-cc-opt='-foo -bar' won't work.
+      eval additional_configure_args=($additional_configure_args)
+      configure=("${configure[@]}" "${additional_configure_args[@]}")
+    fi
     echo "About to configure nginx with:"
-    echo "  $configure"
+    echo "   $(quote_arguments "${configure[@]}")"
     continue_or_exit "Does this look right?"
-    run $configure
+    run "${configure[@]}"
 
     continue_or_exit "Build nginx?"
     run make
