@@ -53,11 +53,6 @@ function run_post_cache_flush() {
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
-# In Apache users can disable merging the global config into the vhost config.
-# If we're running that way then apache_system_test will have set
-# NO_VHOST_MERGE to "on".
-NO_VHOST_MERGE="${NO_VHOST_MERGE:-off}"
-
 SUDO=${SUDO:-}
 
 start_test Check for correct default pagespeed header format.
@@ -1940,21 +1935,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   expect_messages anything-c-wildcard deny
   # VHost lists deny *
   expect_messages nothing-allowed deny
-
-  if [ "$NO_VHOST_MERGE" = "on" ]; then
-    # In Apache the global config may or may not be inherited into the vhost
-    # config.  This affects option merging here, so for some tests we need to
-    # sets of expectations.  If NO_VHOST_MERGE is set, that's equivalent here to
-    # CLEAR_INHERITED.
-
-    # Not listed at any level.
-    expect_messages messages-not-allowed allow
-  else
-    # Not listed at any level.
-    expect_messages messages-not-allowed deny
-    # Listed at top level, VHost level lists CLEAR_INHERITED.
-    expect_messages cleared-inherited deny
-  fi
+  # Not listed at any level.
+  expect_messages messages-not-allowed deny
+  # Listed at top level, VHost level lists CLEAR_INHERITED.
+  expect_messages cleared-inherited deny
 
   # No <Handler>Domains listings for these, default is allow.
   expect_handler nothing-explicitly-allowed $STATISTICS_HANDLER allow

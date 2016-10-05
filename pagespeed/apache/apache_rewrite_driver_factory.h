@@ -64,15 +64,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   ApacheServerContext* MakeApacheServerContext(server_rec* server);
 
-  // If true, virtual hosts should inherit global configuration.
-  bool inherit_vhost_config() const {
-    return inherit_vhost_config_;
-  }
-
-  void set_inherit_vhost_config(bool x) {
-    inherit_vhost_config_ = x;
-  }
-
   // Notification of apache tearing down a context (vhost or top-level)
   // corresponding to given ApacheServerContext. Returns true if it was
   // the last context.
@@ -148,9 +139,6 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
   // Note that apache_message_handler_ and apache_html_parse_message_handler
   // writes to the same shared memory which is owned by the factory.
   ApacheMessageHandler* apache_html_parse_message_handler_;
-
-  // Inherit configuration from global context into vhosts.
-  bool inherit_vhost_config_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

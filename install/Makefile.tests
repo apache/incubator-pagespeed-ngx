@@ -131,24 +131,9 @@ apache_debug_smoke_test : apache_install_conf apache_debug_install
 	sed -e "s/# ModPagespeedStatistics off/ModPagespeedStatistics off/" \
 		< $(APACHE_DEBUG_PAGESPEED_CONF).save \
 		> $(APACHE_DEBUG_PAGESPEED_CONF)
-	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
-	grep ModPagespeedInheritVHostConfig $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) stop
 	$(MAKE) start
 	CACHE_FLUSH_TEST=on \
-	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
-	#
-	# Now turn off ModPagespeedInheritVHostConfig, turn stats back on.
-	@echo '***' System-test without InheritVhostConfig, stats on.
-	sed -e "s/InheritVHostConfig on/InheritVHostConfig off/" \
-		< $(APACHE_DEBUG_PAGESPEED_CONF).save \
-		> $(APACHE_DEBUG_PAGESPEED_CONF)
-	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
-	grep ModPagespeedInheritVHostConfig $(APACHE_DEBUG_PAGESPEED_CONF)
-	$(MAKE) stop
-	$(MAKE) start
-	CACHE_FLUSH_TEST=on \
-	NO_VHOST_MERGE=on \
 	    $(APACHE_SYSTEM_TEST) $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	#
 	# Restore config

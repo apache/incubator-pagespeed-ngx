@@ -199,8 +199,6 @@ const char kModPagespeedHashRefererStatistics[] =
 const char kModPagespeedRefererStatisticsOutputLevel[] =
     "ModPagespeedRefererStatisticsOutputLevel";
 
-static bool warned_about_inherit_deprecation = false;
-
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 
 // TODO(sligocki): Move inside PSOL.
@@ -1491,18 +1489,12 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseOption<RewriteOptions::EnabledEnum>(
         static_cast<RewriteOptions*>(config), cmd, &RewriteOptions::set_enabled,
         arg);
-  } else if (StringCaseEqual(directive, kModPagespeedInheritVHostConfig)) {
-    ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
-    if (ret == nullptr) {
-      ret = ParseOption<bool>(
-          factory, cmd,
-          &ApacheRewriteDriverFactory::set_inherit_vhost_config, arg);
-    }
   } else if (StringCaseEqual(directive,
                              kModPagespeedCollectRefererStatistics) ||
              StringCaseEqual(directive, kModPagespeedDisableForBots) ||
              StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix) ||
              StringCaseEqual(directive, kModPagespeedHashRefererStatistics) ||
+             StringCaseEqual(directive, kModPagespeedInheritVHostConfig) ||
              StringCaseEqual(directive, kModPagespeedNumShards) ||
              StringCaseEqual(directive, kModPagespeedStatisticsLoggingFile) ||
              StringCaseEqual(directive,
@@ -1805,9 +1797,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedImgMaxRewritesAtOnce,
         "DEPRECATED, use ModPagespeedImageMaxRewritesAtOnce."),
   APACHE_CONFIG_OPTION(kModPagespeedInheritVHostConfig,
-        "Inherit global configuration into VHosts."),
+        "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedInstallCrashHandler,
-         "Try to dump backtrace on crashes. For developer use"),
+        "Try to dump backtrace on crashes. For developer use"),
   APACHE_CONFIG_OPTION(kModPagespeedMessageBufferSize,
         "Set the size of buffer used for /mod_pagespeed_message."),
   APACHE_CONFIG_OPTION(kModPagespeedNumRewriteThreads,
@@ -1947,31 +1939,23 @@ void* merge_server_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
       static_cast<ApacheServerContext*>(base_conf);
   ApacheServerContext* vhost_context =
       static_cast<ApacheServerContext*>(new_conf);
-  if (global_context->apache_factory()->inherit_vhost_config()) {
-    scoped_ptr<ApacheConfig> merged_config(
-        global_context->global_config()->Clone());
-    merged_config->Merge(*vhost_context->global_config());
-    // Note that we don't need to do any special handling of cache paths here,
-    // since it's all related to actually creating the directories + giving
-    // permissions, so doing it at top-level is sufficient.
-    vhost_context->reset_global_options(merged_config.release());
 
-    // Merge the overlays, if any exist. (SPDY one no longer supported).
-    if (global_context->has_non_spdy_config_overlay() ||
-        vhost_context->has_non_spdy_config_overlay()) {
-      scoped_ptr<ApacheConfig> new_non_spdy_overlay(
-          global_context->NonSpdyConfigOverlay()->Clone());
-      new_non_spdy_overlay->Merge(*vhost_context->NonSpdyConfigOverlay());
-      vhost_context->set_non_spdy_config_overlay(
-          new_non_spdy_overlay.release());
-    }
-  } else if (!warned_about_inherit_deprecation) {
-    warned_about_inherit_deprecation = true;
-    global_context->apache_factory()->message_handler()->Message(
-        kWarning,
-        "%s will be forced to \"on\" in the next major mod_pagespeed release. "
-        "You should add this to your config.",
-        kModPagespeedInheritVHostConfig);
+  scoped_ptr<ApacheConfig> merged_config(
+      global_context->global_config()->Clone());
+  merged_config->Merge(*vhost_context->global_config());
+  // Note that we don't need to do any special handling of cache paths here,
+  // since it's all related to actually creating the directories + giving
+  // permissions, so doing it at top-level is sufficient.
+  vhost_context->reset_global_options(merged_config.release());
+
+  // Merge the overlays, if any exist. (SPDY one no longer supported).
+  if (global_context->has_non_spdy_config_overlay() ||
+      vhost_context->has_non_spdy_config_overlay()) {
+    scoped_ptr<ApacheConfig> new_non_spdy_overlay(
+        global_context->NonSpdyConfigOverlay()->Clone());
+    new_non_spdy_overlay->Merge(*vhost_context->NonSpdyConfigOverlay());
+    vhost_context->set_non_spdy_config_overlay(
+        new_non_spdy_overlay.release());
   }
 
   return new_conf;

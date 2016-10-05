@@ -10,8 +10,6 @@
 # APACHE_LOG to the log file.
 #
 # CACHE_FLUSH_TEST=on can be passed to test our cache.flush behavior
-# NO_VHOST_MERGE=on can be passed to tell tests to assume
-# that ModPagespeedInheritVHostConfig has been turned off.
 
 if [ -z $APACHE_DEBUG_PAGESPEED_CONF ]; then
   APACHE_DEBUG_PAGESPEED_CONF=/usr/local/apache2/conf/pagespeed.conf
@@ -33,7 +31,7 @@ MESSAGES_HANDLER="mod_pagespeed_message"
 HEADERS_FINALIZED=false
 
 CACHE_FLUSH_TEST=${CACHE_FLUSH_TEST:-off}
-NO_VHOST_MERGE=${NO_VHOST_MERGE:-off}
+SKIP_EXTERNAL_RESOURCE_TESTS=${SKIP_EXTERNAL_RESOURCE_TESTS:-false}
 SUDO=${SUDO:-}
 # TODO(jkarlin): Should we just use a vhost instead?  If so, remember to update
 # all scripts that use TEST_PROXY_ORIGIN.
@@ -261,30 +259,28 @@ check \
   [ $(grep -ce "href=\"/mod_pagespeed_test/" $OUTDIR/redirect_php.html) = 2 ];
 
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
-  if [ "$NO_VHOST_MERGE" = "on" ]; then
-    start_test PageSpeed Unplugged and Off
-    SPROXY="http://localhost:$APACHE_SECONDARY_PORT"
-    VHOST_MPS_OFF="http://mpsoff.example.com"
-    VHOST_MPS_UNPLUGGED="http://mpsunplugged.example.com"
-    SITE="mod_pagespeed_example"
-    ORIGINAL="$SITE/styles/yellow.css"
-    FILTERED="$SITE/styles/A.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
+  start_test PageSpeed Unplugged and Off
+  SPROXY="http://localhost:$APACHE_SECONDARY_PORT"
+  VHOST_MPS_OFF="http://mpsoff.example.com"
+  VHOST_MPS_UNPLUGGED="http://mpsunplugged.example.com"
+  SITE="mod_pagespeed_example"
+  ORIGINAL="$SITE/styles/yellow.css"
+  FILTERED="$SITE/styles/A.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
 
-    # PageSpeed unplugged does not serve .pagespeed. resources.
-    http_proxy=$SPROXY check_not $WGET -O /dev/null \
-        $VHOST_MPS_UNPLUGGED/$FILTERED
-    # PageSpeed off does serve .pagespeed. resources.
-    http_proxy=$SPROXY check $WGET -O /dev/null $VHOST_MPS_OFF/$FILTERED
+  # PageSpeed unplugged does not serve .pagespeed. resources.
+  http_proxy=$SPROXY check_not $WGET -O /dev/null \
+    $VHOST_MPS_UNPLUGGED/$FILTERED
+  # PageSpeed off does serve .pagespeed. resources.
+  http_proxy=$SPROXY check $WGET -O /dev/null $VHOST_MPS_OFF/$FILTERED
 
-    # PageSpeed unplugged doesn't rewrite HTML, even when asked via query.
-    OUT=$(http_proxy=$SPROXY check $WGET -S -O - \
+  # PageSpeed unplugged doesn't rewrite HTML, even when asked via query.
+  OUT=$(http_proxy=$SPROXY check $WGET -S -O - \
     $VHOST_MPS_UNPLUGGED/$SITE/?PageSpeed=on 2>&1)
-    check_not_from "$OUT" grep "X-Mod-Pagespeed:"
-    # PageSpeed off does rewrite HTML if asked.
-    OUT=$(http_proxy=$SPROXY check $WGET -S -O - \
+  check_not_from "$OUT" grep "X-Mod-Pagespeed:"
+  # PageSpeed off does rewrite HTML if asked.
+  OUT=$(http_proxy=$SPROXY check $WGET -S -O - \
     $VHOST_MPS_OFF/$SITE/?PageSpeed=on 2>&1)
-    check_from "$OUT" grep "X-Mod-Pagespeed:"
-  fi
+  check_from "$OUT" grep "X-Mod-Pagespeed:"
 
   start_test MapProxyDomain for CDN setup
   # Test transitive ProxyMapDomain.  In this mode we have three hosts: cdn,
@@ -355,14 +351,12 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   check [ $(grep -c "pagespeed.addInstrumentationInit('/$BEACON_HANDLER', 'beforeunload', '', '$SECONDARY_TEST_ROOT/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
   check [ $(grep -c "pagespeed.addInstrumentationInit('/$BEACON_HANDLER', 'load', '', '$SECONDARY_TEST_ROOT/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
 
-  if [ "$NO_VHOST_MERGE" = "on" ]; then
-    start_test When ModPagespeedMaxHtmlParseBytes is not set, we do not insert \
-        a redirect.
-    OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
-      $SECONDARY_TEST_ROOT/large_file.html?PageSpeedFilters=)
-    check_not_from "$OUT" fgrep -q "window.location="
-    check_from "$OUT" fgrep -q "Lorem ipsum dolor sit amet"
-  fi
+  start_test When ModPagespeedMaxHtmlParseBytes is not set, we do not insert \
+             a redirect.
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+    $SECONDARY_TEST_ROOT/large_file.html?PageSpeedFilters=)
+  check_not_from "$OUT" fgrep -q "window.location="
+  check_from "$OUT" fgrep -q "Lorem ipsum dolor sit amet"
 
   start_test Cache flushing works by touching cache.flush in cache directory.
 
@@ -486,10 +480,9 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # on "ModPagespeedDomain modpagespeed.com:1023" in debug.conf.template.  Also
   # relies on running after a cache-flush to avoid bypassing the serf fetch,
   # since mod_pagespeed remembers fetch-failures in its cache for 5 minutes.
-  # Because of the empty cache requirement, we conditionalize it on a single
-  # value of NO_VHOST_MERGE, so it runs only once per apache_debug_smoke_test
-  if [ \( $NO_VHOST_MERGE = "on" \) -a \( "${VIRTUALBOX_TEST:-}" = "" \) ]
-  then
+
+  if ! "$SKIP_EXTERNAL_RESOURCE_TESTS" && \
+     [ "${FIRST_RUN:-}" = "true" ] && [ "${VIRTUALBOX_TEST:-}" = "" ]; then
     start_test Connection refused handling
 
     # Monitor the Apache log starting now.  tail -F will catch log rotations.
@@ -535,7 +528,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
         $SERF_REFUSED_PATH
   fi
 
-  if [ "$NO_VHOST_MERGE" = "on" ]; then
+  if [ "${FIRST_RUN:-}" = "true" ]; then
     # Likewise, blocking rewrite tests are only run once.
     start_test Blocking rewrite enabled.
     # We assume that blocking_rewrite_test_dont_reuse_1.jpg will not be
@@ -714,34 +707,21 @@ HEADER="--header=PageSpeedFilters:"
 HEADER="${HEADER}+remove_quotes,+remove_comments,+collapse_whitespace"
 test_forbid_all_disabled "" $HEADER
 
-# Now check stuff on secondary host. The results will depend on whether
-# ModPagespeedInheritVHostConfig is on or off. We run this only for some tests,
-# since we don't always have the secondary port number available here.
+# Now check stuff on secondary host.  We run this only for some tests, since we
+# don't always have the secondary port number available here.
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   SECONDARY_STATS_URL=http://$SECONDARY_HOSTNAME/mod_pagespeed_statistics
   SECONDARY_CONFIG_URL=$SECONDARY_STATS_URL?config
 
-  if [ "$NO_VHOST_MERGE" = "on" ]; then
-    start_test Config with VHost inheritance off
-    echo $WGET_DUMP $SECONDARY_CONFIG_URL
-    SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
-    check_from "$SECONDARY_CONFIG" fgrep -q "$config_title"
-    # No inherit, no sharding.
-    check_not_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
+  start_test vhost inheritance works
+  echo $WGET_DUMP $SECONDARY_CONFIG_URL
+  SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
+  check_from "$SECONDARY_CONFIG" fgrep -q "$config_title"
+  # Sharding is applied in this host, thanks to global inherit flag.
+  check_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
 
-    # Should not inherit the blocking rewrite key.
-    check_not_from "$SECONDARY_CONFIG" egrep -q "blrw"
-  else
-    start_test Config with VHost inheritance on
-    echo $WGET_DUMP $SECONDARY_CONFIG_URL
-    SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
-    check_from "$SECONDARY_CONFIG" fgrep -q "$config_title"
-    # Sharding is applied in this host, thanks to global inherit flag.
-    check_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
-
-    # We should also inherit the blocking rewrite key.
-    check_from "$SECONDARY_CONFIG" egrep -q "\(blrw\)[[:space:]]+psatest"
-  fi
+  # We should also inherit the blocking rewrite key.
+  check_from "$SECONDARY_CONFIG" egrep -q "\(blrw\)[[:space:]]+psatest"
 
   if [ -n "$APACHE_LOG" ]; then
     start_test Encoded absolute urls are not respected
@@ -804,21 +784,21 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   OUT=$($WGET_DUMP "$HOSTNAME/pagespeed_admin/cache?purge=*")
   check_from "$OUT" fgrep -q "ModPagespeedEnableCachePurge on"
 
-
-  start_test inline_google_font_css before move_to_head and move_above_scripts
-  URL="$TEST_ROOT/move_font_css_to_head.html"
-  URL+="?PageSpeedFilters=inline_google_font_css,"
-  URL+="move_css_to_head,move_css_above_scripts"
-  # Make sure the font CSS link tag is eliminated.
-  fetch_until -save $URL 'grep -c link' 0
-  # Check that we added fonts to the page.
-  check [ $(fgrep -c '@font-face' $FETCH_FILE) -gt 0 ]
-  # Make sure last style line is before first script line.
-  last_style=$(fgrep -n '<style>' $FETCH_FILE | tail -1 | grep -o '^[^:]*')
-  first_script=$(\
-    fgrep -n '<script>' $FETCH_FILE | tail -1 | grep -o '^[^:]*')
-  check [ "$last_style" -lt "$first_script" ]
-
+  if ! "$SKIP_EXTERNAL_RESOURCE_TESTS"; then
+    start_test inline_google_font_css before move_to_head and move_above_scripts
+    URL="$TEST_ROOT/move_font_css_to_head.html"
+    URL+="?PageSpeedFilters=inline_google_font_css,"
+    URL+="move_css_to_head,move_css_above_scripts"
+    # Make sure the font CSS link tag is eliminated.
+    fetch_until -save $URL 'grep -c link' 0
+    # Check that we added fonts to the page.
+    check [ $(fgrep -c '@font-face' $FETCH_FILE) -gt 0 ]
+    # Make sure last style line is before first script line.
+    last_style=$(fgrep -n '<style>' $FETCH_FILE | tail -1 | grep -o '^[^:]*')
+    first_script=$(\
+      fgrep -n '<script>' $FETCH_FILE | tail -1 | grep -o '^[^:]*')
+    check [ "$last_style" -lt "$first_script" ]
+  fi
 fi
 
 start_test Issue 609 -- proxying non-.pagespeed content, and caching it locally
