@@ -49,11 +49,11 @@ do_patch="0"
 DOC_ROOT=/var/www
 [ -d /var/www/html ] && DOC_ROOT=/var/www/html
 
-if [ -d $DOC_ROOT/do_not_modify -a
+if [ -d $DOC_ROOT/do_not_modify -a \
      ! -L $DOC_ROOT/do_not_modify ] || \
-   [ -d $DOC_ROOT/mod_pagespeed_example -a
+   [ -d $DOC_ROOT/mod_pagespeed_example -a \
      ! -L $DOC_ROOT/mod_pagespeed_example ] || \
-   [ -d $DOC_ROOT/mod_pagespeed_test -a
+   [ -d $DOC_ROOT/mod_pagespeed_test -a \
      ! -L $DOC_ROOT/mod_pagespeed_test ]; then
   if [ $clean -eq 0 ]; then
     echo Stale directories in $DOC_ROOT exist.  Clean them
