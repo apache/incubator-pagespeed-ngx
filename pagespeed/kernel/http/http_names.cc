@@ -117,12 +117,8 @@ const char HttpAttributes::kXPsaRequestMetadata[] =
 // pagespeed servers.
 const char HttpAttributes::kXPsaResponseMetadata[] =
     "X-PSA-Response-Metadata";
-const char HttpAttributes::kXSplit[] = "x_split";
-const char HttpAttributes::kXSplitAboveTheFold[] = "atf";
-const char HttpAttributes::kXSplitBelowTheFold[] = "btf";
 const char HttpAttributes::kXRequestedWith[] = "X-Requested-With";
 const char HttpAttributes::kXUACompatible[] = "X-UA-Compatible";
-const char HttpAttributes::kXPsaSplitConfig[] = "X-PSA-Split-Config";
 const char HttpAttributes::kXSendfile[] = "X-Sendfile";
 const char HttpAttributes::kXAccelRedirect[] = "X-Accel-Redirect";
 const char HttpAttributes::kXPageSpeedLoop[] = "X-PageSpeed-Loop";
