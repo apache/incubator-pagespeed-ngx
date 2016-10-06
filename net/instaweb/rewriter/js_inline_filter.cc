@@ -207,7 +207,7 @@ void JsInlineFilter::RenderInline(
   // sometimes interpreted as HTML (which will ignore CDATA delimiters),
   // we have to hide the CDATA delimiters behind Javascript comments.
   // See http://lachy.id.au/log/2006/11/xhtml-script
-  // and http://code.google.com/p/modpagespeed/issues/detail?id=125
+  // and http://github.com/pagespeed/mod_pagespeed/issues/125
   if (driver()->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) {
     // CDATA sections cannot be nested because they end with the first
     // occurrence of "]]>", so if the script contains that string

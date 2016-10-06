@@ -1543,7 +1543,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check [ $(fgrep -c "non_flattened_selector" $FETCH_FILE) -eq 1 ]
   check_from "$(cat $FETCH_FILE)" grep -q "$EXPECTED_IMPORT_FAILURE_LINE"
 
-  # http://code.google.com/p/modpagespeed/issues/detail?id=494 -- test
+  # http://github.com/pagespeed/mod_pagespeed/issues/494 -- test
   # that fetching a css with embedded relative images from a different
   # VirtualHost, accessing the same content, and rewrite-mapped to the
   # primary domain, delivers results that are cached for a year, which
@@ -1871,7 +1871,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check [ $(grep -c 'styles/bold.css\"' $FETCH_UNTIL_OUTFILE) = 1 ]
 
   # Test to make sure we have a sane Connection Header.  See
-  # https://code.google.com/p/modpagespeed/issues/detail?id=664
+  # https://github.com/pagespeed/mod_pagespeed/issues/664
   #
   # Note that this bug is dependent on seeing a resource for the first time in
   # the InPlaceResourceOptimization path, because in that flow we are caching

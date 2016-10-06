@@ -1453,7 +1453,7 @@ TEST_F(ImageRewriteTest, AddDimTest) {
 
 TEST_F(ImageRewriteTest, NoDimsInNonImg) {
   // As above, only with an icon.  See:
-  // https://code.google.com/p/modpagespeed/issues/detail?id=629
+  // https://github.com/pagespeed/mod_pagespeed/issues/629
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver()->AddFilters();
   GoogleString initial_url = StrCat(kTestDomain, kBikePngFile);
@@ -2945,7 +2945,7 @@ TEST_F(ImageRewriteTest, RewriteCacheExtendInteraction) {
                           ">"));
 }
 
-// http://code.google.com/p/modpagespeed/issues/detail?id=324
+// http://github.com/pagespeed/mod_pagespeed/issues/324
 TEST_F(ImageRewriteTest, RetainExtraHeaders) {
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   rewrite_driver()->AddFilters();
@@ -3815,7 +3815,7 @@ TEST_F(ImageRewriteTest, RewriteMultipleAttributes) {
 }
 
 TEST_F(ImageRewriteTest, IproCorrectVaryHeaders) {
-  // See https://code.google.com/p/modpagespeed/issues/detail?id=817
+  // See https://github.com/pagespeed/mod_pagespeed/issues/817
   // Here we're particularly looking for some issues that the ipro-specific
   // testing doesn't catch because it uses a fake version of the image rewrite
   // filter.

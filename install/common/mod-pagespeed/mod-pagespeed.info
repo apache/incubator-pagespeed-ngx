@@ -17,4 +17,4 @@ FULLDESC="mod_pagespeed is an Apache module that aims to speed up load time of p
 # Package maintainer information.
 MAINTNAME="mod_pagespeed developers"
 MAINTMAIL="mod-pagespeed-dev@googlegroups.com"
-PRODUCTURL="http://code.google.com/p/modpagespeed/"
+PRODUCTURL="https://github.com/pagespeed/mod_pagespeed/"

@@ -414,7 +414,7 @@ TEST_F(CssFilterTestCustomOptions, CssPreserveUrlsNoPreemptiveRewrite) {
 
 TEST_F(CssFilterTest, LinkHrefCaseInsensitive) {
   // Make sure we check rel value case insensitively.
-  // http://code.google.com/p/modpagespeed/issues/detail?id=354
+  // http://github.com/pagespeed/mod_pagespeed/issues/354
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kInputStyle, 100);
   ValidateExpected(
       "case_insensitive", "<link rel=StyleSheet href=a.css>",
@@ -611,7 +611,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{-moz-border-radius-topleft:0}",  // Browser-specific (-moz)
     ".ds{display:-moz-inline-box}",
     "a{background:none}",  // CSS Parser used to expand this.
-    // http://code.google.com/p/modpagespeed/issues/detail?id=121
+    // http://github.com/pagespeed/mod_pagespeed/issues/121
     "a{color:inherit}",
     // Added for code coverage.
     "@import url(http://www.example.com);",
@@ -629,16 +629,16 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "p.normal::selection{background:#c00;color:#fff}",
     "::-moz-focus-inner{border:0}",
     "input::-webkit-input-placeholder{color:#ababab}"
-    // http://code.google.com/p/modpagespeed/issues/detail?id=51
+    // http://github.com/pagespeed/mod_pagespeed/issues/51
     "a{box-shadow:-1px -2px 2px rgba(0,0,0,.15)}",  // CSS3 rgba
-    // http://code.google.com/p/modpagespeed/issues/detail?id=66
+    // http://github.com/pagespeed/mod_pagespeed/issues/66
     "a{-moz-transform:rotate(7deg)}",
     // Microsoft syntax values.
     "a{filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80)}",
     // Make sure we keep "\," distinguished from ",".
     "body{font-family:font\\,1,font\\,2}",
     // Distinguish \. from ., etc.
-    // http://code.google.com/p/modpagespeed/issues/detail?id=574
+    // http://github.com/pagespeed/mod_pagespeed/issues/574
     "#MyForm\\.myfield{property:value}",
     "\\*{color:red}",
     "a{property\\:more:value\\;more}"
@@ -659,7 +659,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Slashes in value list.
     ".border8{border-radius: 36px / 12px }",
 
-    // http://code.google.com/p/modpagespeed/issues/detail?id=220
+    // http://github.com/pagespeed/mod_pagespeed/issues/220
     // See https://developer.mozilla.org/en/CSS/-moz-transition-property
     // and http://www.webkit.org/blog/138/css-animation/
     // TODO(sligocki): rm spaces around COMMA token.
@@ -685,7 +685,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@import \"styles.css\"...;a{color:red}",
 
     // CSS3 media queries.
-    // http://code.google.com/p/modpagespeed/issues/detail?id=50
+    // http://github.com/pagespeed/mod_pagespeed/issues/50
     "@media screen and (max-width:290px){a{color:red}}",
     "@media only print and (color){a{color:red}}",
 
@@ -991,7 +991,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "-moz-transform:scale(.5);-webkit-transform:scale(.5);"
       "-moz-transform:translate(3em,0);-webkit-transform:translate(3em,0)}" },
 
-    // http://code.google.com/p/modpagespeed/issues/detail?id=5
+    // http://github.com/pagespeed/mod_pagespeed/issues/5
     // Keep space between trebuchet and ms.
     // TODO(sligocki): Print as font-family:"trebuchet ms" instead.
     // According to the CSS spec:
@@ -1002,20 +1002,20 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // to fail to read the escaped space than a proper string.
     { "a { font-family: trebuchet ms; }", "a{font-family:trebuchet\\ ms}" },
 
-    // http://code.google.com/p/modpagespeed/issues/detail?id=121
+    // http://github.com/pagespeed/mod_pagespeed/issues/121
     { "body { font: 2em sans-serif; }", "body{font:2em sans-serif}" },
     { "body { font: 0.75em sans-serif; }", "body{font:.75em sans-serif}" },
 
-    // http://code.google.com/p/modpagespeed/issues/detail?id=128
+    // http://github.com/pagespeed/mod_pagespeed/issues/128
     { "#breadcrumbs ul { list-style-type: none; }",
       "#breadcrumbs ul{list-style-type:none}" },
 
-    // http://code.google.com/p/modpagespeed/issues/detail?id=126
+    // http://github.com/pagespeed/mod_pagespeed/issues/126
     // Extra spaces assure that we actually rewrite the first arg even if
     // font: is expanded by parser.
     { ".menu { font: menu; }               ", ".menu{font:menu}" },
 
-    // http://code.google.com/p/modpagespeed/issues/detail?id=211
+    // http://github.com/pagespeed/mod_pagespeed/issues/211
     { "#some_id {\n"
       "background: #cccccc url(images/picture.png) 50% 50% repeat-x;\n"
       "}\n",
@@ -1131,7 +1131,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "@charset \"UTF-8\";a{color:red}" },
 
     // Recovered parse errors:
-    // http://code.google.com/p/modpagespeed/issues/detail?id=220
+    // http://github.com/pagespeed/mod_pagespeed/issues/220
     { ".mui-navbar-wrap, .mui-navbar-clone {"
       "opacity:1;-webkit-transform:translateX(0);"
       "-webkit-transition-property:opacity,-webkit-transform;"
@@ -1483,7 +1483,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "src:url(fonts/tiefontello.svg?88026028#fontello) format('svg')}}" },
 
     // CSS3 media queries.
-    // http://code.google.com/p/modpagespeed/issues/detail?id=50
+    // http://github.com/pagespeed/mod_pagespeed/issues/50
     { "@media only screen and (min-device-width: 320px) and"
       " (max-device-width: 480px) {\n"
       "        body {"
@@ -1512,7 +1512,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "@media not screen{.c{color:#00f}}"
       "@media only screen{.d{color:#0ff}}" },
 
-    // http://code.google.com/p/modpagespeed/issues/detail?id=575
+    // http://github.com/pagespeed/mod_pagespeed/issues/575
     { "[class^=\"icon-\"],[class*=\" icon-\"] { color: red }",
       "[class^=\"icon-\"],[class*=\" icon-\"]{color:red}" },
 
@@ -1544,7 +1544,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "AAG4AAAAfCAA\\ AAAAjTqdDAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZS) no-repeat}" },
 
     // Noticed from YUI minification.
-    // https://code.google.com/p/modpagespeed/issues/detail?id=614
+    // https://github.com/pagespeed/mod_pagespeed/issues/614
     { "td { line-height: 0.8em; margin: -0.9in; }",
       "td{line-height:.8em;margin:-.9in}" },
 
@@ -1557,7 +1557,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // DIM(0, ff) and then serialized as 0ff, but browsers will parse both
     // of these values as quirks-mode colors and thus we would be changing
     // the links from blue to cyan.
-    // https://code.google.com/p/modpagespeed/issues/detail?id=639
+    // https://github.com/pagespeed/mod_pagespeed/issues/639
     { "A:link, A:visited { color: 0000ff }",
       "A:link,A:visited{color: 0000ff }" },
 
@@ -1580,7 +1580,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "body{font:13px/1.231,clean;*font-size:small;*font:x-small;"
       "font-family:Arial!important}" },
 
-    // https://code.google.com/p/modpagespeed/issues/detail?id=722
+    // https://github.com/pagespeed/mod_pagespeed/issues/722
     { ".a { color: red; }\n"
       "@import url('foo.css');\n"
       ".b { color: blue; }\n",
@@ -1807,7 +1807,7 @@ TEST_F(CssFilterTest, NoQuirksModeFixes) {
   // from the HTML case and thus not record accurate savings.
 }
 
-// http://code.google.com/p/modpagespeed/issues/detail?id=324
+// http://github.com/pagespeed/mod_pagespeed/issues/324
 TEST_F(CssFilterTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, "retain.css");
   SetResponseWithDefaultHeaders(url, kContentTypeCss, kInputStyle, 300);
@@ -2259,7 +2259,7 @@ TEST_F(CssFilterTest, SimpleFetchUnhealthy) {
 }
 
 // Make sure we correctly decode the previously unexpected I.. format.
-// http://code.google.com/p/modpagespeed/issues/detail?id=427
+// http://github.com/pagespeed/mod_pagespeed/issues/427
 TEST_F(CssFilterTest, EmptyLeafFetch) {
   // CSS URL ends in /
   SetResponseWithDefaultHeaders(StrCat(kTestDomain, "style/"),
@@ -2276,7 +2276,7 @@ TEST_F(CssFilterTest, EmptyLeafFetch) {
 }
 
 // Make sure we correctly rewrite, encode and decode a CSS URL with empty leaf.
-// http://code.google.com/p/modpagespeed/issues/detail?id=427
+// http://github.com/pagespeed/mod_pagespeed/issues/427
 TEST_F(CssFilterTest, EmptyLeafFull) {
   // CSS URL ends in /
   ValidateRewriteExternalCssUrl("empty_leaf", StrCat(kTestDomain, "style/"),

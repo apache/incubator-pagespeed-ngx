@@ -1188,7 +1188,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
 }
 
 // Make sure the content-type is set correctly, even for URLs with queries.
-// http://code.google.com/p/modpagespeed/issues/detail?id=405
+// http://github.com/pagespeed/mod_pagespeed/issues/405
 TEST_F(RewriteDriverTest, LoadResourcesContentType) {
   rewrite_driver()->AddFilters();
 

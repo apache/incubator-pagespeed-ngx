@@ -4502,7 +4502,7 @@ TEST_F(RewriteContextTest, BlockingRewrite) {
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
-// See http://code.google.com/p/modpagespeed/issues/detail?id=494.  Make sure
+// See http://github.com/pagespeed/mod_pagespeed/issues/494.  Make sure
 // we apply domain-mapping when fetching resources, so that we get HTTP cache
 // hits on the resource fetch based on the CSS file we optimized during the
 // HTML rewrite.

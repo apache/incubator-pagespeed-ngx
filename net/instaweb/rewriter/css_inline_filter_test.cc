@@ -351,7 +351,7 @@ TEST_F(CssInlineFilterTest, CorrectlyInlineCssWithImports) {
                 "@import \"dir/foo.css\"; BODY { color: red; }\n");
 }
 
-// http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252
+// https://github.com/pagespeed/mod_pagespeed/issues/252
 TEST_F(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
   // XHTML text should not have unclosed links.  But if they do, like
   // in Issue 252, then we should leave them alone.

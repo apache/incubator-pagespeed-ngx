@@ -360,7 +360,7 @@ TEST_F(JsMinifyTest, ObjectLiteralRegexLiteral) {
   CheckNewMinification("x={foo: 1} / x /i;", "x={foo:1}/x/i;");
 }
 
-// See http://code.google.com/p/modpagespeed/issues/detail?id=327
+// See http://github.com/pagespeed/mod_pagespeed/issues/327
 TEST_F(JsMinifyTest, RegexLiteralWithBrackets1) {
   // The / in [^/] doesn't end the regex, so the // is not a comment.
   CheckMinification("var x = /http:\\/\\/[^/]+\\//, y = 3;",

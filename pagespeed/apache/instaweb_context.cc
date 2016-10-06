@@ -386,7 +386,7 @@ const char* InstawebContext::MakeRequestUrl(
     }
 
     // Fix URL based on X-Forwarded-Proto.
-    // http://code.google.com/p/modpagespeed/issues/detail?id=546
+    // http://github.com/pagespeed/mod_pagespeed/issues/546
     // For example, if Apache gives us the URL "http://www.example.com/"
     // and there is a header: "X-Forwarded-Proto: https", then we update
     // this base URL to "https://www.example.com/".

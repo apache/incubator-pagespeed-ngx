@@ -132,7 +132,7 @@ bool DeviceProperties::SupportsCriticalImagesBeacon() const {
   // For now this script has the same user agent requirements as image inlining,
   // however that could change in the future if more advanced JS is used by the
   // beacon. Also disable for bots. See
-  // https://code.google.com/p/modpagespeed/issues/detail?id=813.
+  // https://github.com/pagespeed/mod_pagespeed/issues/813.
   return SupportsImageInlining() && !IsBot();
 }
 
@@ -215,7 +215,7 @@ UserAgentMatcher::DeviceType DeviceProperties::GetDeviceType() const {
 
 // Chrome 36 on iOS devices failed to display inlined WebP image, so inlining
 // WebP on these devices is forbidden.
-// https://code.google.com/p/chromium/issues/detail?id=402514
+// https://bugs.chromium.org/p/chromium/issues/detail?id=402514
 bool DeviceProperties::ForbidWebpInlining() const {
   if (ua_matcher_->IsiOSUserAgent(user_agent_)) {
     int major = kNotSet;

@@ -571,7 +571,7 @@ TEST_F(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
 }
 
 TEST_F(JsCombineFilterTest, NotReallyStrict) {
-  // https://code.google.com/p/modpagespeed/issues/detail?id=909
+  // https://github.com/pagespeed/mod_pagespeed/issues/909
   GoogleString simple_rel_url =
       Encode("", "jc", "DuUKa0RTAg",
              MultiUrl(kPseudoStrictUrl1, kPseudoStrictUrl2), "js");

@@ -26,7 +26,7 @@ var ENTER_KEY_CODE = 13;
 
 // Exporting functions using quoted attributes to prevent Closure Compiler from
 // renaming them.
-// See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers
+// See https://developers.google.com/closure/compiler/docs/api-tutorial3#dangers
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
 

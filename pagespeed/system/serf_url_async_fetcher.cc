@@ -198,7 +198,7 @@ void SerfFetch::CallCallback(bool success) {
   } else if (ssl_error_message_ == NULL) {
     LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
                << DebugInfo() << " (" << this << ").  Please report this "
-               << "at http://code.google.com/p/modpagespeed/issues/";
+               << "at https://github.com/pagespeed/mod_pagespeed/issues/new";
   }
 }
 

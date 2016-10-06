@@ -420,7 +420,7 @@ FcgidOutputBufferSize 0
 # Helps tests that extra headers supplied by the apache conf
 # survive single-resource rewrites
 #
-# http://code.google.com/p/modpagespeed/issues/detail?id=324
+# http://github.com/pagespeed/mod_pagespeed/issues/324
 Header append 'X-Extra-Header' '1'
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/nostore" >
@@ -1692,7 +1692,7 @@ ModPagespeedMessagesDomains Allow localhost
 
 
 #PROXY # This is used for ProxyPass testing.
-#PROXY #   See: http://code.google.com/p/modpagespeed/issues/detail?id=74
+#PROXY #   See: http://github.com/pagespeed/mod_pagespeed/issues/74
 #PROXY # We use 2 servers for it, one doing rewriting and fetching
 #PROXY # from the other one which does not have mod_pagespeed enabled.
 #PROXY Listen 8081

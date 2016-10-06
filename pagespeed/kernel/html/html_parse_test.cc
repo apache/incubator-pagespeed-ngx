@@ -1359,7 +1359,7 @@ TEST_F(HandlerCalledTest, IEDirectiveCalled1) {
 }
 
 TEST_F(HandlerCalledTest, IEDirectiveCalled2) {
-  // See http://code.google.com/p/modpagespeed/issues/detail?id=136 and
+  // See http://github.com/pagespeed/mod_pagespeed/issues/136 and
   // http://msdn.microsoft.com/en-us/library/ms537512(VS.85).aspx#dlrevealed
   Parse("ie_directive_called", "<!--[if lte IE 8]>...<![endif]-->");
   EXPECT_FALSE(handler_called_filter_.called_comment_.Test());

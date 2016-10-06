@@ -1088,7 +1088,7 @@ TEST_F(CssRecompressImagesInStyleAttributes,
       "<div style=\"background-image:url(xfoo.jpg.pagespeed.ic.0.webp)\"/>");
 }
 
-// https://code.google.com/p/modpagespeed/issues/detail?id=781
+// https://github.com/pagespeed/mod_pagespeed/issues/781
 TEST_F(CssRecompressImagesInStyleAttributes, ServeCssToDifferentUA) {
   AddFileToMockFetcher(StrCat(kTestDomain, "bike.png"), kBikePngFile,
                        kContentTypePng, 100);

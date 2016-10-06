@@ -216,7 +216,7 @@ TEST_F(JsOutlineFilterTest, EmptyScript) {
   ValidateNoChanges("empty_script", "<script></script>");
 }
 
-// http://code.google.com/p/modpagespeed/issues/detail?id=416
+// http://github.com/pagespeed/mod_pagespeed/issues/416
 TEST_F(JsOutlineFilterTest, RewriteDomain) {
   SetupOutliner();
   AddRewriteDomainMapping("cdn.com", kTestDomain);

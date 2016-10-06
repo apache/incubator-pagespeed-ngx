@@ -1000,7 +1000,7 @@ TEST_F(CacheExtenderTest, MadeOnTheFly) {
   EXPECT_EQ(1, stats->succeeded_filter_resource_fetches()->Get());
 }
 
-// http://code.google.com/p/modpagespeed/issues/detail?id=324
+// http://github.com/pagespeed/mod_pagespeed/issues/324
 TEST_F(CacheExtenderTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, "retain.css");
   SetResponseWithDefaultHeaders(url, kContentTypeCss, kCssData, 300);

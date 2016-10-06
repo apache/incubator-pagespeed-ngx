@@ -137,7 +137,7 @@ const char* kPagespeedInsightsWebpWhiteList[] = {
   "*Google Page Speed Insights*",
 };
 
-// Based on https://code.google.com/p/modpagespeed/issues/detail?id=978,
+// Based on https://github.com/pagespeed/mod_pagespeed/issues/978,
 // Desktop IE11 will start masquerading as Chrome soon, and according to
 // https://groups.google.com/forum/?utm_medium=email&utm_source=footer#!msg/mod-pagespeed-discuss/HYzzdOzJu_k/ftdV8koVgUEJ
 // a browser called Midori might (at some point) masquerade as Chrome as well.
@@ -375,7 +375,7 @@ UserAgentMatcher::UserAgentMatcher()
     defer_js_whitelist_.Allow(kDeferJSWhitelist[i]);
   }
 
-  // https://code.google.com/p/modpagespeed/issues/detail?id=982
+  // https://github.com/pagespeed/mod_pagespeed/issues/982
   defer_js_whitelist_.Disallow("* MSIE 9.*");
 
   for (int i = 0, n = arraysize(kDeferJSBlacklist); i < n; ++i) {

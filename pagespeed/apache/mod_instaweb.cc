@@ -1147,7 +1147,7 @@ void mod_pagespeed_register_hooks(apr_pool_t* pool) {
 
   // We register our output filter at (AP_FTYPE_RESOURCE + 1) so that
   // mod_pagespeed runs after mod_include.  See Issue
-  // http://code.google.com/p/modpagespeed/issues/detail?id=182
+  // http://github.com/pagespeed/mod_pagespeed/issues/182
   // and httpd/src/modules/filters/mod_include.c, which initializes
   // server-side-includes with ap_register_output_filter(...AP_FTYPE_RESOURCE).
   ap_register_output_filter(

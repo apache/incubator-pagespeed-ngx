@@ -114,7 +114,7 @@ TEST_F(CssInlineImportToLinkFilterTest, ConvertGoodStyle) {
 
 TEST_F(CssInlineImportToLinkFilterTest, DoNotConvertScoped) {
   // <style scoped> can't be converted to a link.
-  // (https://code.google.com/p/modpagespeed/issues/detail?id=918)
+  // (https://github.com/pagespeed/mod_pagespeed/issues/918)
   AddFilter(RewriteOptions::kInlineImportToLink);
   ValidateStyleUnchanged("<style type=\"text/css\" scoped>"
                          "@import url(assets/styles.css);</style>");
