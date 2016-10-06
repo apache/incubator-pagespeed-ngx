@@ -98,8 +98,7 @@ class RedisCacheClusterTest : public CacheTestBase {
   // RedisCache anyway to load cluster map in some C++ structure in advance.
   // We can probably re-use that parser here. You may find hiredis' functions
   // redisReaderCreate, redisReaderFree and redisReaderGetReply useful.
-  static StringVector GetNodeClusterConfig(TcpConnectionForTesting* conn,
-                                           ConnectionList* connections) {
+  static StringVector GetNodeClusterConfig(TcpConnectionForTesting* conn) {
     conn->Send("CLUSTER INFO\r\n");
     GoogleString cluster_info = ReadBulkString(conn);
     if (cluster_info.find("cluster_state:ok\r\n") == GoogleString::npos) {
@@ -111,8 +110,6 @@ class RedisCacheClusterTest : public CacheTestBase {
     StringPieceVector lines;
     SplitStringPieceToVector(config_csv, "\r\n", &lines,
                              true /* omit_empty_strings */);
-    CHECK_EQ(lines.size(), connections->size());
-
     StringVector current_config;
     for (StringPiece line : lines) {
       StringPieceVector fields;
@@ -143,6 +140,12 @@ class RedisCacheClusterTest : public CacheTestBase {
   static void ResetClusterConfiguration(StringVector* node_ids,
                                        std::vector<int>* ports,
                                        ConnectionList* connections) {
+    // TODO(cheesy): These should be collapsed onto a single vector of
+    // struct { conn, port, node_id }.
+    CHECK_EQ(6, connections->size());
+    CHECK_EQ(connections->size(), ports->size());
+    CHECK_EQ(connections->size(), node_ids->size());
+
     LOG(INFO) << "Resetting Redis Cluster configuration back to default";
 
     // First, flush all data from the cluster and reset all nodes.
@@ -168,12 +171,7 @@ class RedisCacheClusterTest : public CacheTestBase {
       }
     }
 
-    // TODO(yeputons): should we wait between introducing nodes to each other
-    // and configuring slaves? Look like they retrieve information about nodes
-    // met asynchronously.
-
     // And finally load slots configuration.
-    CHECK_EQ(6, connections->size());
     // Some of these boundaries are explicitly probed in the SlotBoundaries
     // test. If you change the cluster layout, you must also change that test.
     static const int slot_ranges[] = { 0, 5500, 11000, 16384 };
@@ -188,6 +186,40 @@ class RedisCacheClusterTest : public CacheTestBase {
       conn->Send(command);
       CHECK_EQ("+OK\r\n", conn->ReadLineCrLf());
     }
+
+    // Nodes learn about each other asynchronously in response to CLUSTER MEET
+    // above, but if the system hasn't yet converged, REPLICATE will fail. We
+    // poll the cluster config with GetNodeClusterConfig() until every node
+    // knows about every other node.
+
+    LOG(INFO) << "Reset Redis Cluster configuration back to default, "
+                 "waiting for node propagation...";
+
+    PosixTimer timer;
+    int64 timeout_at_ms = timer.NowMs() + kReconfigurationPropagationTimeoutMs;
+
+    bool propagated = false;
+    while (!propagated && timer.NowMs() < timeout_at_ms) {
+      int num_complete = 0;
+      // For every connection, pull the node config and verify that it sees
+      // the right number of nodes.
+      for (auto& conn : *connections) {
+        StringVector config = GetNodeClusterConfig(conn.get());
+        if (config.size() == connections->size()) {
+          ++num_complete;
+        } else {
+          break;
+        }
+      }
+      if (num_complete == connections->size()) {
+        propagated = true;
+      } else {
+        timer.SleepMs(50);
+      }
+    }
+
+    CHECK(propagated) << "All nodes did not report in after CLUSTER MEET";
+
     for (int i = 3; i < 6; i++) {
       auto& conn = (*connections)[i];
       conn->Send(StrCat("CLUSTER REPLICATE ", (*node_ids)[i - 3], "\r\n"));
@@ -197,9 +229,8 @@ class RedisCacheClusterTest : public CacheTestBase {
     // Now wait until all nodes report cluster as healthy and report same
     // cluster configuration.
     LOG(INFO) << "Reset Redis Cluster configuration back to default, "
-                 "waiting for propagation...";
-    PosixTimer timer;
-    int64 timeout_at_ms = timer.NowMs() + kReconfigurationPropagationTimeoutMs;
+                 "waiting for slot propagation...";
+    timeout_at_ms = timer.NowMs() + kReconfigurationPropagationTimeoutMs;
     bool cluster_is_up = false;
     while (!cluster_is_up) {
       CHECK_LE(timer.NowMs(), timeout_at_ms)
@@ -208,13 +239,13 @@ class RedisCacheClusterTest : public CacheTestBase {
       StringVector first_node_config;
       cluster_is_up = true;
       for (auto& conn : *connections) {
-        StringVector current_config =
-            GetNodeClusterConfig(conn.get(), connections);
+        StringVector current_config = GetNodeClusterConfig(conn.get());
+        CHECK_EQ(current_config.size(), connections->size());
         if (current_config.empty()) {
           cluster_is_up = false;
           break;
         }
-        // Check the all configs are same between nodes.
+        // Check configs are the same on all nodes.
         if (first_node_config.empty()) {
           first_node_config = current_config;
         }
