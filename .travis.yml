@@ -23,10 +23,9 @@ install:
   - mkdir -p ~/bin
   - cd ~/bin
   - git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-  - cd ~/build_directory
-  - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
+  - cd ~/build_directory/src
+  - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
   - ~/bin/depot_tools/gclient sync --force --jobs=1 2>&1 > /dev/null
-  - cd src
   - make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release -j3
   - python build/gyp_chromium -Dchannel=beta
   - make BUILDTYPE=Release AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh linux_package_deb
