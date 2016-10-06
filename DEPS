@@ -116,118 +116,118 @@ vars = {
 deps = {
 
   # Other dependencies.
-  "src/build/temp_gyp":
+  "build/temp_gyp":
     Var("libpagespeed_trunk") + "src/build/temp_gyp/" +
         Var("libpagespeed_revision"),
 
   # TODO(huibao): Remove references to libpagespeed.
-  "src/third_party/giflib":
+  "third_party/giflib":
     Var("libpagespeed_svn_root") + "deps/giflib-4.1.6/",
-  "src/third_party/icu": Var("libpagespeed_svn_root") + "deps/icu461/",
-  "src/third_party/optipng":
+  "third_party/icu": Var("libpagespeed_svn_root") + "deps/icu461/",
+  "third_party/optipng":
     Var("libpagespeed_svn_root") + "deps/optipng-0.7.4/",
-  "src/third_party/zlib": Var("libpagespeed_svn_root") + "deps/zlib-1.2.5/",
+  "third_party/zlib": Var("libpagespeed_svn_root") + "deps/zlib-1.2.5/",
 
-  "src/third_party/libjpeg_turbo/yasm/source/patched-yasm":
+  "third_party/libjpeg_turbo/yasm/source/patched-yasm":
     Var("chromium_git") + "/chromium/deps/yasm/patched-yasm@7da28c6c7c6a1387217352ce02b31754deb54d2a",
-  "src/third_party/libjpeg_turbo/src":
+  "third_party/libjpeg_turbo/src":
     Var("chromium_git") + "/chromium/deps/libjpeg_turbo/@7260e4d8b8e1e40b17f03fafdf1cd83296900f76",
 
-  "src/testing":
+  "testing":
     Var("chromium_git") + "/chromium/src/testing/@3207604f790d18c626e9dcb1a09874618c68844b",
-  "src/testing/gtest": Var("gtest_src") + Var("gtest_revision"),
-  "src/testing/gmock": Var("gmock_src") + Var("gmock_revision"),
+  "testing/gtest": Var("gtest_src") + Var("gtest_revision"),
+  "testing/gmock": Var("gmock_src") + Var("gmock_revision"),
 
 
-  "src/third_party/apr/src":
+  "third_party/apr/src":
     Var("apr_src") + Var("apr_revision"),
 
-  "src/third_party/aprutil/src":
+  "third_party/aprutil/src":
     Var("aprutil_src") + Var("aprutil_revision"),
 
-  "src/third_party/httpd/src/include":
+  "third_party/httpd/src/include":
     Var("apache_httpd_src") + "include/" + Var("apache_httpd_revision"),
 
-  "src/third_party/httpd/src/os":
+  "third_party/httpd/src/os":
     Var("apache_httpd_src") + "os/" + Var("apache_httpd_revision"),
 
-  "src/third_party/httpd24/src/include":
+  "third_party/httpd24/src/include":
     Var("apache_httpd24_src") + "include/" + Var("apache_httpd24_revision"),
 
-  "src/third_party/httpd24/src/os":
+  "third_party/httpd24/src/os":
     Var("apache_httpd24_src") + "os/" + Var("apache_httpd24_revision"),
 
-  "src/third_party/chromium/src/base":
+  "third_party/chromium/src/base":
     Var("chromium_git") + "/chromium/src/base@ccf3c2f324c4ae0d1aa878921b7c98f7deca5ee8",
 
-  "src/third_party/chromium/src/build":
+  "third_party/chromium/src/build":
     Var("chromium_git") + "/chromium/src/build/@06b7bd9c7a8adb3708db8df4dc058de94f0d5554",
 
   # This revision is before headers got moved to main chromium repo.
-  "src/third_party/chromium/src/googleurl":
+  "third_party/chromium/src/googleurl":
     Var("chromium_git") + "/external/google-url@405b6e1798f88e85291820b30344723512e0c38f",
 
-  "src/third_party/closure_library":
+  "third_party/closure_library":
     Var("closure_library") + Var("closure_library_revision"),
 
-  "src/third_party/gflags":
+  "third_party/gflags":
     Var('chromium_git') + '/external/webrtc/trunk/third_party/gflags' +
     Var('gflags_revision'),
-  "src/third_party/gflags/src":
+  "third_party/gflags/src":
     Var('chromium_git') + '/external/gflags/src' + Var("gflags_src_revision"),
 
-  "src/third_party/google-sparsehash":
+  "third_party/google-sparsehash":
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
 
-  "src/third_party/protobuf/src":
+  "third_party/protobuf/src":
     Var("proto_src") + '@' + Var("protobuf_revision"),
 
   # Json cpp.
-  "src/third_party/jsoncpp/src":
+  "third_party/jsoncpp/src":
     Var("jsoncpp_src") + Var("jsoncpp_revision"),
 
   # Serf
-  "src/third_party/serf/src": Var("serf_src") + Var("serf_revision"),
+  "third_party/serf/src": Var("serf_src") + Var("serf_revision"),
 
-  "src/third_party/mod_spdy/src": Var("modspdy_src") + Var("modspdy_revision"),
+  "third_party/mod_spdy/src": Var("modspdy_src") + Var("modspdy_revision"),
 
-  "src/third_party/libwebp": Var("libwebp_src") + Var("libwebp_revision"),
+  "third_party/libwebp": Var("libwebp_src") + Var("libwebp_revision"),
 
-  "src/tools/clang":
+  "tools/clang":
     Var("chromium_git") + "/chromium/src/tools/clang/@bf272f7b05896b9a18de8497383f8b873a86cfbc",
 
   # This is the same commit as the version from svn included from chromium_deps,
   # but the svn is down, so we take it from chromium-git.
-  "src/tools/gyp":
+  "tools/gyp":
     Var("chromium_git") + "/external/gyp@" + "0fb31294ae844bbf83eba05876b7a241b66f1e99",
 
-  "src/third_party/modp_b64":
+  "third_party/modp_b64":
     Var("chromium_git") + "/chromium/src/third_party/modp_b64/@aae60754fa997799e8037f5e8ca1f56d58df763d",
 
   # RE2.
-  "src/third_party/re2/src":
+  "third_party/re2/src":
     "https://github.com/google/re2.git/@78dd4fa1f86bafbf5a5eb006778d9e6e27297af6",
 
   # Comment to disable HTTPS fetching via serf.  See also the
   # references in src/third_party/serf/serf.gyp.
-  "src/third_party/boringssl/src":
+  "third_party/boringssl/src":
     Var("boringssl_src") + Var("boringssl_git_revision"),
 
   # Domain Registry Provider gives us the Public Suffix List.
-  "src/third_party/domain_registry_provider":
+  "third_party/domain_registry_provider":
     Var("domain_registry_provider_src") +
         Var("domain_registry_provider_revision"),
 
-  "src/third_party/libpng/src": Var("libpng_src") + Var("libpng_revision"),
+  "third_party/libpng/src": Var("libpng_src") + Var("libpng_revision"),
 
-  "src/third_party/brotli/src": Var("brotli_src") + Var("brotli_revision"),
+  "third_party/brotli/src": Var("brotli_src") + Var("brotli_revision"),
 
-  "src/third_party/grpc/src": Var("grpc_src") + '@' + Var("grpc_revision"),
+  "third_party/grpc/src": Var("grpc_src") + '@' + Var("grpc_revision"),
 
-  "src/third_party/grpc/src/third_party/nanopb":
+  "third_party/grpc/src/third_party/nanopb":
     Var("nanopb_src") + '@' + Var("nanopb_revision"),
 
-  "src/third_party/hiredis/src":
+  "third_party/hiredis/src":
     Var("hiredis_src") + '@' + Var("hiredis_revision"),
 }
 
@@ -251,16 +251,16 @@ hooks = [
     # zero seconds to run. If something changed, it downloads a prebuilt clang,
     # which takes ~20s, but clang speeds up builds by more than 20s.
     "pattern": ".",
-    "action": ["python", "src/tools/clang/scripts/update.py", "--mac-only"],
+    "action": ["python", "tools/clang/scripts/update.py", "--mac-only"],
   },
   {
     # A change to a .gyp, .gypi, or to GYP itself should run the generator.
     "pattern": ".",
-    "action": ["python", "src/build/gyp_chromium",
+    "action": ["python", "build/gyp_chromium",
                "-Dchromium_revision=" + Var("chromium_revision_num")],
   },
   {
     "pattern": ".",
-    "action": ["src/third_party/closure/download.sh"],
+    "action": ["third_party/closure/download.sh"],
   },
 ]

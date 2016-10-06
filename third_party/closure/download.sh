@@ -23,7 +23,7 @@
 # should be updated as well.
 VERSION=20160713
 ZIP=compiler-$VERSION.zip
-DIR=src/tools/closure
+DIR=tools/closure
 JAR_IN=$DIR/closure-compiler-v$VERSION.jar
 JAR=$DIR/compiler.jar
 

@@ -85,8 +85,8 @@ fi
 mkdir mod_pagespeed
 cd mod_pagespeed
 git clone https://github.com/pagespeed/mod_pagespeed.git src
-gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
 cd src
+gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
 git checkout $VERSION
 gclient sync --force --jobs=1
 

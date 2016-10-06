@@ -222,13 +222,11 @@ EOF
 )
   echo "$killall_patch" | tr '>' '\t' | git apply
 fi
-cd $build_dir
 
+cd $build_dir/src
 check gclient.log \
-    gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
+    gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
 check gclient.log gclient sync --force
-
-cd src
 
 # Neither buildbot is using a compiler recent enough to provide stdalign.h,
 # which boringssl needs.  Even on Centos 5's gcc 4.1 we do have a way to set
