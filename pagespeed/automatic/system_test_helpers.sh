@@ -851,25 +851,29 @@ function kill_listener_port {
 # at most threshold_sec ($2) seconds to be read or the function will fail. When
 # the stream is fully read, the funcion will compare the total number of http
 # chunks read with expect_chunk_count ($3) and fail on mismatch.
-# Usage:
-# check_flushing "curl -N --raw --silent --proxy $SECONDARY_HOSTNAME $URL" 5 1
+# Usage: check_flushing 5 1
 # This will check if the curl command resulted in single chunk which was read
 # within one second or less.
 function check_flushing() {
-  local command="$1"
-  local threshold_sec="$2"
-  local expect_chunk_count="$3"
+  local threshold_sec="$1"
+  local expect_chunk_count="$2"
   local output=""
   local start=$(date +%s%N)
   local chunk_count=0
 
-  echo "Command: $command"
+  local url="http://noflush.example.com/mod_pagespeed_test/"
+  url+="slow_flushing_html_response.php"
+
+  local command="$CURL -f -N --raw -sS --proxy $SECONDARY_HOSTNAME $url"
 
   if [ "${USE_VALGRIND:-}" = true ]; then
     # We can't say much about correctness of timings under valgrind, so relax
     # the test for that.
     threshold_sec=$(echo "scale=2; $threshold_sec*10" | bc)
   fi
+
+  # First make sure php is working and we can actually fetch this page.
+  check $command -o /dev/null
 
   while true; do
     start=$(date +%s%N)
