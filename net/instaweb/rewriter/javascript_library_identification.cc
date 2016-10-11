@@ -75,7 +75,7 @@ StringPiece JavascriptLibraryIdentification::Find(
     }
   }
   // No size match found or no hash matched
-  return StringPiece(NULL);
+  return StringPiece();
 }
 
 void JavascriptLibraryIdentification::Merge(

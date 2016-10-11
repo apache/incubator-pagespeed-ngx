@@ -83,7 +83,7 @@ StringPiece RewriteFilter::GetCharsetForScript(
   }
 
   // Well, we really have no idea.
-  return StringPiece(NULL);
+  return StringPiece();
 }
 
 GoogleString RewriteFilter::GetCharsetForStylesheet(
