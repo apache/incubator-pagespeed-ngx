@@ -7,6 +7,11 @@
 # Typically this should be used to run single executables with some parameters.
 
 set -e
+
+if [ ! -z "$DISABLE_EXT_CACHES" ]; then
+  exec "$@"
+fi
+
 set -u
 
 # Let's make one script run another. We really do not want to deal with proper
