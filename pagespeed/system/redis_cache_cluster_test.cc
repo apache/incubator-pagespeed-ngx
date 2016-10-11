@@ -237,19 +237,17 @@ class RedisCacheClusterTest : public CacheTestBase {
           << "Redis Cluster configuration did not propagate in time";
 
       StringVector first_node_config;
-      cluster_is_up = true;
       for (auto& conn : *connections) {
         StringVector current_config = GetNodeClusterConfig(conn.get());
-        CHECK_EQ(current_config.size(), connections->size());
-        if (current_config.empty()) {
-          cluster_is_up = false;
+        if (current_config.empty() ||
+            current_config.size() != connections->size()) {
           break;
         }
         // Check configs are the same on all nodes.
+        cluster_is_up = true;
         if (first_node_config.empty()) {
           first_node_config = current_config;
-        }
-        if (first_node_config != current_config) {
+        } else if (first_node_config != current_config) {
           cluster_is_up = false;
           break;
         }
