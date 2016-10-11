@@ -21,6 +21,7 @@
 #include <cstddef>                     // for size_t
 #include <iterator>
 #include <map>
+#include <memory>
 #include <set>
 #include <utility>
 #include <vector>
@@ -176,7 +177,8 @@ class SpriteFuture {
   // (3) Insert the new value into the values vector.
   bool ReadSingleValue(Css::Values* values, int values_offset,
                        Css::Value** x_value, Css::Value** y_value) {
-    Css::Value* extra_value = new Css::Value(Css::Identifier::CENTER);
+    std::unique_ptr<Css::Value> extra_value(
+        new Css::Value(Css::Identifier::CENTER));
     Css::Value* value = values->at(values_offset);
     if (value->GetLexicalUnitType() == Css::Value::IDENT) {
       switch (value->GetIdentifier().ident()) {
@@ -184,21 +186,22 @@ class SpriteFuture {
         case Css::Identifier::RIGHT:
         case Css::Identifier::CENTER:
           *x_value = value;
-          *y_value = extra_value;
+          *y_value = extra_value.get();
           break;
         case Css::Identifier::TOP:
         case Css::Identifier::BOTTOM:
           *y_value = value;
-          *x_value = extra_value;
+          *x_value = extra_value.get();
           break;
         default:
-          delete extra_value;
           return false;
       }
     } else {
+      // TODO(morlovich): A single-value position is fine, it's
+      // the same as if it were followed by center.
       return false;
     }
-    values->insert(values->begin() + values_offset + 1, extra_value);
+    values->insert(values->begin() + values_offset + 1, extra_value.release());
     return true;
   }
 

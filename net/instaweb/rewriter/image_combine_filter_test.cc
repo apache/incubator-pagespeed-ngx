@@ -175,6 +175,17 @@ TEST_F(CssImageCombineTest, UnauthorizedDomain) {
   ValidateExpected("unauthorized_domain", before, after);
 }
 
+TEST_F(CssImageCombineTest, DontLeak) {
+  // Regression test for a leak: we had trouble when a single position was
+  // merely "0%".
+  const char kHtml[] = "<style>"
+      "#div2{background:transparent url(Cuppa.png) no-repeat scroll 0%;"
+      "background-position:0 0;width:10px;height:10px}"
+      "</style>";
+
+  ValidateNoChanges("single_pos", kHtml);
+}
+
 class CssImageCombineTestCustomOptions : public CssImageCombineTest {
  protected:
   // Derived classes should set their options and then call
