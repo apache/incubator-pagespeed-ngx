@@ -491,7 +491,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     if [ -n "$additional_configure_args" ]; then
       # Split additional_configure_args respecting any internal quotation.
       # Otherwise things like --with-cc-opt='-foo -bar' won't work.
-      eval additional_configure_args=($additional_configure_args)
+      eval additional_configure_args=("$additional_configure_args")
       configure=("${configure[@]}" "${additional_configure_args[@]}")
     fi
     echo "About to configure nginx with:"
