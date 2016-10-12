@@ -855,16 +855,15 @@ function kill_listener_port {
 # This will check if the curl command resulted in single chunk which was read
 # within one second or less.
 function check_flushing() {
-  local threshold_sec="$1"
-  local expect_chunk_count="$2"
+  local hostname="$1"
+  local threshold_sec="$2"
+  local expect_chunk_count="$3"
   local output=""
   local start=$(date +%s%N)
   local chunk_count=0
 
-  local url="http://noflush.example.com/mod_pagespeed_test/"
-  url+="slow_flushing_html_response.php"
-
-  local command="$CURL -f -N --raw -sS --proxy $SECONDARY_HOSTNAME $url"
+  local base_url="http://$hostname.example.com/mod_pagespeed_test"
+  local command="$CURL -f -N --raw -sS --proxy $SECONDARY_HOSTNAME"
 
   if [ "${USE_VALGRIND:-}" = true ]; then
     # We can't say much about correctness of timings under valgrind, so relax
@@ -873,7 +872,7 @@ function check_flushing() {
   fi
 
   # First make sure php is working and we can actually fetch this page.
-  check $command -o /dev/null
+  check $command "$base_url/php_withoutflush.php" -o /dev/null
 
   while true; do
     start=$(date +%s%N)
@@ -896,8 +895,10 @@ function check_flushing() {
     echo "Chunk data: $line"
     # Read the trailing \r\n - should be fast.
     check read -N 2 line
-  done < <($command)
-  check 0
+  done < <($command "$base_url/slow_flushing_html_response.php")
+  # Only reached if we finish the stream without a chunk of 0, which is an HTTP
+  # protocol violation.
+  fail
 }
 
 # Given the output of a page with ?PageSpeedFilters=+debug, print the section of

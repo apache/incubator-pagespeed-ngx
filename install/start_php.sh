@@ -6,6 +6,12 @@
 # Usage: start_php.sh <port>
 # Example: start_php.sh 9000
 
+DISABLE_PHP_TESTS="${DISABLE_PHP_TESTS:-}"
+if [ -n "$DISABLE_PHP_TESTS" ]; then
+  echo "PHP tests are disabled; skipping PHP restart."
+  exit 0
+fi
+
 port="$1"
 
 if ! command -v php-cgi &> /dev/null; then
@@ -34,9 +40,17 @@ if [ "$existing_php_pid" != "" ]; then
   fi
 fi
 
-echo "Starting PHP on port $port..."
-php-cgi $args > /dev/null &
+echo -n "Starting PHP on port $port..."
+REDIRECT_STATUS=1 php-cgi $args &
 new_php_pid="$!"
+timeout="$(($SECONDS + 10))"
+while [ "$SECONDS" -lt "$timeout" ] && \
+      [ "$(get_php_pid)" != "$new_php_pid" ]; do
+  sleep 0.1
+  echo -n .
+done
+
+echo
 if [ "$(get_php_pid)" != "$new_php_pid" ]; then
   echo "Failed to start php."
   exit 1
