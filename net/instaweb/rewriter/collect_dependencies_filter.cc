@@ -32,8 +32,11 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
+#include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/html/html_element.h"
 #include "pagespeed/kernel/http/data_url.h"
 #include "pagespeed/kernel/http/google_url.h"
@@ -47,6 +50,7 @@ class CollectDependenciesFilter::Context : public RewriteContext {
  public:
   Context(DependencyType type, RewriteDriver* driver)
       : RewriteContext(driver, nullptr, nullptr),
+        mutex_(driver->server_context()->thread_system()->NewMutex()),
         reported_(false),
         dep_type_(type),
         dep_id_(-1) {
@@ -191,7 +195,21 @@ class CollectDependenciesFilter::Context : public RewriteContext {
   }
 
   void WillNotRender() override {
-    Report();
+    {
+      ScopedMutex hold(mutex_.get());
+      if (reported_) {
+        return;
+      }
+      reported_ = true;
+    }
+
+    // We don't have results in time (and if we did, we wouldn't be able to
+    // access them from this thread), so give up on propagating to pcache for
+    // this time. This is somewhat conservative: if this is actually an early
+    // flush window we could deliver the result to depedency_tracker safely,
+    // but then if it's after document end it would have us miss the cache
+    // commit entirely...
+    Driver()->dependency_tracker()->ReportDependencyCandidate(dep_id_, nullptr);
   }
 
   void Cancel() override {
@@ -200,9 +218,12 @@ class CollectDependenciesFilter::Context : public RewriteContext {
 
  private:
   void Report() {
-    if (reported_) {
-      // WillNotRender followed by Cancel can happen.
-      return;
+    {
+      ScopedMutex hold(mutex_.get());
+      if (reported_) {
+        return;
+      }
+      reported_ = true;
     }
 
     DependencyTracker* dep_tracker = Driver()->dependency_tracker();
@@ -241,10 +262,10 @@ class CollectDependenciesFilter::Context : public RewriteContext {
     } else {
       dep_tracker->ReportDependencyCandidate(dep_id_, nullptr);
     }
-    reported_ = true;
   }
 
-  bool reported_;
+  std::unique_ptr<AbstractMutex> mutex_;
+  bool reported_ GUARDED_BY(mutex_);
   DependencyType dep_type_;
   int dep_id_;
 
