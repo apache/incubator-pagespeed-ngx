@@ -1565,11 +1565,8 @@ void RewriteContext::OutputCacheMiss() {
   outputs_.clear();
   partitions_->Clear();
   ServerContext* server_context = FindServerContext();
-  if (server_context->shutting_down() && !RunningOnValgrind()) {
-    FindServerContext()->message_handler()->Message(
-        kInfo,
-        "RewriteContext::OutputCacheMiss called with "
-        "server_context->shutting_down(); leaking the context.");
+  if (server_context->shutting_down()) {
+    LockFailed();
   } else if (ShouldDistributeRewrite()) {
     DistributeRewrite();
   } else {
