@@ -27,9 +27,11 @@ third_party/grpc/grpc.gyp
 third_party/grpc/src/*
 third_party/httpd/src/*
 third_party/httpd24/src/*
+third_party/hiredis/src/*
 third_party/icu/*
 third_party/jsoncpp/src/*
 third_party/libjpeg_turbo/src/*
+third_party/libjpeg_turbo/yasm/source/patched-yasm/*
 third_party/libpng/src/*
 third_party/libwebp/*
 third_party/mod_spdy/*
