@@ -1366,7 +1366,7 @@ check [ $MATCHES -eq 1 ]
 
 start_test Follow flushes can be turned off.
 echo "Check that FollowFlushes off outputs a single chunk"
-check_flushing 5.4 1
+check_flushing noflush 5.4 1
 
 start_test Special responses from php are handled OK.
 URL="http://special-response.example.com/A.foo.css.pagespeed.cf.0.css"
