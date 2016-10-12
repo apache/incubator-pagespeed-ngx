@@ -30,9 +30,6 @@ vars = {
   "libwebp_src": "https://chromium.googlesource.com/webm/libwebp.git",
   "libwebp_revision": "@v0.5.1",
 
-  "modspdy_src": "https://svn.apache.org/repos/asf/httpd/mod_spdy/trunk",
-  "modspdy_revision": "@1661925",
-
   "serf_src": "https://svn.apache.org/repos/asf/serf/tags/1.3.8/",
   "serf_revision": "@head",
 
@@ -188,8 +185,6 @@ deps = {
 
   # Serf
   "third_party/serf/src": Var("serf_src") + Var("serf_revision"),
-
-  "third_party/mod_spdy/src": Var("modspdy_src") + Var("modspdy_revision"),
 
   "third_party/libwebp": Var("libwebp_src") + Var("libwebp_revision"),
 
