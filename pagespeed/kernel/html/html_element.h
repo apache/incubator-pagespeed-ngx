@@ -273,6 +273,11 @@ class HtmlElement : public HtmlNode {
     return const_cast<Attribute*>(result);
   }
 
+  bool HasAttribute(HtmlName::Keyword keyword) const {
+    const Attribute* attribute = FindAttribute(keyword);
+    return attribute != nullptr;
+  }
+
   // Look up decoded attribute value by name.
   // Returns NULL if:
   //    1. no attribute exists

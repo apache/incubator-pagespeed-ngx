@@ -24,9 +24,11 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "pagespeed/kernel/base/gmock.h"
 #include "pagespeed/kernel/base/gtest.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/html/html_parse_test_base.h"
+#include "pagespeed/kernel/html/html_keywords.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/user_agent_matcher_test_base.h"
 
@@ -425,6 +427,41 @@ TEST_F(ResponsiveImageFilterTest, CommasInUrls) {
       "<img src=',comma,begin' width=682 height=511>",
       StrCat("<img src='", EncodeImage(682, 511, ",comma,begin", "0", "jpg"),
              "' width=682 height=511>"));
+}
+
+TEST_F(ResponsiveImageFilterTest, JavaScriptUrl) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+
+  ValidateNoChanges(
+      "js_image",
+      "<img src='javascript:slide();' width=682 height=511>");
+}
+
+TEST_F(ResponsiveImageFilterTest, EscapedUrl) {
+  options()->EnableFilter(RewriteOptions::kResponsiveImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kDebug);
+  rewrite_driver()->AddFilters();
+
+  // This tests the responsive image filter in the presence of an
+  // image URL that cannot be decoded.  Currently we refuse
+  // to decode a URL with query params specified via "&" rather than "&amp;".
+  // This is because if we mutate such a value we don't know whether to
+  // put in "&amp;" or just "&".
+  //
+  // This ASSERT in just to make clear that this test depends on that property.
+  GoogleString buf;
+  bool decoding_error;
+  static const char kUrl[] = "http://example.com/?a=b&cup=3";
+  ASSERT_TRUE(HtmlKeywords::Unescape(kUrl, &buf, &decoding_error).empty());
+
+  ParseUrl("http://example.com/escaped_image",
+           StrCat("<img src='", kUrl, "' width=682 height=511>"));
+  EXPECT_THAT(output_buffer_, testing::HasSubstr(
+      StrCat("<img src='", kUrl, "' width=682 height=511>"
+             "<!--Responsive image URL not decodable")));
 }
 
 TEST_F(ResponsiveImageFilterTest, SpacesInUrls) {

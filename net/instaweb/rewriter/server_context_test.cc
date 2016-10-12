@@ -538,6 +538,17 @@ TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {
   EXPECT_FALSE(options->Enabled(RewriteOptions::kDelayImages));
 }
 
+TEST_F(ServerContextTest, QueryOptionsWithInvalidUrl) {
+  RequestHeaders request_headers;
+  GoogleUrl gurl("bogus");
+  ASSERT_FALSE(gurl.IsWebValid());
+  RewriteQuery rewrite_query;
+  RequestContextPtr null_request_context;
+  EXPECT_FALSE(server_context()->GetQueryOptions(
+      null_request_context, options(), &gurl, &request_headers, NULL,
+      &rewrite_query));
+}
+
 TEST_F(ServerContextTest, TestNamed) {
   TestNamed();
 }

@@ -172,6 +172,7 @@ const char kShowAdsHtmlPageWithInvalidGoogleAdFormat[] =
 // Test fixture for MakeShowAdsAsyncFilter unit tests.
 class MakeShowAdsAsyncFilterTest : public RewriteTestBase {
  protected:
+  MakeShowAdsAsyncFilterTest() : add_tags_(true) {}
   virtual void SetUp() {
     RewriteTestBase::SetUp();
     MakeShowAdsAsyncFilter::InitStats(rewrite_driver()->statistics());
@@ -213,7 +214,11 @@ class MakeShowAdsAsyncFilterTest : public RewriteTestBase {
     EXPECT_EQ(0, GetStatShowAdsapiReplaced());
   }
 
+  bool AddBody() const override { return add_tags_; }
+  bool AddHtmlTags() const override { return add_tags_; }
+
   scoped_ptr<MakeShowAdsAsyncFilter> filter_;
+  bool add_tags_;
 };
 
 TEST_F(MakeShowAdsAsyncFilterTest, NoAds) {
@@ -545,6 +550,16 @@ TEST_F(MakeShowAdsAsyncFilterTest, FlushInTheMiddleOfShowAdsDataAndApiCall) {
       "<script>(adsbygoogle = window.adsbygoogle || []).push({})</script>"
       "</body>",
       output_buffer_);
+  CheckStatForShowAds(1);
+}
+
+TEST_F(MakeShowAdsAsyncFilterTest, ShowAdsNoParent) {
+  add_tags_ = false;
+  ValidateExpected(
+      test_info_->name(),
+      StrCat(GetShowAdsDataSnippetWithContent(GetShowAdsDataContent1()),
+             kShowAdsApiCall),
+      GetShowAdsDataFormat1Output());
   CheckStatForShowAds(1);
 }
 

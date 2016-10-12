@@ -64,17 +64,18 @@ void ResponsiveImageFirstFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
 
-  if (element->FindAttribute(HtmlName::kDataPagespeedNoTransform) != NULL ||
-      element->FindAttribute(HtmlName::kPagespeedNoTransform) != NULL) {
+  if (element->AttributeValue(HtmlName::kSrc) == nullptr) {
+    driver()->InsertDebugComment("Responsive image URL not decodable", element);
+  } else if (element->HasAttribute(HtmlName::kDataPagespeedNoTransform) ||
+             element->HasAttribute(HtmlName::kPagespeedNoTransform)) {
     driver()->InsertDebugComment(
         "ResponsiveImageFilter: Not adding srcset because of "
         "data-pagespeed-no-transform attribute.", element);
-  } else if (element->FindAttribute(HtmlName::kSrcset) != NULL) {
+  } else if (element->HasAttribute(HtmlName::kSrcset)) {
     driver()->InsertDebugComment(
         "ResponsiveImageFilter: Not adding srcset because image already "
         "has one.", element);
-  } else if (element->FindAttribute(HtmlName::kDataPagespeedResponsiveTemp) ==
-             NULL) {
+  } else if (!element->HasAttribute(HtmlName::kDataPagespeedResponsiveTemp)) {
     // On first run of this filter, split <img> element into multiple
     // elements.
     AddHiResImages(element);
@@ -261,9 +262,10 @@ void ResponsiveImageSecondFilter::CombineHiResImages(
   const char* x1_src = orig_element->AttributeValue(HtmlName::kSrc);
 
   if (x1_src == NULL) {
-    // Should not happen. We explicitly checked that <img> had a src= attribute
-    // in ResponsiveImageFirstFilter::AddHiResImages().
-    LOG(DFATAL) << "Original responsive image has no URL.";
+    // Should not happen. We explicitly checked that <img> had a decodeable
+    // src= attribute in ResponsiveImageFirstFilter::AddHiResImages().
+    LOG(DFATAL) << "Original responsive image has no decodeable URL: "
+                << orig_element->ToString();
     driver()->InsertDebugComment(
         "ResponsiveImageFilter: Not adding srcset because original image has "
         "no src URL.", orig_element);

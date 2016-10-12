@@ -925,6 +925,11 @@ bool ServerContext::GetQueryOptions(
     const RewriteOptions* domain_options, GoogleUrl* request_url,
     RequestHeaders* request_headers, ResponseHeaders* response_headers,
     RewriteQuery* rewrite_query) {
+  if (!request_url->IsWebValid()) {
+    message_handler_->Message(kError, "GetQueryOptions: Invalid URL: %s",
+                              request_url->spec_c_str());
+    return false;
+  }
   if (domain_options == NULL) {
     domain_options = global_options();
   }
