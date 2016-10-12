@@ -1354,9 +1354,7 @@ check [ $MATCHES -eq 1 ]
 
 start_test Follow flushes can be turned off.
 echo "Check that FollowFlushes off outputs a single chunk"
-URL="http://noflush.example.com/mod_pagespeed_test/slow_flushing_html_response.php"
-check_flushing "curl -N --raw --silent --proxy $SECONDARY_HOSTNAME $URL" \
-  5.4 1
+check_flushing noflush 5.4 1
 
 start_test Special responses from php are handled OK.
 URL="http://special-response.example.com/A.foo.css.pagespeed.cf.0.css"

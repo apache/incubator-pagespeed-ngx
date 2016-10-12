@@ -25,8 +25,8 @@ install:
   - mkdir ~/mod_pagespeed
   - cd ~/mod_pagespeed
   - git clone https://github.com/pagespeed/mod_pagespeed.git src
-  - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
   - cd src
+  - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
   - ~/bin/depot_tools/gclient sync --force --jobs=1
   - cd ~/mod_pagespeed/src/pagespeed/automatic
   - make BUILDTYPE=Release -C ../../pagespeed/automatic AR.host="$PWD/../../build/wrappers/ar.sh" AR.target="$PWD/../../build/wrappers/ar.sh" all
