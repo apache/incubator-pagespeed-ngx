@@ -53,6 +53,7 @@
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_image_test_util',
         '<(DEPTH)/pagespeed/kernel.gyp:pthread_system',
         '<(DEPTH)/pagespeed/kernel.gyp:pagespeed_proto_matcher_test_proto',
+        '<(DEPTH)/pagespeed/kernel.gyp:redis_cache_cluster_setup_lib',
         '<(DEPTH)/pagespeed/kernel.gyp:tcp_connection_for_testing',
         '<(DEPTH)/pagespeed/kernel.gyp:tcp_server_thread_for_testing',
         '<(DEPTH)/testing/gmock.gyp:gmock',

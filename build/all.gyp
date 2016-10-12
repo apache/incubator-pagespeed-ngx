@@ -58,6 +58,7 @@
         '../net/instaweb/test.gyp:mod_pagespeed_test',
         '../net/instaweb/test.gyp:mod_pagespeed_speed_test',
         'install.gyp:*',
+        '<(DEPTH)/pagespeed/kernel.gyp:redis_cache_cluster_setup',
       ]
     },
     {

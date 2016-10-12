@@ -455,6 +455,35 @@
       ],
     },
     {
+      'target_name': 'redis_cache_cluster_setup_lib',
+      'type': '<(library)',
+      'sources': [
+        'system/redis_cache_cluster_setup.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        'pagespeed_base',
+        'tcp_connection_for_testing',
+        '<(DEPTH)/third_party/apr/apr.gyp:apr',
+      ],
+    },
+    {
+      'target_name': 'redis_cache_cluster_setup',
+      'type': 'executable',
+      'sources': [
+        'system/redis_cache_cluster_setup_main.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'dependencies': [
+        'redis_cache_cluster_setup_lib',
+        '<(DEPTH)/third_party/apr/apr.gyp:apr',
+      ],
+    },
+    {
       'target_name': 'tcp_connection_for_testing',
       'type': '<(library)',
       'sources': [
@@ -465,6 +494,7 @@
       ],
       'dependencies': [
         'pagespeed_base',
+        '../net/instaweb/instaweb.gyp:instaweb_system',
         '<(DEPTH)/third_party/apr/apr.gyp:apr',
       ],
     },
