@@ -57,13 +57,7 @@ MOD_PAGESPEED_DIR="$3"
 NGINX_EXECUTABLE="$4"
 PAGESPEED_TEST_HOST="$5"
 CONTROLLER_PORT=8053
-RCPORT1=9991
-RCPORT2=9992
-RCPORT3=9993
-RCPORT4=9994
-RCPORT5=9995
-RCPORT6=9996
-RCPORT7=9997
+RCPORT=9991
 
 this_dir="$( cd $(dirname "$0") && pwd)"
 
@@ -76,13 +70,7 @@ function run_test_checking_failure() {
     PAGESPEED_TEST_HOST="$PAGESPEED_TEST_HOST" \
     RUN_TESTS="$RUN_TESTS" \
     CONTROLLER_PORT="$CONTROLLER_PORT" \
-    RCPORT1="$RCPORT1" \
-    RCPORT2="$RCPORT2" \
-    RCPORT3="$RCPORT3" \
-    RCPORT4="$RCPORT4" \
-    RCPORT5="$RCPORT5" \
-    RCPORT6="$RCPORT6" \
-    RCPORT7="$RCPORT7" \
+    RCPORT="$RCPORT" \
     bash "$this_dir/nginx_system_test.sh"
   STATUS=$?
   echo "With $@ setup."

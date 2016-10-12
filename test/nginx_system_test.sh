@@ -32,13 +32,7 @@
 : ${PRIMARY_PORT:?"Set PRIMARY_PORT"}
 : ${SECONDARY_PORT:?"Set SECONDARY_PORT"}
 : ${CONTROLLER_PORT:?"Set CONTROLLER_PORT"}
-: ${RCPORT1:?"Set RCPORT1"}
-: ${RCPORT2:?"Set RCPORT2"}
-: ${RCPORT2:?"Set RCPORT3"}
-: ${RCPORT4:?"Set RCPORT4"}
-: ${RCPORT5:?"Set RCPORT5"}
-: ${RCPORT6:?"Set RCPORT6"}
-: ${RCPORT7:?"Set RCPORT7"}
+: ${RCPORT:?"Set RCPORT"}
 : ${MOD_PAGESPEED_DIR:?"Set MOD_PAGESPEED_DIR"}
 : ${NGINX_EXECUTABLE:?"Set NGINX_EXECUTABLE"}
 : ${PAGESPEED_TEST_HOST:?"Set PAGESPEED_TEST_HOST"}
@@ -229,13 +223,7 @@ cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@CONTROLLER@@#'"$CONTROLLER"'#' \
   | sed 's#@@NATIVE_FETCHER@@#'"$NATIVE_FETCHER"'#' \
   | sed 's#@@RESOLVER@@#'"$RESOLVER"'#' \
-  | sed 's#@@RCPORT1@@#'"$RCPORT1"'#' \
-  | sed 's#@@RCPORT2@@#'"$RCPORT2"'#' \
-  | sed 's#@@RCPORT3@@#'"$RCPORT3"'#' \
-  | sed 's#@@RCPORT4@@#'"$RCPORT4"'#' \
-  | sed 's#@@RCPORT5@@#'"$RCPORT5"'#' \
-  | sed 's#@@RCPORT6@@#'"$RCPORT6"'#' \
-  | sed 's#@@RCPORT7@@#'"$RCPORT7"'#' \
+  | sed 's#@@RCPORT@@#'"$RCPORT"'#' \
   | sed 's#@@PAGESPEED_TEST_HOST@@#'"$PAGESPEED_TEST_HOST"'#' \
   >> $PAGESPEED_CONF
 # make sure we substituted all the variables

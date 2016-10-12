@@ -1221,7 +1221,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT1@@/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport1.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1229,7 +1229,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-partially-invalid.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT2@@/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport2.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1237,7 +1237,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-invalid.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT3@@/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport3.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1245,7 +1245,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-failed-fetch.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT5@@/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport5.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1253,7 +1253,7 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-slow-fetch.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT6@@/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport6.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
   server {
@@ -1261,7 +1261,39 @@ http {
     listen [::]:@@SECONDARY_PORT@@;
     server_name remote-config-experiment.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
-    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT7@@/remote.cfg";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport7.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-slightly-slow-fetch.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport8.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-slightly-slow-expired-fetch.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport9.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-forbidden.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport10.cfg";
+    pagespeed RemoteConfigurationTimeoutMs 1500;
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name remote-config-initially-forbidden.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+    pagespeed RemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport11.cfg";
     pagespeed RemoteConfigurationTimeoutMs 1500;
   }
 
