@@ -105,7 +105,8 @@ CFLAGS="$CFLAGS $FLAG_MARCH"
 # to our libpsol.a
 # See https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_dual_abi.html
 CFLAGS="$CFLAGS -D_GLIBCXX_USE_CXX11_ABI=0"
-CC_TEST_FLAGS="$CC_TEST_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0"
+CC_OLD_TEST_FLAGS="$CC_TEST_FLAGS"
+CC_TEST_FLAGS="$CC_TEST_FLAGS -D_GLIBCXX_USE_CXX11_ABI=0 --std=c++11"
 
 case "$NGX_GCC_VER" in
   4.8*)
@@ -205,7 +206,7 @@ ngx_feature_test="
 if [ $ngx_found = no ]; then
   cat << END
 $0: error: module ngx_pagespeed requires the pagespeed optimization library.
-Look in obj/autoconf.err for more details.
+Look in $PWD/$NGX_AUTOCONF_ERR for more details.
 END
   exit 1
 fi
@@ -354,9 +355,11 @@ if [ $ngx_found = no ]; then
   cat << END
 $0: error: module ngx_pagespeed requires gcc >= 4.8 or clang >= 3.3.
 See https://developers.google.com/speed/pagespeed/module/build_ngx_pagespeed_from_source for some recommendations.
-Look in objs/autoconf.err for more details.
+Look in $PWD/$NGX_AUTOCONF_ERR for more details.
 END
   exit 1
 fi
 
 have=NGX_PAGESPEED . auto/have
+
+CC_TEST_FLAGS="$CC_OLD_TEST_FLAGS"
