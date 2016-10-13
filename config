@@ -205,7 +205,7 @@ ngx_feature_test="
 if [ $ngx_found = no ]; then
   cat << END
 $0: error: module ngx_pagespeed requires the pagespeed optimization library.
-Look in obj/autoconf.err for more details.
+Look in $PWD/$NGX_AUTOCONF_ERR for more details.
 END
   exit 1
 fi
@@ -354,7 +354,7 @@ if [ $ngx_found = no ]; then
   cat << END
 $0: error: module ngx_pagespeed requires gcc >= 4.8 or clang >= 3.3.
 See https://developers.google.com/speed/pagespeed/module/build_ngx_pagespeed_from_source for some recommendations.
-Look in objs/autoconf.err for more details.
+Look in $PWD/$NGX_AUTOCONF_ERR for more details.
 END
   exit 1
 fi
