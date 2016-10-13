@@ -34,7 +34,7 @@ class NullStatisticsVariable {
   void Set(int64 value) { }
   int64 Get() const { return 0; }
   int64 AddHelper(int64 delta) const { return 0; }
-  StringPiece GetName() const { return StringPiece(NULL); }
+  StringPiece GetName() const { return StringPiece(); }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NullStatisticsVariable);
