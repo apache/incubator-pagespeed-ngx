@@ -22,30 +22,42 @@ vars = {
   # we want to pass this into a -D flag
   "chromium_revision_num": "256281",
 
-  "libpagespeed_svn_root": "https://github.com/pagespeed/page-speed/trunk/",
-  "libpagespeed_trunk": "https://github.com/pagespeed/page-speed/trunk/lib/trunk/",
-  "libpagespeed_revision": "@2579",
+  "optipng_src": "https://github.com/pagespeed/optipng.git",
+  "optipng_revision": "d48f8e496e59ba6a9f90fecdd8f6f80685abb324",
+
+  "giflib_src": "https://github.com/pagespeed/giflib.git",
+  "giflib_revision": "cbbe2391f92b3fbee6c68216a1a99cbd32596e61",
+
+  "icu_src": "https://github.com/pagespeed/icu.git",
+  "icu_revision": "e8c51b17d1467b8a1927baf2215702c3a7682cc8",
+
+  # TODO(cheesy): There's a perfectly fine zlib repo at
+  # https://github.com/madler/zlib.git. We should copy the gyp file into our
+  # repo and then switch to it. After that, we should delete the zlib
+  # repo from pagespeed.
+  "zlib_src": "https://github.com/pagespeed/zlib.git",
+  "zlib_revision": "877ddb5c3793ff6f61e45d5f51a2399a7d4098ca",
 
   # Import libwebp 0.5.1 from the official repo.
   "libwebp_src": "https://chromium.googlesource.com/webm/libwebp.git",
   "libwebp_revision": "@v0.5.1",
 
-  "serf_src": "https://svn.apache.org/repos/asf/serf/tags/1.3.8/",
-  "serf_revision": "@head",
+  "serf_src": "https://git.apache.org/serf.git",
+  "serf_revision": "@1.3.8",
 
-  "apr_src": "https://svn.apache.org/repos/asf/apr/apr/tags/1.5.1/",
-  "apr_revision": "@head",
+  "apr_src": "git://git.apache.org/apr.git",
+  "apr_revision": "@1.5.1",
 
-  "aprutil_src": "https://svn.apache.org/repos/asf/apr/apr-util/tags/1.5.4/",
-  "aprutil_revision": "@head",
+  "aprutil_src": "git://git.apache.org/apr-util.git",
+  "aprutil_revision": "@1.5.4",
 
   "apache_httpd_src":
-    "https://svn.apache.org/repos/asf/httpd/httpd/tags/2.2.29/",
-  "apache_httpd_revision": "@head",
+    "git://git.apache.org/httpd.git",
+  "apache_httpd_revision": "@2.2.29",
 
   "apache_httpd24_src":
-    "https://svn.apache.org/repos/asf/httpd/httpd/tags/2.4.10/",
-  "apache_httpd24_revision": "@head",
+    "git://git.apache.org/httpd.git",
+  "apache_httpd24_revision": "@2.4.10",
 
   # If the closure library version is updated, the closure compiler version
   # listed in third_party/closure/download.sh should be updated as well.
@@ -111,19 +123,10 @@ vars = {
 }
 
 deps = {
-
-  # Other dependencies.
-  "build/temp_gyp":
-    Var("libpagespeed_trunk") + "src/build/temp_gyp/" +
-        Var("libpagespeed_revision"),
-
-  # TODO(huibao): Remove references to libpagespeed.
-  "third_party/giflib":
-    Var("libpagespeed_svn_root") + "deps/giflib-4.1.6/",
-  "third_party/icu": Var("libpagespeed_svn_root") + "deps/icu461/",
-  "third_party/optipng":
-    Var("libpagespeed_svn_root") + "deps/optipng-0.7.4/",
-  "third_party/zlib": Var("libpagespeed_svn_root") + "deps/zlib-1.2.5/",
+  "third_party/giflib": Var("giflib_src") + "@" + Var("giflib_revision"),
+  "third_party/icu": Var("icu_src") + "@" + Var("icu_revision"),
+  "third_party/optipng": Var("optipng_src") + "@" + Var("optipng_revision"),
+  "third_party/zlib": Var("zlib_src") + "@" + Var("zlib_revision"),
 
   "third_party/libjpeg_turbo/yasm/source/patched-yasm":
     Var("chromium_git") + "/chromium/deps/yasm/patched-yasm@7da28c6c7c6a1387217352ce02b31754deb54d2a",
@@ -135,24 +138,17 @@ deps = {
   "testing/gtest": Var("gtest_src") + Var("gtest_revision"),
   "testing/gmock": Var("gmock_src") + Var("gmock_revision"),
 
-
   "third_party/apr/src":
     Var("apr_src") + Var("apr_revision"),
 
   "third_party/aprutil/src":
     Var("aprutil_src") + Var("aprutil_revision"),
 
-  "third_party/httpd/src/include":
-    Var("apache_httpd_src") + "include/" + Var("apache_httpd_revision"),
+  "third_party/httpd/src":
+    Var("apache_httpd_src") + Var("apache_httpd_revision"),
 
-  "third_party/httpd/src/os":
-    Var("apache_httpd_src") + "os/" + Var("apache_httpd_revision"),
-
-  "third_party/httpd24/src/include":
-    Var("apache_httpd24_src") + "include/" + Var("apache_httpd24_revision"),
-
-  "third_party/httpd24/src/os":
-    Var("apache_httpd24_src") + "os/" + Var("apache_httpd24_revision"),
+  "third_party/httpd24/src":
+    Var("apache_httpd24_src") + Var("apache_httpd24_revision"),
 
   "third_party/chromium/src/base":
     Var("chromium_git") + "/chromium/src/base@ccf3c2f324c4ae0d1aa878921b7c98f7deca5ee8",
