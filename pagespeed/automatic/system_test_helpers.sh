@@ -36,8 +36,9 @@
 #
 #
 # By default tests that are in separate files and run with run_test are run
-# asynchronously.  To disable this, for more predictable debugging, set the
-# environment variable RUN_TESTS_ASYNC to "off".
+# synchronously.  Run them asynchronously, set the environment variable
+# RUN_TESTS_ASYNC to "on".  The tests will probably flake if run this way, so
+# it's not recommended.
 #
 # Callers need to set SERVER_NAME, and not run this more than once
 # simultaneously with the same SERVER_NAME value.
@@ -123,6 +124,14 @@ export WGETRC=$TEMPDIR/wgetrc
 cat > $WGETRC <<EOF
 user_agent = Mozilla/5.0 (X11; U; Linux x86_64; en-US) AppleWebKit/534.0 (KHTML, like Gecko) Chrome/6.0.408.1 Safari/534.0
 EOF
+
+# You can pass in TEST_TO_RUN=test-name to run only a specific test.  This is
+# intended for debugging, where you want to iterate on a single failing test.
+# It only works with tests that are set up to use run_test, which is currently
+# only the ones in automatic/.  Tests that haven't been converted to use
+# run_test currently always run.
+# TODO(jefftk): convert all system tests to use run_test and separate files.
+TEST_TO_RUN="${TEST_TO_RUN:-}"
 
 # Individual tests should use $TESTTMP if they need to store something
 # temporarily.  Infrastructure can use $ORIGINAL_TEMPDIR if it's ok with
@@ -226,6 +235,10 @@ BACKGROUND_TEST_PIDS=()  # array of pids
 BACKGROUND_TEST_NAMES=() # hash from pid to name of test
 function run_test() {
   local test_name=$1
+
+  if [ -n "$TEST_TO_RUN" ] && [ "$TEST_TO_RUN" != "$test_name" ]; then
+    return  # By default TEST_TO_RUN="" so normally we don't skip tests here.
+  fi
 
   if $RUN_TESTS_IN_BACKGROUND; then
     while [ $(jobs | wc -l) -gt $PARALLEL_MAX ]; do
