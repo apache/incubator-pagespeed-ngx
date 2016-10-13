@@ -2035,7 +2035,6 @@ AddType application/json .json
 #ALL_DIRECTIVES ModPagespeedCacheFlushPollIntervalSec 10
 #ALL_DIRECTIVES ModPagespeedCacheFragment share-a-cache-please
 #ALL_DIRECTIVES ModPagespeedClientDomainRewrite false
-#ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
 #ALL_DIRECTIVES ModPagespeedCompressMetadataCache true
 #ALL_DIRECTIVES ModPagespeedCriticalImagesBeaconEnabled true
@@ -2067,7 +2066,6 @@ AddType application/json .json
 #ALL_DIRECTIVES ModPagespeedForbidFilters rewrite_images
 #ALL_DIRECTIVES ModPagespeedForceCaching off
 #ALL_DIRECTIVES ModPagespeedEnrollExperiment 3
-#ALL_DIRECTIVES ModPagespeedHashRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedImageInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedImageLimitOptimizedPercent 80
 #ALL_DIRECTIVES ModPagespeedImageLimitResizeAreaPercent 80
@@ -2122,7 +2120,6 @@ AddType application/json .json
 #ALL_DIRECTIVES ModPagespeedRedisServer localhost:55555
 #ALL_DIRECTIVES ModPagespeedRedisReconnectionDelayMs 1000
 #ALL_DIRECTIVES ModPagespeedRedisTimeoutUs 50000
-#ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
 #ALL_DIRECTIVES ModPagespeedReportUnloadTime true
 #ALL_DIRECTIVES ModPagespeedRespectVary true
 #ALL_DIRECTIVES ModPagespeedRespectXForwardedProto off
@@ -2143,7 +2140,6 @@ AddType application/json .json
 #ALL_DIRECTIVES ModPagespeedStatisticsLogging true
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsCSS "example.com/css.css"
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsJS "example.com/js.js"
-#ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile /tmp/log/stats.log
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingIntervalMs 3000
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingMaxFileSizeKb 1024
 #ALL_DIRECTIVES ModPagespeedStickyQueryParameters something-private
@@ -2158,3 +2154,15 @@ AddType application/json .json
 #ALL_DIRECTIVES ModPagespeedWebpRecompressionQualityForSmallScreens 85
 #ALL_DIRECTIVES ModPagespeedImageJpegNumProgressiveScans 3
 #ALL_DIRECTIVES ModPagespeedImageJpegNumProgressiveScansForSmallScreens 2
+# Deprecated directives. We should still accept them, even if they do nothing
+#ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
+#ALL_DIRECTIVES ModPagespeedHashRefererStatistics false
+#ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
+#ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile /tmp/log/stats.log
+#ALL_DIRECTIVES ModPagespeedDisableForBots 1
+#ALL_DIRECTIVES ModPagespeedGeneratedFilePrefix 1
+#ALL_DIRECTIVES ModPagespeedInheritVHostConfig 1
+#ALL_DIRECTIVES ModPagespeedFetchFromModSpdy 1
+#ALL_DIRECTIVES ModPagespeedNumShards 1
+#ALL_DIRECTIVES ModPagespeedUrlPrefix 1
+#ALL_DIRECTIVES ModPagespeedMaxPrefetchJsElements 1

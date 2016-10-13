@@ -48,7 +48,7 @@ const char SystemRewriteOptions::kRedisReconnectionDelayMs[] =
     "RedisReconnectionDelayMs";
 const char SystemRewriteOptions::kRedisTimeoutUs[] = "RedisTimeoutUs";
 
-RewriteOptions::Properties* SystemRewriteOptions::system_properties_ = NULL;
+RewriteOptions::Properties* SystemRewriteOptions::system_properties_ = nullptr;
 
 void SystemRewriteOptions::Initialize() {
   if (Properties::Initialize(&system_properties_)) {

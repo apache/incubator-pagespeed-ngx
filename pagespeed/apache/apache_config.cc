@@ -32,7 +32,7 @@ const char kMeasurementProxy[] = "ExperimentalMeasurementProxy";
 
 }  // namespace
 
-RewriteOptions::Properties* ApacheConfig::apache_properties_ = NULL;
+RewriteOptions::Properties* ApacheConfig::apache_properties_ = nullptr;
 
 void ApacheConfig::Initialize() {
   if (Properties::Initialize(&apache_properties_)) {
@@ -69,12 +69,6 @@ void ApacheConfig::Init() {
 
 void ApacheConfig::AddProperties() {
   AddApacheProperty(
-      false, &ApacheConfig::fetch_from_mod_spdy_, "ffms",
-      RewriteOptions::kFetchFromModSpdy,
-      "Deprecated, doesn't do anything any more.",
-      true /* safe_to_print */);
-
-  AddApacheProperty(
       "", &ApacheConfig::proxy_auth_, "prxa",
       kProxyAuth,
       "CookieName[=Value][:RedirectUrl] -- checks proxy requests for "
@@ -95,6 +89,26 @@ void ApacheConfig::AddProperties() {
       "Experimental mode where mod_pagespeed acts entirely as a proxy, and "
       "doesn't attempt to work with any local serving. ",
       false /* safe_to_print*/);
+
+  // Register deprecated options.
+  AddDeprecatedProperty("CollectRefererStatistics",
+                        RewriteOptions::kDirectoryScope);
+  AddDeprecatedProperty("HashRefererStatistics",
+                        RewriteOptions::kDirectoryScope);
+  AddDeprecatedProperty("RefererStatisticsOutputLevel",
+                        RewriteOptions::kDirectoryScope);
+  AddDeprecatedProperty("StatisticsLoggingFile",
+                        RewriteOptions::kDirectoryScope);
+  AddDeprecatedProperty("DisableForBots",
+                        RewriteOptions::kDirectoryScope);
+  AddDeprecatedProperty("GeneratedFilePrefix",
+                        RewriteOptions::kServerScope);
+  AddDeprecatedProperty("InheritVHostConfig",
+                        RewriteOptions::kServerScope);
+  AddDeprecatedProperty("FetchFromModSpdy",
+                        RewriteOptions::kServerScope);
+  AddDeprecatedProperty("NumShards", RewriteOptions::kServerScope);
+  AddDeprecatedProperty("UrlPrefix", RewriteOptions::kServerScope);
 
   MergeSubclassProperties(apache_properties_);
 

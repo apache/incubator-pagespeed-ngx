@@ -217,7 +217,6 @@ const char RewriteOptions::kMaxLowResImageSizeBytes[] =
     "MaxLowResImageSizeBytes";
 const char RewriteOptions::kMaxLowResToHighResImageSizePercentage[] =
     "MaxLowResToHighResImageSizePercentage";
-const char RewriteOptions::kMaxPrefetchJsElements[] = "MaxPrefetchJsElements";
 const char RewriteOptions::kMaxRewriteInfoLogSize[] = "MaxRewriteInfoLogSize";
 const char RewriteOptions::kMaxUrlSegmentSize[] = "MaxSegmentLength";
 const char RewriteOptions::kMaxUrlSize[] = "MaxUrlSize";
@@ -320,7 +319,6 @@ const char RewriteOptions::kCacheFlushFilename[] = "CacheFlushFilename";
 const char RewriteOptions::kCacheFlushPollIntervalSec[] =
     "CacheFlushPollIntervalSec";
 const char RewriteOptions::kFetchHttps[] = "FetchHttps";
-const char RewriteOptions::kFetchFromModSpdy[] = "FetchFromModSpdy";
 const char RewriteOptions::kFetcherTimeOutMs[] = "FetcherTimeOutMs";
 const char RewriteOptions::kFileCacheCleanInodeLimit[] =
     "FileCacheInodeLimit";
@@ -563,8 +561,9 @@ RewriteOptions::PropertyNameMap*
 const RewriteOptions::PropertyBase**
     RewriteOptions::option_id_to_property_array_ = NULL;
 
-RewriteOptions::Properties* RewriteOptions::properties_ = NULL;
-RewriteOptions::Properties* RewriteOptions::all_properties_ = NULL;
+RewriteOptions::Properties* RewriteOptions::properties_ = nullptr;
+RewriteOptions::Properties* RewriteOptions::all_properties_ = nullptr;
+RewriteOptions::Properties* RewriteOptions::deprecated_properties_ = nullptr;
 
 const char RewriteOptions::AllowVaryOn::kNoneString[] = "None";
 const char RewriteOptions::AllowVaryOn::kAutoString[] = "Auto";
@@ -929,9 +928,9 @@ void StripBeaconUrlQueryParam(GoogleString* url,
 }
 
 // Maps the deprecated options to the new names.
-struct DeprecatedOptionMap {
+struct RenamedOptionMap {
   static bool LessThan(
-      const DeprecatedOptionMap& option_map,
+      const RenamedOptionMap& option_map,
       StringPiece arg) {
     return StringCaseCompare(option_map.deprecated_option_name, arg) < 0;
   }
@@ -940,16 +939,16 @@ struct DeprecatedOptionMap {
   const char* new_option_name;
 };
 
-const DeprecatedOptionMap kDeprecatedOptionNameData[] = {
+const RenamedOptionMap kRenamedOptionNameData[] = {
   {"ImageWebpRecompressionQuality",
       "WebpRecompressionQuality"},
   {"ImageWebpRecompressionQualityForSmallScreens",
       "WebpRecompressionQualityForSmallScreens"}
 };
 
-std::vector<DeprecatedOptionMap> kDeprecatedOptionNameList(
-    kDeprecatedOptionNameData,
-    kDeprecatedOptionNameData + arraysize(kDeprecatedOptionNameData)
+std::vector<RenamedOptionMap> kRenamedOptionNameList(
+    kRenamedOptionNameData,
+    kRenamedOptionNameData + arraysize(kRenamedOptionNameData)
 );
 
 // Will be initialized to a sorted list of headers not allowed in
@@ -1552,11 +1551,6 @@ void RewriteOptions::AddProperties() {
       "Attempt to mirror incoming flushes for html streams in the output "
       "when ProxyFetch is used.",
       true);
-  AddBaseProperty(
-      0, &RewriteOptions::deprecated_max_prefetch_js_elements_, "mpje",
-      kMaxPrefetchJsElements,
-      kDirectoryScope,
-      "Deprecated. Doesn't do anything any more.", true);
   AddBaseProperty(
       false, &RewriteOptions::enable_defer_js_experimental_, "edje",
       kEnableDeferJsExperimental,
@@ -2241,7 +2235,8 @@ void RewriteOptions::AddProperties() {
   properties_->property(properties_->size() - 1)
       ->set_do_not_use_for_signature_computation(true);
 
-  //
+  AddDeprecatedProperty("MaxPrefetchJsElements", kDirectoryScope);
+
   // Recently sriharis@ excluded a variety of options from
   // signature-computation which makes sense from the perspective
   // of metadata cache, however it makes Signature() useless for
@@ -2368,6 +2363,7 @@ bool RewriteOptions::Properties::Terminate(Properties** properties_handle) {
 bool RewriteOptions::Initialize() {
   if (Properties::Initialize(&properties_)) {
     Properties::Initialize(&all_properties_);
+    Properties::Initialize(&deprecated_properties_);
     AddProperties();
     InitFilterIdToEnumArray();
     all_properties_->Merge(properties_);
@@ -2514,6 +2510,7 @@ bool RewriteOptions::Terminate() {
     delete option_name_to_property_map_;
     option_name_to_property_map_ = NULL;
     Properties::Terminate(&all_properties_);
+    Properties::Terminate(&deprecated_properties_);
     return true;
   }
   return false;
@@ -3000,6 +2997,19 @@ bool RewriteOptions::IsValidOptionName(StringPiece name) {
   return (LookupOptionByName(name) != NULL);
 }
 
+bool RewriteOptions::IsDeprecatedOptionName(StringPiece option_name) {
+  // If this ever becomes hot, we should make a proper index, rather than
+  // using a Properties object to store these.
+  for (int i = 0, n = deprecated_properties_->size(); i < n; ++i) {
+    if (StringCaseEqual(
+            option_name,
+            deprecated_properties_->property(i)->option_name())) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set,
                                         MessageHandler* handler) {
   bool ret = true;
@@ -3270,12 +3280,12 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName3(
 
 StringPiece RewriteOptions::GetEffectiveOptionName(StringPiece name) {
   StringPiece effective_name = name;
-  std::vector<DeprecatedOptionMap>::iterator id =
-       std::lower_bound(kDeprecatedOptionNameList.begin(),
-                        kDeprecatedOptionNameList.end(),
+  std::vector<RenamedOptionMap>::iterator id =
+       std::lower_bound(kRenamedOptionNameList.begin(),
+                        kRenamedOptionNameList.end(),
                         name,
-                        DeprecatedOptionMap::LessThan);
-  if (id != kDeprecatedOptionNameList.end() &&
+                        RenamedOptionMap::LessThan);
+  if (id != kRenamedOptionNameList.end() &&
       StringCaseEqual(name, id->deprecated_option_name)) {
     effective_name = id->new_option_name;
   }

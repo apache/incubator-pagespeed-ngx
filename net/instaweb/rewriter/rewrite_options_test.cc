@@ -1033,7 +1033,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kMaxInlinedPreviewImagesIndex,
     RewriteOptions::kMaxLowResImageSizeBytes,
     RewriteOptions::kMaxLowResToHighResImageSizePercentage,
-    RewriteOptions::kMaxPrefetchJsElements,
     RewriteOptions::kMaxRewriteInfoLogSize,
     RewriteOptions::kMaxUrlSegmentSize,
     RewriteOptions::kMaxUrlSize,
@@ -1089,6 +1088,8 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
   for (int i = 0; i < arraysize(option_names); ++i) {
     EXPECT_TRUE(NULL != RewriteOptions::LookupOptionByName(option_names[i]))
         << option_names[i] << " cannot be looked up by name!";
+    EXPECT_FALSE(RewriteOptions::IsDeprecatedOptionName(option_names[i]))
+        << option_names[i];
     tested_names.insert(option_names[i]);
   }
 
@@ -1157,7 +1158,6 @@ TEST_F(RewriteOptionsTest, LookupNonBaseOptionByNameTest) {
   FailLookupOptionByName(RewriteOptions::kCacheFlushFilename);
   FailLookupOptionByName(RewriteOptions::kCacheFlushPollIntervalSec);
   FailLookupOptionByName(RewriteOptions::kCompressMetadataCache);
-  FailLookupOptionByName(RewriteOptions::kFetchFromModSpdy);
   FailLookupOptionByName(RewriteOptions::kFetchHttps);
   FailLookupOptionByName(RewriteOptions::kFetcherProxy);
   FailLookupOptionByName(RewriteOptions::kFileCacheCleanIntervalMs);
@@ -1183,6 +1183,10 @@ TEST_F(RewriteOptionsTest, LookupNonBaseOptionByNameTest) {
   FailLookupOptionByName(RewriteOptions::kStatisticsLoggingMaxFileSizeKb);
   FailLookupOptionByName(RewriteOptions::kTestProxy);
   FailLookupOptionByName(RewriteOptions::kTestProxySlurp);
+}
+
+TEST_F(RewriteOptionsTest, DeprecatedOptionsTest) {
+  EXPECT_TRUE(RewriteOptions::IsDeprecatedOptionName("MaxPrefetchJsElements"));
 }
 
 TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName1) {

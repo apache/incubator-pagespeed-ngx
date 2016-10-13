@@ -119,7 +119,6 @@ const char kModPagespeedCreateSharedMemoryMetadataCache[] =
 const char kModPagespeedAddResourceHeader[] = "ModPagespeedAddResourceHeader";
 const char kModPagespeedCustomFetchHeader[] = "ModPagespeedCustomFetchHeader";
 const char kModPagespeedDisableFilters[] = "ModPagespeedDisableFilters";
-const char kModPagespeedDisableForBots[] = "ModPagespeedDisableForBots";
 const char kModPagespeedDisallow[] = "ModPagespeedDisallow";
 const char kModPagespeedDomain[] = "ModPagespeedDomain";
 const char kModPagespeedDownstreamCachePurgeLocationPrefix[] =
@@ -132,8 +131,6 @@ const char kModPagespeedForbidFilters[] = "ModPagespeedForbidFilters";
 const char kModPagespeedForceCaching[] = "ModPagespeedForceCaching";
 const char kModPagespeedExperimentVariable[] = "ModPagespeedExperimentVariable";
 const char kModPagespeedExperimentSpec[] = "ModPagespeedExperimentSpec";
-const char kModPagespeedGeneratedFilePrefix[] =
-    "ModPagespeedGeneratedFilePrefix";
 const char kModPagespeedGlobalAdminDomains[] = "ModPagespeedGlobalAdminDomains";
 const char kModPagespeedGlobalStatisticsDomains[] =
     "ModPagespeedGlobalStatisticsDomains";
@@ -141,7 +138,6 @@ const char kModPagespeedImageInlineMaxBytes[] =
     "ModPagespeedImageInlineMaxBytes";
 const char kModPagespeedImageMaxRewritesAtOnce[] =
     "ModPagespeedImageMaxRewritesAtOnce";
-const char kModPagespeedInheritVHostConfig[] = "ModPagespeedInheritVHostConfig";
 const char kModPagespeedInstallCrashHandler[] =
     "ModPagespeedInstallCrashHandler";
 const char kModPagespeedLibrary[] = "ModPagespeedLibrary";
@@ -161,7 +157,6 @@ const char kModPagespeedMessagesDomains[] = "ModPagespeedMessagesDomains";
 const char kModPagespeedNumExpensiveRewriteThreads[] =
     "ModPagespeedNumExpensiveRewriteThreads";
 const char kModPagespeedNumRewriteThreads[] = "ModPagespeedNumRewriteThreads";
-const char kModPagespeedNumShards[] = "ModPagespeedNumShards";
 const char kModPagespeedPermitIdsForCssCombining[] =
     "ModPagespeedPermitIdsForCssCombining";
 const char kModPagespeedPreserveSubresourceHints[] =
@@ -173,11 +168,8 @@ const char kModPagespeedShardDomain[] = "ModPagespeedShardDomain";
 const char kModPagespeedSpeedTracking[] = "ModPagespeedIncreaseSpeedTracking";
 const char kModPagespeedStaticAssetPrefix[] = "ModPagespeedStaticAssetPrefix";
 const char kModPagespeedStatisticsDomains[] = "ModPagespeedStatisticsDomains";
-const char kModPagespeedStatisticsLoggingFile[] =
-    "ModPagespeedStatisticsLoggingFile";
 const char kModPagespeedTrackOriginalContentLength[] =
     "ModPagespeedTrackOriginalContentLength";
-const char kModPagespeedUrlPrefix[] = "ModPagespeedUrlPrefix";
 const char kModPagespeedUrlValuedAttribute[] = "ModPagespeedUrlValuedAttribute";
 const char kModPagespeedUsePerVHostStatistics[] =
     "ModPagespeedUsePerVHostStatistics";
@@ -190,14 +182,6 @@ const char kModPagespeedImageWebpRecompressionQuality[] =
     "ModPagespeedImageWebpRecompressionQuality";
 const char kModPagespeedImageWebpRecompressionQualityForSmallScreens[] =
     "ModPagespeedImageWebpRecompressionQualityForSmallScreens";
-
-// The following three are deprecated because we didn't finish the feature.
-const char kModPagespeedCollectRefererStatistics[] =
-    "ModPagespeedCollectRefererStatistics";
-const char kModPagespeedHashRefererStatistics[] =
-    "ModPagespeedHashRefererStatistics";
-const char kModPagespeedRefererStatisticsOutputLevel[] =
-    "ModPagespeedRefererStatisticsOutputLevel";
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 
@@ -325,6 +309,10 @@ class ApacheProcessContext {
   }
 
   void InstallCommands();
+  void FillInApacheCommand(StringPiece option_name,
+                           RewriteOptions::OptionScope scope,
+                           const char* help_text,
+                           command_rec* cmd);
 
   ApacheRewriteDriverFactory* factory(server_rec* server) {
     // We are not mutex-protecting the factory-creation for now as the
@@ -1482,6 +1470,11 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     if (StandardParsingHandled(cmd, result, msg, &ret)) {
       return ret;
     }
+
+    if (RewriteOptions::IsDeprecatedOptionName(option)) {
+      warn_deprecated(cmd, "Please remove it from your configuration.");
+      return NULL;
+    }
   }
 
   // Options which we handle manually.
@@ -1489,18 +1482,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseOption<RewriteOptions::EnabledEnum>(
         static_cast<RewriteOptions*>(config), cmd, &RewriteOptions::set_enabled,
         arg);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedCollectRefererStatistics) ||
-             StringCaseEqual(directive, kModPagespeedDisableForBots) ||
-             StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix) ||
-             StringCaseEqual(directive, kModPagespeedHashRefererStatistics) ||
-             StringCaseEqual(directive, kModPagespeedInheritVHostConfig) ||
-             StringCaseEqual(directive, kModPagespeedNumShards) ||
-             StringCaseEqual(directive, kModPagespeedStatisticsLoggingFile) ||
-             StringCaseEqual(directive,
-                             kModPagespeedRefererStatisticsOutputLevel) ||
-             StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
-    warn_deprecated(cmd, "Please remove it from your configuration.");
   } else {
     ret = apr_pstrcat(cmd->pool, "Unknown directive ",
                       directive.as_string().c_str(), NULL);
@@ -1734,7 +1715,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Comma-separated list of disabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisallow,
         "wildcard_spec for urls"),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedDisableForBots, "No longer used."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
         "Authorize mod_pagespeed to rewrite resources in a domain."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDownstreamCachePurgeLocationPrefix,
@@ -1772,14 +1752,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   // All one parameter deprecated options.
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
         "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedCollectRefererStatistics,
-        "Deprecated.  Does nothing."),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedHashRefererStatistics,
-        "Deprecated.  Does nothing."),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedRefererStatisticsOutputLevel,
-        "Deprecated.  Does nothing."),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedStatisticsLoggingFile,
-        "Deprecated.  Does nothing."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImageWebpRecompressionQuality,
         "Deprecated.  Use ModPagespeedWebpRecompressionQuality"),
   APACHE_CONFIG_DIR_OPTION(
@@ -1793,11 +1765,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),
   APACHE_CONFIG_OPTION(kModPagespeedForceCaching,
         "Ignore HTTP cache headers and TTLs"),
-  APACHE_CONFIG_OPTION(kModPagespeedGeneratedFilePrefix, "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedImgMaxRewritesAtOnce,
         "DEPRECATED, use ModPagespeedImageMaxRewritesAtOnce."),
-  APACHE_CONFIG_OPTION(kModPagespeedInheritVHostConfig,
-        "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedInstallCrashHandler,
         "Try to dump backtrace on crashes. For developer use"),
   APACHE_CONFIG_OPTION(kModPagespeedMessageBufferSize,
@@ -1808,12 +1777,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedNumExpensiveRewriteThreads,
         "Number of threads to use for computation-intensive portions of "
         "resource-rewriting. <= 0 to auto-detect"),
-  APACHE_CONFIG_OPTION(kModPagespeedNumShards, "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedStaticAssetPrefix,
          "Where to serve static support files for pagespeed filters from."),
   APACHE_CONFIG_OPTION(kModPagespeedTrackOriginalContentLength,
         "Add X-Original-Content-Length headers to rewritten resources"),
-  APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedUsePerVHostStatistics,
         "If true, keep track of statistics per VHost and not just globally"),
   APACHE_CONFIG_OPTION(kModPagespeedBlockingRewriteRefererUrls,
@@ -1997,6 +1964,37 @@ module AP_MODULE_DECLARE_DATA pagespeed_module = {
 
 namespace net_instaweb {
 
+void ApacheProcessContext::FillInApacheCommand(
+    StringPiece option_name, RewriteOptions::OptionScope scope,
+    const char* help_text, command_rec* cmd) {
+  // cmd_names_ is used as a backing store for option names w/ModPagespeed
+  // tacked on to their front.
+  cmd_names_.push_back(GoogleString());
+  StrAppend(&cmd_names_.back(), "ModPagespeed", option_name);
+  cmd->name = cmd_names_.back().c_str();
+  cmd->func = reinterpret_cast<const char*(*)()>(ParseDirective);
+  cmd->cmd_data = NULL;
+  switch (scope) {
+    case RewriteOptions::kDirectoryScope:
+    case RewriteOptions::kQueryScope:
+      cmd->req_override = OR_ALL;
+      break;
+    case RewriteOptions::kServerScope:
+      cmd->req_override = RSRC_CONF;
+      break;
+    case RewriteOptions::kProcessScopeStrict:
+      vhost_command_handling_map_[cmd] = kErrorInVHost;
+      cmd->req_override = RSRC_CONF;
+      break;
+    case RewriteOptions::kLegacyProcessScope:
+      vhost_command_handling_map_[cmd] = kTolerateInVHost;
+      cmd->req_override = RSRC_CONF;
+      break;
+  }
+  cmd->args_how = TAKE1;
+  cmd->errmsg = help_text;
+}
+
 // Runs via static construction and module-load time, so that it can
 // install the Apache command-table in the module-record before Apache
 // initializes the module.
@@ -2009,17 +2007,19 @@ void ApacheProcessContext::InstallCommands() {
   // to initialize our module.
   ApacheConfig config_template("install_commands", NULL);
   const RewriteOptions::OptionBaseVector& v = config_template.all_options();
+  const RewriteOptions::Properties* deprecated_properties =
+      RewriteOptions::deprecated_properties();
   int num_cmds = arraysize(net_instaweb::mod_pagespeed_filter_cmds);
 
   // Allocate memory for all the rewrite_options, even though we
   // will only initialize the ones with non-null help.  We could
   // also do a 2-pass to count how many we will allocate.  +1 to
   // leave room for a NULL terminator.
-  apache_cmds_ = new command_rec[num_cmds + v.size() + 1];
+  apache_cmds_ = new command_rec[num_cmds + v.size()
+                                 + deprecated_properties->size() + 1];
   memcpy(apache_cmds_, net_instaweb::mod_pagespeed_filter_cmds,
          num_cmds * sizeof(*apache_cmds_));
   command_rec* cmd = apache_cmds_ + num_cmds;
-  cmd_names_.resize(v.size());
 
   for (int i = 0, n = v.size(); i < n; ++i) {
     RewriteOptions::OptionBase* option = v[i];
@@ -2027,34 +2027,21 @@ void ApacheProcessContext::InstallCommands() {
     // Skip entries with null documentation -- entries lacking doc
     // are an indication that the option is not available for MPS.
     if (option->help_text() != NULL) {
-      // Store the fully-qualified option name in a string-array that
-      // lasts until the module is destructed.
-      StrAppend(&cmd_names_[i], "ModPagespeed", option->option_name());
-      cmd->name = cmd_names_[i].c_str();
-      cmd->func = reinterpret_cast<const char*(*)()>(ParseDirective);
-      cmd->cmd_data = NULL;
-      switch (option->scope()) {
-        case RewriteOptions::kDirectoryScope:
-        case RewriteOptions::kQueryScope:
-          cmd->req_override = OR_ALL;
-          break;
-        case RewriteOptions::kServerScope:
-          cmd->req_override = RSRC_CONF;
-          break;
-        case RewriteOptions::kProcessScopeStrict:
-          vhost_command_handling_map_[cmd] = kErrorInVHost;
-          cmd->req_override = RSRC_CONF;
-          break;
-        case RewriteOptions::kLegacyProcessScope:
-          vhost_command_handling_map_[cmd] = kTolerateInVHost;
-          cmd->req_override = RSRC_CONF;
-          break;
-      }
-      cmd->args_how = TAKE1;
-      cmd->errmsg = option->help_text();
+      FillInApacheCommand(option->option_name(), option->scope(),
+                          option->help_text(), cmd);
       ++cmd;
     }
   }
+
+  for (int i = 0, n = deprecated_properties->size(); i < n; ++i) {
+    const RewriteOptions::PropertyBase* dep_prop =
+        deprecated_properties->property(i);
+    FillInApacheCommand(dep_prop->option_name(), dep_prop->scope(),
+                        dep_prop->help_text(), cmd);
+    ++cmd;
+  }
+
+  // Add a null terminator.
   cmd->name = NULL;
   cmd->func = 0;
   cmd->cmd_data = NULL;

@@ -87,7 +87,6 @@ class RewriteOptions {
   // them protected while still being used by the Option class hierarchy.
   // Note that iwyu.py incorrectly complains about the template classes but
   // scripts/iwyu manually removes the warning.
-  class PropertyBase;
   template<class ValueType> class Property;
   template<class RewriteOptionsSubclass, class OptionClass> class PropertyLeaf;
 
@@ -328,7 +327,6 @@ class RewriteOptions {
   static const char kMaxInlinedPreviewImagesIndex[];
   static const char kMaxLowResImageSizeBytes[];
   static const char kMaxLowResToHighResImageSizePercentage[];
-  static const char kMaxPrefetchJsElements[];
   static const char kMaxRewriteInfoLogSize[];
   static const char kMaxUrlSegmentSize[];
   static const char kMaxUrlSize[];
@@ -427,7 +425,6 @@ class RewriteOptions {
   static const char kCacheFlushPollIntervalSec[];
   static const char kCompressMetadataCache[];
   static const char kFetcherProxy[];
-  static const char kFetchFromModSpdy[];
   static const char kFetchHttps[];
   static const char kFileCacheCleanInodeLimit[];
   static const char kFileCacheCleanIntervalMs[];
@@ -684,6 +681,59 @@ class RewriteOptions {
   // parameters), as well as sets of those pairs.
   typedef std::pair<GoogleString, GoogleString> OptionStringPair;
   typedef std::set<OptionStringPair> OptionSet;
+
+  // The base class for a Property.  This class contains fields of
+  // Properties that are independent of type.
+  class PropertyBase {
+   public:
+    PropertyBase(const char* id, StringPiece option_name)
+        : id_(id),
+          help_text_(nullptr),
+          option_name_(option_name),
+          scope_(kDirectoryScope),
+          do_not_use_for_signature_computation_(false),
+          index_(-1) {
+    }
+    virtual ~PropertyBase();
+
+    // Connect the specified RewriteOption to this property.
+    // set_index() must previously have been called on this.
+    virtual void InitializeOption(RewriteOptions* options) const = 0;
+
+    void set_do_not_use_for_signature_computation(bool x) {
+      do_not_use_for_signature_computation_ = x;
+    }
+    bool is_used_for_signature_computation() const {
+      return !do_not_use_for_signature_computation_;
+    }
+
+    void set_scope(OptionScope x) { scope_ = x; }
+    OptionScope scope() const { return scope_; }
+
+    void set_help_text(const char* x) { help_text_ = x; }
+    const char* help_text() const { return help_text_; }
+
+    void set_index(int index) { index_ = index; }
+    const char* id() const { return id_; }
+    StringPiece option_name() const { return option_name_; }
+    int index() const { return index_; }
+
+    bool safe_to_print() const { return safe_to_print_; }
+    void set_safe_to_print(bool safe_to_print) {
+      safe_to_print_ = safe_to_print;
+    }
+
+   private:
+    const char* id_;
+    const char* help_text_;
+    StringPiece option_name_;  // Key into all_options_.
+    OptionScope scope_;
+    bool do_not_use_for_signature_computation_;  // Default is false.
+    bool safe_to_print_;  // Safe to print in debug filter output.
+    int index_;
+
+    DISALLOW_COPY_AND_ASSIGN(PropertyBase);
+  };
 
   typedef std::vector<PropertyBase*> PropertyVector;
 
@@ -2965,10 +3015,18 @@ class RewriteOptions {
   // Determine if the given option name is valid/known.
   static bool IsValidOptionName(StringPiece name);
 
+  // Determine if this is an option name that used to do things, and which
+  // we may therefore want to accept w/a warning for backwards compatibility.
+  static bool IsDeprecatedOptionName(StringPiece option_name);
+
   // Return the list of all options.  Used to initialize the configuration
   // vector to the Apache configuration system.
   const OptionBaseVector& all_options() const {
     return all_options_;
+  }
+
+  static const Properties* deprecated_properties() {
+    return deprecated_properties_;
   }
 
   // Determines whether this and that are the same.  Uses the signature() to
@@ -3141,6 +3199,12 @@ class RewriteOptions {
     properties->push_back(property);
   }
 
+  static void AddDeprecatedProperty(StringPiece option_name,
+                                    OptionScope scope) {
+    deprecated_properties_->push_back(
+        new DeprecatedProperty(option_name, scope));
+  }
+
   // Merges properties into all_properties so that
   // RewriteOptions::Merge and SetOptionFromName can work across
   // options from RewriteOptions and all relevant subclasses.
@@ -3208,57 +3272,21 @@ class RewriteOptions {
   Option<GoogleString> x_header_value_;
 
  protected:
-  // The base class for a Property.  This class contains fields of
-  // Properties that are independent of type.
-  class PropertyBase {
+  // Property representing options that got deprecated. Doesn't
+  // actually have a corresponding option.
+  class DeprecatedProperty : public PropertyBase {
    public:
-    PropertyBase(const char* id, StringPiece option_name)
-        : id_(id),
-          help_text_(NULL),
-          option_name_(option_name),
-          scope_(kDirectoryScope),
-          do_not_use_for_signature_computation_(false),
-          index_(-1) {
-    }
-    virtual ~PropertyBase();
-
-    // Connect the specified RewriteOption to this property.
-    // set_index() must previously have been called on this.
-    virtual void InitializeOption(RewriteOptions* options) const = 0;
-
-    void set_do_not_use_for_signature_computation(bool x) {
-      do_not_use_for_signature_computation_ = x;
-    }
-    bool is_used_for_signature_computation() const {
-      return !do_not_use_for_signature_computation_;
+    explicit DeprecatedProperty(StringPiece option_name, OptionScope scope)
+        : PropertyBase("", option_name) {
+      set_do_not_use_for_signature_computation(true);
+      set_help_text("Deprecated. Do not use");
+      set_safe_to_print(false);
+      set_scope(scope);
     }
 
-    void set_scope(OptionScope x) { scope_ = x; }
-    OptionScope scope() const { return scope_; }
-
-    void set_help_text(const char* x) { help_text_ = x; }
-    const char* help_text() const { return help_text_; }
-
-    void set_index(int index) { index_ = index; }
-    const char* id() const { return id_; }
-    StringPiece option_name() const { return option_name_; }
-    int index() const { return index_; }
-
-    bool safe_to_print() const { return safe_to_print_; }
-    void set_safe_to_print(bool safe_to_print) {
-      safe_to_print_ = safe_to_print;
+    void InitializeOption(RewriteOptions* options) const override {
+      CHECK(false) << "Deprecated properties shouldn't back options!";
     }
-
-   private:
-    const char* id_;
-    const char* help_text_;
-    StringPiece option_name_;  // Key into all_options_.
-    OptionScope scope_;
-    bool do_not_use_for_signature_computation_;  // Default is false.
-    bool safe_to_print_;  // Safe to print in debug filter output.
-    int index_;
-
-    DISALLOW_COPY_AND_ASSIGN(PropertyBase);
   };
 
   // Type-specific class of Property.  This subclass of PropertyBase
@@ -3351,6 +3379,8 @@ class RewriteOptions {
 
   static Properties* properties_;          // from RewriteOptions only
   static Properties* all_properties_;      // includes subclass properties
+
+  static Properties* deprecated_properties_;
 
   FRIEND_TEST(RewriteOptionsTest, ExperimentMergeTest);
   FRIEND_TEST(RewriteOptionsTest, LookupOptionByNameTest);
@@ -3866,9 +3896,6 @@ class RewriteOptions {
   Option<bool> report_unload_time_;
 
   Option<bool> serve_rewritten_webp_urls_to_any_agent_;
-
-  // Deprecated. Doesn't do anything any more.
-  Option<int> deprecated_max_prefetch_js_elements_;
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;
