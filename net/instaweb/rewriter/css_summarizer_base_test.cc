@@ -111,10 +111,9 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     }
   }
 
-  virtual void WillNotRenderSummary(int pos,
-                                    HtmlElement* element,
-                                    HtmlCharactersNode* char_node,
-                                    bool* is_element_deleted) {
+  void WillNotRenderSummary(int pos,
+                            HtmlElement* element,
+                            HtmlCharactersNode* char_node) override {
     // Note that these should not normally mutate the DOM, we only
     // get away with this because the tests we use this in don't really do
     // any flushing.

@@ -81,16 +81,15 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   // write them out to the page. We also use this to pick up the output
   // of filters before us, like rewrite_css; so we run this even on things
   // that will not contain on-screen critical CSS.
-  virtual void Summarize(Css::Stylesheet* stylesheet,
-                         GoogleString* out) const;
-  virtual void RenderSummary(int pos,
-                             HtmlElement* element,
-                             HtmlCharactersNode* char_node,
-                             bool* is_element_deleted);
-  virtual void WillNotRenderSummary(int pos,
-                                    HtmlElement* element,
-                                    HtmlCharactersNode* char_node,
-                                    bool* is_element_deleted);
+  void Summarize(Css::Stylesheet* stylesheet,
+                 GoogleString* out) const override;
+  void RenderSummary(int pos,
+                     HtmlElement* element,
+                     HtmlCharactersNode* char_node,
+                     bool* is_element_deleted) override;
+  void WillNotRenderSummary(int pos,
+                            HtmlElement* element,
+                            HtmlCharactersNode* char_node) override;
 
   // Since our computation depends on the selectors that are relevant to the
   // webpage, we incorporate them into the cache key as well.

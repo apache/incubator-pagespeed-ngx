@@ -297,8 +297,7 @@ void CriticalSelectorFilter::RenderSummary(
 }
 
 void CriticalSelectorFilter::WillNotRenderSummary(
-    int pos, HtmlElement* element, HtmlCharactersNode* char_node,
-    bool* is_element_deleted) {
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
   RememberFullCss(pos, element, char_node);
 }
 
