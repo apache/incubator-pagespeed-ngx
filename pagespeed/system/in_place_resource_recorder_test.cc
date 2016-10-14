@@ -133,20 +133,20 @@ class InPlaceResourceRecorderTest : public RewriteTestBase {
         HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out));
   }
 
-  void CheckNotCacheableContentType(const ContentType* content_type) {
+  // Returns the HTTP-Cache result associated with requesting a content-type
+  // that is not cacheable.
+  HTTPCache::FindResult NotCacheableContentType(
+      const ContentType* content_type,
+      InPlaceResourceRecorder::HeadersKind headers_kind,
+      bool expect_failure) {
     ResponseHeaders headers;
     SetDefaultLongCacheHeaders(content_type, &headers);
     scoped_ptr<InPlaceResourceRecorder> recorder(MakeRecorder(kTestUrl));
-    recorder->ConsiderResponseHeaders(
-        InPlaceResourceRecorder::kFullHeaders, &headers);
-    EXPECT_TRUE(recorder->failed());
+    recorder->ConsiderResponseHeaders(headers_kind, &headers);
+    EXPECT_EQ(expect_failure, recorder->failed());
     HTTPValue value_out;
     ResponseHeaders headers_out;
-    EXPECT_EQ(
-        HTTPCache::FindResult(HTTPCache::kRecentFailure,
-                              kFetchStatusUncacheable200),
-        HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out))
-        << content_type->mime_type();
+    return HttpBlockingFind(kTestUrl, http_cache(), &value_out, &headers_out);
   }
 
   const char* BailsForContentType(const char* mime_type) {
@@ -226,8 +226,36 @@ TEST_F(InPlaceResourceRecorderTest, CheckCacheableContentTypes) {
   CheckCacheableContentType(&kContentTypeJson);
 }
 
-TEST_F(InPlaceResourceRecorderTest, CheckNotCacheableContentTypes) {
-  CheckNotCacheableContentType(&kContentTypePdf);
+TEST_F(InPlaceResourceRecorderTest, NotCacheableContentTypeFull) {
+  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kRecentFailure,
+                                  kFetchStatusUncacheable200),
+            NotCacheableContentType(&kContentTypePdf,
+                                    InPlaceResourceRecorder::kFullHeaders,
+                                    true /* expect_failure */));
+}
+
+TEST_F(InPlaceResourceRecorderTest, NotCacheableContentTypePreliminary) {
+  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kNotFound, kFetchStatusNotSet),
+            NotCacheableContentType(
+                &kContentTypePdf,
+                InPlaceResourceRecorder::kPreliminaryHeaders,
+                true /* expect_failure */));
+}
+
+TEST_F(InPlaceResourceRecorderTest, UnknownContentTypeFull) {
+  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kRecentFailure,
+                                  kFetchStatusUncacheable200),
+            NotCacheableContentType(nullptr,
+                                    InPlaceResourceRecorder::kFullHeaders,
+                                    true /* expect_failure */));
+}
+
+TEST_F(InPlaceResourceRecorderTest, UnknownContentTypePreliminary) {
+  EXPECT_EQ(HTTPCache::FindResult(HTTPCache::kNotFound, kFetchStatusNotSet),
+            NotCacheableContentType(
+                nullptr,
+                InPlaceResourceRecorder::kPreliminaryHeaders,
+                false /* expect_failure */));
 }
 
 TEST_F(InPlaceResourceRecorderTest, BasicOperationFullHeaders) {

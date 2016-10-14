@@ -174,19 +174,21 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
         !(content_type->IsImage() ||
           content_type->IsCss() ||
           content_type->IsJsLike())) {
-      // TODO(jmarantz): I feel that it's better not to write a note
-      // about uncachable-content-types to the cache when we are failing
-      // early.  However, I cannot prove that in a siege test.  It is
-      // clear that calling DroppedAsUncacheable() here fills the HTTP
-      // cache with a new entry for every HTML URL, including all
-      // query-params, and that seems bad, but
-      // siege_ipro_high_entropy.sh does not benefit from just simply
-      // setting failure_=true here and skipping the call to
       // DroppedAsUncacheable().  If at some point we decide to go this
       // way, we must also change the expected cache_inserts count in
       // "Blocking rewrite enabled." in apache/system_test.sh from 3 to
       // 2.
-      DroppedAsUncacheable();
+      if (headers_kind == kFullHeaders) {
+        // If we have to wait till we have recorded all the bytes to learn
+        // that this content-type is uninteresting, then we should cache
+        // that so we don't have to re-record.
+        DroppedAsUncacheable();
+      } else {
+        // If we were able to learn the content-type early then the added
+        // caching pressure is not worth short-circuiting the filter, and
+        // we can simply bail here on every request.
+        failure_ = true;
+      }
       return;
     }
   }

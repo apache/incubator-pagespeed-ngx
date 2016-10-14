@@ -547,9 +547,10 @@ PageSpeedFilters=rewrite_images"
     check_stat $OLDSTATS $NEWSTATS image_rewrites 1
     check_stat $OLDSTATS $NEWSTATS cache_hits 0
     check_stat $OLDSTATS $NEWSTATS cache_misses 2
-    # 2 cache inserts for image + 1 for HTML in IPRO flow.
-    # Note: If we tune IPRO to exclude results for HTML, this will go back to 2.
-    check_stat $OLDSTATS $NEWSTATS cache_inserts 3
+    # 2 cache inserts for image.  There should not be an ipro-related
+    # cache-write for the HTML because we bail early on non-ipro-rewritable
+    # content-types.
+    check_stat $OLDSTATS $NEWSTATS cache_inserts 2
     # TODO(sligocki): There is no stat num_rewrites_executed. Fix.
     #check_stat $OLDSTATS $NEWSTATS num_rewrites_executed 1
 
