@@ -15,7 +15,7 @@ source "$this_dir/../automatic/system_test_helpers.sh" || exit 1
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   start_test Process-scope configuration handling.
   # Must be the same value in top-level and both vhosts
-  OUT=$($CURL --silent $HOSTNAME/?PageSpeedFilters=+debug)
+  OUT=$($CURL --silent $EXAMPLE_ROOT/?PageSpeedFilters=+debug)
   check_from "$OUT" fgrep -q "IproMaxResponseBytes (imrb) 1048576003"
 
   OUT=$($CURL --silent --proxy $SECONDARY_HOSTNAME http://ps1.example.com)

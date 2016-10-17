@@ -1937,7 +1937,7 @@ ModPagespeedMessagesDomains Allow localhost
 #PROCESS_SCOPE ModPagespeedIproMaxResponseBytes 1048576001
 #PROCESS_SCOPE <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
 #PROCESS_SCOPE   ServerName ps1.example.com
-#PROCESS_SCOPE   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#PROCESS_SCOPE   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
 #PROCESS_SCOPE   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
 #PROCESS_SCOPE   ModPagespeedIproMaxResponseBytes 1048576002
 #PROCESS_SCOPE   ModPagespeedEnableFilters debug
@@ -1945,7 +1945,7 @@ ModPagespeedMessagesDomains Allow localhost
 #PROCESS_SCOPE
 #PROCESS_SCOPE <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
 #PROCESS_SCOPE   ServerName ps2.example.com
-#PROCESS_SCOPE   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#PROCESS_SCOPE   DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
 #PROCESS_SCOPE   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@_mpr"
 #PROCESS_SCOPE   ModPagespeedIproMaxResponseBytes 1048576003
 #PROCESS_SCOPE   ModPagespeedEnableFilters debug
