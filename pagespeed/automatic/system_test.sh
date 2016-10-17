@@ -32,6 +32,8 @@ IMAGES_QUALITY="PageSpeedImageRecompressionQuality"
 JPEG_QUALITY="PageSpeedJpegRecompressionQuality"
 WEBP_QUALITY="PageSpeedWebpRecompressionQuality"
 
+SYSTEM_TEST_DIR="$(dirname "${BASH_SOURCE[0]}")/system_tests/"
+
 run_test initial_header_check
 run_test initial_sanity_checks
 

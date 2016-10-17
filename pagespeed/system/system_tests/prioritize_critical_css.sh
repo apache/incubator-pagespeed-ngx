@@ -1,0 +1,2 @@
+start_test prioritize critical css
+test_prioritize_critical_css
