@@ -22,7 +22,7 @@ third_party/closure_library/
 third_party/domain_registry_provider/
 third_party/gflags/
 third_party/giflib/
-third_party/google-sparsehash/src/
+third_party/google-sparsehash/
 third_party/grpc/src/
 third_party/hiredis/src/
 third_party/httpd/src/
