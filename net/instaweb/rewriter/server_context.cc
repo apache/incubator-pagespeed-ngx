@@ -246,7 +246,6 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       user_agent_matcher_(NULL),
       scheduler_(factory->scheduler()),
       default_system_fetcher_(NULL),
-      default_distributed_fetcher_(NULL),
       hasher_(NULL),
       signature_(NULL),
       lock_hasher_(RewriteOptions::kHashBytes),
@@ -730,9 +729,6 @@ RewriteDriver* ServerContext::NewUnmanagedRewriteDriver(
   rewrite_driver->SetServerContext(this);
   rewrite_driver->ClearRequestProperties();
   rewrite_driver->set_request_context(request_ctx);
-  if (has_default_distributed_fetcher()) {
-    rewrite_driver->set_distributed_fetcher(default_distributed_fetcher_);
-  }
   // Set the initial reference, as the expectation is that the client
   // will need to call Cleanup() or FinishParse()
   rewrite_driver->AddUserReference();

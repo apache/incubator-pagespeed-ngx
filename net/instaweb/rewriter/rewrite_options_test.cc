@@ -647,21 +647,6 @@ TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampTwoLarger) {
   EXPECT_EQ(22222222, options_.cache_invalidation_timestamp());
 }
 
-TEST_F(RewriteOptionsTest, MergeDistributed) {
-  RewriteOptions one(&thread_system_), two(&thread_system_);
-  EXPECT_FALSE(options_.Distributable(RewriteOptions::kCacheExtenderId));
-  EXPECT_FALSE(options_.Distributable(RewriteOptions::kImageCompressionId));
-  EXPECT_FALSE(options_.Distributable(RewriteOptions::kCssFilterId));
-
-  one.DistributeFilter(RewriteOptions::kCacheExtenderId);
-  two.DistributeFilter(RewriteOptions::kImageCompressionId);
-  MergeOptions(one, two);
-
-  EXPECT_TRUE(options_.Distributable(RewriteOptions::kCacheExtenderId));
-  EXPECT_TRUE(options_.Distributable(RewriteOptions::kImageCompressionId));
-  EXPECT_FALSE(options_.Distributable(RewriteOptions::kCssFilterId));
-}
-
 TEST_F(RewriteOptionsTest, MergeOnlyProcessScopeOptions) {
   RewriteOptions dest(&thread_system_), src(&thread_system_);
   dest.set_image_max_rewrites_at_once(2);
@@ -952,10 +937,6 @@ TEST_F(RewriteOptionsTest, LookupOptionByNameTest) {
     RewriteOptions::kDefaultCacheHtml,
     RewriteOptions::kDisableBackgroundFetchesForBots,
     RewriteOptions::kDisableRewriteOnNoTransform,
-    RewriteOptions::kDistributeFetches,
-    RewriteOptions::kDistributedRewriteKey,
-    RewriteOptions::kDistributedRewriteServers,
-    RewriteOptions::kDistributedRewriteTimeoutMs,
     RewriteOptions::kDomainRewriteCookies,
     RewriteOptions::kDomainRewriteHyperlinks,
     RewriteOptions::kDomainShardCount,
@@ -1129,7 +1110,6 @@ TEST_F(RewriteOptionsTest, LookupNonBaseOptionByNameTest) {
   FailLookupOptionByName(RewriteOptions::kBlockingRewriteRefererUrls);
   FailLookupOptionByName(RewriteOptions::kDisableFilters);
   FailLookupOptionByName(RewriteOptions::kDisallow);
-  FailLookupOptionByName(RewriteOptions::kDistributableFilters);
   FailLookupOptionByName(RewriteOptions::kDomain);
   FailLookupOptionByName(RewriteOptions::kDownstreamCachePurgeLocationPrefix);
   FailLookupOptionByName(RewriteOptions::kEnableFilters);
@@ -1187,6 +1167,12 @@ TEST_F(RewriteOptionsTest, LookupNonBaseOptionByNameTest) {
 
 TEST_F(RewriteOptionsTest, DeprecatedOptionsTest) {
   EXPECT_TRUE(RewriteOptions::IsDeprecatedOptionName("MaxPrefetchJsElements"));
+  EXPECT_TRUE(RewriteOptions::IsDeprecatedOptionName("DistributeFetches"));
+  EXPECT_TRUE(RewriteOptions::IsDeprecatedOptionName("DistributedRewriteKey"));
+  EXPECT_TRUE(
+      RewriteOptions::IsDeprecatedOptionName("DistributedRewriteServers"));
+  EXPECT_TRUE(
+      RewriteOptions::IsDeprecatedOptionName("DistributedRewriteTimeoutMs"));
 }
 
 TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName1) {

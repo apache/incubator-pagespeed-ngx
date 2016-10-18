@@ -91,12 +91,6 @@ const char RewriteOptions::kDisableRewriteOnNoTransform[] =
     "DisableRewriteOnNoTransform";
 const char RewriteOptions::kDisableBackgroundFetchesForBots[] =
     "DisableBackgroundFetchesForBots";
-const char RewriteOptions::kDistributeFetches[] = "DistributeFetches";
-const char RewriteOptions::kDistributedRewriteKey[] = "DistributedRewriteKey";
-const char RewriteOptions::kDistributedRewriteServers[] =
-    "DistributedRewriteServers";
-const char RewriteOptions::kDistributedRewriteTimeoutMs[] =
-    "DistributedRewriteTimeoutMs";
 const char RewriteOptions::kDomainRewriteCookies[] =
     "DomainRewriteCookies";
 const char RewriteOptions::kDomainRewriteHyperlinks[] =
@@ -290,7 +284,6 @@ const char RewriteOptions::kBlockingRewriteRefererUrls[] =
     "BlockingRewriteRefererUrls";
 const char RewriteOptions::kDisableFilters[] = "DisableFilters";
 const char RewriteOptions::kDisallow[] = "Disallow";
-const char RewriteOptions::kDistributableFilters[] = "DistributableFilters";
 const char RewriteOptions::kDomain[] = "Domain";
 const char RewriteOptions::kDownstreamCachePurgeLocationPrefix[] =
     "DownstreamCachePurgeLocationPrefix";
@@ -501,7 +494,6 @@ const int RewriteOptions::kDefaultRewriteDeadlineMs = 10;
 const int RewriteOptions::kDefaultRewriteDeadlineMs = 20;
 #endif
 const int kValgrindWaitForRewriteMs = 1000;
-const int64 RewriteOptions::kDefaultDistributedTimeoutMs = 60000;
 const int RewriteOptions::kDefaultPropertyCacheHttpStatusStabilityThreshold = 5;
 
 const int RewriteOptions::kDefaultMaxRewriteInfoLogSize = 150;
@@ -1924,27 +1916,6 @@ void RewriteOptions::AddProperties() {
       kXModPagespeedHeaderValue,
       kDirectoryScope,
       "Set the value for the X-Mod-Pagespeed HTTP header", true);
-  AddBaseProperty(true, &RewriteOptions::distribute_fetches_, "dfe",
-                  kDistributeFetches, kLegacyProcessScope,
-                  "Whether or not to distribute IPRO and .pagespeed. resource "
-                  "fetch requests from the RewriteDriver before checking the "
-                  "cache.", true);
-  AddBaseProperty(
-      "", &RewriteOptions::distributed_rewrite_key_, "drwk",
-      kDistributedRewriteKey, kLegacyProcessScope,
-      "The key used to authenticate requests from one rewrite task "
-      "to another.  This should be random, greater than 8 characters (longer "
-      "is better), and the same value on each mod_pagespeed server config in "
-      "the rewrite cluster.", false);
-  AddBaseProperty(
-      "", &RewriteOptions::distributed_rewrite_servers_, "drws",
-      kDistributedRewriteServers, kLegacyProcessScope,
-     "A comma-separated list of hosts to use for distributed rewrites.", false);
-  AddBaseProperty(
-      kDefaultDistributedTimeoutMs,
-      &RewriteOptions::distributed_rewrite_timeout_ms_, "drwt",
-      kDistributedRewriteTimeoutMs, kLegacyProcessScope,
-      "Time to wait before giving up on a distributed rewrite request.", false);
   AddBaseProperty(
       true, &RewriteOptions::avoid_renaming_introspective_javascript_,
       "aris", kAvoidRenamingIntrospectiveJavascript,
@@ -2235,7 +2206,15 @@ void RewriteOptions::AddProperties() {
   properties_->property(properties_->size() - 1)
       ->set_do_not_use_for_signature_computation(true);
 
+  // Some options are removed, but we recognize their names for backwards
+  // compatibility with config files that still have them.
   AddDeprecatedProperty("MaxPrefetchJsElements", kDirectoryScope);
+  AddDeprecatedProperty("DistributeFetches", kServerScope);
+  AddDeprecatedProperty("DistributedRewriteKey", kServerScope);
+  AddDeprecatedProperty("DistributedRewriteServers", kServerScope);
+  AddDeprecatedProperty("DistributedRewriteTimeoutMs", kServerScope);
+  // No need for DistributableFilters, since nothing actually registered it with
+  // the hosting server.
 
   // Recently sriharis@ excluded a variety of options from
   // signature-computation which makes sense from the perspective
@@ -2707,27 +2686,6 @@ void RewriteOptions::ForceEnableFilter(Filter filter) {
   modified_ |= forbidden_filters_.Erase(filter);
 }
 
-void RewriteOptions::DistributeFiltersByCommaSeparatedList(
-    const StringPiece& filters, MessageHandler* handler) {
-  StringPieceVector names;
-  SplitStringPieceToVector(filters, ",", &names, true);
-  for (int i = 0, n = names.size(); i < n; ++i) {
-    DistributeFilter(names[i]);
-  }
-}
-
-void RewriteOptions::DistributeFilter(const StringPiece& filter_id) {
-  DCHECK(!frozen_);
-  std::pair<FilterIdSet::iterator, bool> inserted =
-      distributable_filters_.insert(filter_id.as_string());
-  modified_ |= inserted.second;
-}
-
-bool RewriteOptions::Distributable(const StringPiece& filter_id) const {
-  return distributable_filters_.find(filter_id.as_string())
-      != distributable_filters_.end();
-}
-
 void RewriteOptions::EnableExtendCacheFilters() {
   EnableFilter(kExtendCacheCss);
   EnableFilter(kExtendCacheImages);
@@ -3117,8 +3075,6 @@ RewriteOptions::ParseAndSetOptionFromNameWithScope(
     }
   } else if (StringCaseEqual(name, kDisallow)) {
     Disallow(arg);
-  } else if (StringCaseEqual(name, kDistributableFilters)) {
-    DistributeFiltersByCommaSeparatedList(arg, handler);
   } else if (StringCaseEqual(name, kDomain)) {
     WriteableDomainLawyer()->AddDomain(arg, handler);
   } else if (StringCaseEqual(name, kProxySuffix)) {
@@ -3667,13 +3623,6 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   modify |= forbidden_filters_.Merge(src.forbidden_filters_);
 
   enabled_filters_.EraseSet(forbidden_filters_);
-
-  for (FilterIdSet::const_iterator p = src.distributable_filters_.begin(),
-           e = src.distributable_filters_.end(); p != e; ++p) {
-    StringPiece filter_id = *p;
-    // Distributable filters union when merged.
-    distributable_filters_.insert(filter_id.as_string());
-  }
 
   experiment_id_ = src.experiment_id_;
   for (int i = 0, n = src.experiment_specs_.size(); i < n; ++i) {

@@ -194,16 +194,9 @@ class ServerContext {
   bool has_default_system_fetcher() const {
     return default_system_fetcher_ != NULL;
   }
-  bool has_default_distributed_fetcher() {
-    return default_distributed_fetcher_ != NULL;
-  }
   // Note: for rewriting user content, you want to use RewriteDriver's
   // async_fetcher() instead, as it may apply session-specific optimizations.
   UrlAsyncFetcher* DefaultSystemFetcher() { return default_system_fetcher_; }
-
-  UrlAsyncFetcher* DefaultDistributedFetcher() {
-    return default_distributed_fetcher_;
-  }
 
   // Creates a caching-fetcher based on the specified options.  If you call
   // this with DefaultSystemFetcher() then it will not include any loopback
@@ -314,9 +307,6 @@ class ServerContext {
   void set_signature(SHA1Signature* signature) { signature_ = signature; }
   void set_default_system_fetcher(UrlAsyncFetcher* fetcher) {
     default_system_fetcher_ = fetcher;
-  }
-  void set_default_distributed_fetcher(UrlAsyncFetcher* fetcher) {
-    default_distributed_fetcher_ = fetcher;
   }
 
   // Handles an incoming beacon request by incrementing the appropriate
@@ -698,7 +688,6 @@ class ServerContext {
   UserAgentMatcher* user_agent_matcher_;
   Scheduler* scheduler_;
   UrlAsyncFetcher* default_system_fetcher_;
-  UrlAsyncFetcher* default_distributed_fetcher_;
   Hasher* hasher_;
   SHA1Signature* signature_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;

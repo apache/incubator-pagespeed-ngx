@@ -45,10 +45,6 @@ DEFINE_string(rewrite_level, "CoreFilters",
 DEFINE_string(rewrite_options, "",
               "semicolon-separated list of name=value pairs for options");
 DEFINE_string(rewriters, "", "Comma-separated list of rewriters");
-// distributable_filters is for experimentation and may be removed later.
-DEFINE_string(distributable_filters, "",
-    "List of comma-separated filters whose rewrites should be distributed to "
-    "another task.");
 DEFINE_string(domains, "", "Comma-separated list of domains");
 
 DEFINE_int64(css_outline_min_bytes,
@@ -383,28 +379,6 @@ DEFINE_string(blocking_rewrite_key,
               "Enables rewrites to finish before the response is sent to "
               "the client, if X-PSA-Blocking-Rewrite http request header's "
               "value is same as this flag's value.");
-
-DEFINE_string(distributed_rewrite_key, "",
-              "The user-provided key used to authenticate requests from one "
-              "rewrite task to another.  Right now only used to validate "
-              "meta-data headers in distributed rewrites in the html path. "
-              "This should be random, greater than 8 characters, and the same "
-              "value for each task. An empty value disables features that rely "
-              "on it.");
-
-DEFINE_string(distributed_rewrite_servers, "",
-              "Comma-separated list of servers for distributed rewriting. "
-              "Servers can be BNS jobs or host:port pairs.");
-
-DEFINE_int64(distributed_rewrite_timeout_ms,
-             RewriteOptions::kDefaultDistributedTimeoutMs,
-             "Time to wait for a distributed rewrite to complete before "
-             "abandoning it.");
-
-DEFINE_bool(
-    distribute_fetches, true,
-    "Whether or not to distribute IPRO and .pagespeed. resource fetch requests "
-    "from the RewriteDriver before checking the cache.");
 
 DEFINE_bool(support_noscript_enabled, true,
             "Support for clients with no script support, in filters that "
@@ -765,19 +739,6 @@ bool RewriteGflags::SetupOptionsOnly(
   if (WasExplicitlySet("blocking_rewrite_key")) {
     options->set_blocking_rewrite_key(FLAGS_blocking_rewrite_key);
   }
-  if (WasExplicitlySet("distributed_rewrite_key")) {
-    options->set_distributed_rewrite_key(FLAGS_distributed_rewrite_key);
-  }
-  if (WasExplicitlySet("distributed_rewrite_servers")) {
-    options->set_distributed_rewrite_servers(FLAGS_distributed_rewrite_servers);
-  }
-  if (WasExplicitlySet("distributed_rewrite_timeout_ms")) {
-    options->set_distributed_rewrite_timeout_ms(
-        FLAGS_distributed_rewrite_timeout_ms);
-  }
-  if (WasExplicitlySet("distribute_fetches")) {
-    options->set_distribute_fetches(FLAGS_distribute_fetches);
-  }
   if (WasExplicitlySet("pagespeed_version")) {
     options->set_x_header_value(FLAGS_pagespeed_version);
   }
@@ -970,11 +931,6 @@ bool RewriteGflags::SetupOptionsOnly(
       }
     }
   }
-  if (WasExplicitlySet("distributable_filters")) {
-    options->DistributeFiltersByCommaSeparatedList(FLAGS_distributable_filters,
-                                                   handler);
-  }
-
   ret &= SetRewriters("rewriters", FLAGS_rewriters.c_str(),
                       "rewrite_level", FLAGS_rewrite_level.c_str(),
                       options, handler);

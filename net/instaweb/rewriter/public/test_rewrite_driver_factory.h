@@ -56,7 +56,6 @@ class RewriteDriver;
 class RewriteFilter;
 class RewriteOptions;
 class Scheduler;
-class TestDistributedFetcher;
 class ThreadsafeCache;
 class Timer;
 class UrlAsyncFetcher;
@@ -109,8 +108,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
 
   TestRewriteDriverFactory(const ProcessContext& process_context,
                            const StringPiece& temp_dir,
-                           MockUrlFetcher* mock_fetcher,
-                           TestDistributedFetcher* test_distributed_fetcher);
+                           MockUrlFetcher* mock_fetcher);
   virtual ~TestRewriteDriverFactory();
 
   static void InitStats(Statistics* statistics);
@@ -128,9 +126,6 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   }
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return counting_url_async_fetcher_.get();
-  }
-  CountingUrlAsyncFetcher* counting_distributed_async_fetcher() {
-    return counting_distributed_async_fetcher_;
   }
   MockTimeCache* mock_time_cache() { return mock_time_cache_.get(); }
 
@@ -220,7 +215,6 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
-  virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher();
   virtual FileSystem* DefaultFileSystem();
   virtual NonceGenerator* DefaultNonceGenerator();
   virtual Timer* DefaultTimer();
@@ -239,10 +233,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   scoped_ptr<ThreadsafeCache> threadsafe_cache_;
   scoped_ptr<LRUCache> lru_cache_;
   MockUrlFetcher* mock_url_fetcher_;
-  TestDistributedFetcher* test_distributed_fetcher_;
   scoped_ptr<CountingUrlAsyncFetcher> counting_url_async_fetcher_;
   RateControllingUrlAsyncFetcher* rate_controlling_url_async_fetcher_;
-  CountingUrlAsyncFetcher* counting_distributed_async_fetcher_;
   scoped_ptr<WaitUrlAsyncFetcher> wait_url_async_fetcher_;
   scoped_ptr<MockTimeCache> mock_time_cache_;
   MemFileSystem* mem_file_system_;  // owned by base class file_system_.

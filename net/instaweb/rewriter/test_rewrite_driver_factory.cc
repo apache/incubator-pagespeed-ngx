@@ -32,7 +32,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/cache_property_store.h"
@@ -100,16 +99,13 @@ const char TestRewriteDriverFactory::kUrlNamerScheme[] = "URL_NAMER_SCHEME";
 TestRewriteDriverFactory::TestRewriteDriverFactory(
     const ProcessContext& process_context,
     const StringPiece& temp_dir,
-    MockUrlFetcher* mock_fetcher,
-    TestDistributedFetcher* test_distributed_fetcher)
+    MockUrlFetcher* mock_fetcher)
     : RewriteDriverFactory(process_context, Platform::CreateThreadSystem()),
       mock_timer_(NULL),
       mock_scheduler_(NULL),
       delay_cache_(NULL),
       mock_url_fetcher_(mock_fetcher),
-      test_distributed_fetcher_(test_distributed_fetcher),
       rate_controlling_url_async_fetcher_(NULL),
-      counting_distributed_async_fetcher_(NULL),
       mem_file_system_(NULL),
       mock_hasher_(NULL),
       simple_stats_(thread_system()),
@@ -167,13 +163,6 @@ UrlAsyncFetcher* TestRewriteDriverFactory::DefaultAsyncUrlFetcher() {
       thread_system(),
       statistics());
   return rate_controlling_url_async_fetcher_;
-}
-
-UrlAsyncFetcher* TestRewriteDriverFactory::DefaultDistributedUrlFetcher() {
-  DCHECK(counting_distributed_async_fetcher_ == NULL);
-  counting_distributed_async_fetcher_ = new CountingUrlAsyncFetcher(
-      test_distributed_fetcher_);
-  return counting_distributed_async_fetcher_;
 }
 
 FileSystem* TestRewriteDriverFactory::DefaultFileSystem() {

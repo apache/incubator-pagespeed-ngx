@@ -136,8 +136,6 @@ class RewriteDriverFactory {
   // You cannot set the base URL fetcher once ComputeUrlAsyncFetcher has
   // been called.
   void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
-  // Takes ownership of distributed_fetcher.
-  void set_base_distributed_async_fetcher(UrlAsyncFetcher* distributed_fetcher);
   bool set_filename_prefix(StringPiece p);
 
   // Determines whether Slurping is enabled.
@@ -176,7 +174,6 @@ class RewriteDriverFactory {
   // they must be called once prior to spawning threads, e.g. via
   // CreateServerContext.
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
-  virtual UrlAsyncFetcher* ComputeDistributedFetcher();
 
   // Threadsafe mechanism to create a managed ServerContext.  The
   // ServerContext is owned by the factory, and should not be
@@ -344,8 +341,6 @@ class RewriteDriverFactory {
   // will inject all of these from what's available in 'this'.
   virtual ServerContext* NewDecodingServerContext() = 0;
 
-  virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher() { return NULL; }
-
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder(
       ServerContext* server_context);
   virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder(
@@ -431,9 +426,7 @@ class RewriteDriverFactory {
   scoped_ptr<MessageHandler> message_handler_;
   scoped_ptr<FileSystem> file_system_;
   UrlAsyncFetcher* url_async_fetcher_;
-  UrlAsyncFetcher* distributed_async_fetcher_;
   scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
-  scoped_ptr<UrlAsyncFetcher> base_distributed_async_fetcher_;
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<NonceGenerator> nonce_generator_;
   scoped_ptr<SHA1Signature> signature_;

@@ -58,7 +58,7 @@ class SpeedTestContext {
     StopBenchmarkTiming();
     RewriteDriverFactory::Initialize();
     factory_.reset(new TestRewriteDriverFactory(
-        process_context, "/tmp", &fetcher_, nullptr));
+        process_context, "/tmp", &fetcher_));
     TestRewriteDriverFactory::InitStats(factory_->statistics());
     server_context_ = factory_->CreateServerContext();
     StartBenchmarkTiming();

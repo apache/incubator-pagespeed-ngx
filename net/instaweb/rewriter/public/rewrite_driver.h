@@ -467,12 +467,6 @@ class RewriteDriver : public HtmlParse {
   // to this method are made.
   void SetSessionFetcher(UrlAsyncFetcher* f);
 
-  UrlAsyncFetcher* distributed_fetcher() { return distributed_async_fetcher_; }
-  // Does not take ownership.
-  void set_distributed_fetcher(UrlAsyncFetcher* fetcher) {
-    distributed_async_fetcher_ = fetcher;
-  }
-
   // Creates a cache fetcher that uses the driver's fetcher and its options.
   // Note: this means the driver's fetcher must survive as long as this does.
   CacheUrlAsyncFetcher* CreateCacheFetcher();
@@ -1151,14 +1145,6 @@ class RewriteDriver : public HtmlParse {
   // Determine whether this driver is nested inside another.
   bool is_nested() const { return is_nested_; }
 
-  // Determines whether metadata was requested in the response headers and
-  // verifies that the key in the header is the same as the expected key. An
-  // empty expected key returns false.
-  bool MetadataRequested(const RequestHeaders& request_headers) const;
-
-  // Did the driver attempt to distribute the fetch?
-  bool tried_to_distribute_fetch() const { return tried_to_distribute_fetch_; }
-
   // Writes the specified contents into the output resource, and marks it
   // as optimized. 'inputs' described the input resources that were used
   // to construct the output, and is used to determine whether the
@@ -1250,30 +1236,12 @@ class RewriteDriver : public HtmlParse {
   virtual void DetermineFiltersBehaviorImpl();
 
  private:
-  friend class DistributedRewriteContextTest;
   friend class RewriteContext;
   friend class RewriteDriverTest;
   friend class RewriteTestBase;
   friend class ServerContextTest;
 
   typedef std::map<GoogleString, RewriteFilter*> StringFilterMap;
-
-  // Returns true if the given fetch request should be distributed.
-  bool ShouldDistributeFetch(const StringPiece& filter_id);
-
-  // Distributes the fetch to another task if ShouldDistributeFetch allows it
-  // for the provided filter_id and streams the result to the provided fetch
-  // object.
-  //
-  // Returns true if an attempt to distribute was made. If the attempt fails
-  // before async_fetch was written to (before ResponseHeaders) it will call
-  // RewriteDriver::FetchResource() and skip distribution. If the attempt fails
-  // after writing to the ResponseHeaders then the fetch will ultimately fail
-  // and the client will get a broken resource.
-  //
-  // Returns false if ShouldDistributeFetch disallows the distribution.
-  bool DistributeFetch(const StringPiece& url, const StringPiece& filter_id,
-                       AsyncFetch* async_fetch);
 
   // Checks whether outstanding rewrites are completed in a satisfactory fashion
   // with respect to given wait_mode and timeout, and invokes done->Run() (with
@@ -1640,11 +1608,6 @@ class RewriteDriver : public HtmlParse {
   // This is either owned externally or via owned_url_async_fetchers_.
   UrlAsyncFetcher* url_async_fetcher_;
 
-  // This is the fetcher that is used to distribute rewrites if enabled. This
-  // can be NULL if distributed rewriting is not configured. This is owned
-  // externally.
-  UrlAsyncFetcher* distributed_async_fetcher_;
-
   // A list of all the UrlAsyncFetchers that we own, as set with
   // SetSessionFetcher.
   std::vector<UrlAsyncFetcher*> owned_url_async_fetchers_;
@@ -1747,10 +1710,6 @@ class RewriteDriver : public HtmlParse {
   // once, allowing for multiple calls to RewriteDriver::Initialize as long
   // as they are matched to RewriteDriver::Terminate.
   static int initialized_count_;
-
-  // True if this RewriteDriver attempted to distribute the rewrite. This is
-  // used to prevent a second attempt in case the first errored out.
-  bool tried_to_distribute_fetch_;
 
   // If false, add data-pagespeed-no-defer attribute to the script inserted by
   // add_instrumentation filter.

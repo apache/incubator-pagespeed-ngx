@@ -36,7 +36,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -493,9 +492,6 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   MockUrlFetcher* mock_url_fetcher() {
     return &mock_url_fetcher_;
   }
-  TestDistributedFetcher* test_distributed_fetcher() {
-    return &test_distributed_fetcher_;
-  }
   Hasher* hasher() { return server_context_->hasher(); }
   DelayCache* delay_cache() { return factory_->delay_cache(); }
   LRUCache* lru_cache() { return factory_->lru_cache(); }
@@ -535,9 +531,6 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   ServerContext* other_server_context() { return other_server_context_; }
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return factory_->counting_url_async_fetcher();
-  }
-  CountingUrlAsyncFetcher* counting_distributed_fetcher() {
-    return factory_->counting_distributed_async_fetcher();
   }
   void SetMockHashValue(const GoogleString& value) {
     factory_->mock_hasher()->set_hash_value(value);
@@ -825,7 +818,6 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // The mock fetchers & stats are global across all Factories used in the
   // tests.
   MockUrlFetcher mock_url_fetcher_;
-  TestDistributedFetcher test_distributed_fetcher_;
   scoped_ptr<Statistics> statistics_;
 
   // We have two independent RewriteDrivers representing two completely

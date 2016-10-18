@@ -2166,3 +2166,7 @@ AddType application/json .json
 #ALL_DIRECTIVES ModPagespeedNumShards 1
 #ALL_DIRECTIVES ModPagespeedUrlPrefix 1
 #ALL_DIRECTIVES ModPagespeedMaxPrefetchJsElements 1
+#ALL_DIRECTIVES ModPagespeedDistributeFetches 1
+#ALL_DIRECTIVES ModPagespeedDistributedRewriteKey 1
+#ALL_DIRECTIVES ModPagespeedDistributedRewriteServers 1
+#ALL_DIRECTIVES ModPagespeedDistributedRewriteTimeoutMs 1

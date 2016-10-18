@@ -148,13 +148,6 @@ class RewriteContext {
   typedef std::vector<InputInfo*> InputInfoStarVector;
   static const char kNumRewritesAbandonedForLockContention[];
   static const char kNumDeadlineAlarmInvocations[];
-  static const char kNumDistributedRewriteSuccesses[];
-  static const char kNumDistributedRewriteFailures[];
-  static const char kNumDistributedMetadataFailures[];
-  // The extension used for all distributed fetch URLs.
-  static const char kDistributedExt[];
-  // The hash value used for all distributed fetch URLs.
-  static const char kDistributedHash[];
   static const char kHashMismatchMessage[];
 
   // Used to pass the result of the metadata cache lookups. Recipient must
@@ -527,22 +520,6 @@ class RewriteContext {
   // calling of base version until that is complete.
   virtual void StartFetchReconstruction();
 
-  // Determines if the given rewrite should be distributed. This is based on
-  // whether distributed servers have been configured, if the current filter is
-  // configured to be distributed, where a filter is in a chain, if a
-  // distributed fetcher is in place, and if distribution has been explicitly
-  // disabled for this context.
-  bool ShouldDistributeRewrite() const;
-
-  // Determines if this rewrite-context is acting on behalf of a distributed
-  // rewrite request from an HTML rewrite. Verifies the distributed rewrite key.
-  bool IsDistributedRewriteForHtml() const;
-
-  // Dispatches the rewrite to another task with a distributed fetcher. Should
-  // not be called without first getting true from ShoulDistributeRewrite() as
-  // it has guards (such as checking the number of slots).
-  void DistributeRewrite();
-
   // Makes the rest of a fetch run in background, not producing
   // a result or invoking callbacks. Will arrange for appropriate
   // memory management with the rewrite driver itself; but the caller
@@ -584,15 +561,6 @@ class RewriteContext {
   }
   void set_notify_driver_on_fetch_done(bool value) {
     notify_driver_on_fetch_done_ = value;
-  }
-
-  // Returns true if this context will prevent any attempt at distributing a
-  // rewrite (although its nested context still may be distributed). See
-  // ShouldDistributeRewrite for more detail on when a rewrite should be
-  // distributed.
-  bool block_distribute_rewrite() const { return block_distribute_rewrite_; }
-  void set_block_distribute_rewrite(const bool x) {
-    block_distribute_rewrite_ = x;
   }
 
   // Note that the following must only be called in the fetch flow.
@@ -660,8 +628,6 @@ class RewriteContext {
       CacheLookupResultCallback* callback);
 
  private:
-  class DistributedRewriteCallback;
-  class DistributedRewriteFetch;
   class OutputCacheCallback;
   class WriteIfChanged;
   class LookupMetadataForOutputResourceCallback;
@@ -739,35 +705,12 @@ class RewriteContext {
   // Called when we fail to acquire the lock for the output resource.
   void LockFailed();
 
-  // Callback to a distributed rewrite fetch. Queued to run in the high-priority
-  // thread. Fetch path: If the fetch succeeded then the rest of the flow is
-  // skipped and that result is used, otherwise the original resource is fetched
-  // and returned, bypassing rewriting.
-  void DistributeRewriteDone(bool success);
-
-  // If the response_headers have metadata in them, strip the metadata from the
-  // headers, parse them and write them to cache_result.  Returns true if
-  // the parse was successful otherwise false.
-  bool ParseAndRemoveMetadataFromResponseHeaders(
-      ResponseHeaders* response_headers, CacheLookupResult* cache_result);
-
   // Create an OutputResource initialized from CachedResult, response headers,
   // and content.
   bool CreateOutputResourceFromContent(const CachedResult& cached_result,
                                        const ResponseHeaders& response_headers,
                                        StringPiece content,
                                        OutputResourcePtr* output_resource);
-
-  // The distributed rewrite path for HTML rewrites works by converting the
-  // input URL on the ingress task into a .pagespeed. fetch for the distributed
-  // task to reconstruct using the corresponding filter id. This function maps
-  // the given input resource URL into a .pagespeed. URL for reconstruction. It
-  // uses a hash value of 0 and an extension of "distributed". Returns an empty
-  // string if the URL could not be constructed (e.g., was too long).
-  //
-  // Ex. input: http://www.example.com/a.png with an image compression context
-  //    output: http://www.example.com/50x50xa.png.pagespeed.ic.0.distributed
-  GoogleString DistributedFetchUrl(StringPiece url);
 
   // Returns true if this rewrite context was created to fetch a resource (e.g.,
   // IPRO or .pagespeed. URLs) and false otherwise.
@@ -1072,13 +1015,6 @@ class RewriteContext {
   // Always owned externally.
   RequestTrace* dependent_request_trace_;
 
-  // Set true if this rewrite context should be blocked from distributing its
-  // rewrite.
-  bool block_distribute_rewrite_;
-
-  // Stores the resulting headers and content of a distributed rewrite.
-  scoped_ptr<DistributedRewriteFetch> distributed_fetch_;
-
   // Map to dedup partitions other dependency field.
   StringIntMap other_dependency_map_;
 
@@ -1088,9 +1024,6 @@ class RewriteContext {
   scoped_ptr<ScheduleRewriteContext> schedule_rewrite_context_;
 
   Variable* const num_rewrites_abandoned_for_lock_contention_;
-  Variable* const num_distributed_rewrite_failures_;
-  Variable* const num_distributed_rewrite_successes_;
-  Variable* const num_distributed_metadata_failures_;
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };
 

@@ -127,16 +127,13 @@ const char kMessagePatternShrinkImage[] = "*Shrinking image*";
 RewriteTestBase::RewriteTestBase()
     : kFoundResult(HTTPCache::kFound, kFetchStatusOK),
       kNotFoundResult(HTTPCache::kNotFound, kFetchStatusNotSet),
-      test_distributed_fetcher_(this),
       factory_(new TestRewriteDriverFactory(rewrite_test_base_process_context,
                                             GTestTempDir(),
-                                            &mock_url_fetcher_,
-                                            &test_distributed_fetcher_)),
+                                            &mock_url_fetcher_)),
       other_factory_(new TestRewriteDriverFactory(
           rewrite_test_base_process_context,
           GTestTempDir(),
-          &mock_url_fetcher_,
-          &test_distributed_fetcher_)),
+          &mock_url_fetcher_)),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()),
@@ -150,7 +147,6 @@ RewriteTestBase::RewriteTestBase(
     std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*> factories)
     : kFoundResult(HTTPCache::kFound, kFetchStatusOK),
       kNotFoundResult(HTTPCache::kNotFound, kFetchStatusNotSet),
-      test_distributed_fetcher_(this),
       factory_(factories.first),
       other_factory_(factories.second),
       use_managed_rewrite_drivers_(false),
@@ -378,8 +374,7 @@ void RewriteTestBase::ServeResourceFromManyContextsWithUA(
 
 TestRewriteDriverFactory* RewriteTestBase::MakeTestFactory() {
   return new TestRewriteDriverFactory(rewrite_test_base_process_context,
-                                      GTestTempDir(), &mock_url_fetcher_,
-                                      &test_distributed_fetcher_);
+                                      GTestTempDir(), &mock_url_fetcher_);
 }
 
 // Test that a resource can be served from a new server that has not yet
@@ -1103,9 +1098,7 @@ void RewriteTestBase::ClearStats() {
     lru_cache()->ClearStats();
   }
   counting_url_async_fetcher()->Clear();
-  counting_distributed_fetcher()->Clear();
   other_factory_->counting_url_async_fetcher()->Clear();
-  other_factory_->counting_distributed_async_fetcher()->Clear();
   file_system()->ClearStats();
   rewrite_driver()->set_request_context(CreateRequestContext());
 }

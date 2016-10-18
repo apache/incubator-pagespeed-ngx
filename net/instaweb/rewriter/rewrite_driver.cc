@@ -260,7 +260,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       scheduler_(NULL),
       default_url_async_fetcher_(url_async_fetcher),
       url_async_fetcher_(default_url_async_fetcher_),
-      distributed_async_fetcher_(NULL),
       dom_stats_filter_(NULL),
       scan_filter_(this),
       controlling_pool_(NULL),
@@ -282,7 +281,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       is_nested_(false),
       request_context_(NULL),
       start_time_ms_(0),
-      tried_to_distribute_fetch_(false),
       defer_instrumentation_script_(false),
       is_amp_(false),
       downstream_cache_purger_(this)
@@ -446,7 +444,6 @@ void RewriteDriver::Clear() NO_THREAD_SAFETY_ANALYSIS {
   status_code_ = 0;
   flush_requested_ = false;
   flush_occurred_ = false;
-  tried_to_distribute_fetch_ = false;
   defer_instrumentation_script_ = false;
   is_amp_ = false;
   executing_rewrite_tasks_.set_value(false);
@@ -1827,160 +1824,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   GoogleString canonical_url_;
 };
 
-// A fetch that writes back to the base fetch, takes care of a few stats,
-// and can recover from an early (before HeadersComplete) fetcher error by
-// ignoring subsequent writes and calling FetchResources() on the driver once
-// Done is called.
-class DistributedFetchResourceFetch : public SharedAsyncFetch {
- public:
-  // Increments the driver's async_events_count to ensure that it survives
-  // as long as the fetch does.
-  explicit DistributedFetchResourceFetch(AsyncFetch* base_fetch,
-                                         RewriteDriver* driver)
-      : SharedAsyncFetch(base_fetch),
-        driver_(driver),
-        early_failure_(false),
-        driver_fetch_(base_fetch),
-        url_(driver->fetch_url().as_string()) {
-    RequestHeaders* new_req_headers = new RequestHeaders();
-    new_req_headers->CopyFrom(*driver_->request_headers());
-    SetRequestHeadersTakingOwnership(new_req_headers);
-  }
-
-  virtual ~DistributedFetchResourceFetch() {}
-
-  // Subclasses should override HandleHeadersComplete and set early_failure_
-  // to true if a recoverable failure is detected.
-  virtual void HandleHeadersComplete() {
-    if (response_headers()->status_code() >=
-        HttpStatus::kProxyPublisherFailure) {
-      // Was it an instaweb failure?  If so, we'll make note of that and try
-      // again locally.
-      early_failure_ = true;
-    } else {
-      SharedAsyncFetch::HandleHeadersComplete();
-    }
-  }
-
-  virtual void HandleDone(bool success) {
-    // Bump the stats.
-    if (success) {
-      driver_->statistics()
-          ->GetVariable(RewriteContext::kNumDistributedRewriteSuccesses)
-          ->Add(1);
-    } else {
-      driver_->statistics()
-          ->GetVariable(RewriteContext::kNumDistributedRewriteFailures)->Add(1);
-    }
-
-    if (early_failure_) {
-      // Perhaps an RPC error? We can recover from this state since we haven't
-      // written anything to the base fetch yet. Tell the driver to try again
-      // but this time don't distribute the request because
-      // tried_to_distribute_fetch_ is true.
-      driver_->FetchResource(url_, driver_fetch_);
-    } else {
-      SharedAsyncFetch::HandleDone(success);
-    }
-    driver_->DecrementAsyncEventsCount();
-    delete this;
-  }
-
-  virtual bool HandleWrite(const StringPiece& content,
-                           MessageHandler* handler) {
-    if (early_failure_) {
-      return true;
-    } else {
-      return SharedAsyncFetch::HandleWrite(content, handler);
-    }
-  }
-
-  void DispatchFetch() {
-    StringPiece distributed_key = driver_->options()->distributed_rewrite_key();
-    request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteFetch,
-                           distributed_key);
-    // Nested driver fetches are not supposed to use deadlines, so block the
-    // distributed rewrite.
-    if (driver_->is_nested()) {
-      request_headers()->Add(HttpAttributes::kXPsaDistributedRewriteBlock,
-                             distributed_key);
-    }
-
-    RewriteOptionsManager* rewrite_options_manager =
-        driver_->server_context()->rewrite_options_manager();
-    GoogleString url = driver_->fetch_url().as_string();
-    driver_->IncrementAsyncEventsCount();
-    rewrite_options_manager->PrepareRequest(
-        driver_->options(), driver_->request_context(), &url, request_headers(),
-        NewCallback(this, &DistributedFetchResourceFetch::StartFetch));
-  }
-
-  void StartFetch(bool success) {
-    if (success) {
-      driver_->distributed_fetcher()->Fetch(driver_->fetch_url().as_string(),
-                                            driver_->message_handler(), this);
-    } else {
-      // We failed. Try fetching again, but this time we won't distribute
-      // because tried_to_distribute_fetch_ is true.
-      driver_->FetchResource(driver_->fetch_url(), driver_fetch_);
-      driver_->DecrementAsyncEventsCount();
-      delete this;
-    }
-  }
-
- private:
-  // This class increments the asynchronous event count on the RewriteDriver to
-  // ensure that it stays alive as long as the fetch does.
-  RewriteDriver* driver_;
-  bool early_failure_;
-  AsyncFetch* driver_fetch_;  //  This is owned externally.
-  GoogleString url_;
-  DISALLOW_COPY_AND_ASSIGN(DistributedFetchResourceFetch);
-};
-
 }  // namespace
-
-bool RewriteDriver::ShouldDistributeFetch(const StringPiece& filter_id) {
-  // TODO(jkarlin): There is also a RewriteContext::ShouldDistributeFetch
-  // intended for the HTML-path but not the fetch paths. Consolidate the code if
-  // reasonable.
-  if (distributed_fetcher() == NULL ||
-      !options()->Distributable(filter_id) ||
-      !options()->distribute_fetches() ||
-      tried_to_distribute_fetch_ ||
-      options()->distributed_rewrite_key().empty() ||
-      options()->distributed_rewrite_servers().empty()) {
-    return false;
-  }
-
-  // Don't redistribute an already distributed rewrite. Note: We don't verify
-  // the distributed rewrite key because we want to be conservative about loop
-  // detection.
-  DCHECK(request_headers() != NULL);
-  if (request_headers() != NULL) {
-    if (request_headers()->Has(HttpAttributes::kXPsaDistributedRewriteFetch) ||
-        request_headers()->Has(
-            HttpAttributes::kXPsaDistributedRewriteForHtml)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool RewriteDriver::DistributeFetch(const StringPiece& url,
-                                    const StringPiece& filter_id,
-                                    AsyncFetch* async_fetch) {
-  if (!ShouldDistributeFetch(filter_id)) {
-    return false;
-  }
-  DistributedFetchResourceFetch* dist_fetch =
-      new DistributedFetchResourceFetch(async_fetch, this);
-  tried_to_distribute_fetch_ = true;
-  // The following line might delete 'this' and clean up the RewriteDriver if it
-  // finishes fast enough so don't touch those things afterwards.
-  dist_fetch->DispatchFetch();
-  return true;
-}
 
 bool RewriteDriver::FetchResource(const StringPiece& url,
                                   AsyncFetch* async_fetch) {
@@ -2042,11 +1886,6 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
     SetRequestHeaders(*async_fetch->request_headers());
   }
 
-  if (DistributeFetch(fetch_url_, RewriteOptions::kInPlaceRewriteId,
-                      async_fetch)) {
-    return;
-  }
-
   ref_counts_.AddRef(kRefFetchUserFacing);
   InPlaceRewriteContext* context = new InPlaceRewriteContext(this, gurl.Spec());
   context->set_proxy_mode(proxy_mode);
@@ -2079,18 +1918,6 @@ bool RewriteDriver::FetchOutputResource(
     RewriteFilter* filter,
     AsyncFetch* async_fetch) {
 
-  if (DistributeFetch(output_resource->url(), output_resource->filter_prefix(),
-                      async_fetch)) {
-    // TODO(jkarlin): This doesn't fill in the output_resource with the result
-    // of the fetch. Right now I believe the only thing expecting data to be in
-    // the output_resource is a nested_driver fetch in
-    // RewriteContext::FetchInputs (which calls FetchResource) but it currently
-    // copies from the fetch into the OutputResource anyway so nothing is broken
-    // yet. One option is to change the first parameter of FetchOutputResource
-    // to a URL instead of an OutputResourcePtr.
-    return true;
-  }
-
   // None of our resources ever change -- the hash of the content is embedded
   // in the filename.  This is why we serve them with very long cache
   // lifetimes.  However, when the user presses Reload, the browser may
@@ -2113,11 +1940,8 @@ bool RewriteDriver::FetchOutputResource(
   } else {
     SetBaseUrlForFetch(output_resource->url());
     ref_counts_.AddRef(kRefFetchUserFacing);
-    if (output_resource->kind() == kOnTheFlyResource ||
-        MetadataRequested(*async_fetch->request_headers())) {
-      // Don't bother to look up the resource in the cache: ask the filter. If
-      // metadata is requested we need to skip the initial http cache lookup
-      // because we can't return until we've done a metadata lookup first.
+    if (output_resource->kind() == kOnTheFlyResource) {
+      // Don't bother to look up the resource in the cache: ask the filter.
       if (filter != NULL) {
         queued = FilterFetch::Start(filter, output_resource, async_fetch,
                                     message_handler());
@@ -3559,17 +3383,6 @@ void RewriteDriver::DetermineFiltersBehaviorImpl() {
 void RewriteDriver::ClearRequestProperties() {
   request_properties_.reset(new RequestProperties(
       server_context_->user_agent_matcher()));
-}
-
-bool RewriteDriver::MetadataRequested(
-    const RequestHeaders& request_headers) const {
-  StringPiece expected_key = options_->distributed_rewrite_key();
-  // Empty keys don't count.
-  if (expected_key.empty()) {
-    return false;
-  }
-  return request_headers.HasValue(HttpAttributes::kXPsaRequestMetadata,
-                                  expected_key);
 }
 
 const GoogleString& RewriteDriver::CacheFragment() const {

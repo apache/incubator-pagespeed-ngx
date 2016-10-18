@@ -70,7 +70,6 @@ namespace net_instaweb {
 RewriteDriverFactory::RewriteDriverFactory(
     const ProcessContext& process_context, ThreadSystem* thread_system)
     : url_async_fetcher_(NULL),
-      distributed_async_fetcher_(NULL),
       js_tokenizer_patterns_(process_context.js_tokenizer_patterns()),
       force_caching_(false),
       slurp_read_only_(false),
@@ -134,12 +133,6 @@ RewriteDriverFactory::~RewriteDriverFactory() {
   }
   url_async_fetcher_ = NULL;
 
-  if ((distributed_async_fetcher_ != NULL) &&
-      (distributed_async_fetcher_ != base_distributed_async_fetcher_.get())) {
-    delete distributed_async_fetcher_;
-  }
-  distributed_async_fetcher_ = NULL;
-
   for (int i = 0, n = deferred_cleanups_.size(); i < n; ++i) {
     deferred_cleanups_[i]->CallRun();
   }
@@ -194,15 +187,6 @@ void RewriteDriverFactory::set_base_url_async_fetcher(
       << " after ComputeUrlAsyncFetcher has been called";
   base_url_async_fetcher_.reset(url_async_fetcher);
 }
-
-void RewriteDriverFactory::set_base_distributed_async_fetcher(
-    UrlAsyncFetcher* distributed_fetcher) {
-  CHECK(distributed_async_fetcher_ == NULL)
-      << "Cannot call set_base_distributed_async_fetcher "
-      << "after ComputeDistributedFetcher has been called";
-  base_distributed_async_fetcher_.reset(distributed_fetcher);
-}
-
 
 void RewriteDriverFactory::set_hasher(Hasher* hasher) {
   hasher_.reset(hasher);
@@ -488,12 +472,6 @@ void RewriteDriverFactory::InitServerContext(ServerContext* server_context) {
   if (!server_context->has_default_system_fetcher()) {
     server_context->set_default_system_fetcher(ComputeUrlAsyncFetcher());
   }
-  if (!server_context->has_default_distributed_fetcher()) {
-    UrlAsyncFetcher* fetcher = ComputeDistributedFetcher();
-    if (fetcher != NULL) {
-      server_context->set_default_distributed_fetcher(fetcher);
-    }
-  }
 
   server_context->set_central_controller(
       GetCentralController(server_context->lock_manager()));
@@ -621,17 +599,6 @@ UrlAsyncFetcher* RewriteDriverFactory::ComputeUrlAsyncFetcher() {
     }
   }
   return url_async_fetcher_;
-}
-
-UrlAsyncFetcher* RewriteDriverFactory::ComputeDistributedFetcher() {
-  if (distributed_async_fetcher_ == NULL) {
-    if (base_distributed_async_fetcher_.get() == NULL) {
-      distributed_async_fetcher_ = DefaultDistributedUrlFetcher();
-    } else {
-      distributed_async_fetcher_ = base_distributed_async_fetcher_.get();
-    }
-  }
-  return distributed_async_fetcher_;
 }
 
 void RewriteDriverFactory::SetupSlurpDirectories() {

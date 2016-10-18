@@ -25,7 +25,6 @@
 
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
-#include "net/instaweb/rewriter/public/test_distributed_fetcher.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "pagespeed/kernel/base/gtest.h"
 
@@ -36,11 +35,9 @@ class CustomRewriteTestBase : public RewriteTestBase {
  public:
   class CustomTestRewriteDriverFactory : public TestRewriteDriverFactory {
    public:
-    explicit CustomTestRewriteDriverFactory(
-        MockUrlFetcher* url_fetcher,
-        TestDistributedFetcher* distributed_fetcher)
+    explicit CustomTestRewriteDriverFactory(MockUrlFetcher* url_fetcher)
         : TestRewriteDriverFactory(process_context(), GTestTempDir(),
-                                   url_fetcher, distributed_fetcher) {
+                                   url_fetcher) {
       InitializeDefaultOptions();
     }
 
@@ -50,8 +47,7 @@ class CustomRewriteTestBase : public RewriteTestBase {
   };
 
   CustomRewriteTestBase()
-      : RewriteTestBase(MakeFactories(&mock_url_fetcher_,
-                                      &test_distributed_fetcher_)) {
+      : RewriteTestBase(MakeFactories(&mock_url_fetcher_)) {
   }
 
   virtual ~CustomRewriteTestBase() {
@@ -59,8 +55,7 @@ class CustomRewriteTestBase : public RewriteTestBase {
   }
 
   virtual TestRewriteDriverFactory* MakeTestFactory() {
-    return new CustomTestRewriteDriverFactory(&mock_url_fetcher_,
-                                              &test_distributed_fetcher_);
+    return new CustomTestRewriteDriverFactory(&mock_url_fetcher_);
   }
 
   OptionsClass* NewOptions() {
@@ -74,15 +69,12 @@ class CustomRewriteTestBase : public RewriteTestBase {
   // We must call the static Initialize method on the options class before
   // we construct a factory, which will 'new' the OptionsClass.
   static std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*>
-      MakeFactories(MockUrlFetcher* mock_fetcher,
-                    TestDistributedFetcher* test_distributed_fetcher) {
+      MakeFactories(MockUrlFetcher* mock_fetcher) {
     OptionsClass::Initialize();
 
     return make_pair(
-        new CustomTestRewriteDriverFactory(mock_fetcher,
-                                           test_distributed_fetcher),
-        new CustomTestRewriteDriverFactory(mock_fetcher,
-                                           test_distributed_fetcher));
+        new CustomTestRewriteDriverFactory(mock_fetcher),
+        new CustomTestRewriteDriverFactory(mock_fetcher));
   }
 };
 
