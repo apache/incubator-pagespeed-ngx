@@ -34,12 +34,6 @@
 #       ~convert_meta_tags~
 #       ~regression test with same filtered input twice in combination"
 #
-#
-# By default tests that are in separate files and run with run_test are run
-# synchronously.  Run them asynchronously, set the environment variable
-# RUN_TESTS_ASYNC to "on".  The tests will probably flake if run this way, so
-# it's not recommended.
-#
 # Callers need to set SERVER_NAME, and not run this more than once
 # simultaneously with the same SERVER_NAME value.
 
@@ -58,16 +52,6 @@ if [ $# -lt 1 -o $# -gt 3 ]; then
   echo Usage: $(basename $0) HOSTNAME [HTTPS_HOST [PROXY_HOST]]
   exit 2
 fi;
-
-if [ "${RUN_TESTS_ASYNC:-on}" = "on" ]; then
-  RUN_TESTS_IN_BACKGROUND=true
-else
-  RUN_TESTS_IN_BACKGROUND=false
-fi
-# TODO(jefftk): get this less flaky and turn background testing back on.
-RUN_TESTS_IN_BACKGROUND=false
-
-PARALLEL_MAX=20  # How many tests should be allowed to run in parallel.
 
 if [ -z "${TEMPDIR:-}" ]; then
   TEMPDIR="/tmp/mod_pagespeed_test.$USER/$SERVER_NAME"
@@ -205,34 +189,9 @@ OUTDIR=$TESTTMP/fetched_directory
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
-# Lots of tests clear OUTDIR or otherwise expect to have full control over it.
-# When running tests in parallel this would have them stomping all over each
-# other, so give each its own OUTDIR.
-#
-# This should always be run in its own subshell.
-RUNNING_TEST_IN_BACKGROUND=false
-function set_outdir_and_run_test {
-  local test_name=$1
-  RUNNING_TEST_IN_BACKGROUND=true
-
-  FAIL_LOG="$ORIGINAL_TEMPDIR/$test_name.log"
-  OUTDIR="$OUTDIR/outdir-$test_name"
-  mkdir -p "$OUTDIR"
-  TESTTMP="$TESTTMP/testtmp-$test_name"
-  mkdir -p "$TESTTMP"
-  define_fetch_variables
-  source $this_dir/system_tests/$test_name.sh &> "$FAIL_LOG"
-
-  # If any tests fail they'll call exit, so if we get here the tests all passed.
-  # Exit with a success error code.
-  return 0
-}
-
-# Individual tests are in separate files under system_tests/ and are safe to run
-# simultaneously in the background.  If one test must be run after another, the
-# best solution is to put them in the same file.
-BACKGROUND_TEST_PIDS=()  # array of pids
-BACKGROUND_TEST_NAMES=() # hash from pid to name of test
+# Individual tests are in separate files under system_tests/ and may be run
+# individually or reordered.  If one test must be run after another, put them in
+# the same file.
 SYSTEM_TEST_DIR="DEFINE_THIS_BEFORE_USING_RUN_TEST"
 function run_test() {
   local test_name=$1
@@ -241,23 +200,10 @@ function run_test() {
     return  # By default TEST_TO_RUN="" so normally we don't skip tests here.
   fi
 
-  if $RUN_TESTS_IN_BACKGROUND; then
-    while [ $(jobs | wc -l) -gt $PARALLEL_MAX ]; do
-      sleep .1  # Wait for background tasks to complete.
-    done
-
-    echo "Running $test_name in the background."
-    set_outdir_and_run_test $test_name &
-    local test_pid=$!
-    BACKGROUND_TEST_PIDS+=($test_pid)
-    BACKGROUND_TEST_NAMES[$test_pid]=$test_name
-  else
-    # Use a subshell to keep modifications tests make to the test environment
-    # from interfering with eachother.
-    (source "$SYSTEM_TEST_DIR/${test_name}.sh"
-     update_elapsed_time)
-    previous_time_ms=0
-  fi
+  # Use a subshell to keep modifications tests make to the test environment
+  # from interfering with eachother.
+  (source "$SYSTEM_TEST_DIR/${test_name}.sh"; update_elapsed_time)
+  previous_time_ms=0
 }
 
 # This function expects to be run in the background and then killed when we know
@@ -271,50 +217,6 @@ function tail_while_waiting() {
   echo "Still waiting for $test_name"
   echo "tail -f $test_log"
   tail -f "$test_log"
-}
-
-function wait_for_async_tests {
-  if ! $RUN_TESTS_IN_BACKGROUND; then
-    return # Nothing to do.
-  fi
-
-  # Loop over the running/finished tests, examine their exit codes, and include
-  # the logs of any failing tests in our output.
-  local failed_pids=()
-  for pid in "${BACKGROUND_TEST_PIDS[@]}"; do
-    # We can't just use the 0-arg version of wait because it won't aggregate the
-    # exit codes.
-
-    local test_name="${BACKGROUND_TEST_NAMES[$pid]}"
-    local test_log="$ORIGINAL_TEMPDIR/${BACKGROUND_TEST_NAMES[$pid]}.log"
-
-    tail_while_waiting "$test_name" "$test_log" &
-    local tail_pid=$!
-
-    if ! wait $pid; then
-      echo
-      echo "Test ${BACKGROUND_TEST_NAMES[$pid]} (PID $pid) failed:"
-      cat "$ORIGINAL_TEMPDIR/${BACKGROUND_TEST_NAMES[$pid]}.log"
-      failed_pids+=($pid)
-    fi
-
-    kill $tail_pid
-    wait $! 2> /dev/null || true  # Suppress "terminated" message from bash.
-  done
-
-  # If any failed, print the names of the log files that have more details.
-  if [ ${#failed_pids[@]} -gt 0 ]; then
-    echo "Test log output in:"
-    for pid in "${failed_pids[@]}"; do
-      echo "  $ORIGINAL_TEMPDIR/${BACKGROUND_TEST_NAMES[$pid]}.log"
-    done
-    echo "FAIL"
-    exit 1
-  fi
-
-  # Clear the pid array so we can run more background tests followed by another
-  # round of wait_for_async_tests.
-  BACKGROUND_TEST_PIDS=()
 }
 
 # Returns the unix system time in milliseconds.
@@ -373,9 +275,6 @@ function start_test() {
 #                  so this fetch isn't recursive. Clean this up.
 
 function define_fetch_variables {
-  # Many of these variables need to be computed relative to OUTDIR, so we need
-  # to set them after set_outdir_and_run_test() redefines OUTDIR.
-
   WGET_OUTPUT=$OUTDIR/wget_output.txt
   # We use a separate directory so that it can be rm'd without disturbing other
   # data in $OUTDIR.
@@ -662,14 +561,7 @@ function fetch_until() {
   fi
 
   # TIMEOUT is how long to keep trying, in seconds.
-  if $RUNNING_TEST_IN_BACKGROUND; then
-    # This is longer than PageSpeed should normally ever take to rewrite
-    # resources, but if it's running under Valgrind it might occasionally take a
-    # really long time.  Especially with parallel tests.
-    #
-    # Give this long period even to expected failures.
-    TIMEOUT=180
-  elif is_expected_failure ; then
+  if is_expected_failure ; then
     # For tests that we expect to fail, don't wait long hoping for the right
     # result.
     TIMEOUT=10

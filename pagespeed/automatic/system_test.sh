@@ -67,7 +67,6 @@ run_test hint_preload_subresources
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.
 # TODO(jefftk): Is this actually a problem?
-wait_for_async_tests
 run_test css_images
 run_test fallback_rewrite_css_urls
 run_test images_in_styles
@@ -102,9 +101,7 @@ run_test keep_data_urls
 run_test rel_canonical
 run_test resource_content_type_html
 
-wait_for_async_tests
-
-# Remaining tests aren't converted to async, so we need to define the fetch
+# Remaining tests aren't converted to run_test, so we need to define the fetch
 # variables for them and cleanup the now-shared OUTDIR.
 define_fetch_variables
 
