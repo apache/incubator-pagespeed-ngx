@@ -402,20 +402,19 @@ function check_from() {
 # Same as check(), but expects command to fail.
 function check_not() {
   echo "     check_not" "$@"
-  # We use "|| true" here to avoid having the script exit if it was being run
-  # under 'set -e'
-  ("$@" && handle_failure || true)
+  if "$@"; then
+    handle_failure
+  fi
 }
 
 # Runs a command and verifies that it exits with an expected error code.
 function check_error_code() {
-  local expected_error_code=$1
+  local expected_error_code="$1"
   shift
   echo "     check_error_code $expected_error_code $@"
-  # We use "|| true" here to avoid having the script exit if it was being run
-  # under 'set -e'
-  local error_code=$("$@" || echo $? || true)
-  check [ $error_code = $expected_error_code ]
+  local error_code=0
+  "$@" || error_code="$?"
+  check [ "$error_code" = "$expected_error_code" ]
 }
 
 # Like check_not, but the first argument is text to pipe into the
@@ -424,9 +423,9 @@ function check_not_from() {
   local text="$1"
   shift
   echo "     check_not_from" "$@"
-  # We use "|| true" here to avoid having the script exit if it was being run
-  # under 'set -e'
-  echo "$text" | ("$@" && handle_failure "$text" || true)
+  if echo "$text" | "$@"; then
+    handle_failure "$text"
+  fi
 }
 
 function check_200_http_response() {
