@@ -250,8 +250,4 @@ hooks = [
     "action": ["python", "build/gyp_chromium",
                "-Dchromium_revision=" + Var("chromium_revision_num")],
   },
-  {
-    "pattern": ".",
-    "action": ["third_party/closure/download.sh"],
-  },
 ]

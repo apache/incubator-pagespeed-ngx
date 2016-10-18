@@ -25,6 +25,9 @@
 
 {
   'type': '<(library)',
+  'dependencies': [
+    '<(DEPTH)/net/instaweb/closure.gyp:download_closure',
+  ],
   'rules': [
     {
       'rule_name': 'closure',

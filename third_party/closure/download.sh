@@ -19,11 +19,17 @@
 # requires downloading and unzipping a jar file instead of checking out a
 # svn/git repo. This avoids downloading the compiler every time gclient syncs.
 
+if [ $# -ne 1 ]; then
+  echo "Usage: $(basename $0) <directory>" >&2
+  exit 1
+fi
+
+DIR="$1"
+
 # If the version of the compiler is updated, the closure library verison in DEPS
 # should be updated as well.
 VERSION=20160713
 ZIP=compiler-$VERSION.zip
-DIR=tools/closure
 JAR_IN=$DIR/closure-compiler-v$VERSION.jar
 JAR=$DIR/compiler.jar
 
