@@ -7,7 +7,6 @@ Makefile
 gclient.timestamp
 build/gyp_helper.pyc
 build/landmine_utils.pyc
-build/temp_gyp/
 out/
 third_party/apr/src/
 third_party/aprutil/src/
@@ -22,7 +21,7 @@ third_party/closure_library/
 third_party/domain_registry_provider/
 third_party/gflags/
 third_party/giflib/
-third_party/google-sparsehash/
+third_party/google-sparsehash/src/
 third_party/grpc/src/
 third_party/hiredis/src/
 third_party/httpd/src/
@@ -40,5 +39,6 @@ third_party/protobuf/src/
 third_party/re2/src/
 third_party/serf/src/
 third_party/zlib/
-testing/
+testing/gmock/
+testing/gtest/
 tools/
