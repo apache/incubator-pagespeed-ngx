@@ -15,6 +15,7 @@
 {
   'variables': {
     'sparsehash_root': '<(DEPTH)/third_party/google-sparsehash',
+    'sparsehash_src': '<(sparsehash_root)/src',
     'sparsehash_gen_arch_root': '<(sparsehash_root)/gen/arch/<(OS)/<(target_arch)',
   },
   'targets': [
@@ -24,13 +25,13 @@
       'all_dependent_settings': {
         'include_dirs': [
           '<(sparsehash_gen_arch_root)/include',  # For sparseconfig.h
-          '<(sparsehash_root)/src',  # For everything else.
+          '<(sparsehash_src)/src',  # For everything else.
         ],
         # google/sparsehash/sparseconfig.h on Windows is in a different spot.
         'conditions': [
           ['OS=="win"', {
             'include_dirs+': [
-              '<(sparsehash_root)/src/windows/',
+              '<(sparsehash_src)/src/windows/',
             ],
           }],
         ],

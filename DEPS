@@ -133,8 +133,6 @@ deps = {
   "third_party/libjpeg_turbo/src":
     Var("chromium_git") + "/chromium/deps/libjpeg_turbo/@7260e4d8b8e1e40b17f03fafdf1cd83296900f76",
 
-  "testing":
-    Var("chromium_git") + "/chromium/src/testing/@3207604f790d18c626e9dcb1a09874618c68844b",
   "testing/gtest": Var("gtest_src") + Var("gtest_revision"),
   "testing/gmock": Var("gmock_src") + Var("gmock_revision"),
 
@@ -169,7 +167,7 @@ deps = {
   "third_party/gflags/src":
     Var('chromium_git') + '/external/gflags/src' + Var("gflags_src_revision"),
 
-  "third_party/google-sparsehash":
+  "third_party/google-sparsehash/src":
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
 
   "third_party/protobuf/src":
