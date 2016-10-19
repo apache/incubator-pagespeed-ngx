@@ -34,8 +34,8 @@ WEBP_QUALITY="PageSpeedWebpRecompressionQuality"
 
 SYSTEM_TEST_DIR="$(dirname "${BASH_SOURCE[0]}")/system_tests/"
 
-run_test initial_header_check
-run_test initial_sanity_checks
+run_critical_test initial_header_check
+run_critical_test initial_sanity_checks
 
 # Add new tests here.
 run_test gce_public_cache

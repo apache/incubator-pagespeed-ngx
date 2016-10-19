@@ -20,10 +20,14 @@
 # If command line args are wrong, exit with status code 2.
 # If no tests fail, it will exit the shell-script with status 0.
 # If a test fails:
-#  - If it's listed in PAGESPEED_EXPECTED_FAILURES, log the name of the failing
-#    test, to display when check_failures_and_exit is called, at which point
-#    exit with status code 1.
+#  - If it's listed in PAGESPEED_EXPECTED_FAILURES or CONTINUE_AFTER_FAILURE is
+#    "true", log the name of the failing test to display when
+#    check_failures_and_exit is called, at which point exit with status code 3
+#    if the failure was expected or 1 otherwise.
 #  - Otherwise, exit immediately with status code 1.
+# TODO(jefftk): After all tests are converted to use run_test, rework expected
+#               failures so that it applies to run_test names and not start_test
+#               names.
 #
 # The format of PAGESPEED_EXPECTED_FAILURES is '~' separated test names.
 # For example:
@@ -67,7 +71,12 @@ if [ -z "${TEMPDIR:-}" ]; then
   mkdir -p "$TEMPDIR"
 fi
 
-FAILURES="${TEMPDIR}/failures"
+# EXPECTED_FAILURES acts on "start_test" tests, while UNEXPECTED_FAILURES acts
+# on "run_test" tests.
+# TODO(jefftk): after we've converted everything to use run_test, including
+# nginx_system_test.sh, switch EXPECTED_FAILURES to work on run_test instead.
+EXPECTED_FAILURES="${TEMPDIR}/expected_failures"
+UNEXPECTED_FAILURES="${TEMPDIR}/unexpected_failures"
 
 # Make this easier to process so we're always looking for '~target~'.
 PAGESPEED_EXPECTED_FAILURES="~${PAGESPEED_EXPECTED_FAILURES=}~"
@@ -189,11 +198,28 @@ OUTDIR=$TESTTMP/fetched_directory
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
+# Run a single test, and exit if it does.  Use this for tests that are fast and
+# should never flake, in order to make sure the system is up before we start
+# continuing after failures.
+function run_critical_test() {
+  run_test_helper "$@"
+}
+
+function run_test() {
+  if ! run_test_helper "$@"; then
+    if "${CONTINUE_AFTER_FAILURE:-false}"; then
+      echo "$@" >> "$UNEXPECTED_FAILURES"
+    else
+      exit 1
+    fi
+  fi
+}
+
 # Individual tests are in separate files under system_tests/ and may be run
 # individually or reordered.  If one test must be run after another, put them in
 # the same file.
 SYSTEM_TEST_DIR="DEFINE_THIS_BEFORE_USING_RUN_TEST"
-function run_test() {
+function run_test_helper() {
   local test_name=$1
 
   if [ -n "$TEST_TO_RUN" ] && [ "$TEST_TO_RUN" != "$test_name" ]; then
@@ -202,8 +228,11 @@ function run_test() {
 
   # Use a subshell to keep modifications tests make to the test environment
   # from interfering with eachother.
-  (source "$SYSTEM_TEST_DIR/${test_name}.sh"; update_elapsed_time)
   previous_time_ms=0
+  if ! (source "$SYSTEM_TEST_DIR/${test_name}.sh"); then
+    return 1
+  fi
+  update_elapsed_time
 }
 
 # This function expects to be run in the background and then killed when we know
@@ -303,9 +332,14 @@ function run_wget_with_args() {
 #   Status 3: only expected failures
 function check_failures_and_exit() {
   update_elapsed_time
-  if [ -e $FAILURES ] ; then
+  if [ -e "$UNEXPECTED_FAILURES" ] ; then
+    echo "Failing Tests:"
+    sed 's/^/  /' "$UNEXPECTED_FAILURES"
+    echo "FAIL."
+    exit 1
+  elif [ -e "$EXPECTED_FAILURES" ] ; then
     echo Expected Failing Tests:
-    sed 's/^/  /' $FAILURES
+    sed 's/^/  /' "$EXPECTED_FAILURES"
     echo "MOSTLY PASS.  Expected failures only."
     exit 3
   fi
@@ -324,7 +358,7 @@ function is_expected_failure() {
 #   failure at line 374
 #   FAIL
 # and then exit with return value 1.  If we expected this test to fail, log to
-# $FAILURES and return without exiting.
+# $EXPECTED_FAILURES and return without exiting.
 #
 # If the shell does not support the 'caller' builtin, skip the line number info.
 #
@@ -360,12 +394,7 @@ function handle_failure() {
   fi
   echo "in '$CURRENT_TEST'"
   if is_expected_failure ; then
-    # This is probably atomic, but depending on the filesystem isn't guaranteed
-    # to be.  Which would be bad, because with parallel system tests we could be
-    # calling this from multiple processes simultaneously.  On the other hand,
-    # test failures are rare enough compared to the amount of time the tests run
-    # for that this shouldn't actually be a problem.
-    echo $CURRENT_TEST >> $FAILURES
+    echo "$CURRENT_TEST" >> "$EXPECTED_FAILURES"
     echo "Continuing after expected failure..."
   else
     echo FAIL.
