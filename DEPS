@@ -246,6 +246,7 @@ hooks = [
     # A change to a .gyp, .gypi, or to GYP itself should run the generator.
     "pattern": ".",
     "action": ["python", "build/gyp_chromium",
-               "-Dchromium_revision=" + Var("chromium_revision_num")],
+               "-Dchromium_revision=" + Var("chromium_revision_num"),
+               "--depth=."],
   },
 ]
