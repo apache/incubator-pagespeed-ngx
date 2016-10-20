@@ -165,7 +165,7 @@ ngx_feature_incs="
 pagespeed_include="\
   $mod_pagespeed_dir \
   $mod_pagespeed_dir/third_party/chromium/src \
-  $mod_pagespeed_dir/third_party/google-sparsehash/src \
+  $mod_pagespeed_dir/third_party/google-sparsehash/src/src \
   $mod_pagespeed_dir/third_party/google-sparsehash/gen/arch/$os_name/$arch_name/include \
   $mod_pagespeed_dir/third_party/grpc/src/include \
   $mod_pagespeed_dir/third_party/protobuf/src/src \
