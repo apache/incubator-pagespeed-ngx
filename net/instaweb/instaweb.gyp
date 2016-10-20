@@ -1537,6 +1537,7 @@
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
         'instaweb_rewriter_javascript',
+        'instaweb_rewriter_pb',
         'instaweb_spriter',
         'instaweb_statistics_css_data2c',
         'instaweb_statistics_js_data2c',
