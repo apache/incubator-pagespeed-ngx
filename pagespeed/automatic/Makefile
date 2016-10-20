@@ -223,7 +223,7 @@ INCLUDE_PATH = \
     -I$(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj/gen/protoc_out/instaweb \
     -I$(MOD_PAGESPEED_ROOT)/third_party/chromium/src \
     -I$(MOD_PAGESPEED_ROOT)/third_party/gflags/gen/$(INCLUDE_ARCH)/include \
-    -I$(MOD_PAGESPEED_ROOT)/third_party/google-sparsehash/src \
+    -I$(MOD_PAGESPEED_ROOT)/third_party/google-sparsehash/src/src \
     -I$(MOD_PAGESPEED_ROOT)/third_party/google-sparsehash/gen/$(INCLUDE_ARCH)/include \
     -I$(MOD_PAGESPEED_ROOT)/third_party/protobuf/src/src \
     -I$(MOD_PAGESPEED_ROOT)/third_party/re2/src \
