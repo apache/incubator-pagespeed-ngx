@@ -28,7 +28,6 @@
             '<(DEPTH)/build/lastchange.sh',
           ],
           'outputs': [
-            '<(lastchange_out_path).always',
             '<(lastchange_out_path)',
           ],
           'action': [
