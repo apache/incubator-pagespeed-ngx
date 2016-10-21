@@ -5,6 +5,7 @@ Makefile
 /.gclient
 /.gclient_entries
 gclient.timestamp
+hooks.timestamp
 build/gyp_helper.pyc
 build/landmine_utils.pyc
 out/
