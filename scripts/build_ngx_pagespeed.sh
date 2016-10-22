@@ -524,7 +524,9 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     echo "You'll also need to configure ngx_pagespeed if you haven't yet:"
     echo "  https://developers.google.com/speed/pagespeed/module/configuration"
   fi
-  "$DRYRUN" && echo "[this was a dry run; your system is unchanged]"
+  if "$DRYRUN"; then
+    echo "[this was a dry run; your system is unchanged]"
+  fi
 }
 
 # Start running things from a call at the end so if this script is executed
