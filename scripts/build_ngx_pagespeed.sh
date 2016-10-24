@@ -376,7 +376,7 @@ $(cat /etc/redhat-release) Expected 5 or 6."
       fail "
 This doesn't appear to be a deb-based distro or an rpm-based one.  Not going to
 be able to install dependencies.  Please install dependencies manually and rerun
-with --depsinstalled."
+with --no-deps-check."
     fi
     echo "Dependencies are all set."
   else
