@@ -161,7 +161,7 @@ deps = {
   "third_party/closure_library":
     Var("closure_library") + Var("closure_library_revision"),
 
-  "third_party/gflags":
+  "third_party/gflags/arch":
     Var('chromium_git') + '/external/webrtc/trunk/third_party/gflags' +
     Var('gflags_revision'),
   "third_party/gflags/src":
