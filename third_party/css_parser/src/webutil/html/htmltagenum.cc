@@ -68,6 +68,8 @@ const char* HtmlTagEnumNames[] =
      "Source", "Summary", "Time", "Track", "Video",
   // Other HTML5 tags.
      "Data", "Main", "Rb", "Rtc", "Template",
+  // The HTML5 picture tag.
+     "Picture",
 };
 
 COMPILE_ASSERT(arraysize(HtmlTagEnumNames) == kHtmlTagBuiltinMax,

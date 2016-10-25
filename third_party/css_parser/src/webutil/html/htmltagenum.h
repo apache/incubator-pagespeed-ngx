@@ -52,6 +52,10 @@
 //   http://translate.google.com/translate?u=http://ru.wikipedia.org/wiki/Noindex&sl=ru&tl=en
 // Added HTML5 tags, per 2011-01-13 working draft:
 //   http://www.w3.org/TR/html5/
+// Other HTML5 tags:
+//   http://www.w3.org/TR/2014/REC-html5-20141028/
+// The HTML5 picture tag:
+//   https://www.w3.org/TR/html51/semantics-embedded-content.html#the-picture-element
 
 enum HtmlTagEnum {
   // Unknown tag: must be 0
@@ -215,11 +219,14 @@ enum HtmlTagEnum {
      kHtmlTagRtc = 145,
      kHtmlTagTemplate = 146,
 
+  // The HTML5 picture tag.
+     kHtmlTagPicture = 147,
+
   // Add new tag values here.  Make sure you also add new tags to
   // HtmlTagEnumNames in htmltagenum.cc and update kHtmlTagBuiltinMax.
 
   // Sentinel.
-     kHtmlTagBuiltinMax = 147
+     kHtmlTagBuiltinMax = 148
 };
 
 // NULL if tag >= kHtmlTagBuiltinMax.

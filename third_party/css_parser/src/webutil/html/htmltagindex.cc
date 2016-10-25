@@ -388,6 +388,8 @@ int HtmlTagIndex::FindHtmlTag(const char* tag, int length) const {
         case C7('d', 'e', 't', 'a', 'i', 'l', 's'): return kHtmlTagDetails;
         case C7('s', 'e', 'c', 't', 'i', 'o', 'n'): return kHtmlTagSection;
         case C7('s', 'u', 'm', 'm', 'a', 'r', 'y'): return kHtmlTagSummary;
+        // The HTML5 picture tag.
+        case C7('p', 'i', 'c', 't', 'u', 'r', 'e'): return kHtmlTagPicture;
       }
     }
     break;
