@@ -55,6 +55,7 @@ NgxBaseFetch::NgxBaseFetch(StringPiece url,
       options_(options),
       need_flush_(false),
       done_called_(false),
+      successful_(true),
       last_buf_sent_(false),
       references_(2),
       base_fetch_type_(base_fetch_type),
@@ -254,7 +255,12 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
 ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
   ngx_int_t rc;
   Lock();
-  rc = CopyBufferToNginx(link_ptr);
+  if (successful_ || response_headers()->IsErrorStatus()) {
+    rc = CopyBufferToNginx(link_ptr);
+  } else {
+    // See comment in CollectHeaders.
+    rc = NGX_OK;
+  }
   Unlock();
   return rc;
 }
@@ -268,6 +274,16 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   bool sanity_check_off_t[sizeof(off_t) == 8 ? 1 : -1] __attribute__ ((unused));
 
   const ResponseHeaders* pagespeed_headers = response_headers();
+
+  if (!pagespeed_headers->IsErrorStatus() && !successful_) {
+    // If successful_ is false, we were called with Done(false), which means
+    // that, unless our headers represent an error (which PageSpeed will handle
+    // the reporting of), we should shut up and 404 the request.
+    request_->headers_out.status = NGX_HTTP_NOT_FOUND;
+    headers_out->content_length = NULL;
+    headers_out->content_length_n = 0;
+    return NGX_OK;
+  }
 
   if (content_length_known()) {
      headers_out->content_length = NULL;
@@ -347,6 +363,7 @@ void NgxBaseFetch::HandleDone(bool success) {
   CHECK(!done_called_) << "Done already called!";
   Lock();
   done_called_ = true;
+  successful_ = success;
   Unlock();
   RequestCollection(kDone);
   DecrefAndDeleteIfUnreferenced();
