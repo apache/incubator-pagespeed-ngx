@@ -1,9 +1,10 @@
 # Port map:
+# (If you change this, also change enable_ports_and_file_access in Makefile)
 # 8080 -- master configuration.
 # 8081 -- LOADTEST / PROXY / SLURP
 # 8082 -- SLURP
 # @@APACHE_SECONDARY_PORT@@ -- secondary configuration (8083 debug, 8084 root)
-# 8085 --- loopback route testing
+# @@APACHE_TERTIARY_PORT@@ --- loopback route testing
 # @@CONTROLLER_PORT@@ --- Central controller port
 #
 # Note that when system-testing on CentOS installs we need to authorize these
