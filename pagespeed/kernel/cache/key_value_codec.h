@@ -33,7 +33,8 @@ namespace key_value_codec {
 //
 // Returns false if the key's size was too large (65535 max) to fit into the
 // encoding.
-bool Encode(StringPiece key, SharedString* value, SharedString* key_and_value);
+bool Encode(StringPiece key, const SharedString& value,
+            SharedString* key_and_value);
 
 // Takes a combined key and a value, and decodes them into key and value,
 // sharing the storage with key_and_value.

@@ -54,7 +54,7 @@ class LRUCache : public CacheInterface {
   // SharedString after having called Put, it will actually
   // modify the value in the cache.  We should change
   // SharedString to Copy-On-Write semantics.
-  virtual void Put(const GoogleString& key, SharedString* new_value);
+  virtual void Put(const GoogleString& key, const SharedString& new_value);
   virtual void Delete(const GoogleString& key);
 
   // Deletes all objects whose key starts with prefix.

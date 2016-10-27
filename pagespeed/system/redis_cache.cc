@@ -161,7 +161,7 @@ void RedisCache::Get(const GoogleString& key, Callback* callback) {
   if (reply) {
     if (reply->type == REDIS_REPLY_STRING) {
       // The only type of values that we store in Redis is string.
-      *callback->value() = SharedString(StringPiece(reply->str, reply->len));
+      callback->set_value(SharedString(StringPiece(reply->str, reply->len)));
       keyState = CacheInterface::kAvailable;
     } else {
       // REDIS_REPLY_NIL means 'key not found', do nothing.
@@ -170,13 +170,13 @@ void RedisCache::Get(const GoogleString& key, Callback* callback) {
   ValidateAndReportResult(key, keyState, callback);
 }
 
-void RedisCache::Put(const GoogleString& key, SharedString* value) {
+void RedisCache::Put(const GoogleString& key, const SharedString& value) {
   RedisReply reply = RedisCommand(
       LookupConnection(key),
       "SET %b %b",
       {REDIS_REPLY_STATUS},
       key.data(), key.length(),
-      value->data(), static_cast<size_t>(value->size()));
+      value.data(), static_cast<size_t>(value.size()));
 
   if (!reply) {
     return;

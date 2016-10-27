@@ -77,7 +77,7 @@ void TestCachePayload(int payload_size, int chunk_size, int iters) {
   EmptyCallback empty_callback;
   net_instaweb::SharedString str(value);
   for (int i = 0; i < iters; ++i) {
-    compressed_cache.Put("key", &str);
+    compressed_cache.Put("key", str);
     compressed_cache.Get("key", &empty_callback);
   }
 }

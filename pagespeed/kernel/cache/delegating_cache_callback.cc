@@ -20,7 +20,6 @@
 #include "pagespeed/kernel/cache/delegating_cache_callback.h"
 
 #include "base/logging.h"
-#include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 
@@ -41,7 +40,7 @@ DelegatingCacheCallback::~DelegatingCacheCallback() {
 bool DelegatingCacheCallback::ValidateCandidate(
     const GoogleString& key, CacheInterface::KeyState state) {
   validate_candidate_called_ = true;
-  *callback_->value() = *value();
+  callback_->set_value(value());
   return callback_->DelegatedValidateCandidate(key, state);
 }
 

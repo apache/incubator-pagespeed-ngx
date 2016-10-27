@@ -76,7 +76,7 @@ class SpammerCallback : public CacheInterface::Callback {
     DCHECK(validate_candidate_called_);
     bool found = (state == CacheInterface::kAvailable);
     if (found) {
-      EXPECT_STREQ(expected_, value()->Value());
+      EXPECT_STREQ(expected_, value().Value());
     }
     spammer_->GetDone(found, key_);
     delete this;
@@ -139,7 +139,7 @@ void CacheSpammer::Run() {
   int iter_limit = RunningOnValgrind() ? num_iters_ / 100 : num_iters_;
   for (int i = 0; i < iter_limit; ++i) {
     for (int j = 0; j < num_inserts_; ++j) {
-      cache_->Put(StringPrintf(name_pattern, j), &inserts[j]);
+      cache_->Put(StringPrintf(name_pattern, j), inserts[j]);
     }
     {
       ScopedMutex lock(mutex_.get());

@@ -67,12 +67,12 @@ class ThreadsafeCacheTest : public testing::Test {
 
 TEST_F(ThreadsafeCacheTest, BasicOperation) {
   SharedString put_buffer("val");
-  threadsafe_cache_.Put("key", &put_buffer);
+  threadsafe_cache_.Put("key", put_buffer);
   CacheTestBase::Callback callback;
   threadsafe_cache_.Get("key", &callback);
   EXPECT_TRUE(callback.called());
   EXPECT_EQ(CacheInterface::kAvailable, callback.state());
-  EXPECT_EQ(GoogleString("val"), callback.value()->Value());
+  EXPECT_EQ(GoogleString("val"), callback.value().Value());
 }
 
 TEST_F(ThreadsafeCacheTest, SpamCacheNoEvictionsOrDeletions) {

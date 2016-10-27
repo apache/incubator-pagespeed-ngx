@@ -72,7 +72,7 @@ bool IsFilesystemMetadataCacheCurrent(CacheInterface* fsmdc,
   fsmdc->Get(file_key, &callback);
   DCHECK(callback.called());
   if (callback.state() == CacheInterface::kAvailable) {
-    StringPiece val_str = callback.value()->Value();
+    StringPiece val_str = callback.value().Value();
     ArrayInputStream input(val_str.data(), val_str.size());
     InputInfo fsmdc_info;
     if (fsmdc_info.ParseFromZeroCopyStream(&input)) {

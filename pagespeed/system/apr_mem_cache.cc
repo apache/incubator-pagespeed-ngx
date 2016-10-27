@@ -136,7 +136,9 @@ void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
   SharedString key_and_value;
   key_and_value.Assign(data, data_len);
   GoogleString actual_key;
-  if (key_value_codec::Decode(&key_and_value, &actual_key, callback->value())) {
+  SharedString tmp_value;
+  if (key_value_codec::Decode(&key_and_value, &actual_key, &tmp_value)) {
+    callback->set_value(tmp_value);
     if (key == actual_key) {
       ValidateAndReportResult(actual_key, CacheInterface::kAvailable, callback);
     } else {
@@ -263,13 +265,13 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
 }
 
 void AprMemCache::PutHelper(const GoogleString& key,
-                            SharedString* key_and_value) {
+                            const SharedString& key_and_value) {
   // I believe apr_memcache2_set erroneously takes a char* for the value.
   // Hence we const_cast.
   GoogleString hashed_key = hasher_->Hash(key);
   apr_status_t status = apr_memcache2_set(
       memcached_, hashed_key.c_str(),
-      const_cast<char*>(key_and_value->data()), key_and_value->size(),
+      const_cast<char*>(key_and_value.data()), key_and_value.size(),
       0, 0);
   if (status != APR_SUCCESS) {
     RecordError();
@@ -277,7 +279,7 @@ void AprMemCache::PutHelper(const GoogleString& key,
     apr_strerror(status, buf, sizeof(buf));
 
     int value_size = key_value_codec::GetValueSizeFromKeyAndKeyValue(
-        key, *key_and_value);
+        key, key_and_value);
     message_handler_->Message(
         kError, "AprMemCache::Put error: %s (%d) on key %s, value-size %d",
         buf, status, key.c_str(), value_size);
@@ -288,21 +290,21 @@ void AprMemCache::PutHelper(const GoogleString& key,
 }
 
 void AprMemCache::PutWithKeyInValue(const GoogleString& key,
-                                    SharedString* key_and_value) {
+                                    const SharedString& key_and_value) {
   if (!IsHealthy()) {
     return;
   }
   PutHelper(key, key_and_value);
 }
 
-void AprMemCache::Put(const GoogleString& key, SharedString* value) {
+void AprMemCache::Put(const GoogleString& key, const SharedString& value) {
   if (!IsHealthy()) {
     return;
   }
 
   SharedString key_and_value;
   if (key_value_codec::Encode(key, value, &key_and_value)) {
-    PutHelper(key, &key_and_value);
+    PutHelper(key, key_and_value);
   } else {
     message_handler_->Message(
         kError, "AprMemCache::Put error: key size %d too large, first "

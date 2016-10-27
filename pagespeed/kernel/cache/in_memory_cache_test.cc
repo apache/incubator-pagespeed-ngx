@@ -55,34 +55,19 @@ TEST_F(InMemoryCacheTest, HandlesStringPieces) {
   s.RemovePrefix(1);
   s.RemoveSuffix(1);
 
-  Cache()->Put("Name", &s);
+  Cache()->Put("Name", s);
 
   CheckGet("Name", "alu");
 }
 
 TEST_F(InMemoryCacheTest, DetachesValueOnPut) {
   SharedString s("Value");
-  Cache()->Put("Name", &s);
+  Cache()->Put("Name", s);
 
   s.WriteAt(0, "-", 1);
 
   EXPECT_EQ("-alue", s.Value());
   CheckGet("Name", "Value");
-}
-
-TEST_F(InMemoryCacheTest, DetachesValueOnGet) {
-  CheckPut("Name", "Value");
-
-  CacheInterface::SynchronousCallback callback1, callback2;
-  Cache()->Get("Name", &callback1);
-  Cache()->Get("Name", &callback2);
-  ASSERT_TRUE(callback1.called());
-  ASSERT_TRUE(callback2.called());
-
-  SharedString *s1 = callback1.value(), *s2 = callback2.value();
-  EXPECT_EQ("Value", s1->Value());
-  EXPECT_EQ("Value", s2->Value());
-  EXPECT_FALSE(s1->SharesStorage(*s2));
 }
 
 TEST_F(InMemoryCacheTest, BasicInvalid) {

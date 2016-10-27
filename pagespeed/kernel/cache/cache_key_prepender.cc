@@ -75,7 +75,8 @@ void CacheKeyPrepender::MultiGet(MultiGetRequest* request) {
   cache_->MultiGet(request);
 }
 
-void CacheKeyPrepender::Put(const GoogleString& key, SharedString* value) {
+void CacheKeyPrepender::Put(const GoogleString& key,
+                            const SharedString& value) {
   cache_->Put(AddPrefix(key), value);
 }
 

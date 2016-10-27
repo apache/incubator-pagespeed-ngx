@@ -183,15 +183,15 @@ void FileCache::Get(const GoogleString& key, Callback* callback) {
     NullMessageHandler null_handler;
     GoogleString buf;
     ret = file_system_->ReadFile(filename.c_str(), &buf, &null_handler);
-    callback->value()->SwapWithString(&buf);
+    callback->set_value(SharedString(buf));
   }
   ValidateAndReportResult(key, ret ? kAvailable : kNotFound, callback);
 }
 
-void FileCache::Put(const GoogleString& key, SharedString* value) {
+void FileCache::Put(const GoogleString& key, const SharedString& value) {
   GoogleString filename;
   if (EncodeFilename(key, &filename) &&
-      !file_system_->WriteFileAtomic(filename, value->Value(),
+      !file_system_->WriteFileAtomic(filename, value.Value(),
                                      message_handler_)) {
     write_errors_->Add(1);
   }

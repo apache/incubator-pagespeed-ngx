@@ -146,7 +146,7 @@ class CachePropertyStoreCacheCallback : public CacheInterface::Callback {
   virtual void Done(CacheInterface::KeyState state) {
     bool valid = false;
     if (state == CacheInterface::kAvailable) {
-      StringPiece value_string = value()->Value();
+      StringPiece value_string = value().Value();
       ArrayInputStream input(value_string.data(), value_string.size());
       PropertyCacheValues values;
       if (values.ParseFromZeroCopyStream(&input)) {

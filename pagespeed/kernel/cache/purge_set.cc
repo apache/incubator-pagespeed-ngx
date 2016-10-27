@@ -200,7 +200,7 @@ bool PurgeSet::Put(const GoogleString& key, int64 timestamp_ms) {
   // Ignore invalidations of individual URLs predating the global
   // invalidation timestamp.
   if (timestamp_ms > global_invalidation_timestamp_ms_) {
-    lru_->Put(key, &timestamp_ms);
+    lru_->Put(key, timestamp_ms);
   }
   return true;
 }

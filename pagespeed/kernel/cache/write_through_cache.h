@@ -44,7 +44,7 @@ class WriteThroughCache : public CacheInterface {
   virtual ~WriteThroughCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
-  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Put(const GoogleString& key, const SharedString& value);
   virtual void Delete(const GoogleString& key);
 
   // By default, all data goes into both cache1 and cache2.  But
@@ -76,7 +76,7 @@ class WriteThroughCache : public CacheInterface {
   static GoogleString FormatName(StringPiece l1, StringPiece l2);
 
  private:
-  void PutInCache1(const GoogleString& key, SharedString* value);
+  void PutInCache1(const GoogleString& key, const SharedString& value);
   friend class WriteThroughCallback;
 
   CacheInterface* cache1_;

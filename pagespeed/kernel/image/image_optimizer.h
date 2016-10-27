@@ -91,6 +91,10 @@ class ImageOptimizer {
   void set_timer(net_instaweb::Timer* timer) { timer_ = timer; }
   bool was_timed_out() const { return was_timed_out_; }
 
+  // Returns whether the image was encoded in lossy format, if the optimization
+  // succeeded.
+  bool UsesLossyFormat() const { return !desired_lossless_; }
+
  private:
   bool Run();
   bool ComputeDesiredFormat();

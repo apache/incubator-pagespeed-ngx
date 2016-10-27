@@ -301,7 +301,8 @@ class ImageOptimizerTest : public testing::Test {
       const ImageFormat original_format,
       bool expected_success,
       const ImageFormat expected_format,
-      bool compare_to_rewritten_dimensions) {
+      bool compare_to_rewritten_dimensions,
+      bool expected_uses_lossy_format) {
     for (size_t i = 0; i < num_images; ++i) {
       // Load test image.
       const TestingImageInfo& image = images[i];
@@ -325,7 +326,9 @@ class ImageOptimizerTest : public testing::Test {
 
       ASSERT_TRUE(result) << " file: " << image.file_name;
       EXPECT_EQ(expected_format, rewritten_format)
-            << " file: " << image.file_name;
+          << " file: " << image.file_name;
+      EXPECT_EQ(expected_uses_lossy_format, optimizer.UsesLossyFormat())
+          << " file: " << image.file_name;
 
       if (compare_to_rewritten_dimensions) {
         EXPECT_EQ(image.rewritten_width, optimizer.optimized_width())
@@ -417,27 +420,34 @@ TEST_F(ImageOptimizerTest, AllFormats) {
   bool is_animated = false;
   bool expected_success = true;
   bool compare_to_rewritten_dimensions = false;
+  bool expected_uses_lossy_format = false;
 
   RewriteAndVerifyImages(kPngSuiteGifTestDir, kGifImages, kGifImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_GIF, expected_success, IMAGE_WEBP,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 
   RewriteAndVerifyImages(kPngSuiteTestDir, kPngImages, kPngImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_PNG, expected_success, IMAGE_WEBP,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 
+  expected_uses_lossy_format = true;
   RewriteAndVerifyImages(kJpegTestDir, kJpegImages, kJpegImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_JPEG, expected_success, IMAGE_WEBP,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 
   is_animated = true;
+  expected_uses_lossy_format = false;
   RewriteAndVerifyImages(kGifTestDir, kAnimatedGifImages,
                          kAnimatedGifImageCount, is_animated, options,
                          requested_dimension, IMAGE_GIF, expected_success,
-                         IMAGE_WEBP, compare_to_rewritten_dimensions);
+                         IMAGE_WEBP, compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 }
 
 // Test converting single-frame GIF to PNG.
@@ -448,11 +458,13 @@ TEST_F(ImageOptimizerTest, GifToPng) {
   bool is_animated = false;
   bool expected_success = true;
   bool compare_to_rewritten_dimensions = false;
+  bool expected_uses_lossy_format = false;
 
   RewriteAndVerifyImages(kPngSuiteGifTestDir, kGifImages, kGifImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_GIF, expected_success, IMAGE_PNG,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 }
 
 // Test recompressing PNG.
@@ -463,11 +475,13 @@ TEST_F(ImageOptimizerTest, PngToPng) {
   bool is_animated = false;
   bool expected_success = true;
   bool compare_to_rewritten_dimensions = false;
+  bool expected_uses_lossy_format = false;
 
   RewriteAndVerifyImages(kPngSuiteTestDir, kPngImages, kPngImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_PNG, expected_success, IMAGE_PNG,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 }
 
 // Test recompressing JPEG.
@@ -479,11 +493,13 @@ TEST_F(ImageOptimizerTest, JpegToJpeg) {
   bool is_animated = false;
   bool expected_success = true;
   bool compare_to_rewritten_dimensions = false;
+  bool expected_uses_lossy_format = true;
 
   RewriteAndVerifyImages(kJpegTestDir, kJpegImages, kJpegImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_JPEG, expected_success, IMAGE_JPEG,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 }
 
 // Test resizing and compressing PNG, JPEG, and single-frame GIF.
@@ -495,27 +511,32 @@ TEST_F(ImageOptimizerTest, Resize) {
   bool is_animated = false;
   bool expected_success = true;
   bool compare_to_rewritten_dimensions = true;
+  bool expected_uses_lossy_format = false;
 
   requested_dimension.set_width(7);
   requested_dimension.set_height(8);
   RewriteAndVerifyImages(kPngSuiteGifTestDir, kGifImages, kGifImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_GIF, expected_success, IMAGE_PNG,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 
   requested_dimension.set_width(7);
   requested_dimension.clear_height();
   RewriteAndVerifyImages(kPngSuiteTestDir, kPngImages, kPngImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_PNG, expected_success, IMAGE_PNG,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 
   requested_dimension.clear_width();
   requested_dimension.set_height(8);
+  expected_uses_lossy_format = true;
   RewriteAndVerifyImages(kJpegTestDir, kJpegImages, kJpegImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_JPEG, expected_success, IMAGE_JPEG,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 }
 
 // Test un-resizeable images, e.g., requested dimension is larger than the
@@ -529,6 +550,7 @@ TEST_F(ImageOptimizerTest, NotResize) {
   bool is_animated = false;
   bool expected_success = true;
   bool compare_to_rewritten_dimensions = false;
+  bool expected_uses_lossy_format = false;
 
   // Both dimensions are too large.
   requested_dimension.set_width(1000000);
@@ -536,7 +558,8 @@ TEST_F(ImageOptimizerTest, NotResize) {
   RewriteAndVerifyImages(kPngSuiteGifTestDir, kGifImages, kGifImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_GIF, expected_success, IMAGE_WEBP,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 
   // Width too large.
   requested_dimension.set_width(1000000);
@@ -544,24 +567,29 @@ TEST_F(ImageOptimizerTest, NotResize) {
   RewriteAndVerifyImages(kPngSuiteTestDir, kPngImages, kPngImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_PNG, expected_success, IMAGE_WEBP,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 
   // Height too large.
   requested_dimension.clear_width();
   requested_dimension.set_height(1000000);
+  expected_uses_lossy_format = true;
   RewriteAndVerifyImages(kJpegTestDir, kJpegImages, kJpegImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_JPEG, expected_success, IMAGE_WEBP,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 
   // Animated images can't be resized currently.
   requested_dimension.set_width(7);
   requested_dimension.set_height(8);
+  expected_uses_lossy_format = false;
   is_animated = true;
   RewriteAndVerifyImages(kGifTestDir, kAnimatedGifImages,
                          kAnimatedGifImageCount, is_animated, options,
                          requested_dimension, IMAGE_GIF, expected_success,
-                         IMAGE_WEBP, compare_to_rewritten_dimensions);
+                         IMAGE_WEBP, compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 }
 
 // Test invalid images.
@@ -571,11 +599,13 @@ TEST_F(ImageOptimizerTest, InvalidImages) {
   bool is_animated = false;
   bool expected_success = false;
   bool compare_to_rewritten_dimensions = false;
+  bool expected_uses_lossy_format = false;
 
   RewriteAndVerifyImages(kPngSuiteTestDir, kInvalidImages, kInvalidImageCount,
                          is_animated, options, requested_dimension,
                          IMAGE_PNG, expected_success, IMAGE_UNKNOWN,
-                         compare_to_rewritten_dimensions);
+                         compare_to_rewritten_dimensions,
+                         expected_uses_lossy_format);
 }
 
 // Make sure that an ImageOptimizer object can only be used once.

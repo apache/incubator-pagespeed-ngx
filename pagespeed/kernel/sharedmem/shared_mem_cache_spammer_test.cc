@@ -107,12 +107,12 @@ class SharedMemCacheSpammerTest : public testing::Test {
 
 TEST_F(SharedMemCacheSpammerTest, BasicOperation) {
   SharedString put_buffer("val");
-  cache_->Put("key", &put_buffer);
+  cache_->Put("key", put_buffer);
   CacheTestBase::Callback callback;
   cache_->Get("key", &callback);
   EXPECT_TRUE(callback.called());
   EXPECT_EQ(CacheInterface::kAvailable, callback.state());
-  EXPECT_EQ(GoogleString("val"), callback.value()->Value());
+  EXPECT_EQ(GoogleString("val"), callback.value().Value());
 }
 
 TEST_F(SharedMemCacheSpammerTest, SpamCacheEvictionsNoDeletions) {

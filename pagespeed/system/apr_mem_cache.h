@@ -80,7 +80,7 @@ class AprMemCache : public CacheInterface {
 
   // As mentioned above, Get and MultiGet are blocking in this implementation.
   virtual void Get(const GoogleString& key, Callback* callback);
-  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Put(const GoogleString& key, const SharedString& value);
   virtual void Delete(const GoogleString& key);
   virtual void MultiGet(MultiGetRequest* request);
 
@@ -115,7 +115,7 @@ class AprMemCache : public CacheInterface {
 
   virtual bool MustEncodeKeyInValueOnPut() const { return true; }
   virtual void PutWithKeyInValue(const GoogleString& key,
-                                 SharedString* key_and_value);
+                                 const SharedString& key_and_value);
 
   // Sets the I/O timeout in microseconds.  This should be called at
   // setup time and not while there are operations in flight.
@@ -129,7 +129,7 @@ class AprMemCache : public CacheInterface {
   // Puts a value that's already encoded with the key into the cache, without
   // checking health first.  This is meant to be called from Put and
   // PutWithKeyInValue, which will do the health check.
-  void PutHelper(const GoogleString& key, SharedString* key_and_value);
+  void PutHelper(const GoogleString& key, const SharedString& key_and_value);
 
   ExternalClusterSpec cluster_spec_;
   bool valid_server_spec_;

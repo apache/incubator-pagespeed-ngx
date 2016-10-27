@@ -24,6 +24,8 @@
 #include <memory>
 #include <initializer_list>
 #include <map>
+#include <vector>
+
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -97,7 +99,7 @@ class RedisCache : public CacheInterface {
 
   // CacheInterface implementations.
   void Get(const GoogleString& key, Callback* callback) override;
-  void Put(const GoogleString& key, SharedString* value) override;
+  void Put(const GoogleString& key, const SharedString& value) override;
   void Delete(const GoogleString& key) override;
 
   // Appends detailed status for each server to a string.  If a server fails to

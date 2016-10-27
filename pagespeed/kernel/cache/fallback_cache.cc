@@ -72,8 +72,8 @@ class FallbackCallback : public CacheInterface::Callback {
   virtual bool ValidateCandidate(const GoogleString& key,
                                  CacheInterface::KeyState state) {
     validate_candidate_called_ = true;
-    size_t size = value()->size();
-    const char* val = value()->data();
+    size_t size = value().size();
+    const char* val = value().data();
     if ((size == 1) && (val[0] == kInLargeObjectCache)) {
       // Delegate the fetch to large_object_cache_, passing the
       // original callback directly to the large_object_cache_.
@@ -85,8 +85,9 @@ class FallbackCallback : public CacheInterface::Callback {
       return true;  // The forwarding-marker in the small object cache is OK.
     } else if ((size >= 1) && (val[size - 1] == kInSmallObjectCache)) {
       // Link values together, but strip the marker from the new view.
-      *callback_->value() = *value();
-      callback_->value()->RemoveSuffix(1);
+      SharedString new_value = value();
+      new_value.RemoveSuffix(1);
+      callback_->set_value(new_value);
       return callback_->DelegatedValidateCandidate(key, state);
     }
     // The value in the cache was missing or encoded incorrectly.
@@ -136,8 +137,8 @@ void FallbackCache::MultiGet(MultiGetRequest* request) {
   small_object_cache_->MultiGet(request);
 }
 
-void FallbackCache::Put(const GoogleString& key, SharedString* value) {
-  int store_size = value->size();
+void FallbackCache::Put(const GoogleString& key, const SharedString& value) {
+  int store_size = value.size();
   if (account_for_key_size_) {
     store_size += static_cast<int>(key.size());
   }
@@ -146,12 +147,12 @@ void FallbackCache::Put(const GoogleString& key, SharedString* value) {
   if (store_size > threshold_bytes_) {
     SharedString forwarding_value;
     forwarding_value.Assign(&kInLargeObjectCache, 1);
-    small_object_cache_->Put(key, &forwarding_value);
+    small_object_cache_->Put(key, forwarding_value);
     large_object_cache_->Put(key, value);
   } else {
-    SharedString wrapped_value(*value);
+    SharedString wrapped_value(value);
     wrapped_value.Append(&kInSmallObjectCache, 1);
-    small_object_cache_->Put(key, &wrapped_value);
+    small_object_cache_->Put(key, wrapped_value);
   }
 }
 

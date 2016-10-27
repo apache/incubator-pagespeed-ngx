@@ -156,7 +156,7 @@ TEST_F(CachePropertyStoreTest, TestResultAvailableButNonParsable) {
                                                 kOptionsSignatureHash,
                                                 kCacheKeySuffix,
                                                 cohort_),
-                 &put_buffer);
+                 put_buffer);
   EXPECT_FALSE(ExecuteGet(page_.get()));
   EXPECT_EQ(CacheInterface::kAvailable, page_->GetCacheState(cohort_));
   EXPECT_EQ(1, num_callback_with_false_called_);

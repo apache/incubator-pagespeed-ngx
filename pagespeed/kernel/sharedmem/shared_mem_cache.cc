@@ -403,7 +403,7 @@ void SharedMemCache<kBlockSize>::RestoreSnapshot(
     }
 
     SharedString value(entry.value());
-    PutRawHash(entry.raw_key(), entry.last_use_timestamp_ms(), &value,
+    PutRawHash(entry.raw_key(), entry.last_use_timestamp_ms(), value,
                false /* don't trigger checkpointing */);
   }
 }
@@ -426,7 +426,7 @@ void SharedMemCache<kBlockSize>::DemarshalSnapshot(
 
 template<size_t kBlockSize>
 void SharedMemCache<kBlockSize>::Put(const GoogleString& key,
-                                     SharedString* value) {
+                                     const SharedString& value) {
   int64 now_ms = timer_->NowMs();
   GoogleString raw_hash = ToRawHash(key);
   PutRawHash(raw_hash, now_ms, value, true /* may trigger checkpointing */);
@@ -450,16 +450,16 @@ void SharedMemCache<kBlockSize>:: ScheduleSnapshotIfNecessary(
 template<size_t kBlockSize>
 void SharedMemCache<kBlockSize>::PutRawHash(const GoogleString& raw_hash,
                                             int64 last_use_timestamp_ms,
-                                            SharedString* value,
+                                            const SharedString& value,
                                             bool checkpoint_ok) {
   // See also ::ComputeDimensions
   const size_t kMaxSize = MaxValueSize();
 
-  size_t value_size = static_cast<size_t>(value->size());
+  size_t value_size = static_cast<size_t>(value.size());
   if (value_size > kMaxSize) {
     handler_->Message(
       kInfo, "Unable to insert object of size: %s, cache limit is: %s",
-      FormatSize(value->size()).c_str(),
+      FormatSize(value.size()).c_str(),
       FormatSize(kMaxSize).c_str());
     return;
   }
@@ -598,7 +598,7 @@ void SharedMemCache<kBlockSize>::WriteOutSnapshotFromWorkerThread(
   CHECK(file_cache_ != NULL);
   // It's safe for us to use the file cache from an arbitrary thread because
   // the file cache is thread-agnostic, having no writable member variables.
-  file_cache_->Put(SnapshotCacheKey(sector_num), &snapshot_s_shared);
+  file_cache_->Put(SnapshotCacheKey(sector_num), snapshot_s_shared);
 }
 
 template<size_t kBlockSize>
@@ -622,7 +622,7 @@ void SharedMemCache<kBlockSize>::RestoreFromDisk() {
     CHECK(callback.called());
     if (callback.state() == CacheInterface::kAvailable) {
       SharedMemCacheDump snapshot;
-      DemarshalSnapshot(callback.value()->Value(), &snapshot);
+      DemarshalSnapshot(callback.value().Value(), &snapshot);
       RestoreSnapshot(snapshot);
     }
   }
@@ -634,15 +634,15 @@ void SharedMemCache<kBlockSize>::RestoreFromDisk() {
 template<size_t kBlockSize>
 void SharedMemCache<kBlockSize>::PutIntoEntry(
     Sector<kBlockSize>* sector, EntryNum entry_num,
-    int64 last_use_timestamp_ms, SharedString* value) {
-  const char* data = value->data();
+    int64 last_use_timestamp_ms, const SharedString& value) {
+  const char* data = value.data();
 
   CacheEntry* entry = sector->EntryAt(entry_num);
   DCHECK(entry->creating);
   DCHECK_EQ(0u, entry->open_count);
 
   // Adjust space allocation....
-  size_t want_blocks = sector->DataBlocksForSize(value->size());
+  size_t want_blocks = sector->DataBlocksForSize(value.size());
   BlockVector blocks;
   sector->BlockListForEntry(entry, &blocks);
 
@@ -670,7 +670,7 @@ void SharedMemCache<kBlockSize>::PutIntoEntry(
     sector->ReturnBlocksToFreeList(extras);
   }
 
-  entry->byte_size = value->size();
+  entry->byte_size = value.size();
   TouchEntry(sector, last_use_timestamp_ms, entry_num);
 
   // Write out successor list for the blocks we use, and point the entry to it.
@@ -714,7 +714,7 @@ void SharedMemCache<kBlockSize>::Get(const GoogleString& key,
       CacheEntry* cand = sector->EntryAt(cand_key);
       if (KeyMatch(cand, raw_hash)) {
         ++stats->num_get_hit;
-        key_state = GetFromEntry(key, sector, cand_key, callback->value());
+        key_state = GetFromEntry(key, sector, cand_key, callback);
         break;
       }
     }
@@ -729,7 +729,7 @@ CacheInterface::KeyState SharedMemCache<kBlockSize>::GetFromEntry(
     const GoogleString& key,
     Sector<kBlockSize>* sector,
     EntryNum entry_num,
-    SharedString* out) {
+    Callback* callback) {
   CacheEntry* entry = sector->EntryAt(entry_num);
   if (entry->creating) {
     // For now, consider concurrent creation a miss.
@@ -746,20 +746,22 @@ CacheInterface::KeyState SharedMemCache<kBlockSize>::GetFromEntry(
   // reading.
   sector->mutex()->Unlock();
 
-  out->DetachAndClear();
-  out->Extend(entry->byte_size);
+  SharedString str;
+  str.Extend(entry->byte_size);
 
   size_t total_blocks = blocks.size();
   int pos = 0;
   for (size_t b = 0; b < total_blocks; ++b) {
     int bytes = sector->BytesInPortion(entry->byte_size, b, total_blocks);
-    out->WriteAt(pos, sector->BlockBytes(blocks[b]), bytes);
+    str.WriteAt(pos, sector->BlockBytes(blocks[b]), bytes);
     pos += bytes;
   }
   sector->mutex()->Lock();
 
   // Now reduce the reference count.
   --entry->open_count;
+
+  callback->set_value(str);
 
   return kAvailable;
 }

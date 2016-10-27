@@ -53,14 +53,14 @@ class DelayCache::DelayCallback : public CacheInterface::Callback {
   // happen vs when Done happens.
 
   bool ValidateCandidate(const GoogleString& key, KeyState state) override {
-    *orig_callback_->value() = *value();
+    orig_callback_->set_value(value());
     key_ = key;
     state_ = state;
     return true;
   }
 
   void Done(KeyState state) override {
-    *orig_callback_->value() = *value();
+    orig_callback_->set_value(value());
     delay_cache_->LookupComplete(this);
   }
 
@@ -162,7 +162,7 @@ void DelayCache::MultiGet(MultiGetRequest* request) {
   cache_->MultiGet(request);
 }
 
-void DelayCache::Put(const GoogleString& key, SharedString* value) {
+void DelayCache::Put(const GoogleString& key, const SharedString& value) {
   cache_->Put(key, value);
 }
 

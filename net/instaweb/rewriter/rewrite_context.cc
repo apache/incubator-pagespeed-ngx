@@ -31,14 +31,12 @@
 #include <map>                          // for map<>::const_iterator
 
 #include "base/logging.h"
-#include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_cache_failure.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/inline_output_resource.h"
 #include "net/instaweb/rewriter/public/input_info_utils.h"
@@ -53,9 +51,6 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "pagespeed/controller/central_controller.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
-#include "pagespeed/kernel/base/base64_util.h"
-#include "pagespeed/kernel/base/callback.h"
-#include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/message_handler.h"
@@ -76,7 +71,6 @@
 #include "pagespeed/kernel/http/data_url.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
-#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/thread/queued_alarm.h"
 #include "pagespeed/kernel/thread/sequence.h"
@@ -241,7 +235,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     // used as we update cache_result_->cache_ok directly.
     CacheLookupResult candidate_cache_result;
     bool local_cache_ok = TryDecodeCacheResult(
-        state, *value(), &candidate_cache_result);
+        state, value(), &candidate_cache_result);
 
     // cache_ok determines whether or not a second level cache is looked up. If
     // this is a stale rewrite, ensure there is an additional look up in the
@@ -436,7 +430,7 @@ class RewriteContext::WriteIfChanged : public CacheInterface::Callback {
   }
 
   virtual void Done(CacheInterface::KeyState state) {
-    if ((state != CacheInterface::kAvailable) || (value()->Value() != value_)) {
+    if ((state != CacheInterface::kAvailable) || (value().Value() != value_)) {
       cache_->PutSwappingString(key_, &value_);
     }
     delete this;

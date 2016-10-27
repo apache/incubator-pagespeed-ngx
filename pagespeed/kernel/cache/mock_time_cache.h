@@ -46,7 +46,7 @@ class MockTimeCache : public CacheInterface {
 
   // Reimplementations of CacheInterface methods.
   virtual void Get(const GoogleString& key, Callback* callback);
-  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Put(const GoogleString& key, const SharedString& value);
   virtual void Delete(const GoogleString& key);
 
   // Sets the delay the cache will inject before invoking the callbacks.

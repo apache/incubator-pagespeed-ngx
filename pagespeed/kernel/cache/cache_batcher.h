@@ -79,7 +79,7 @@ class CacheBatcher : public CacheInterface {
   static void InitStats(Statistics* statistics);
 
   virtual void Get(const GoogleString& key, Callback* callback);
-  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Put(const GoogleString& key, const SharedString& value);
   virtual void Delete(const GoogleString& key);
   virtual GoogleString Name() const;
   static GoogleString FormatName(StringPiece cache, int parallelism, int max);

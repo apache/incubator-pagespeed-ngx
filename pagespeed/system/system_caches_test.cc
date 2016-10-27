@@ -244,7 +244,7 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
     value.CopyToString(&value_copy);
     SharedString shared_value;
     shared_value.SwapWithString(&value_copy);
-    cache->Put(key.as_string(), &shared_value);
+    cache->Put(key.as_string(), shared_value);
   }
 
   void TestGet(CacheInterface* cache, StringPiece key,

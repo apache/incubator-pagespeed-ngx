@@ -196,10 +196,10 @@ int64 HTTPValue::ComputeContentsSize() const {
   return size;
 }
 
-bool HTTPValue::Link(SharedString* src, ResponseHeaders* headers,
+bool HTTPValue::Link(const SharedString& src, ResponseHeaders* headers,
                      MessageHandler* handler) {
   bool ok = false;
-  if (src->size() >= kStorageOverhead) {
+  if (src.size() >= kStorageOverhead) {
     // The simplest way to ensure that src is well formed is to save the
     // existing storage_ in a temp, assign the storage, and make sure
     // Headers and Contents return true.  The drawback is that the headers
@@ -207,7 +207,7 @@ bool HTTPValue::Link(SharedString* src, ResponseHeaders* headers,
     // the headers in an easier-to-extract form, so we don't have to give up
     // the integrity checks.
     SharedString temp(storage_);
-    storage_ = *src;
+    storage_ = src;
     contents_size_ = ComputeContentsSize();
 
     // TODO(jmarantz): this could be a lot lighter weight, but we are going
@@ -229,7 +229,7 @@ bool HTTPValue::Decode(StringPiece encoded_value, GoogleString* http_string,
   // Load encoded value into an HTTPValue and extract headers.
   SharedString buffer(encoded_value);
   HTTPValue value;
-  if (!value.Link(&buffer, &headers, handler))  return false;
+  if (!value.Link(buffer, &headers, handler))  return false;
 
   // Extract decoded contents.
   StringPiece contents;
@@ -257,7 +257,7 @@ bool HTTPValue::Encode(StringPiece http_string, GoogleString* encoded_value,
   value.Write(contents, handler);
 
   // Return SharedString buffer.
-  *encoded_value = value.share()->Value().as_string();
+  *encoded_value = value.share().Value().as_string();
   return true;
 }
 

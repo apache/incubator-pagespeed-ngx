@@ -90,6 +90,7 @@ bool ImageOptimizer::ComputeDesiredFormat() {
       desired_lossless_ = true;
     } else if (options_.allow_png()) {
       optimized_format_ = IMAGE_PNG;
+      desired_lossless_ = true;
     }
   } else {
     // single frame and opaque
@@ -107,6 +108,7 @@ bool ImageOptimizer::ComputeDesiredFormat() {
       desired_lossless_ = true;
     } else if (options_.allow_png()) {
       optimized_format_ = IMAGE_PNG;
+      desired_lossless_ = true;
     }
   }
 
@@ -252,10 +254,15 @@ bool ImageOptimizer::ConfigureWriter() {
       webp_config->method = 3;
       webp_config->kmin = 3;
       webp_config->kmax = 5;
-      webp_config->quality = desired_quality_;
       webp_config->user_data = timeout_handler_.get();
       webp_config->progress_hook = ConversionTimeoutHandler::Continue;
       webp_config->lossless = desired_lossless_;
+
+      // In the lossless mode, the "quality" aprameter does not affect the
+      // visual quality of encoded image, however, it affects the number of
+      // bytes which the encoded image has. For consistent output, we set it
+      // to a constant value.
+      webp_config->quality = (desired_lossless_ ? 100 : desired_quality_);
 
       if (is_transparent_) {
         webp_config->alpha_quality = 100;

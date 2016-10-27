@@ -19,6 +19,8 @@
 #ifndef PAGESPEED_KERNEL_CACHE_IN_MEMORY_CACHE_H_
 #define PAGESPEED_KERNEL_CACHE_IN_MEMORY_CACHE_H_
 
+#include <unordered_map>
+
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/cache_interface.h"
 #include "pagespeed/kernel/base/shared_string.h"
@@ -42,7 +44,7 @@ class InMemoryCache : public CacheInterface {
 
   // CacheInterface implementation
   void Get(const GoogleString& key, Callback* callback) override;
-  void Put(const GoogleString& key, SharedString* new_value) override;
+  void Put(const GoogleString& key, const SharedString& new_value) override;
   void Delete(const GoogleString& key) override;
   GoogleString Name() const override { return "InMemoryCache"; }
   bool IsBlocking() const override { return true; }
@@ -50,7 +52,7 @@ class InMemoryCache : public CacheInterface {
   void ShutDown() override { is_shut_down_ = true; }
 
  private:
-  StringStringMap cache_;
+  std::unordered_map<GoogleString, SharedString> cache_;
 
   bool is_shut_down_;
 

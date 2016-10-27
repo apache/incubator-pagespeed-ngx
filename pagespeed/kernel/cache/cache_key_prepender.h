@@ -39,7 +39,7 @@ class CacheKeyPrepender : public CacheInterface {
   // Implementation of CacheInterface
   void Get(const GoogleString& key, Callback* callback) override;
   void MultiGet(MultiGetRequest* request) override;
-  void Put(const GoogleString& key, SharedString* value) override;
+  void Put(const GoogleString& key, const SharedString& value) override;
   void Delete(const GoogleString& key) override;
   CacheInterface* Backend() override { return cache_; }
   bool IsBlocking() const override { return cache_->IsBlocking(); }

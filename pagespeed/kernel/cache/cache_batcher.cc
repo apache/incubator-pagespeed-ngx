@@ -160,7 +160,7 @@ void CacheBatcher::GroupComplete() {
   cache_->MultiGet(request);
 }
 
-void CacheBatcher::Put(const GoogleString& key, SharedString* value) {
+void CacheBatcher::Put(const GoogleString& key, const SharedString& value) {
   cache_->Put(key, value);
 }
 

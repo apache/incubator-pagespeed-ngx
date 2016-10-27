@@ -48,12 +48,13 @@ namespace key_value_codec {
 // sharing storage with value.
 //
 // The encoding format is [value, key, 2 bytes of key size].
-bool Encode(StringPiece key, SharedString* value, SharedString* key_value) {
+bool Encode(StringPiece key, const SharedString& value,
+            SharedString* key_value) {
   if (key.size() > kKeyMaxLength) {
     return false;
   }
   uint32 key_size = key.size();
-  *key_value = *value;
+  *key_value = value;
   key_value->Append(key);
   uint8 ch = key_size & 0xff;
   key_value->Append(reinterpret_cast<char*>(&ch), 1);

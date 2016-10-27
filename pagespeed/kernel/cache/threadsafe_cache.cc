@@ -62,7 +62,7 @@ void ThreadsafeCache::Get(const GoogleString& key, Callback* callback) {
   cache_->Get(key, cb);
 }
 
-void ThreadsafeCache::Put(const GoogleString& key, SharedString* value) {
+void ThreadsafeCache::Put(const GoogleString& key, const SharedString& value) {
   ScopedMutex mutex(mutex_.get());
   cache_->Put(key, value);
 }

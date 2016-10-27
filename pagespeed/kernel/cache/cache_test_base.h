@@ -86,7 +86,7 @@ class CacheTestBase : public testing::Test {
 
     void set_invalid_value(const char* v) { invalid_value_ = v; }
     void set_invalid_key(const char* k) { invalid_key_ = k; }
-    StringPiece value_str() { return value()->Value(); }
+    StringPiece value_str() { return value().Value(); }
 
     bool validate_called_;
     bool noop_wait_called_;
@@ -140,8 +140,7 @@ class CacheTestBase : public testing::Test {
 
   void CheckPut(CacheInterface* cache, const GoogleString& key,
                 const GoogleString& value) {
-    SharedString put_buffer(value);
-    cache->Put(key, &put_buffer);
+    cache->Put(key, SharedString(value));
     PostOpCleanup();
   }
 

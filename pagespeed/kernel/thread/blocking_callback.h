@@ -26,7 +26,7 @@ class BlockingCallback : public CacheInterface::Callback {
  protected:
   virtual void Done(CacheInterface::KeyState state) {
     result_ = state;
-    CacheInterface::Callback::value()->Value().CopyToString(&value_);
+    CacheInterface::Callback::value().Value().CopyToString(&value_);
     sync_.Notify();
   }
 

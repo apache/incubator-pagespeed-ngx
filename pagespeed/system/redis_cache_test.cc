@@ -30,7 +30,6 @@
 #include "pagespeed/kernel/base/null_mutex.h"
 #include "pagespeed/kernel/base/mock_timer.h"
 #include "pagespeed/kernel/base/posix_timer.h"
-#include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -453,7 +452,7 @@ class GetRequestThread : public ThreadSystem::Thread {
     EXPECT_TRUE(callback_.called());
     EXPECT_EQ(callback_.state(), expected_state);
     if (expected_state == CacheInterface::kAvailable) {
-      EXPECT_STREQ(callback_.value()->Value(), kSomeValue);
+      EXPECT_STREQ(callback_.value().Value(), kSomeValue);
     }
   }
 

@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/input_info.pb.h"  // for InputInfo, etc
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -253,7 +254,7 @@ Resource::FreshenCallback::~FreshenCallback() {
 
 bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
   DCHECK(UseHttpCache());
-  SharedString* contents_and_headers = value->share();
+  const SharedString& contents_and_headers = value->share();
   // Invalidate extracted_contents_.
   extracted_ = false;
   extracted_contents_.clear();

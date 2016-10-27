@@ -35,23 +35,24 @@ void InMemoryCache::Get(const GoogleString& key, Callback* callback) {
     return;
   }
 
-  const StringStringMap::const_iterator &value_it = cache_.find(key);
+  auto value_it = cache_.find(key);
   if (value_it == cache_.end()) {
     ValidateAndReportResult(key, kNotFound, callback);
   } else {
-    // SharedString(GoogleString) ctor is explicit, it also creates a new
-    // detached buffer for GoogleString which is exactly what we need here.
-    *callback->value() = SharedString(value_it->second);
+    callback->set_value(value_it->second);
     ValidateAndReportResult(key, kAvailable, callback);
   }
 }
 
-void InMemoryCache::Put(const GoogleString& key, SharedString* new_value) {
+void InMemoryCache::Put(const GoogleString& key,
+                        const SharedString& new_value) {
   if (is_shut_down_) {
     return;
   }
 
-  cache_[key] = new_value->Value().as_string();
+  // Make a copy of the SharedString, so that external mutations won't affect
+  // the cache contents.
+  cache_[key] = SharedString(new_value.Value());
 }
 
 void InMemoryCache::Delete(const GoogleString& key) {

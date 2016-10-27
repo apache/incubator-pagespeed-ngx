@@ -100,7 +100,7 @@ TEST_F(MockTimeCacheTest, DelayOps) {
   AdvanceTimeUs(kDelayUs / 2 + 1);
   EXPECT_TRUE(result.called());
   EXPECT_EQ(CacheInterface::kAvailable, result.state());
-  EXPECT_EQ("Value", result.value()->Value());
+  EXPECT_EQ("Value", result.value().Value());
 
   // Do the same thing after deleting it.
   cache_.Delete("Name");

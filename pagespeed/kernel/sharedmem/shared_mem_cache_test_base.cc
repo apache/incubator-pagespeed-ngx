@@ -21,8 +21,8 @@
 #include <map>
 #include <utility>
 
+#include "base/logging.h"               // for Check_EQImpl, CHECK_EQ
 #include "pagespeed/kernel/base/function.h"
-#include "pagespeed/kernel/base/null_message_handler.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
@@ -209,7 +209,7 @@ void SharedMemCacheTestBase::TestReaderWriter() {
       ASSERT_EQ(true, callback.called());
       YieldToThread();
     }
-    EXPECT_EQ(large_, callback.value()->Value());
+    EXPECT_EQ(large_, callback.value().Value());
     CheckDelete("key");
 
     CheckPut("key2", "val2");
@@ -226,7 +226,7 @@ void SharedMemCacheTestBase::TestReaderWriterChild() {
   SharedString val(large_);
 
   for (int i = 0; i < kSpinRuns; ++i) {
-    child_cache->Put("key", &val);
+    child_cache->Put("key", val);
 
     // Now wait until the parent puts in what we expect for 'key2'
     CacheTestBase::Callback callback;
@@ -236,7 +236,7 @@ void SharedMemCacheTestBase::TestReaderWriterChild() {
       YieldToThread();
     }
 
-    if (callback.value()->Value() != "val2") {
+    if (callback.value().Value() != "val2") {
       test_env_->ChildFailed();
     }
     child_cache->Delete("key2");

@@ -51,7 +51,7 @@ class CacheStats : public CacheInterface {
 
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void MultiGet(MultiGetRequest* request);
-  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Put(const GoogleString& key, const SharedString& value);
   virtual void Delete(const GoogleString& key);
   virtual CacheInterface* Backend() { return cache_; }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }

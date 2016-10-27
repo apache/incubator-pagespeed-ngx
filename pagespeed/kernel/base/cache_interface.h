@@ -42,7 +42,8 @@ class CacheInterface {
   class Callback {
    public:
     virtual ~Callback();
-    SharedString* value() { return &value_; }
+    void set_value(const SharedString& value) { value_ = value; }
+    const SharedString& value() const { return value_; }
 
     // These methods are meant for use of callback subclasses that wrap
     // around other callbacks. Normal cache implementations should
@@ -94,13 +95,13 @@ class CacheInterface {
 
     bool called() const { return called_; }
     KeyState state() const { return state_; }
-    // super.value() is used to get/set the value.
+    // super.value(), super.set_value() are used to get/set the value.
 
     void Reset() {
       called_ = false;
       state_ = CacheInterface::kNotFound;
       SharedString empty;
-      *value() = empty;
+      set_value(empty);
     }
 
     virtual void Done(CacheInterface::KeyState state) {
@@ -148,7 +149,7 @@ class CacheInterface {
   // Puts a value into the cache.  The value that is passed in is not modified,
   // but the SharedString is passed by non-const pointer because its reference
   // count is bumped.
-  virtual void Put(const GoogleString& key, SharedString* value) = 0;
+  virtual void Put(const GoogleString& key, const SharedString& value) = 0;
   virtual void Delete(const GoogleString& key) = 0;
 
   // Convenience method to do a Put from a GoogleString* value.  The
@@ -157,7 +158,7 @@ class CacheInterface {
   void PutSwappingString(const GoogleString& key, GoogleString* value) {
     SharedString shared_string;
     shared_string.SwapWithString(value);
-    Put(key, &shared_string);
+    Put(key, shared_string);
   }
 
   // The name of this CacheInterface -- used for logging and debugging.
@@ -213,7 +214,7 @@ class CacheInterface {
   // encoded into the value with key_value_codec.  It is only valid
   // to call this when MustEncodeKeyInValueOnPut() returns true.
   virtual void PutWithKeyInValue(const GoogleString& key,
-                                 SharedString* key_and_value) {
+                                 const SharedString& key_and_value) {
     CHECK(false);
   }
 

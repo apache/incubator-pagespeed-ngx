@@ -68,13 +68,15 @@ class CompressedCallback : public CacheInterface::Callback {
     if (state == CacheInterface::kAvailable) {
       GoogleString uncompressed;
       StringWriter writer(&uncompressed);
-      StringPiece compressed = value()->Value();
+      StringPiece compressed = value().Value();
       if (strings::EndsWith(compressed,
                             StringPiece(kTrailer, STATIC_STRLEN(kTrailer))) &&
           GzipInflater::Inflate(
               compressed.substr(0, compressed.size() - STATIC_STRLEN(kTrailer)),
               GzipInflater::kDeflate, &writer)) {
-        callback_->value()->SwapWithString(&uncompressed);
+        SharedString uncompressed_shared;
+        uncompressed_shared.SwapWithString(&uncompressed);
+        callback_->set_value(uncompressed_shared);
         ret = true;
       } else {
         state = CacheInterface::kNotFound;
@@ -129,13 +131,13 @@ void CompressedCache::Get(const GoogleString& key, Callback* callback) {
   cache_->Get(key, cb);
 }
 
-void CompressedCache::Put(const GoogleString& key, SharedString* value) {
-  int64 old_size = value->size();
+void CompressedCache::Put(const GoogleString& key, const SharedString& value) {
+  int64 old_size = value.size();
   GoogleString buf;
   buf.reserve(old_size + STATIC_STRLEN(kTrailer));
   StringWriter writer(&buf);
   original_size_->Add(old_size);
-  if (GzipInflater::Deflate(value->Value(), GzipInflater::kDeflate, &writer)) {
+  if (GzipInflater::Deflate(value.Value(), GzipInflater::kDeflate, &writer)) {
     buf.append(kTrailer, STATIC_STRLEN(kTrailer));
 #if INCLUDE_HISTOGRAMS
     compressed_cache_savings_->Add(

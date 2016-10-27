@@ -90,7 +90,7 @@ TEST_F(DelayCacheTest, DelayOpsFound) {
   cache_.ReleaseKey("Name");
   EXPECT_TRUE(result.called());
   EXPECT_EQ(CacheInterface::kAvailable, result.state());
-  EXPECT_EQ("Value", result.value()->Value());
+  EXPECT_EQ("Value", result.value().Value());
 }
 
 TEST_F(DelayCacheTest, DelayOpsNotFound) {
@@ -147,7 +147,7 @@ TEST_F(DelayCacheTest, DelayOpsFoundInSequence) {
 
   EXPECT_TRUE(result.called());
   EXPECT_EQ(CacheInterface::kAvailable, result.state());
-  EXPECT_EQ("Value", result.value()->Value());
+  EXPECT_EQ("Value", result.value().Value());
 
   pool.ShutDown();
 }

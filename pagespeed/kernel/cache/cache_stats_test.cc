@@ -71,7 +71,7 @@ class CacheStatsTest : public testing::Test {
 
 TEST_F(CacheStatsTest, BasicOperation) {
   SharedString put_buffer("val");
-  cache_stats_->Put("key", &put_buffer);
+  cache_stats_->Put("key", put_buffer);
   EXPECT_EQ(1, stats_.GetVariable("test_inserts")->Get());
   CacheTestBase::Callback callback;
   cache_stats_->Get("key", &callback);
@@ -79,7 +79,7 @@ TEST_F(CacheStatsTest, BasicOperation) {
   EXPECT_EQ(0, stats_.GetVariable("test_misses")->Get());
   EXPECT_TRUE(callback.called());
   EXPECT_EQ(CacheInterface::kAvailable, callback.state());
-  EXPECT_EQ(GoogleString("val"), callback.value()->Value());
+  EXPECT_EQ(GoogleString("val"), callback.value().Value());
 
   cache_stats_->Get("no such key", &callback);
   EXPECT_EQ(1, stats_.GetVariable("test_misses")->Get());

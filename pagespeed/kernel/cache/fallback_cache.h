@@ -50,7 +50,7 @@ class FallbackCache : public CacheInterface {
   virtual ~FallbackCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
-  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Put(const GoogleString& key, const SharedString& value);
   virtual void Delete(const GoogleString& key);
   virtual void MultiGet(MultiGetRequest* request);
   virtual bool IsBlocking() const {

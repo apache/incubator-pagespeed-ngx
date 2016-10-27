@@ -160,13 +160,13 @@ TEST_F(HTTPValueTest, TestShare) {
     FillResponseHeaders(&headers);
     value.SetHeaders(&headers);
     value.Write("body", &message_handler_);
-    storage = *value.share();
+    storage = value.share();
   }
 
   {
     HTTPValue value;
     ResponseHeaders check_headers;
-    ASSERT_TRUE(value.Link(&storage, &check_headers, &message_handler_));
+    ASSERT_TRUE(value.Link(storage, &check_headers, &message_handler_));
     StringPiece body;
     ASSERT_TRUE(value.ExtractContents(&body));
     EXPECT_EQ("body", body.as_string());
@@ -178,24 +178,24 @@ TEST_F(HTTPValueTest, LinkEmpty) {
   SharedString storage;
   HTTPValue value;
   ResponseHeaders headers;
-  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
+  ASSERT_FALSE(value.Link(storage, &headers, &message_handler_));
 }
 
 TEST_F(HTTPValueTest, LinkCorrupt) {
   SharedString storage("h");
   HTTPValue value;
   ResponseHeaders headers;
-  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
+  ASSERT_FALSE(value.Link(storage, &headers, &message_handler_));
   storage.Append("9999");
-  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
+  ASSERT_FALSE(value.Link(storage, &headers, &message_handler_));
   storage.Append("xyz");
-  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
+  ASSERT_FALSE(value.Link(storage, &headers, &message_handler_));
   storage.Assign("b");
-  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
+  ASSERT_FALSE(value.Link(storage, &headers, &message_handler_));
   storage.Append("9999");
-  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
+  ASSERT_FALSE(value.Link(storage, &headers, &message_handler_));
   storage.Append("xyz");
-  ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
+  ASSERT_FALSE(value.Link(storage, &headers, &message_handler_));
 }
 
 class HTTPValueEncodeTest : public testing::Test {

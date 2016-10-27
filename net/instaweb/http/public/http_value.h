@@ -79,7 +79,7 @@ class HTTPValue : public Writer {
   // well-formed.
   //
   // Extracts the headers into the provided ResponseHeaders buffer.
-  bool Link(SharedString* src, ResponseHeaders* headers,
+  bool Link(const SharedString& src, ResponseHeaders* headers,
             MessageHandler* handler);
 
   // Links two HTTPValues together, using the contents of 'src' and discarding
@@ -92,7 +92,7 @@ class HTTPValue : public Writer {
   }
 
   // Access the shared string, for insertion into a cache via Put.
-  SharedString* share() { return &storage_; }
+  const SharedString& share() const { return storage_; }
 
   size_t size() const { return storage_.size(); }
   int64 contents_size() { return contents_size_; }

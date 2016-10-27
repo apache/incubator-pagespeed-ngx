@@ -28,7 +28,7 @@ class KeyValueCodecTest : public testing::Test {
  protected:
   void CodecTest(const StringPiece& key, const StringPiece& value) {
     SharedString val(value);
-    ASSERT_TRUE(key_value_codec::Encode(key, &val, &key_value_));
+    ASSERT_TRUE(key_value_codec::Encode(key, val, &key_value_));
     EXPECT_EQ(val.data(), key_value_.data()) << "shared storage";
 
     ASSERT_TRUE(key_value_codec::Decode(&key_value_, &decoded_key_,
@@ -56,14 +56,14 @@ TEST_F(KeyValueCodecTest, TestLargeKey) {
 TEST_F(KeyValueCodecTest, TestHugeKey) {
   // This key's length won't fit in two bytes, so the encoding will not work.
   SharedString val("value"), key_value;
-  EXPECT_FALSE(key_value_codec::Encode(GoogleString(100000, 'a'), &val,
+  EXPECT_FALSE(key_value_codec::Encode(GoogleString(100000, 'a'), val,
                                        &key_value));
 }
 
 TEST_F(KeyValueCodecTest, TestKey65536) {  // one byte too big.
   // This key's length won't fit in two bytes, so the encoding will not work.
   SharedString val("value"), key_value;
-  EXPECT_FALSE(key_value_codec::Encode(GoogleString(65536, 'a'), &val,
+  EXPECT_FALSE(key_value_codec::Encode(GoogleString(65536, 'a'), val,
                                        &key_value));
 }
 

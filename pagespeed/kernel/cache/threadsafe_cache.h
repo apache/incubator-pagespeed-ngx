@@ -48,7 +48,7 @@ class ThreadsafeCache : public CacheInterface {
   virtual ~ThreadsafeCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
-  virtual void Put(const GoogleString& key, SharedString* value)
+  virtual void Put(const GoogleString& key, const SharedString& value)
       LOCKS_EXCLUDED(mutex_);
   virtual void Delete(const GoogleString& key) LOCKS_EXCLUDED(mutex_);
   virtual CacheInterface* Backend() { return cache_; }

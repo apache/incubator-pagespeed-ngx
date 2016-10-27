@@ -32,9 +32,9 @@ WriteThroughCache::~WriteThroughCache() {
 }
 
 void WriteThroughCache::PutInCache1(const GoogleString& key,
-                                    SharedString* value) {
+                                    const SharedString& value) {
   if ((cache1_size_limit_ == kUnlimited) ||
-      (key.size() + value->size() < cache1_size_limit_)) {
+      (key.size() + value.size() < cache1_size_limit_)) {
     cache1_->Put(key, value);
   }
 }
@@ -52,7 +52,7 @@ class WriteThroughCallback : public CacheInterface::Callback {
 
   virtual bool ValidateCandidate(const GoogleString& key,
                                  CacheInterface::KeyState state) {
-    *callback_->value() = *value();
+    callback_->set_value(value());
     return callback_->DelegatedValidateCandidate(key, state);
   }
 
@@ -88,7 +88,8 @@ void WriteThroughCache::Get(const GoogleString& key, Callback* callback) {
   cache1_->Get(key, new WriteThroughCallback(this, key, callback));
 }
 
-void WriteThroughCache::Put(const GoogleString& key, SharedString* value) {
+void WriteThroughCache::Put(const GoogleString& key,
+                            const SharedString& value) {
   PutInCache1(key, value);
   cache2_->Put(key, value);
 }

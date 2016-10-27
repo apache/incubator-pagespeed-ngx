@@ -44,12 +44,12 @@ void LRUCache::Get(const GoogleString& key, Callback* callback) {
   SharedString* value = base_.GetFreshen(key);
   if (value != NULL) {
     key_state = kAvailable;
-    *callback->value() = *value;
+    callback->set_value(*value);
   }
   ValidateAndReportResult(key, key_state, callback);
 }
 
-void LRUCache::Put(const GoogleString& key, SharedString* new_value) {
+void LRUCache::Put(const GoogleString& key, const SharedString& new_value) {
   if (!is_healthy_) {
     return;
   }

@@ -107,7 +107,7 @@ class TestPayload {
 
   void DoPuts(int rotate_by) {
     for (int k = 0; k < num_keys_; ++k) {
-      lru_cache_.Put(keys_[(k + rotate_by) % num_keys_], &values_[k]);
+      lru_cache_.Put(keys_[(k + rotate_by) % num_keys_], values_[k]);
     }
   }
 

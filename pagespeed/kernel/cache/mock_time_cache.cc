@@ -40,7 +40,7 @@ class MockTimeCache::DelayCallback : public CacheInterface::Callback {
   virtual ~DelayCallback() {}
 
   virtual bool ValidateCandidate(const GoogleString& key, KeyState state) {
-    *orig_callback_->value() = *value();
+    orig_callback_->set_value(value());
     return orig_callback_->DelegatedValidateCandidate(key, state);
   }
 
@@ -81,7 +81,7 @@ void MockTimeCache::Get(const GoogleString& key, Callback* callback) {
   }
 }
 
-void MockTimeCache::Put(const GoogleString& key, SharedString* value) {
+void MockTimeCache::Put(const GoogleString& key, const SharedString& value) {
   cache_->Put(key, value);
 }
 

@@ -27,6 +27,7 @@
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/cache/file_cache.h"
 #include "pagespeed/kernel/sharedmem/shared_mem_cache_data.h"
@@ -126,7 +127,7 @@ class SharedMemCache : public CacheInterface {
                                 SharedMemCacheDump* out);
 
   virtual void Get(const GoogleString& key, Callback* callback);
-  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Put(const GoogleString& key, const SharedString& value);
   virtual void Delete(const GoogleString& key);
   static GoogleString FormatName();
   virtual GoogleString Name() const { return FormatName();}
@@ -176,7 +177,7 @@ class SharedMemCache : public CacheInterface {
   // checkpoint and last_use_timestamp_ms should be the timestamp to restore for
   // the entry.
   void PutRawHash(const GoogleString& raw_hash, int64 last_use_timestamp_ms,
-                  SharedString* value, bool checkpoint_ok);
+                  const SharedString& value, bool checkpoint_ok);
 
   // Finish a get, with the entry matching and sector lock held.  Releases lock
   // while performing the read, but takes it again before returning.
@@ -184,14 +185,14 @@ class SharedMemCache : public CacheInterface {
       const GoogleString& key,
       SharedMemCacheData::Sector<kBlockSize>* sector,
       SharedMemCacheData::EntryNum entry_num,
-      SharedString* out) EXCLUSIVE_LOCKS_REQUIRED(sector->mutex());
+      Callback* str) EXCLUSIVE_LOCKS_REQUIRED(sector->mutex());
 
   // Finish a put into the given entry. Lock is expected to be held at entry,
   // will still be held when done. The hash in the entry must also be already
   // correct at time of call.
   void PutIntoEntry(SharedMemCacheData::Sector<kBlockSize>* sector,
                     SharedMemCacheData::EntryNum entry_num,
-                    int64 last_use_timestamp_ms, SharedString* value)
+                    int64 last_use_timestamp_ms, const SharedString& value)
       EXCLUSIVE_LOCKS_REQUIRED(sector->mutex());
 
   // Finish a delete, with the entry matching and sector lock held.

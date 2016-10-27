@@ -63,7 +63,7 @@ class AsyncCache : public CacheInterface {
   virtual ~AsyncCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
-  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Put(const GoogleString& key, const SharedString& value);
   virtual void Delete(const GoogleString& key);
   virtual void MultiGet(MultiGetRequest* request);
   static GoogleString FormatName(StringPiece cache);
@@ -103,8 +103,8 @@ class AsyncCache : public CacheInterface {
 
   // Functions to execute Put/Delete in sequence_.  Canceling
   // a Put/Delete just drops the request.
-  void DoPut(GoogleString* key, SharedString* value);
-  void CancelPut(GoogleString* key, SharedString* value);
+  void DoPut(GoogleString* key, const SharedString value);
+  void CancelPut(GoogleString* key, const SharedString value);
   void DoDelete(GoogleString* key);
   void CancelDelete(GoogleString* key);
 
