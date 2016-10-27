@@ -298,7 +298,9 @@ staging_except_module : setup_staging_dir $(CONF_TEMPLATES)
 	cp -f $(LIBRARY_CONF_SOURCE) $(STAGING_DIR)/pagespeed_libraries.conf
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	cp -rp mod_pagespeed_example mod_pagespeed_test $(STAGING_DIR)
-	chcon -R --reference=$(APACHE_DOC_ROOT) $(STAGING_DIR)
+	@echo Changing security context of $(APACHE_DOC_ROOT)
+	@echo This will fail and be ignored if your selinux isn\'t set up.
+	-chcon -R --reference=$(APACHE_DOC_ROOT) $(STAGING_DIR)
 
 staging : staging_except_module
 	cp $(PAGESPEED_MODULE) $(STAGING_DIR)/mod_pagespeed.so
