@@ -44,26 +44,34 @@ class DelayCache::DelayCallback : public CacheInterface::Callback {
         state_(kNotFound) {
   }
 
-  virtual ~DelayCallback() {}
+  ~DelayCallback() override {}
 
-  virtual bool ValidateCandidate(const GoogleString& key, KeyState state) {
+  // Note: don't do this sort of delegation in things that take in something
+  // that uses a WriteThroughCache as the backend cache, since that will result
+  // in suboptimal (but functional) behavior involving stale entries in L1. A
+  // proper fix to this problem requires explicit control of when validations
+  // happen vs when Done happens.
+
+  bool ValidateCandidate(const GoogleString& key, KeyState state) override {
     *orig_callback_->value() = *value();
-    return orig_callback_->DelegatedValidateCandidate(key, state);
+    key_ = key;
+    state_ = state;
+    return true;
   }
 
-  virtual void Done(KeyState state) {
+  void Done(KeyState state) override {
     *orig_callback_->value() = *value();
-    state_ = state;
     delay_cache_->LookupComplete(this);
   }
 
   // Helper method so that DelayCache can call the callback for keys
   // that are not being delayed, or for keys that have been released.
   void Run() {
-    Callback* callback = orig_callback_;
-    KeyState state = state_;
+    if (!orig_callback_->DelegatedValidateCandidate(key_, state_)) {
+      state_ = CacheInterface::kNotFound;
+    }
+    orig_callback_->DelegatedDone(state_);
     delete this;
-    callback->DelegatedDone(state);
   }
 
   const GoogleString& key() const { return key_; }
