@@ -22,7 +22,7 @@ install:
   - sudo sh -c 'echo "image/webp webp" >> /etc/mime.types'
   - mkdir -p ~/bin
   - cd ~/bin
-  - git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+  - git clone --recurse-submodules https://chromium.googlesource.com/chromium/tools/depot_tools.git
   - cd ~/build_directory/src
   - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
   - ~/bin/depot_tools/gclient sync --force --jobs=1 2>&1 > /dev/null
