@@ -332,7 +332,7 @@ EMPTY_HEADER_URL=http://www.modpagespeed.com/empty_header.html
 apache_debug_serf_empty_header_test :
 	$(MAKE) apache_install_conf \
 	  OPTIONS="$(OPTIONS) LOADTEST_TEST=1 STRESS_TEST=1" \
-	  SLURP_DIR=$(PWD)/$(INSTALL_DATA_DIR)/mod_pagespeed_test/slurp
+	  SLURP_DIR=$(INSTALL_DATA_DIR)/mod_pagespeed_test/slurp
 	$(MAKE) apache_debug_restart
 	# Make sure we can fetch a URL with empty header correctly..
 	$(WGET_PROXY) $(EMPTY_HEADER_URL) > /dev/null

@@ -32,12 +32,18 @@ function verify_nosniff {
   check_from "$OUT" grep '^X-Content-Type-Options: nosniff'
 }
 
-# Checks that the response is a 404.
-function verify_404 {
+# Checks that the response is one of the expected error types.
+function verify_error {
   leaf="$1"
   URL=$REWRITTEN_ROOT/$leaf
   OUT=$($CURL -D- -o/dev/null -sS "$URL")
-  check_from "$OUT" grep '^HTTP.* 404 Not Found'
+  status_code=$(echo "$OUT" | head -n 1 | awk '{print $2}')
+  # Currently 404 and 500 are the only expected error codes here.
+  if [ "$status_code" -ne 404 ] && [ "$status_code" -ne 500 ]; then
+    echo "Got status code $status_code in response:"
+    echo "$OUT"
+    fail
+  fi
 }
 
 # test that all the filters do fine with one of our content types
@@ -78,19 +84,19 @@ verify_nosniff example.pdf.pagespeed.jm.0.foo application/pdf
 
 # test that we 404 html
 start_test js minification html
-verify_404 index.html.pagespeed.jm.0.foo
+verify_error index.html.pagespeed.jm.0.foo
 
 start_test image spriting html
-verify_404 index.html.pagespeed.is.0.foo
+verify_error index.html.pagespeed.is.0.foo
 
 start_test image compression html
-verify_404 xindex.html.pagespeed.ic.0.foo
+verify_error xindex.html.pagespeed.ic.0.foo
 
 start_test cache extension html
-verify_404 index.html.pagespeed.ce.0.foo
+verify_error index.html.pagespeed.ce.0.foo
 
 
 # test that we 404 svgs too
 start_test js minification svg
-verify_404 images/schedule_event.svg.pagespeed.jm.0.foo
+verify_error images/schedule_event.svg.pagespeed.jm.0.foo
 
