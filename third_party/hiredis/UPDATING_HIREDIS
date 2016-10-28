@@ -1,0 +1,4 @@
+When updating Hiredis please, ensure that freeReplyObject() is still
+thread-safe; RedisCache relies on that.
+Updates on that matter will probably be tracked here:
+https://github.com/redis/hiredis/issues/465.

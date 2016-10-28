@@ -226,6 +226,8 @@ fi
 cd $build_dir/src
 check gclient.log \
     gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
+check gclient.log gclient sync --nohooks
+check gclient.log git submodule update --init --recursive
 check gclient.log gclient sync --force
 
 # Neither buildbot is using a compiler recent enough to provide stdalign.h,

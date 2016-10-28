@@ -88,6 +88,7 @@ git clone https://github.com/pagespeed/mod_pagespeed.git src
 cd src
 gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
 git checkout $VERSION
+git submodule update --init --recursive
 gclient sync --force --jobs=1
 
 build_dir="$PWD"

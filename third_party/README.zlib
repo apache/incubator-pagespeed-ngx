@@ -1,0 +1,5 @@
+We currently pull zlib from a pagespeed git mirror, however there's a there's
+a perfectly fine zlib repo at https://github.com/madler/zlib.git.
+We should copy the gyp file out of the zlib repo and into the mod_pagespeed
+one, after which we can switch to the official zlib repo and delete
+https://github.com/pagespeed/zlib.

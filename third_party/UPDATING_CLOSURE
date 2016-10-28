@@ -1,0 +1,2 @@
+If the closure library is updated (third_party/closure_library), the closure
+compiler version listed in third_party/closure/download.sh must also be updated.

@@ -1,0 +1,106 @@
+# The two httpds are the longest syncs, so we'd like to start them first.
+[submodule "third_party/httpd/src"]
+	path = third_party/httpd/src
+	url = git://git.apache.org/httpd.git
+[submodule "third_party/httpd24/src"]
+	path = third_party/httpd24/src
+	url = git://git.apache.org/httpd.git
+[submodule "third_party/brotli/src"]
+	path = third_party/brotli/src
+	url = https://github.com/google/brotli.git
+[submodule "third_party/giflib"]
+	path = third_party/giflib
+	url = https://github.com/pagespeed/giflib.git
+[submodule "third_party/closure_library"]
+	path = third_party/closure_library
+	url = https://github.com/google/closure-library.git
+[submodule "third_party/aprutil/src"]
+	path = third_party/aprutil/src
+	url = git://git.apache.org/apr-util.git
+[submodule "third_party/re2/src"]
+	path = third_party/re2/src
+	url = https://github.com/google/re2.git
+[submodule "third_party/icu"]
+	path = third_party/icu
+	url = https://github.com/pagespeed/icu.git
+[submodule "third_party/libjpeg_turbo/src"]
+	path = third_party/libjpeg_turbo/src
+	url = https://chromium.googlesource.com/chromium/deps/libjpeg_turbo
+# For gyp generated makefiles.
+  ignore = untracked
+[submodule "third_party/libjpeg_turbo/yasm/source/patched-yasm"]
+	path = third_party/libjpeg_turbo/yasm/source/patched-yasm
+	url = https://chromium.googlesource.com/chromium/deps/yasm/patched-yasm
+[submodule "third_party/libpng/src"]
+	path = third_party/libpng/src
+	url = https://github.com/glennrp/libpng.git
+[submodule "third_party/hiredis/src"]
+	path = third_party/hiredis/src
+	url = https://github.com/redis/hiredis.git
+[submodule "third_party/apr/src"]
+	path = third_party/apr/src
+	url = git://git.apache.org/apr.git
+[submodule "third_party/optipng"]
+	path = third_party/optipng
+	url = https://github.com/pagespeed/optipng.git
+[submodule "third_party/libwebp"]
+	path = third_party/libwebp
+	url = https://chromium.googlesource.com/webm/libwebp.git
+[submodule "third_party/serf/src"]
+	path = third_party/serf/src
+	url = https://git.apache.org/serf.git
+[submodule "third_party/grpc/src"]
+	path = third_party/grpc/src
+	url = https://github.com/grpc/grpc.git
+[submodule "third_party/protobuf/src"]
+	path = third_party/protobuf/src
+	url = https://github.com/google/protobuf.git
+[submodule "third_party/modp_b64"]
+	path = third_party/modp_b64
+	url = https://chromium.googlesource.com/chromium/src/third_party/modp_b64
+# For gyp generated makefiles.
+  ignore = untracked
+[submodule "third_party/boringssl/src"]
+	path = third_party/boringssl/src
+	url = https://boringssl.googlesource.com/boringssl.git
+[submodule "third_party/zlib"]
+	path = third_party/zlib
+	url = https://github.com/pagespeed/zlib.git
+[submodule "third_party/chromium/src/base"]
+	path = third_party/chromium/src/base
+	url = https://chromium.googlesource.com/chromium/src/base
+# For gyp generated makefiles.
+  ignore = untracked
+[submodule "third_party/chromium/src/build"]
+	path = third_party/chromium/src/build
+	url = https://chromium.googlesource.com/chromium/src/build
+[submodule "third_party/chromium/src/googleurl"]
+	path = third_party/chromium/src/googleurl
+	url = https://chromium.googlesource.com/external/google-url
+[submodule "third_party/google-sparsehash/src"]
+	path = third_party/google-sparsehash/src
+	url = https://github.com/google/sparsehash.git
+[submodule "third_party/domain_registry_provider"]
+	path = third_party/domain_registry_provider
+	url = https://github.com/pagespeed/domain-registry-provider.git
+[submodule "third_party/jsoncpp/src"]
+	path = third_party/jsoncpp/src
+	url = https://github.com/open-source-parsers/jsoncpp.git
+[submodule "third_party/gflags/arch"]
+	path = third_party/gflags/arch
+	url = https://chromium.googlesource.com/external/webrtc/trunk/third_party/gflags
+[submodule "third_party/gflags/src"]
+	path = third_party/gflags/src
+	url = https://chromium.googlesource.com/external/gflags/src
+[submodule "testing/gtest"]
+	path = testing/gtest
+	url = https://github.com/google/googletest.git
+[submodule "testing/gmock"]
+	path = testing/gmock
+	url = https://github.com/google/googlemock.git
+[submodule "tools/clang"]
+	path = tools/clang
+	url = https://chromium.googlesource.com/chromium/src/tools/clang
+[submodule "tools/gyp"]
+	path = tools/gyp
+	url = https://chromium.googlesource.com/external/gyp
