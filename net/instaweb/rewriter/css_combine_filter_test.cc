@@ -1615,23 +1615,12 @@ TEST_F(CssCombineFilterTest, RobustnessUnclosedString) {
   SetResponseWithDefaultHeaders(kCssB, kContentTypeCss,
                                 "h2 { color: blue; }", 100);
 
-  // No combination would also be a valid outcome.
   GoogleString combined_url =
       Encode("", RewriteOptions::kCssCombinerId, "0",
              MultiUrl(kCssA, kCssB), "css");
 
-  ValidateExpected("unterm_str",
-                   StrCat(CssLinkHref(kCssA), CssLinkHref(kCssB)),
-                   StrCat("<link rel=stylesheet href=", combined_url,
-                          " />"));
-
-  GoogleString out;
-  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, combined_url),  &out));
-  // The key thing here is the newline after first fragment, which means the
-  // " will get closed right there by error recovery, rather than extending
-  // into the next file.
-  EXPECT_EQ("q::before {padding: 0px; \"content: foo;}\nh2 { color: blue; }",
-            out);
+  ValidateNoChanges("unterm_str",
+                    StrCat(CssLinkHref(kCssA), CssLinkHref(kCssB)));
 }
 
 // See: http://www.alistapart.com/articles/alternate/

@@ -192,5 +192,68 @@ TEST_F(CssMinifyTest, ParsingAndMinifingViewportUnits) {
   EXPECT_STREQ(".a{margin-top:70vh;margin-bottom:20vw}", minified);
 }
 
+TEST_F(CssMinifyTest, StraySingleQuote1) {
+  static const char kCss[] =
+      ".view_all a{\n"
+      "  display: block;\n"
+      "  'width: 100%;\n"
+      "  padding: 5px 0 1px 0"
+      "}";
+
+  Css::Parser parser(kCss);
+  std::unique_ptr<Css::Stylesheet> stylesheet(parser.ParseStylesheet());
+  GoogleString minified;
+  StringWriter writer(&minified);
+
+  EXPECT_TRUE(CssMinify::Stylesheet(*stylesheet, &writer, &handler_));
+  // There are two bits of error recovery happening here:
+  // 1) error recovery for the unclosed 'width string eats all the way until
+  //    the end of line.
+  // 2) error recovery for the declaration starting with 'width eats all the way
+  //    until the next semicolon or a closing } (skipping matching ones before)
+  // --- which is after the padding declaration, since the first semicolon is
+  // just a part of the 'width... string
+  EXPECT_STREQ(".view_all a{display:block}", minified);
+}
+
+TEST_F(CssMinifyTest, StraySingleQuote2) {
+  static const char kCss[] =
+      ".view_all a{\n"
+      "  display: block;\n"
+      "  'width: 100%;\n"
+      "  padding: 5px 0 1px 0;"
+      "}";
+
+  GoogleString minified;
+  StringWriter writer(&minified);
+  CssMinify minify(&writer, &handler_);
+  StringVector urls;
+  minify.set_url_collector(&urls);
+  ASSERT_TRUE(minify.ParseStylesheet(kCss));
+  EXPECT_STREQ(".view_all a{display:block;'width: 100%;\n"
+               "  padding: 5px 0 1px 0}",
+               minified);
+}
+
+TEST_F(CssMinifyTest, StraySingleQuote3) {
+  // Non-permissive mode, should drop anything on the 'width line till \n,
+  // and then continue recovery until the next semicolon.
+  static const char kCss[] =
+      ".view_all a{\n"
+      "  display: block;\n"
+      "  'width: 100%; border:1px solid red;\n"
+      "  padding: 5px 0 1px 0;"
+      "  margin: 1px;"
+      "}";
+
+  Css::Parser parser(kCss);
+  std::unique_ptr<Css::Stylesheet> stylesheet(parser.ParseStylesheet());
+  GoogleString minified;
+  StringWriter writer(&minified);
+
+  EXPECT_TRUE(CssMinify::Stylesheet(*stylesheet, &writer, &handler_));
+  EXPECT_STREQ(".view_all a{display:block;margin:1px}", minified);
+}
+
 }  // namespace
 }  // namespace net_instaweb

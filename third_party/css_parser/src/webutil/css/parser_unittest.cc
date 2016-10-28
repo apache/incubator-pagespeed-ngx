@@ -1122,8 +1122,7 @@ TEST_F(ParserTest, declarations) {
   a.reset(new Parser(
       "{font-size: #333; color:red"));
   t.reset(a->ParseDeclarations());
-  ASSERT_EQ(1, t->size());
-  EXPECT_EQ(Property::COLOR, t->get(0)->prop());
+  ASSERT_EQ(0, t->size());
 
   a.reset(new Parser(
       "{font-size: #333; color:red"));
@@ -1134,8 +1133,7 @@ TEST_F(ParserTest, declarations) {
   a.reset(new Parser(
       "font-size {background: #333; color:red"));
   t.reset(a->ParseDeclarations());
-  ASSERT_EQ(1, t->size());
-  EXPECT_EQ(Property::COLOR, t->get(0)->prop());
+  EXPECT_EQ(0, t->size());
 
   a.reset(new Parser(
       "font-size {background: #333; color:red"));
@@ -1157,9 +1155,8 @@ TEST_F(ParserTest, declarations) {
   a.reset(new Parser(
       "top:1px; {font-size: #333; color:red}"));
   t.reset(a->ParseDeclarations());
-  ASSERT_EQ(2, t->size());
+  ASSERT_EQ(1, t->size());
   EXPECT_EQ(Property::TOP, t->get(0)->prop());
-  EXPECT_EQ(Property::COLOR, t->get(1)->prop());
 
   a.reset(new Parser(
       "top:1px; {font-size: #333; color:red}"));
@@ -1167,6 +1164,25 @@ TEST_F(ParserTest, declarations) {
   t.reset(a->ParseDeclarations());
   ASSERT_EQ(1, t->size());
   EXPECT_EQ(Property::TOP, t->get(0)->prop());
+
+  // First, the unterminated string should be closed at the new line.
+  // A string at the start of a declaration is yet-another parse error,
+  // so the recovery should skip to the first ';' after the string end,
+  // which would be the one after height: (since the one after the width is
+  // inside the string).
+  a.reset(new Parser("display:block; 'width: 100%;\n height: 100%; color:red"));
+  t.reset(a->ParseDeclarations());
+  ASSERT_EQ(2, t->size());
+  EXPECT_EQ(Property::DISPLAY, t->get(0)->prop());
+  EXPECT_EQ(Property::COLOR, t->get(1)->prop());
+
+  // Make sure we count {} when doing recovery
+  a.reset(new Parser(
+      "display:block; 'width: 100%;\n {height: 100%; color:red}; top: 1px"));
+  t.reset(a->ParseDeclarations());
+  ASSERT_EQ(2, t->size());
+  EXPECT_EQ(Property::DISPLAY, t->get(0)->prop());
+  EXPECT_EQ(Property::TOP, t->get(1)->prop());
 }
 
 TEST_F(ParserTest, illegal_constructs) {

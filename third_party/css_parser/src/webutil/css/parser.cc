@@ -1752,16 +1752,25 @@ Declarations* Parser::ParseRawDeclarations() {
     SkipSpace();
     if (ignore_this_decl) {  // on bad syntax, we skip till the next declaration
       errors_seen_mask_ |= kDeclarationError;
+
+      // This is basically like SkipPastDelimiter except we also terminate
+      // on an unmatched }
       while (in_ < end_ && *in_ != ';' && *in_ != '}') {
-        // IE (and IE only) ignores {} blocks in quirks mode.
-        if (*in_ == '{' && !quirks_mode_) {
-          // Move past this delimiter so that we don't double count it.
-          in_++;
-          SkipPastDelimiter('}');
-        } else {
-          in_++;
-          SkipSpace();
+        switch (*in_) {
+          // Properly match and skip over nested {}, [] and ().
+          case '{':
+          case '[':
+          case '(':
+            // Ignore result.
+            SkipMatching();
+            break;
+          // Skip over all other tokens.
+          default:
+            // Ignore whatever there is to parse.
+            SkipNextToken();
+            break;
         }
+        SkipSpace();  // make sure we see } and ;, not SkipNextToken
       }
       if (preservation_mode_) {
         // Add pseudo-declaration of verbatim text because we failed to parse
