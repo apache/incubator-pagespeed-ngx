@@ -21,16 +21,20 @@
 
 #include <cstddef>
 
+#include <unordered_map>
+#include <vector>
+
+#include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class Statistics;
 class Variable;
 
@@ -62,15 +66,26 @@ class CacheBatcher : public CacheInterface {
   // indicated that the best value was '1'.
   static const int kDefaultMaxParallelLookups = 1;
 
-  // We batch up cache lookups until outstanding ones are complete.
-  // However, we bound the queue size in order to avoid exhausting
-  // memory.  When the thread queues are saturated, we drop the
-  // requests, calling the callback immediately with kNotFound.
-  static const size_t kDefaultMaxQueueSize = 1000;
+  // We batch up cache lookups until outstanding ones are complete.  However, we
+  // bound the number of pending lookups in order to avoid exhausting memory.
+  // When the "queues" are saturated, we drop the requests, calling the callback
+  // immediately with kNotFound.
+  static const size_t kDefaultMaxPendingGets = 1000;
+
+  struct Options {
+    Options()
+        : max_parallel_lookups(kDefaultMaxParallelLookups),
+          max_pending_gets(kDefaultMaxPendingGets) {
+    }
+
+    int max_parallel_lookups;
+    int max_pending_gets;
+    // Copy-construction and assign are allowed.
+  };
 
   // Does not take ownership of the cache. Takes ownership of the mutex.
-  CacheBatcher(CacheInterface* cache, AbstractMutex* mutex,
-               Statistics* statistics);
+  CacheBatcher(const Options& options, CacheInterface* cache,
+               AbstractMutex* mutex, Statistics* statistics);
   virtual ~CacheBatcher();
 
   // Startup-time (pre-construction) initialization of statistics
@@ -88,30 +103,48 @@ class CacheBatcher : public CacheInterface {
   // however it is still functional so pass on the bit.
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
 
-  int last_batch_size() const { return last_batch_size_; }  // for testing
-  void set_max_queue_size(size_t n) { max_queue_size_ = n; }
-  void set_max_parallel_lookups(size_t n) { max_parallel_lookups_ = n; }
-
-  int Pending();  // This is used to help synchronize tests.
-
   virtual bool IsHealthy() const { return cache_->IsHealthy(); }
   virtual void ShutDown();
 
  private:
-  class Group;
-  class BatcherCallback;
+  typedef std::unordered_map<GoogleString, std::vector<Callback*>> CallbackMap;
 
+  class Group;
+  class MultiCallback;
+
+  bool CanIssueGet() const EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  bool CanQueueCallback() const EXCLUSIVE_LOCKS_REQUIRED(mutex_);
   void GroupComplete();
-  bool CanIssueGet() const;  // must be called with mutex_ held.
+
+  MultiGetRequest* ConvertMapToRequest(const CallbackMap& map)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  MultiGetRequest* CreateRequestForQueuedKeys()
+      EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  void MoveQueuedKeys() EXCLUSIVE_LOCKS_REQUIRED(mutex_);
+  void ExtractInFlightKeys(const GoogleString& key,
+                   std::vector<CacheInterface::Callback*>* callbacks)
+      LOCKS_EXCLUDED(mutex_);
+
+  void DecrementInFlightGets(int n) LOCKS_EXCLUDED(mutex_);
+
+  // For testing use only (instrumentation, synchronization).
+  friend class CacheBatcherTestingPeer;
+  int last_batch_size() const LOCKS_EXCLUDED(mutex_);
+  int num_in_flight_keys() LOCKS_EXCLUDED(mutex_);
 
   CacheInterface* cache_;
-  scoped_ptr<AbstractMutex> mutex_;
-  MultiGetRequest queue_;
-  int last_batch_size_;
-  int pending_;
-  int max_parallel_lookups_;
-  size_t max_queue_size_;  // size_t so it can be compared to queue_.size().
   Variable* dropped_gets_;
+  Variable* coalesced_gets_;
+  Variable* queued_gets_;
+  CallbackMap in_flight_ GUARDED_BY(mutex_);
+  int last_batch_size_ GUARDED_BY(mutex_);
+  scoped_ptr<AbstractMutex> mutex_;
+  int num_in_flight_groups_ GUARDED_BY(mutex_);
+  int num_in_flight_keys_ GUARDED_BY(mutex_);
+  int num_pending_gets_ GUARDED_BY(mutex_);
+  const Options options_;
+  CallbackMap queued_ GUARDED_BY(mutex_);
+  bool shutdown_ GUARDED_BY(mutex_);
 
   DISALLOW_COPY_AND_ASSIGN(CacheBatcher);
 };

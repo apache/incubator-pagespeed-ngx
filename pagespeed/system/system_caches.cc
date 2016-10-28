@@ -178,14 +178,16 @@ SystemCaches::ConstructExternalCacheInterfacesFromBlocking(
                                 factory_->statistics());
   factory_->TakeOwnership(result.async);
 
+  CacheBatcher::Options options;
+  if (batcher_max_parallel_lookups != -1) {
+    options.max_parallel_lookups = batcher_max_parallel_lookups;
+  }
   CacheBatcher* batcher = new CacheBatcher(
+      options,
       result.async,
       factory_->thread_system()->NewMutex(),
       factory_->statistics());
   factory_->TakeOwnership(batcher);
-  if (batcher_max_parallel_lookups != -1) {
-    batcher->set_max_parallel_lookups(batcher_max_parallel_lookups);
-  }
   result.async = batcher;
 
   // Populate the blocking interface, giving it its own

@@ -18,7 +18,9 @@
 
 #include "pagespeed/kernel/cache/cache_batcher.h"
 
+#include <utility>
 
+#include "base/logging.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/atomic_int32.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -26,11 +28,12 @@
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/cache/cache_interface.h"
-#include "pagespeed/kernel/cache/delegating_cache_callback.h"
 
 namespace {
 
 const char kDroppedGets[] = "cache_batcher_dropped_gets";
+const char kCoalescedGets[] = "cache_batcher_coalesced_gets";
+const char kQueuedGets[] = "cache_batcher_queued_gets";
 
 }  // namespace
 
@@ -60,36 +63,86 @@ class CacheBatcher::Group {
   DISALLOW_COPY_AND_ASSIGN(Group);
 };
 
-class CacheBatcher::BatcherCallback : public DelegatingCacheCallback {
+class CacheBatcher::MultiCallback : public CacheInterface::Callback {
  public:
-  BatcherCallback(CacheInterface::Callback* callback, Group* group)
-      : DelegatingCacheCallback(callback),
+  MultiCallback(CacheBatcher* batcher, Group* group)
+      : batcher_(batcher),
         group_(group) {
   }
 
-  virtual ~BatcherCallback() {}
+  ~MultiCallback() override {
+  }
 
-  virtual void Done(CacheInterface::KeyState state) {
+  bool ValidateCandidate(
+      const GoogleString& key, CacheInterface::KeyState state) override {
+    if (saved_.empty()) {
+      std::vector<CacheInterface::Callback*> callbacks;
+      batcher_->ExtractInFlightKeys(key, &callbacks);
+      DCHECK(!callbacks.empty());
+      saved_.reserve(callbacks.size());
+      for (Callback* callback : callbacks) {
+        saved_.emplace_back(callback, false /* available */, state);
+      }
+    }
+
+    bool all_succeed = true;
+    for (auto& record : saved_) {
+      if (!record.available) {
+        Callback* callback = record.callback;
+        CacheInterface::KeyState tmp_state = state;
+        callback->set_value(value());
+        if (!callback->DelegatedValidateCandidate(key, state)) {
+          all_succeed = false;
+          tmp_state = CacheInterface::kNotFound;
+        }
+        record.available = tmp_state == CacheInterface::kAvailable;
+        record.state = tmp_state;
+      }
+    }
+    return all_succeed;
+  }
+
+  void Done(CacheInterface::KeyState state) override {
     Group* group = group_;
-    DelegatingCacheCallback::Done(state);  // deletes this.
+    batcher_->DecrementInFlightGets(saved_.size());
+    for (const auto& record : saved_) {
+      record.callback->DelegatedDone(record.state);
+    }
+    delete this;
     group->Done();
   }
 
  private:
+  CacheBatcher* batcher_;
   Group* group_;
+  struct CallbackRecord {
+    CallbackRecord(Callback* callback, bool available, KeyState state)
+        : callback(callback),
+          available(available),
+          state(state) {
+    }
+    Callback* callback;
+    bool available;
+    KeyState state;
+  };
+  std::vector<CallbackRecord> saved_;
 
-  DISALLOW_COPY_AND_ASSIGN(BatcherCallback);
+  DISALLOW_COPY_AND_ASSIGN(MultiCallback);
 };
 
-CacheBatcher::CacheBatcher(CacheInterface* cache, AbstractMutex* mutex,
-                           Statistics* statistics)
+CacheBatcher::CacheBatcher(const Options& options, CacheInterface* cache,
+                           AbstractMutex* mutex, Statistics* statistics)
     : cache_(cache),
-      mutex_(mutex),
+      dropped_gets_(statistics->GetVariable(kDroppedGets)),
+      coalesced_gets_(statistics->GetVariable(kCoalescedGets)),
+      queued_gets_(statistics->GetVariable(kQueuedGets)),
       last_batch_size_(-1),
-      pending_(0),
-      max_parallel_lookups_(kDefaultMaxParallelLookups),
-      max_queue_size_(kDefaultMaxQueueSize),
-      dropped_gets_(statistics->GetVariable(kDroppedGets)) {
+      mutex_(mutex),
+      num_in_flight_groups_(0),
+      num_in_flight_keys_(0),
+      num_pending_gets_(0),
+      options_(options),
+      shutdown_(false) {
 }
 
 CacheBatcher::~CacheBatcher() {
@@ -103,15 +156,22 @@ GoogleString CacheBatcher::FormatName(StringPiece cache, int parallelism,
 }
 
 GoogleString CacheBatcher::Name() const {
-  return FormatName(cache_->Name(), max_parallel_lookups_, max_queue_size_);
+  return FormatName(cache_->Name(), options_.max_parallel_lookups,
+                    options_.max_pending_gets);
 }
 
 void CacheBatcher::InitStats(Statistics* statistics) {
   statistics->AddVariable(kDroppedGets);
+  statistics->AddVariable(kCoalescedGets);
+  statistics->AddVariable(kQueuedGets);
 }
 
 bool CacheBatcher::CanIssueGet() const {
-  return (pending_ < max_parallel_lookups_);
+  return !shutdown_ && num_in_flight_groups_ < options_.max_parallel_lookups;
+}
+
+bool CacheBatcher::CanQueueCallback() const {
+  return !shutdown_ && num_pending_gets_ < options_.max_pending_gets;
 }
 
 void CacheBatcher::Get(const GoogleString& key, Callback* callback) {
@@ -120,18 +180,36 @@ void CacheBatcher::Get(const GoogleString& key, Callback* callback) {
   {
     ScopedMutex mutex(mutex_.get());
 
+    // Determine if a lookup of this key is already in flight (and this callback
+    // should be added to the list of in-flight callbacks under that key), can
+    // be issued immediately, should be "queued", or should be dropped.
+    bool can_queue = CanQueueCallback();
+    if (can_queue) {
+      auto iter = in_flight_.find(key);
+      if (iter != in_flight_.end()) {
+        iter->second.push_back(callback);
+        ++num_pending_gets_;
+        coalesced_gets_->Add(1);
+        return;
+      }
+    }
     if (CanIssueGet()) {
       immediate = true;
-      ++pending_;
-    } else if (queue_.size() >= max_queue_size_) {
-      drop_get = true;
+      ++num_in_flight_groups_;
+      ++num_pending_gets_;
+      ++num_in_flight_keys_;
+      in_flight_[key].push_back(callback);
+    } else if (can_queue) {
+      queued_[key].push_back(callback);
+      queued_gets_->Add(1);
+      ++num_pending_gets_;
     } else {
-      queue_.push_back(KeyCallback(key, callback));
+      drop_get = true;
     }
   }
   if (immediate) {
     Group* group = new Group(this, 1);
-    callback = new BatcherCallback(callback, group);
+    callback = new MultiCallback(this, group);
     cache_->Get(key, callback);
   } else if (drop_get) {
     ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
@@ -141,23 +219,59 @@ void CacheBatcher::Get(const GoogleString& key, Callback* callback) {
 
 void CacheBatcher::GroupComplete() {
   MultiGetRequest* request = NULL;
-
   {
     ScopedMutex mutex(mutex_.get());
-    if (queue_.empty()) {
-      --pending_;
+    if (queued_.empty()) {
+      --num_in_flight_groups_;
       return;
     }
-    request = new MultiGetRequest;
-    last_batch_size_ = queue_.size();
-    request->swap(queue_);
-  }
-  Group* group = new Group(this, request->size());
-  for (int i = 0, n = request->size(); i < n; ++i) {
-    (*request)[i].callback = new BatcherCallback((*request)[i].callback,
-                                                 group);
+    last_batch_size_ = queued_.size();
+    request = CreateRequestForQueuedKeys();
   }
   cache_->MultiGet(request);
+}
+
+CacheBatcher::MultiGetRequest* CacheBatcher::CreateRequestForQueuedKeys() {
+  MultiGetRequest* request = ConvertMapToRequest(queued_);
+  MoveQueuedKeys();
+  return request;
+}
+
+void CacheBatcher::MoveQueuedKeys() {
+  num_in_flight_keys_ += queued_.size();
+  for (const auto& pair : queued_) {
+    const GoogleString& key = pair.first;
+    const std::vector<Callback*>& src_callbacks = pair.second;
+    bool inserted;
+
+    std::tie(std::ignore, inserted) = in_flight_.emplace(key, src_callbacks);
+    // It should be impossible to have both in_flight_[key] and queued_[key]
+    // exist and be nonempty simultaneously.
+    DCHECK(inserted);
+  }
+  queued_.clear();
+}
+
+CacheBatcher::MultiGetRequest* CacheBatcher::ConvertMapToRequest(
+    const CallbackMap &map) {
+  Group* group = new Group(this, map.size());
+  MultiGetRequest* request = new MultiGetRequest();
+  for (const auto& pair : map) {
+    const GoogleString& key = pair.first;
+    request->emplace_back(key, new MultiCallback(this, group));
+  }
+
+  return request;
+}
+
+void CacheBatcher::ExtractInFlightKeys(
+    const GoogleString& key,
+    std::vector<CacheInterface::Callback*>* callbacks) {
+  ScopedMutex mutex(mutex_.get());
+  auto iter = in_flight_.find(key);
+  CHECK(iter != in_flight_.end());
+  iter->second.swap(*callbacks);
+  in_flight_.erase(iter);
 }
 
 void CacheBatcher::Put(const GoogleString& key, const SharedString& value) {
@@ -168,22 +282,34 @@ void CacheBatcher::Delete(const GoogleString& key) {
   cache_->Delete(key);
 }
 
-int CacheBatcher::Pending() {
+void CacheBatcher::DecrementInFlightGets(int n) {
   ScopedMutex mutex(mutex_.get());
-  return pending_;
+  num_pending_gets_ -= n;
+  --num_in_flight_keys_;
+}
+
+int CacheBatcher::last_batch_size() const {
+  ScopedMutex mutex(mutex_.get());
+  return last_batch_size_;
+}
+
+int CacheBatcher::num_in_flight_keys() {
+  ScopedMutex mutex(mutex_.get());
+  return num_in_flight_keys_;
 }
 
 void CacheBatcher::ShutDown() {
-  MultiGetRequest* request = NULL;
+  MultiGetRequest* request = nullptr;
   {
     ScopedMutex mutex(mutex_.get());
-    if (!queue_.empty()) {
-      request = new MultiGetRequest;
-      request->swap(queue_);
+    shutdown_ = true;
+    if (!queued_.empty()) {
+      request = ConvertMapToRequest(queued_);
+      queued_.clear();
     }
   }
 
-  if (request != NULL) {
+  if (request != nullptr) {
     ReportMultiGetNotFound(request);
   }
   cache_->ShutDown();
