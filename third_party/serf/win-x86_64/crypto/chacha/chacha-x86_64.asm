@@ -1091,10 +1091,10 @@ $L$ChaCha20_8x:
 
 
 
-	vbroadcasti128	ymm11,YMMWORD[$L$sigma]
-	vbroadcasti128	ymm3,YMMWORD[rcx]
-	vbroadcasti128	ymm15,YMMWORD[16+rcx]
-	vbroadcasti128	ymm7,YMMWORD[r8]
+	vbroadcasti128	ymm11,XMMWORD[$L$sigma]
+	vbroadcasti128	ymm3,XMMWORD[rcx]
+	vbroadcasti128	ymm15,XMMWORD[16+rcx]
+	vbroadcasti128	ymm7,XMMWORD[r8]
 	lea	rcx,[256+rsp]
 	lea	rax,[512+rsp]
 	lea	r10,[$L$rot16]
@@ -1161,7 +1161,7 @@ $L$oop_outer8x:
 $L$oop_enter8x:
 	vmovdqa	YMMWORD[64+rsp],ymm14
 	vmovdqa	YMMWORD[96+rsp],ymm15
-	vbroadcasti128	ymm15,YMMWORD[r10]
+	vbroadcasti128	ymm15,XMMWORD[r10]
 	vmovdqa	YMMWORD[(512-512)+rax],ymm4
 	mov	eax,10
 	jmp	NEAR $L$oop8x
@@ -1179,7 +1179,7 @@ $L$oop8x:
 	vpslld	ymm14,ymm0,12
 	vpsrld	ymm0,ymm0,20
 	vpor	ymm0,ymm14,ymm0
-	vbroadcasti128	ymm14,YMMWORD[r11]
+	vbroadcasti128	ymm14,XMMWORD[r11]
 	vpaddd	ymm13,ymm13,ymm5
 	vpxor	ymm1,ymm13,ymm1
 	vpslld	ymm15,ymm1,12
@@ -1196,7 +1196,7 @@ $L$oop8x:
 	vpslld	ymm15,ymm0,7
 	vpsrld	ymm0,ymm0,25
 	vpor	ymm0,ymm15,ymm0
-	vbroadcasti128	ymm15,YMMWORD[r10]
+	vbroadcasti128	ymm15,XMMWORD[r10]
 	vpaddd	ymm13,ymm13,ymm5
 	vpxor	ymm1,ymm13,ymm1
 	vpslld	ymm14,ymm1,7
@@ -1217,7 +1217,7 @@ $L$oop8x:
 	vpslld	ymm14,ymm2,12
 	vpsrld	ymm2,ymm2,20
 	vpor	ymm2,ymm14,ymm2
-	vbroadcasti128	ymm14,YMMWORD[r11]
+	vbroadcasti128	ymm14,XMMWORD[r11]
 	vpaddd	ymm13,ymm13,ymm7
 	vpxor	ymm3,ymm13,ymm3
 	vpslld	ymm15,ymm3,12
@@ -1234,7 +1234,7 @@ $L$oop8x:
 	vpslld	ymm15,ymm2,7
 	vpsrld	ymm2,ymm2,25
 	vpor	ymm2,ymm15,ymm2
-	vbroadcasti128	ymm15,YMMWORD[r10]
+	vbroadcasti128	ymm15,XMMWORD[r10]
 	vpaddd	ymm13,ymm13,ymm7
 	vpxor	ymm3,ymm13,ymm3
 	vpslld	ymm14,ymm3,7
@@ -1251,7 +1251,7 @@ $L$oop8x:
 	vpslld	ymm14,ymm1,12
 	vpsrld	ymm1,ymm1,20
 	vpor	ymm1,ymm14,ymm1
-	vbroadcasti128	ymm14,YMMWORD[r11]
+	vbroadcasti128	ymm14,XMMWORD[r11]
 	vpaddd	ymm13,ymm13,ymm4
 	vpxor	ymm2,ymm13,ymm2
 	vpslld	ymm15,ymm2,12
@@ -1268,7 +1268,7 @@ $L$oop8x:
 	vpslld	ymm15,ymm1,7
 	vpsrld	ymm1,ymm1,25
 	vpor	ymm1,ymm15,ymm1
-	vbroadcasti128	ymm15,YMMWORD[r10]
+	vbroadcasti128	ymm15,XMMWORD[r10]
 	vpaddd	ymm13,ymm13,ymm4
 	vpxor	ymm2,ymm13,ymm2
 	vpslld	ymm14,ymm2,7
@@ -1289,7 +1289,7 @@ $L$oop8x:
 	vpslld	ymm14,ymm3,12
 	vpsrld	ymm3,ymm3,20
 	vpor	ymm3,ymm14,ymm3
-	vbroadcasti128	ymm14,YMMWORD[r11]
+	vbroadcasti128	ymm14,XMMWORD[r11]
 	vpaddd	ymm13,ymm13,ymm6
 	vpxor	ymm0,ymm13,ymm0
 	vpslld	ymm15,ymm0,12
@@ -1306,7 +1306,7 @@ $L$oop8x:
 	vpslld	ymm15,ymm3,7
 	vpsrld	ymm3,ymm3,25
 	vpor	ymm3,ymm15,ymm3
-	vbroadcasti128	ymm15,YMMWORD[r10]
+	vbroadcasti128	ymm15,XMMWORD[r10]
 	vpaddd	ymm13,ymm13,ymm6
 	vpxor	ymm0,ymm13,ymm0
 	vpslld	ymm14,ymm0,7
