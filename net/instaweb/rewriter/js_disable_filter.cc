@@ -173,9 +173,9 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
             driver()->MakeName(HtmlName::kType), "text/psajs",
             HtmlElement::DOUBLE_QUOTE);
       }
-      element->AddAttribute(driver()->MakeName(HtmlName::kOrigIndex),
-                            IntegerToString(index_++),
-                            HtmlElement::DOUBLE_QUOTE);
+      element->AddAttribute(
+          driver()->MakeName(HtmlName::kDataPagespeedOrigIndex),
+          IntegerToString(index_++), HtmlElement::DOUBLE_QUOTE);
     }
   }
 

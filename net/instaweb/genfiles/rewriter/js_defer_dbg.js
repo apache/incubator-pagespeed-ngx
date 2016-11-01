@@ -98,7 +98,7 @@ deferJsNs.DeferJs.PSA_SCRIPT_TYPE = "text/psajs";
 deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE = "text/prioritypsajs";
 deferJsNs.DeferJs.PSA_ORIG_TYPE = "data-pagespeed-orig-type";
 deferJsNs.DeferJs.PSA_ORIG_SRC = "data-pagespeed-orig-src";
-deferJsNs.DeferJs.PSA_ORIG_INDEX = "orig_index";
+deferJsNs.DeferJs.PSA_ORIG_INDEX = "data-pagespeed-orig-index";
 deferJsNs.DeferJs.PAGESPEED_ONLOAD = "data-pagespeed-onload";
 deferJsNs.DeferJs.prototype.log = function(a, b) {
   this.logs && (this.logs.push("" + a), b && (this.logs.push(b.message), "undefined" != typeof console && "undefined" != typeof console.log && console.log("PSA ERROR: " + a + b.message)));
@@ -164,7 +164,7 @@ deferJsNs.DeferJs.prototype.cloneScriptNode = function(a) {
   var b = this.origCreateElement_.call(document, "script");
   if (a) {
     for (var c = a.attributes, d = c.length - 1;0 <= d;--d) {
-      "type" != c[d].name && "src" != c[d].name && "async" != c[d].name && "defer" != c[d].name && "data-pagespeed-orig-type" != c[d].name && "data-pagespeed-orig-src" != c[d].name && "orig_index" != c[d].name && "psa_current_node" != c[d].name && c[d].name != this.psaNotProcessed_ && (b.setAttribute(c[d].name, c[d].value), a.removeAttribute(c[d].name));
+      "type" != c[d].name && "src" != c[d].name && "async" != c[d].name && "defer" != c[d].name && "data-pagespeed-orig-type" != c[d].name && "data-pagespeed-orig-src" != c[d].name && "data-pagespeed-orig-index" != c[d].name && "psa_current_node" != c[d].name && c[d].name != this.psaNotProcessed_ && (b.setAttribute(c[d].name, c[d].value), a.removeAttribute(c[d].name));
     }
   }
   return b;
@@ -563,7 +563,7 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(a, b) {
     this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED;
     for (var c = document.getElementsByTagName("script"), d = c.length, g = 0;g < d;++g) {
       var e = this.queue_.length == this.next_, f = c[g];
-      f.getAttribute("type") == this.psaScriptType_ && (a ? f.getAttribute("orig_index") <= this.optLastIndex_ && this.addNode(f, void 0, !e) : (f.getAttribute("orig_index") < this.optLastIndex_ && this.log("Executing a script twice. Orig_Index: " + f.getAttribute("orig_index"), Error("")), this.addNode(f, void 0, !e)));
+      f.getAttribute("type") == this.psaScriptType_ && (a ? f.getAttribute("data-pagespeed-orig-index") <= this.optLastIndex_ && this.addNode(f, void 0, !e) : (f.getAttribute("data-pagespeed-orig-index") < this.optLastIndex_ && this.log("Executing a script twice. Orig_Index: " + f.getAttribute("data-pagespeed-orig-index"), Error("")), this.addNode(f, void 0, !e)));
     }
   }
 };
