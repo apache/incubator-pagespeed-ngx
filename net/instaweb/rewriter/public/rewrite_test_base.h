@@ -241,7 +241,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // Use managed rewrite drivers for the test so that we see the same behavior
   // in tests that we see in real servers. By default, tests use unmanaged
   // drivers so that _test.cc files can add options after the driver was created
-  // and before the filters are added.
+  // and before the filters are added.  Note that this will only clean them up
+  // via shutdown codepath if you don't actually use them, unless an explicit
+  // Cleanup() call is made.
   void SetUseManagedRewriteDrivers(bool use_managed_rewrite_drivers);
 
   GoogleString CssLinkHref(const StringPiece& url) {

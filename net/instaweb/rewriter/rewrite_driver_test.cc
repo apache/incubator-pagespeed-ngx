@@ -2146,10 +2146,18 @@ TEST_F(RewriteDriverTest, SetRequestHeadersPopulatesWebpNoAccept) {
 // rewritten in the very first go.
 class DownstreamCacheWithPossiblePurgeTest : public RewriteDriverTest {
  protected:
-  void SetUp() {
+  void SetUp() override {
     options()->EnableFilter(RewriteOptions::kExtendCacheCss);
     SetUseManagedRewriteDrivers(true);
     RewriteDriverTest::SetUp();
+  }
+
+  void TearDown() override {
+    // We need to clean up the other rewrite driver manually since we don't
+    // parse anything through it --- NewRewriteDriver is called, but nothing
+    // else is done otherwise.
+    other_rewrite_driver()->Cleanup();
+    RewriteDriverTest::TearDown();
   }
 };
 
@@ -2158,10 +2166,18 @@ class DownstreamCacheWithPossiblePurgeTest : public RewriteDriverTest {
 // in the very first go.
 class DownstreamCacheWithNoPossiblePurgeTest : public RewriteDriverTest {
  protected:
-  void SetUp() {
+  void SetUp() override {
     options()->EnableFilter(RewriteOptions::kCollapseWhitespace);
     SetUseManagedRewriteDrivers(true);
     RewriteDriverTest::SetUp();
+  }
+
+  void TearDown() override {
+    // We need to clean up the other rewrite driver manually since we don't
+    // parse anything through it --- NewRewriteDriver is called, but nothing
+    // else is done otherwise.
+    other_rewrite_driver()->Cleanup();
+    RewriteDriverTest::TearDown();
   }
 };
 
