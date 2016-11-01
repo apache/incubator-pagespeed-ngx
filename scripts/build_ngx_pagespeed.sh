@@ -376,7 +376,7 @@ $(cat /etc/redhat-release) Expected 5 or 6."
       fail "
 This doesn't appear to be a deb-based distro or an rpm-based one.  Not going to
 be able to install dependencies.  Please install dependencies manually and rerun
-with --depsinstalled."
+with --no-deps-check."
     fi
     echo "Dependencies are all set."
   else
@@ -524,7 +524,9 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     echo "You'll also need to configure ngx_pagespeed if you haven't yet:"
     echo "  https://developers.google.com/speed/pagespeed/module/configuration"
   fi
-  "$DRYRUN" && echo "[this was a dry run; your system is unchanged]"
+  if "$DRYRUN"; then
+    echo "[this was a dry run; your system is unchanged]"
+  fi
 }
 
 # Start running things from a call at the end so if this script is executed
