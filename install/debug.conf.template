@@ -875,7 +875,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #REMOTE_CONFIG   ServerName remote-config.example.com
 #REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
 #REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
-#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT1@@/remote.cfg"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport1"
 #REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
 #REMOTE_CONFIG </VirtualHost>
 #REMOTE_CONFIG
@@ -883,7 +883,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #REMOTE_CONFIG   ServerName remote-config-partially-invalid.example.com
 #REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
 #REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
-#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT2@@/remote.cfg"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport2"
 #REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
 #REMOTE_CONFIG </VirtualHost>
 #REMOTE_CONFIG
@@ -891,7 +891,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #REMOTE_CONFIG   ServerName remote-config-invalid.example.com
 #REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
 #REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
-#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT3@@/remote.cfg"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport3"
 #REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
 #REMOTE_CONFIG </VirtualHost>
 #REMOTE_CONFIG
@@ -899,7 +899,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #REMOTE_CONFIG   ServerName remote-config-out-of-scope.example.com
 #REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
 #REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
-#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT4@@/remote.cfg"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport4"
 #REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
 #REMOTE_CONFIG </VirtualHost>
 #REMOTE_CONFIG
@@ -907,7 +907,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #REMOTE_CONFIG   ServerName remote-config-failed-fetch.example.com
 #REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
 #REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
-#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT5@@/remote.cfg"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport5"
 #REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
 #REMOTE_CONFIG </VirtualHost>
 #REMOTE_CONFIG
@@ -915,7 +915,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #REMOTE_CONFIG   ServerName remote-config-slow-fetch.example.com
 #REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
 #REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
-#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT6@@/remote.cfg"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport6"
 #REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
 #REMOTE_CONFIG </VirtualHost>
 #REMOTE_CONFIG
@@ -930,9 +930,43 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #REMOTE_CONFIG   ServerName remote-config-experiment.example.com
 #REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
 #REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
-#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT7@@/remote.cfg"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport7"
 #REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
 #REMOTE_CONFIG </VirtualHost>
+#REMOTE_CONFIG
+#REMOTE_CONFIG <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+#REMOTE_CONFIG   ServerName remote-config-slightly-slow-fetch.example.com
+#REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport8"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
+#REMOTE_CONFIG </VirtualHost>
+#REMOTE_CONFIG
+#REMOTE_CONFIG <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+#REMOTE_CONFIG   ServerName remote-config-slightly-slow-expired-fetch.example.com
+#REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport9"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
+#REMOTE_CONFIG </VirtualHost>
+#REMOTE_CONFIG
+#REMOTE_CONFIG <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+#REMOTE_CONFIG   ServerName remote-config-forbidden.example.com
+#REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport10"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
+#REMOTE_CONFIG </VirtualHost>
+#REMOTE_CONFIG
+#REMOTE_CONFIG <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+#REMOTE_CONFIG   ServerName remote-config-initially-forbidden.example.com
+#REMOTE_CONFIG   DocumentRoot "@@APACHE_DOC_ROOT@@"
+#REMOTE_CONFIG   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationUrl "http://127.0.0.1:@@RCPORT@@/rcport11"
+#REMOTE_CONFIG   ModPagespeedRemoteConfigurationTimeoutMs 1500
+#REMOTE_CONFIG </VirtualHost>
+#REMOTE_CONFIG
+
 
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName uses-sendfile.example.com

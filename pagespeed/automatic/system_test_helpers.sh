@@ -760,27 +760,6 @@ function generate_url {
   echo $RESULT
 }
 
-# Kills the process listening on port passed in.
-function kill_port {
-  PORT="$1"
-  PID="$(lsof -i:$PORT -t -s TCP:LISTEN)" || true
-  if [ "$PID" != "" ]; then
-    kill -9 $PID
-  fi
-}
-
-# Kills the process listening on a port if the name matches the first argument.
-# usage:
-# kill_listener_port program_name port
-function kill_listener_port {
-  CMDLINE="$1"
-  PORT="$2"
-  PIDS="$(lsof -t -i TCP:${PORT} -s TCP:LISTEN -a -c "/^${CMDLINE}$/")" || true
-  if [ "$PIDS" != "" ]; then
-    kill -9 $PIDS
-  fi
-}
-
 # Performs timed reads on the output from a command passed via $1. The stream
 # will be interpreted as a chunked http encoding. Each chunk will be allowed
 # at most threshold_sec ($2) seconds to be read or the function will fail. When
