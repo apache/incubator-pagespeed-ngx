@@ -84,13 +84,13 @@ run_test local_storage_cache
 run_test flatten_css_imports
 run_test insert_dns_prefetch
 run_test dedup_inlined_images
+run_test invalid_host_header
 
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   run_test cookie_options
   run_test sticky_cookie_options
   run_test signed_urls
   run_test redirect_with_ps_params
-  run_test invalid_host_header
   run_test optimize_to_webp
   run_test image_quality_and_response
   run_test follow_flushes
