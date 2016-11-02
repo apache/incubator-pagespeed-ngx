@@ -52,13 +52,11 @@ Options:
   -s, --psol-from-source
       Build PSOL from source instead of downloading a pre-built binary module.
 
-  -l, --devel <scratch_dir>
-      Sets up a development environment for ngx_pagespeed, building with
+  -l, --devel
+      Sets up a development environment in ngx_pagespeed/nginx, building with
       testing-only dependencies.  Includes --psol-from-source, conflicts with
       --nginx-version.  Uses a 'git clone' checkout for ngx_pagespeed and nginx
       instead of downloading a tarball.
-
-      <scratch_dir>: where to install the built version of nginx to.
 
   -t, --build-type
       When building PSOL from source, what to tell it for BUILD_TYPE.  Defaults
@@ -236,7 +234,8 @@ function gcc_too_old() {
 
 function continue_or_exit() {
   local prompt="$1"
-  read -p "$prompt [Y/n] " yn
+  echo_color "$YELLOW" -n "$prompt"
+  read -p " [Y/n] " yn
   if [[ "$yn" == N* || "$yn" == n* ]]; then
     echo "Cancelled."
     exit 0
@@ -378,7 +377,8 @@ function build_ngx_pagespeed() {
     PSOL_FROM_SOURCE=true
     BUILD_NGINX=true
     if [ -n "$NGINX_VERSION" ]; then
-      fail "The --devel argument conflicts with --nginx-version."
+      fail \
+"The --devel argument conflicts with --nginx.  In devel mode we use the version of nginx that's included as a submodule."
     fi
     if "$DYNAMIC_MODULE"; then
       fail "Can't currently build a dynamic module in --devel mode."
@@ -532,10 +532,12 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}"
   fi
 
+  install_dir="this-only-makes-sense-in-devel-mode"
   if "$USE_GIT_CHECKOUT"; then
     # We're either doing a --devel build, or someone is running us from an
     # existing git checkout.
     nps_module_dir="$PWD"
+    install_dir="$nps_module_dir"
     if "$ALREADY_CHECKED_OUT"; then
       run cd "$nps_module_dir"
     else
@@ -616,9 +618,8 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
   configure_args=("$add_module" "${extra_flags[@]}")
 
   if "$DEVEL"; then
-    install_dir="$BUILDDIR/nginx"
     configure_args=("${configure_args[@]}"
-                    "--prefix=$install_dir"
+                    "--prefix=$install_dir/nginx"
                     "--add-module=$submodules_dir/ngx_cache_purge"
                     "--add-module=$submodules_dir/ngx_devel_kit"
                     "--add-module=$submodules_dir/set-misc-nginx-module"
@@ -709,7 +710,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       echo "  TEST_SERF_FETCHER=true \\"
       echo "  test/run_tests.sh 8050 8051 \\"
       echo "    $MOD_PAGESPEED_DIR \\"
-      echo "    $BUILDDIR/nginx/sbin/nginx \\"
+      echo "    $install_dir/nginx/sbin/nginx \\"
       echo "    selfsigned.modpagespeed.com"
       echo
       echo "To rebuild after changes:"
@@ -717,7 +718,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       echo "    cd $MOD_PAGESPEED_DIR"
       echo "    scripts/rebuild_me_now.sh"  # this doesn't exist yet
       echo "  Then, whether or not you updated PSOL, rebuild nginx:"
-      echo "    cd $BUILDDIR/nginx"
+      echo "    cd $install_dir/nginx"
       echo "    make && make install"
     else
       continue_or_exit "Install nginx?"
