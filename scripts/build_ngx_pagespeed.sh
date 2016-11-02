@@ -546,11 +546,14 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       run git checkout "$tag_name"
     fi
     submodules_dir="$nps_module_dir/testing-dependencies"
-    status "Downloading dependencies..."
-    run git submodule update --init --recursive
+    if "$DEVEL"; then
+      status "Downloading dependencies..."
+      run git submodule update --init --recursive
+    fi
   else
     nps_baseurl="https://github.com/pagespeed/ngx_pagespeed/archive"
     nps_downloaded="$TEMPDIR/$nps_downloaded_fname.zip"
+    status "Downloading ngx_pagespeed..."
     run wget "$nps_baseurl/$tag_name.zip" -O "$nps_downloaded"
     nps_module_dir="$BUILDDIR/$nps_downloaded_fname"
     delete_if_already_exists "$nps_module_dir"
@@ -591,33 +594,35 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       # For past releases we have to grep it from the config file.  The url has
       # always looked like this, and the config file has contained it since
       # before we started tagging our ngx_pagespeed releases.
-      psol_url="$(grep -o
+      psol_url="$(grep -o \
           "https://dl.google.com/dl/page-speed/psol/[0-9.]*.tar.gz" config)"
       if [ -z "$psol_url" ]; then
         fail "Couldn't find PSOL url in $PWD/config"
       fi
     fi
 
+    status "Downloading PSOL binary..."
     run wget "$psol_url"
+
     status "Extracting PSOL..."
     run tar -xzf $(basename "$psol_url")  # extracts to psol/
   fi
 
   if "$DYNAMIC_MODULE"; then
-    add_module="--add-dynamic-module='$nps_module_dir'"
+    add_module="--add-dynamic-module=$nps_module_dir"
   else
-    add_module="--add-module='$nps_module_dir'"
+    add_module="--add-module=$nps_module_dir"
   fi
   configure_args=("$add_module" "${extra_flags[@]}")
 
   if "$DEVEL"; then
     install_dir="$BUILDDIR/nginx"
     configure_args=("${configure_args[@]}"
-                    "--prefix='$install_dir'"
-                    "--add-module='$submodules_dir/ngx_cache_purge'"
-                    "--add-module='$submodules_dir/ngx_devel_kit'"
-                    "--add-module='$submodules_dir/set-misc-nginx-module'"
-                    "--add-module='$submodules_dir/headers-more-nginx-module'"
+                    "--prefix=$install_dir"
+                    "--add-module=$submodules_dir/ngx_cache_purge"
+                    "--add-module=$submodules_dir/ngx_devel_kit"
+                    "--add-module=$submodules_dir/set-misc-nginx-module"
+                    "--add-module=$submodules_dir/headers-more-nginx-module"
                     "--with-ipv6"
                     "--with-http_v2_module")
     if [ "$BUILD_TYPE" = "Debug" ]; then
@@ -657,6 +662,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       # Download and build the specified nginx version.
       nginx_leaf="nginx-${NGINX_VERSION}.tar.gz"
       nginx_fname="$TEMPDIR/$nginx_leaf"
+      status "Downloading nginx..."
       run wget "http://nginx.org/download/$nginx_leaf" -O "$nginx_fname"
       nginx_dir="$BUILDDIR/nginx-${NGINX_VERSION}/"
       delete_if_already_exists "$nginx_dir"
