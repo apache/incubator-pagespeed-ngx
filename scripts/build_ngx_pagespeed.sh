@@ -5,7 +5,16 @@ function usage() {
 Usage: build_ngx_pagespeed.sh [options]
 
   Installs ngx_pagespeed and its dependencies.  Can optionally build and install
-  nginx as well.
+  nginx as well.  Can be run either as:
+
+     bash <(curl -f -L -sS https://ngxpagespeed.com/install) [options]
+
+  Or:
+
+     git clone git@github.com:pagespeed/ngx_pagespeed.git
+     cd ngx_pagespeed/
+     git checkout <branch>
+     scripts/build_ngx_pagespeed.sh [options]
 
 Options:
   -v, --ngx-pagespeed-version <ngx_pagespeed version>
@@ -16,6 +25,9 @@ Options:
 
       If you don't specify a version, defaults to latest-stable unless --devel
       is specified, in which case it defaults to trunk-tracking.
+
+      Doesn't make sense if we're running within an existing ngx_pagespeed
+      checkout.
 
   -n, --nginx-version <nginx version>
       What version of nginx to build.  If not set, this script only prepares the
@@ -332,8 +344,20 @@ function build_ngx_pagespeed() {
     esac
   done
 
+  USE_GIT_CHECKOUT="$DEVEL"
+  ALREADY_CHECKED_OUT=false
+  if [ -e PSOL_BINARY_URL ]; then
+    status "Detected that we're running in an existing ngx_pagespeed checkout."
+    USE_GIT_CHECKOUT=true
+    ALREADY_CHECKED_OUT=true
+  fi
 
-  if [ "$NPS_VERSION" = "DEFAULT" ]; then
+  if "$ALREADY_CHECKED_OUT"; then
+    if [ "$NPS_VERSION" != "DEFAULT" ]; then
+      fail \
+"The --ngx-pagespeed-version argument doesn't make sense when running within an existing checkout."
+    fi
+  elif [ "$NPS_VERSION" = "DEFAULT" ]; then
     if "$DEVEL"; then
       NPS_VERSION="trunk-tracking"
     else
@@ -474,9 +498,9 @@ This doesn't appear to be a deb-based distro or an rpm-based one.  Not going to
 be able to install dependencies.  Please install dependencies manually and rerun
 with --no-deps-check."
     fi
-    status "Dependencies are all set."
+    status "Operating system dependencies are all set."
   else
-    status "Not checking whether dependencies are installed."
+    status "Not checking whether operating system dependencies are installed."
   fi
 
   function delete_if_already_exists() {
@@ -508,17 +532,20 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}"
   fi
 
-  # In release mode we download a zipfile for ngx_pagespeed while in devel mode
-  # we use a git checkout.
-  if "$DEVEL"; then
-    nps_module_dir="$BUILDDIR/ngx_pagespeed"
+  if "$USE_GIT_CHECKOUT"; then
+    # We're either doing a --devel build, or someone is running us from an
+    # existing git checkout.
+    nps_module_dir="$PWD"
+    if "$ALREADY_CHECKED_OUT"; then
+      run cd "$nps_module_dir"
+    else
+      status "Checking out ngx_pagespeed..."
+      run git clone "git@github.com:pagespeed/ngx_pagespeed.git" \
+                    "$nps_module_dir"
+      run cd "$nps_module_dir"
+      run git checkout "$tag_name"
+    fi
     submodules_dir="$nps_module_dir/testing-dependencies"
-
-    status "Checking out ngx_pagespeed..."
-    run git clone "git@github.com:pagespeed/ngx_pagespeed.git" "$nps_module_dir"
-    run cd "$nps_module_dir"
-    run git checkout "$tag_name"
-
     status "Downloading dependencies..."
     run git submodule update --init --recursive
   else
