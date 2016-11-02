@@ -10,3 +10,6 @@
 [submodule "testing-dependencies/set-misc-nginx-module"]
 	path = testing-dependencies/set-misc-nginx-module
 	url = https://github.com/openresty/set-misc-nginx-module
+[submodule "testing-dependencies/ngx_devel_kit"]
+	path = testing-dependencies/ngx_devel_kit
+	url = https://github.com/simpl/ngx_devel_kit
