@@ -4,3 +4,6 @@
 [submodule "testing-dependencies/ngx_cache_purge"]
 	path = testing-dependencies/ngx_cache_purge
 	url = https://github.com/FRiCKLE/ngx_cache_purge.git
+[submodule "testing-dependencies/nginx"]
+	path = testing-dependencies/nginx
+	url = https://github.com/nginx/nginx.git
