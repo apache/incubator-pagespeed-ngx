@@ -14,7 +14,8 @@ Options:
       * latest-stable
       * a version number, such as 1.11.33.4
 
-      If you don't specify a version, defaults to latest-stable.
+      If you don't specify a version, defaults to latest-stable unless --devel
+      is specified, in which case it defaults to trunk-tracking.
 
   -n, --nginx-version <nginx version>
       What version of nginx to build.  If not set, this script only prepares the
@@ -36,6 +37,21 @@ Options:
       non-deb non-rpm system, this won't work.  In that case, install the
       dependencies yourself and pass --no-deps-check.
 
+  -s, --psol-from-source
+      Build PSOL from source instead of downloading a pre-built binary module.
+
+  -l, --devel <scratch_dir>
+      Sets up a development environment for ngx_pagespeed, building with
+      testing-only dependencies.  Includes --psol-from-source, conflicts with
+      --nginx-version.  Uses a 'git clone' checkout for ngx_pagespeed and nginx
+      instead of downloading a tarball.
+
+      <scratch_dir>: where to install the built version of nginx to.
+
+  -t, --build-type
+      When building PSOL from source, what to tell it for BUILD_TYPE.  Defaults
+      to 'Release' unless --devel is set in which case it defaults to 'Debug'.
+
   -d, --dryrun
       Don't make any changes to the system, just print what changes you
       would have made.
@@ -44,9 +60,29 @@ Options:
       Print this message and exit."
 }
 
+RED=31
+GREEN=32
+YELLOW=33
+function begin_color() {
+  color="$1"
+  echo -e -n "\e[${color}m"
+}
+function end_color() {
+  echo -e -n "\e[0m"
+}
+
+function echo_color() {
+  color="$1"
+  shift
+  begin_color "$color"
+  echo "$@"
+  end_color
+}
+
 # Prints an error message and exits with an error code.
 function fail() {
   local error_message="$@"
+  echo_color "$RED" -n "Error: " >&2
   echo "$@" >&2
 
   # Normally I'd use $0 in "usage" here, but since most people will be running
@@ -54,6 +90,10 @@ function fail() {
   echo >&2
   echo "For usage information, run this script with --help" >&2
   exit 1
+}
+
+function status() {
+  echo_color "$GREEN" "$@"
 }
 
 # Intended to be called as:
@@ -64,9 +104,16 @@ function fail() {
 # The run function handles exit-status checking for system-changing commands.
 # Additionally, this allows us to easily have a dryrun mode where we don't
 # actually make any changes.
+INITIAL_ENV=$(printenv | sort)
 function run() {
   if "$DRYRUN"; then
-    echo "would run $@"
+    echo_color "$YELLOW" -n "would run"
+    echo " $@"
+    env_differences=$(comm -13 <(echo "$INITIAL_ENV") <(printenv | sort))
+    if [ -n "$env_differences" ]; then
+      echo "  with the following additional environment variables:"
+      echo "$env_differences" | sed 's/^/    /'
+    fi
   else
     if ! "$@"; then
       echo "Failure running $@, exiting."
@@ -155,9 +202,9 @@ function install_dependencies() {
     fi
   done
   if [ -n "$missing_dependencies" ]; then
-    echo "Detected that we're missing the following depencencies:"
+    status "Detected that we're missing the following depencencies:"
     echo "  $missing_dependencies"
-    echo "Installing them:"
+    status "Installing them:"
     run sudo $install_pkg_cmd $missing_dependencies
   fi
 }
@@ -217,9 +264,10 @@ function build_ngx_pagespeed() {
     fail "Your version of getopt is too old.  Exiting with no changes made."
   fi
 
-  opts=$(getopt -o v:n:mb:pdh \
+  opts=$(getopt -o v:n:mb:pslt:dh \
     --longoptions ngx-pagespeed-version:,nginx-version:,dynamic-module \
-    --longoptions buildir:,no-deps-check,dryrun,help \
+    --longoptions buildir:,no-deps-check,psol-from-source,devel,dryrun,help \
+    --longoptions build-type: \
     -n "$(basename "$0")" -- "$@")
   if [ $? != 0 ]; then
     usage
@@ -227,10 +275,13 @@ function build_ngx_pagespeed() {
   fi
   eval set -- "$opts"
 
-  NPS_VERSION="latest-stable"
+  NPS_VERSION="DEFAULT"
   NGINX_VERSION=""
   BUILDDIR="$HOME"
   DO_DEPS_CHECK=true
+  PSOL_FROM_SOURCE=false
+  DEVEL=false
+  BUILD_TYPE=""
   DRYRUN=false
   DYNAMIC_MODULE=false
   while true; do
@@ -253,6 +304,16 @@ function build_ngx_pagespeed() {
       -p | --no-deps-check) shift
         DO_DEPS_CHECK=false
         ;;
+      -s | --psol-from-source) shift
+        PSOL_FROM_SOURCE=true
+        ;;
+      -l | --devel) shift
+        DEVEL=true
+        ;;
+      -t | --build-type) shift
+        BUILD_TYPE="$1"
+        shift
+        ;;
       -d | --dryrun) shift
         DRYRUN="true"
         ;;
@@ -271,8 +332,43 @@ function build_ngx_pagespeed() {
     esac
   done
 
+
+  if [ "$NPS_VERSION" = "DEFAULT" ]; then
+    if "$DEVEL"; then
+      NPS_VERSION="trunk-tracking"
+    else
+      NPS_VERSION="latest-stable"
+    fi
+  fi
+
   if [ ! -d "$BUILDDIR" ]; then
     fail "Told to build in $BUILDDIR, but that directory doesn't exist."
+  fi
+
+  BUILD_NGINX=false
+  if [ -n "$NGINX_VERSION" ]; then
+    BUILD_NGINX=true
+  fi
+
+  if "$DEVEL"; then
+    PSOL_FROM_SOURCE=true
+    BUILD_NGINX=true
+    if [ -n "$NGINX_VERSION" ]; then
+      fail "The --devel argument conflicts with --nginx-version."
+    fi
+    if "$DYNAMIC_MODULE"; then
+      fail "Can't currently build a dynamic module in --devel mode."
+    fi
+  fi
+
+  if "$PSOL_FROM_SOURCE" && [ -z "$BUILD_TYPE" ]; then
+    if "$DEVEL"; then
+      BUILD_TYPE="Debug"
+    else
+      BUILD_TYPE="Release"
+    fi
+  elif [ -n "$BUILD_TYPE" ]; then
+    fail "Setting --build-type requires --psol-from-source or --devel."
   fi
 
   if [ "$NGINX_VERSION" = "latest" ]; then
@@ -314,16 +410,16 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
   # Now make sure our dependencies are installed.
   if "$DO_DEPS_CHECK"; then
     if [ -f /etc/debian_version ]; then
-      echo "Detected debian-based distro."
+      status "Detected debian-based distro."
 
       install_dependencies "apt-get install" debian_is_installed \
         "build-essential zlib1g-dev libpcre3 libpcre3-dev unzip"
 
       if gcc_too_old; then
         if [ ! -e /usr/lib/gcc-mozilla/bin/gcc ]; then
-          echo "Detected that gcc is older than 4.8.  Installing gcc-mozilla"
-          echo "which installs gcc-4.8 into /usr/lib/gcc-mozilla/ and doesn't"
-          echo "affect your global gcc installation."
+          status "Detected that gcc is older than 4.8.  Installing gcc-mozilla"
+          status "which installs gcc-4.8 into /usr/lib/gcc-mozilla/ and doesn't"
+          status "affect your global gcc installation."
           run sudo apt-get install gcc-mozilla
         fi
 
@@ -332,7 +428,7 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
       fi
 
     elif [ -f /etc/redhat-release ]; then
-      echo "Detected redhat-based distro."
+      status "Detected redhat-based distro."
 
       install_dependencies "yum install" redhat_is_installed \
         "gcc-c++ pcre-devel zlib-devel make unzip wget"
@@ -350,9 +446,9 @@ Unexpected major version $redhat_major_version in /etc/redhat-release:
 $(cat /etc/redhat-release) Expected 5 or 6."
           fi
 
-          echo "Detected that gcc is older than 4.8.  Scientific Linux provides"
-          echo "a gcc package that installs gcc-4.8 into /opt/ and doesn't"
-          echo "affect your global gcc installation."
+          status "Detected that gcc is older than 4.8.  Scientific Linux"
+          status "provides a gcc package that installs gcc-4.8 into /opt/ and"
+          status "doesn't affect your global gcc installation."
           slc_key="https://linux.web.cern.ch/linux/scientific6/docs/repository/"
           slc_key+="cern/slc6X/i386/RPM-GPG-KEY-cern"
           slc_key_out="$TEMPDIR/RPM-GPG-KEY-cern"
@@ -378,9 +474,9 @@ This doesn't appear to be a deb-based distro or an rpm-based one.  Not going to
 be able to install dependencies.  Please install dependencies manually and rerun
 with --no-deps-check."
     fi
-    echo "Dependencies are all set."
+    status "Dependencies are all set."
   else
-    echo "Not checking whether dependencies are installed."
+    status "Not checking whether dependencies are installed."
   fi
 
   function delete_if_already_exists() {
@@ -399,72 +495,126 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     fi
   }
 
-  nps_baseurl="https://github.com/pagespeed/ngx_pagespeed/archive"
   # In general, the zip github builds for tag foo unzips to ngx_pagespeed-foo,
-  # but it looks like they special case vVERSION tags to ngx_pagespeed-VERSION.
+  # but it looks like they special case vVERSION tags to ngx_pagespeed-VERSION
   if [[ "$NPS_VERSION" =~ ^[0-9]*[.][0-9]*[.][0-9]*[.][0-9]*$ ]]; then
-    # We've been given a numeric version number.  This has an associated tag in
-    # the form vVERSION-beta.
-    nps_url_fname="v${NPS_VERSION}-beta"
+    # We've been given a numeric version number.  This has an associated tag
+    # in the form vVERSION-beta.
+    tag_name="v${NPS_VERSION}-beta"
     nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}-beta"
   else
     # We've been given a tag name, like latest-beta.  Download that directly.
-    nps_url_fname="$NPS_VERSION"
+    tag_name="$NPS_VERSION"
     nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}"
   fi
 
-  nps_downloaded="$TEMPDIR/$nps_downloaded_fname.zip"
-  run wget "$nps_baseurl/$nps_url_fname.zip" -O "$nps_downloaded"
-  nps_module_dir="$BUILDDIR/$nps_downloaded_fname"
-  delete_if_already_exists "$nps_module_dir"
-  echo "Extracting ngx_pagespeed..."
-  run unzip -q "$nps_downloaded" -d "$BUILDDIR"
-  run cd "$nps_module_dir"
+  # In release mode we download a zipfile for ngx_pagespeed while in devel mode
+  # we use a git checkout.
+  if "$DEVEL"; then
+    nps_module_dir="$BUILDDIR/ngx_pagespeed"
+    submodules_dir="$nps_module_dir/testing-dependencies"
 
-  # Now we need to figure out what precompiled version of PSOL to build
-  # ngx_pagespeed against.
-  if "$DRYRUN"; then
-    psol_url="https://psol.example.com/cant-get-psol-version-in-dry-run.tar.gz"
-  elif [ -e PSOL_BINARY_URL ]; then
-    # Releases after 1.11.33.4 there is a PSOL_BINARY_URL file that tells us
-    # where to look.
-    psol_url="$(cat PSOL_BINARY_URL)"
-    if [[ "$psol_url" != https://* ]]; then
-      fail "Got bad psol binary location information: $psol_url"
-    fi
+    status "Checking out ngx_pagespeed..."
+    run git clone "git@github.com:pagespeed/ngx_pagespeed.git" "$nps_module_dir"
+    run cd "$nps_module_dir"
+    run git checkout "$tag_name"
+
+    status "Downloading dependencies..."
+    run git submodule update --init --recursive
   else
-    # For past releases we have to grep it from the config file.  The url has
-    # always looked like this, and the config file has contained it since before
-    # we started tagging our ngx_pagespeed releases.
-    psol_url="$(
-      grep -o "https://dl.google.com/dl/page-speed/psol/[0-9.]*.tar.gz" config)"
-    if [ -z "$psol_url" ]; then
-      fail "Couldn't find PSOL url in $PWD/config"
-    fi
+    nps_baseurl="https://github.com/pagespeed/ngx_pagespeed/archive"
+    nps_downloaded="$TEMPDIR/$nps_downloaded_fname.zip"
+    run wget "$nps_baseurl/$tag_name.zip" -O "$nps_downloaded"
+    nps_module_dir="$BUILDDIR/$nps_downloaded_fname"
+    delete_if_already_exists "$nps_module_dir"
+    status "Extracting ngx_pagespeed..."
+    run unzip -q "$nps_downloaded" -d "$BUILDDIR"
+    run cd "$nps_module_dir"
   fi
 
-  run wget "$psol_url"
-  echo "Extracting PSOL..."
-  run tar -xzf $(basename "$psol_url")  # extracts to psol/
+  MOD_PAGESPEED_DIR=""
+  PSOL_BINARY=""
+  if "$PSOL_FROM_SOURCE"; then
+    MOD_PAGESPEED_DIR="$PWD/testing-dependencies/mod_pagespeed"
+    if ! "$DEVEL"; then
+      # In a devel setup we have everything checked out with git and can use
+      # submodules.  But if we're just trying to build PSOL from source we don't
+      # have that and need to clone it here.
+      run git clone "git@github.com:pagespeed/mod_pagespeed.git" \
+          "$MOD_PAGESPEED_DIR"
+    fi
+    run pushd "$MOD_PAGESPEED_DIR"
+    run git submodule update --init --recursive
+    run install/build_me_now.sh "$BUILD_TYPE"  # this doesn't exist yet
+    PSOL_BINARY="$MOD_PAGESPEED_DIR/out/$BUILD_TYPE/pagespeed_automatic.a"
+    run popd
+  else
+    # Now we need to figure out what precompiled version of PSOL to build
+    # ngx_pagespeed against.
+    if "$DRYRUN"; then
+      psol_url="https://psol.example.com/cant-get-psol-version-in-dry-run.tar.gz"
+    elif [ -e PSOL_BINARY_URL ]; then
+      # Releases after 1.11.33.4 there is a PSOL_BINARY_URL file that tells us
+      # where to look.
+      psol_url="$(cat PSOL_BINARY_URL)"
+      if [[ "$psol_url" != https://* ]]; then
+        fail "Got bad psol binary location information: $psol_url"
+      fi
+    else
+      # For past releases we have to grep it from the config file.  The url has
+      # always looked like this, and the config file has contained it since
+      # before we started tagging our ngx_pagespeed releases.
+      psol_url="$(grep -o
+          "https://dl.google.com/dl/page-speed/psol/[0-9.]*.tar.gz" config)"
+      if [ -z "$psol_url" ]; then
+        fail "Couldn't find PSOL url in $PWD/config"
+      fi
+    fi
+
+    run wget "$psol_url"
+    status "Extracting PSOL..."
+    run tar -xzf $(basename "$psol_url")  # extracts to psol/
+  fi
 
   if "$DYNAMIC_MODULE"; then
-    add_module="--add-dynamic-module=$nps_module_dir"
+    add_module="--add-dynamic-module='$nps_module_dir'"
   else
-    add_module="--add-module=$nps_module_dir"
+    add_module="--add-module='$nps_module_dir'"
   fi
   configure_args=("$add_module" "${extra_flags[@]}")
 
+  if "$DEVEL"; then
+    install_dir="$BUILDDIR/nginx"
+    configure_args=("${configure_args[@]}"
+                    "--prefix='$install_dir'"
+                    "--add-module='$submodules_dir/ngx_cache_purge'"
+                    "--add-module='$submodules_dir/ngx_devel_kit'"
+                    "--add-module='$submodules_dir/set-misc-nginx-module'"
+                    "--add-module='$submodules_dir/headers-more-nginx-module'"
+                    "--with-ipv6"
+                    "--with-http_v2_module")
+    if [ "$BUILD_TYPE" = "Debug" ]; then
+      configure_args=("${configure_args[@]}" "--with-debug")
+    fi
+  fi
+
   echo
-  if [ -z "$NGINX_VERSION" ]; then
-    # They didn't specify an nginx version, so we're just preparing the
-    # module for them to install.
-    echo "ngx_pagespeed is ready to be built against nginx."
-    echo "When running ./configure pass in:"
-    echo "  $(quote_arguments "${configure_args[@]}")"
+  if ! "$BUILD_NGINX"; then
+    # Just prepare the module for them to install.
+    status "ngx_pagespeed is ready to be built against nginx."
+    echo "When running ./configure:"
+    if "$PSOL_FROM_SOURCE"; then
+      echo "  Set the following environment variables:"
+      echo "    MOD_PAGESPEED_DIR=$MOD_PAGESPEED_DIR"
+      echo "    PSOL_BINARY=$PSOL_BINARY"
+    fi
+    echo "  Give ./configure the following arguments:"
+    echo "    $(quote_arguments "${configure_args[@]}")"
+    echo
     if [ ${#extra_flags[@]} -eq 0 ]; then
       echo "If this is for integration with an already-built nginx, make sure"
-      echo "to include any other arguments you originally passed to ./configure"
-      echo "You can see these with 'nginx -V'."
+      echo "to include any other arguments you originally passed to"
+      echo "./configure.  You can see these with 'nginx -V'."
     else
       echo "Note: because we need to set $(quote_arguments "${extra_flags[@]}")"
       echo "on this platform, if you want to integrate ngx_pagespeed with an"
@@ -472,17 +622,24 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       echo "those flags set."
     fi
   else
-    # Download and build nginx.
-    nginx_leaf="nginx-${NGINX_VERSION}.tar.gz"
-    nginx_fname="$TEMPDIR/$nginx_leaf"
-    run wget "http://nginx.org/download/$nginx_leaf" -O "$nginx_fname"
-    nginx_dir="$BUILDDIR/nginx-${NGINX_VERSION}/"
-    delete_if_already_exists "$nginx_dir"
-    echo "Extracting nginx..."
-    run tar -xzf "$nginx_fname" --directory "$BUILDDIR"
-    "$DRYRUN" || cd "$nginx_dir"
+    if "$DEVEL"; then
+      # Use the nginx we loaded as a submodule
+      nginx_dir="$submodules_dir/nginx"
+      configure_location="auto"
+    else
+      # Download and build the specified nginx version.
+      nginx_leaf="nginx-${NGINX_VERSION}.tar.gz"
+      nginx_fname="$TEMPDIR/$nginx_leaf"
+      run wget "http://nginx.org/download/$nginx_leaf" -O "$nginx_fname"
+      nginx_dir="$BUILDDIR/nginx-${NGINX_VERSION}/"
+      delete_if_already_exists "$nginx_dir"
+      status "Extracting nginx..."
+      run tar -xzf "$nginx_fname" --directory "$BUILDDIR"
+      configure_location="."
+    fi
+    run cd "$nginx_dir"
 
-    configure=("./configure" "${configure_args[@]}")
+    configure=("$configure_location/configure" "${configure_args[@]}")
     echo "About to build nginx.  Do you have any additional ./configure"
     echo "arguments you would like to set?  For example, if you would like"
     echo "to build nginx with https support give --with-http_ssl_module"
@@ -497,35 +654,64 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     echo "About to configure nginx with:"
     echo "   $(quote_arguments "${configure[@]}")"
     continue_or_exit "Does this look right?"
-    run "${configure[@]}"
+    MOD_PAGESPEED_DIR="$MOD_PAGESPEED_DIR" \
+      PSOL_BINARY="$PSOL_BINARY" \
+      run "${configure[@]}"
 
-    continue_or_exit "Build nginx?"
+    if ! "$DEVEL"; then
+      continue_or_exit "Build nginx?"
+    fi
     run make
 
-    continue_or_exit "Install nginx?"
-    run sudo make install
+    if "$DEVEL"; then
+      run make install
 
-    echo
-    if "$DYNAMIC_MODULE"; then
-      echo "Nginx installed with ngx_pagespeed support available as a"
-      echo "loadable module."
+      status "Nginx installed with ngx_pagespeed, and set up for testing."
+      # TODO(jefftk): pull these out into separate scripts.
+      echo "To run tests, pick a pair of ports like 8050 and 8051 and run:"
+      echo "  cd $nps_module_dir"
+      echo "  RUN_TESTS=true \\"
+      echo "  USE_VALGRIND=false \\"
+      echo "  TEST_NATIVE_FETCHER=false \\"
+      echo "  TEST_SERF_FETCHER=true \\"
+      echo "  test/run_tests.sh 8050 8051 \\"
+      echo "    $MOD_PAGESPEED_DIR \\"
+      echo "    $BUILDDIR/nginx/sbin/nginx \\"
+      echo "    selfsigned.modpagespeed.com"
       echo
-      echo "To load the ngx_pagespeed module, you'll need to add:"
-      echo "  load_module \"modules/ngx_pagespeed.so\";"
-      echo "at the top of your main nginx configuration file."
+      echo "To rebuild after changes:"
+      echo "  First, if you change things in PSOL or update it:"
+      echo "    cd $MOD_PAGESPEED_DIR"
+      echo "    scripts/rebuild_me_now.sh"  # this doesn't exist yet
+      echo "  Then, whether or not you updated PSOL, rebuild nginx:"
+      echo "    cd $BUILDDIR/nginx"
+      echo "    make && make install"
     else
-      echo "Nginx installed with ngx_pagespeed support compiled-in."
+      continue_or_exit "Install nginx?"
+      run sudo make install
+
+      echo
+      if "$DYNAMIC_MODULE"; then
+        echo "Nginx installed with ngx_pagespeed support available as a"
+        echo "loadable module."
+        echo
+        echo "To load the ngx_pagespeed module, you'll need to add:"
+        echo "  load_module \"modules/ngx_pagespeed.so\";"
+        echo "at the top of your main nginx configuration file."
+      else
+        echo "Nginx installed with ngx_pagespeed support compiled-in."
+      fi
+      echo
+      echo "If this is a new installation you probably need an init script to"
+      echo "manage starting and stopping the nginx service.  See:"
+      echo "  http://wiki.nginx.org/InitScripts"
+      echo
+      echo "You'll also need to configure ngx_pagespeed if you haven't yet:"
+      echo "  https://developers.google.com/speed/pagespeed/module/configuration"
     fi
-    echo
-    echo "If this is a new installation you probably need an init script to"
-    echo "manage starting and stopping the nginx service.  See:"
-    echo "  http://wiki.nginx.org/InitScripts"
-    echo
-    echo "You'll also need to configure ngx_pagespeed if you haven't yet:"
-    echo "  https://developers.google.com/speed/pagespeed/module/configuration"
   fi
   if "$DRYRUN"; then
-    echo "[this was a dry run; your system is unchanged]"
+    echo_color "$YELLOW" "[this was a dry run; your system is unchanged]"
   fi
 }
 
