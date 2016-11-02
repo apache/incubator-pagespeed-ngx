@@ -7,3 +7,6 @@
 [submodule "testing-dependencies/nginx"]
 	path = testing-dependencies/nginx
 	url = https://github.com/nginx/nginx.git
+[submodule "testing-dependencies/set-misc-nginx-module"]
+	path = testing-dependencies/set-misc-nginx-module
+	url = https://github.com/openresty/set-misc-nginx-module
