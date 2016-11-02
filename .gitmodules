@@ -1,0 +1,3 @@
+[submodule "testing-dependencies/mod_pagespeed"]
+	path = testing-dependencies/mod_pagespeed
+	url = git@github.com:pagespeed/mod_pagespeed.git
