@@ -89,11 +89,15 @@ function echo_color() {
   end_color
 }
 
-# Prints an error message and exits with an error code.
-function fail() {
+function error() {
   local error_message="$@"
   echo_color "$RED" -n "Error: " >&2
   echo "$@" >&2
+}
+
+# Prints an error message and exits with an error code.
+function fail() {
+  error "$@"
 
   # Normally I'd use $0 in "usage" here, but since most people will be running
   # this via curl, that wouldn't actually give something useful.
@@ -101,6 +105,7 @@ function fail() {
   echo "For usage information, run this script with --help" >&2
   exit 1
 }
+
 
 function status() {
   echo_color "$GREEN" "$@"
@@ -126,7 +131,7 @@ function run() {
     fi
   else
     if ! "$@"; then
-      echo "Failure running $@, exiting."
+      error "Failure running '$@', exiting."
       exit 1
     fi
   fi
@@ -511,7 +516,6 @@ with --no-deps-check."
       if [ ${#directory} -lt 8 ]; then
         fail "
 Not deleting $directory; name is suspiciously short.  Something is wrong."
-        exit 1
       fi
 
       continue_or_exit "OK to delete $directory?"
