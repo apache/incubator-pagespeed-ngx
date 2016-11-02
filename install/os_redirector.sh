@@ -10,8 +10,8 @@
 set -e
 set -u
 
-my_dir="$(dirname "$0")"
-target_basename="$(basename "$0")"
+my_dir="$(dirname "$BASH_SOURCE")"
+target_basename="$(basename "$BASH_SOURCE")"
 
 distro="$(lsb_release -is | tr A-Z a-z)"
 
