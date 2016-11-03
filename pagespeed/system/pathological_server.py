@@ -62,9 +62,9 @@ _STANDARD_CONFIG = (
 # filename -> (response_to_send, hook)
 _nohook = lambda *_: None
 _responses = {
-    "/rcport1": (_STANDARD_CONFIG, _nohook),
+    "/standard": (_STANDARD_CONFIG, _nohook),
 
-    "/rcport2": (
+    "/partly-invalid": (
         "HTTP/1.1 200 OK\r\n"
         "Cache-Control: max-age=5\r\n"
         "\r\n"
@@ -74,14 +74,14 @@ _responses = {
         "EndRemoteConfig\n",
         _nohook),
 
-    "/rcport3": (
+    "/invalid": (
         "HTTP/1.1 200 OK\r\n"
         "Cache-Control: max-age=5\r\n"
         "\r\n"
         "EnableFilters remove_comments,collapse_whitespace\n",
         _nohook),
 
-    "/rcport4": (
+    "/out-of-scope": (
         "HTTP/1.1 200 OK\r\n"
         "Cache-Control: max-age=5\r\n"
         "\r\n"
@@ -90,9 +90,9 @@ _responses = {
         "EndRemoteConfig\n",
         _nohook),
 
-    "/rcport5": (_STANDARD_CONFIG, _fail_future_requests("/rcport5")),
+    "/fail-future": (_STANDARD_CONFIG, _fail_future_requests("/fail-future")),
 
-    "/rcport6": (
+    "/timeout": (
         "HTTP/1.1 200 OK\r\n"
         "Cache-Control: max-age=2\r\n"
         "\r\n"
@@ -102,7 +102,7 @@ _responses = {
         # load.
         _wait_before_serving(10000)),
 
-    "/rcport7": (
+    "/experiment": (
         "HTTP/1.1 200 OK\r\n"
         "Cache-Control: max-age=5\r\n"
         "\r\n"
@@ -112,7 +112,7 @@ _responses = {
         "EndRemoteConfig\n",
         _nohook),
 
-    "/rcport8": (
+    "/slightly-slow": (
         "HTTP/1.1 200 OK\r\n"
         "Cache-Control: max-age=20\r\n"
         "\r\n"
@@ -122,7 +122,7 @@ _responses = {
         # if we're handling background refreshes but not otherwise.
         _wait_before_serving(2)),
 
-    "/rcport9": (
+    "/slow-expired": (
         "HTTP/1.1 200 OK\r\n"
         "Cache-Control: max-age=0\r\n"
         "\r\n"
@@ -131,7 +131,7 @@ _responses = {
         # ditto
         _wait_before_serving(2)),
 
-    "/rcport10": (
+    "/forbidden": (
         "HTTP/1.1 403 Forbidden\r\n"
         "Cache-Control: max-age=5\r\n"
         "\r\n"
@@ -139,11 +139,11 @@ _responses = {
         "EndRemoteConfig\n",
         _nohook),
 
-    "/rcport11": (
+    "/forbidden-once": (
         "HTTP/1.1 403 Forbidden\r\n"
         "Cache-Control: max-age=5\r\n"
         "\r\n",
-        _return_on_future_requests("/rcport11", _STANDARD_CONFIG)),
+        _return_on_future_requests("/forbidden-once", _STANDARD_CONFIG)),
 }
 
 
