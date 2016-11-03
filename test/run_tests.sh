@@ -24,6 +24,11 @@
 #
 # Usage:
 #   ./run_tests.sh /path/to/mod_pagespeed /path/to/nginx/binary
+#
+# By default the test script uses several ports.  If you have a port conflict
+# and need to override one you can do that by setting the relevant environment
+# variable.  For example:
+#   PRIMARY_PORT=1234 ./run_tests.sh /.../mod_pagespeed /.../nginx/binary
 
 # Normally we test only with the native fetcher off.  Set
 # TEST_NATIVE_FETCHER=true to also test the native fetcher, set
@@ -48,11 +53,11 @@ fi
 MOD_PAGESPEED_DIR="$1"
 NGINX_EXECUTABLE="$2"
 
-PRIMARY_PORT=8050
-SECONDARY_PORT=8051
-CONTROLLER_PORT=8053
-RCPORT=9991
-PAGESPEED_TEST_HOST=selfsigned.modpagespeed.com
+: ${PRIMARY_PORT:=8050}
+: ${SECONDARY_PORT:=8051}
+: ${CONTROLLER_PORT:=8053}
+: ${RCPORT:=9991}
+: ${PAGESPEED_TEST_HOST:=selfsigned.modpagespeed.com}
 
 this_dir="$( cd $(dirname "$0") && pwd)"
 
