@@ -232,7 +232,7 @@ http {
 
     # Block 6: Location block with proxy_cache directives.
     location /mod_pagespeed_test/cachable_rewritten_html/ {
-      # 1: Upstream PageSpeed server is running at localhost:8050.
+      # 1: Upstream PageSpeed server is running at localhost:@@PRIMARY_PORT@@.
       proxy_pass http://localhost:@@PRIMARY_PORT@@;
       # 2: Use htmlcache as the zone for caching.
       proxy_cache htmlcache;

@@ -23,12 +23,12 @@
 # Exits with status 2 if command line args are wrong.
 #
 # Usage:
-#   ./run_tests.sh primary_port secondary_port mod_pagespeed_dir ngx_binary
-#   pagespeed_test_host
-# Example:
-#   ./run_tests.sh 8050 8051 /path/to/mod_pagespeed /path/to/nginx/binary
-#   selfsigned.modpagespeed.com
+#   ./run_tests.sh /path/to/mod_pagespeed /path/to/nginx/binary
 #
+# By default the test script uses several ports.  If you have a port conflict
+# and need to override one you can do that by setting the relevant environment
+# variable.  For example:
+#   PRIMARY_PORT=1234 ./run_tests.sh /.../mod_pagespeed /.../nginx/binary
 
 # Normally we test only with the native fetcher off.  Set
 # TEST_NATIVE_FETCHER=true to also test the native fetcher, set
@@ -45,19 +45,19 @@ RUN_TESTS=${RUN_TESTS:-true}
 # true.
 USE_VALGRIND=${USE_VALGRIND:-false}
 
-if [ "$#" -ne 5 ] ; then
-  echo "Usage: $0 primary_port secondary_port mod_pagespeed_dir"
-  echo "  nginx_executable"
+if [ "$#" -ne 2 ] ; then
+  echo "Usage: $0 mod_pagespeed_dir nginx_executable"
   exit 2
 fi
 
-PRIMARY_PORT="$1"
-SECONDARY_PORT="$2"
-MOD_PAGESPEED_DIR="$3"
-NGINX_EXECUTABLE="$4"
-PAGESPEED_TEST_HOST="$5"
-CONTROLLER_PORT=8053
-RCPORT=9991
+MOD_PAGESPEED_DIR="$1"
+NGINX_EXECUTABLE="$2"
+
+: ${PRIMARY_PORT:=8050}
+: ${SECONDARY_PORT:=8051}
+: ${CONTROLLER_PORT:=8053}
+: ${RCPORT:=9991}
+: ${PAGESPEED_TEST_HOST:=selfsigned.modpagespeed.com}
 
 this_dir="$( cd $(dirname "$0") && pwd)"
 

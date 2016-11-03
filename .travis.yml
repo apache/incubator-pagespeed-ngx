@@ -51,8 +51,7 @@ install:
 script:
   - echo "build successful"
   - echo "cd ~/ngxpagespeed"
-  - echo "sudo ./test/run_tests.sh 8050 8051 $HOME/mod_pagespeed/src $HOME/nginx-branches-default/objs selfsigned.modpagespeed.com"
-  - echo "sudo ./test/run_tests.sh 8050 8051 $HOME/mod_pagespeed $HOME/nginx-branches-default/objs/nginx selfsigned.modpagespeed.com"
+  - echo "sudo ./test/run_tests.sh $HOME/mod_pagespeed $HOME/nginx-branches-default/objs/nginx"
 sudo: required
 compiler:
   - gcc

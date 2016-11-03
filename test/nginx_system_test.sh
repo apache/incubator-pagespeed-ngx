@@ -1184,7 +1184,7 @@ OUT=$($WGET_DUMP --header=Host:response-header-disable.example.com $URL)
 check_not_from "$OUT" egrep -qi 'addInstrumentationInit'
 
 # TODO(jmaessen, jefftk): Port proxying tests, which rely on pointing a
-# MapProxyDomain construct at a static server.  Perhaps localhost:8050 will
+# MapProxyDomain construct at a static server.  Perhaps $HOSTNAME will
 # serve, but the tests need to use different urls then.  For mod_pagespeed these
 # tests immediately precede the "scrape_secondary_stat" definition in
 # system_test.sh.
