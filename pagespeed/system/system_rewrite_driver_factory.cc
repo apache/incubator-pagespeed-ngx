@@ -563,16 +563,6 @@ void SystemRewriteDriverFactory::ShutDown() {
     message_handler()->MessageS(kInfo, "Shutting down PageSpeed child");
   }
 
-  if (central_controller_ != nullptr) {
-    // This can unblock a bunch of Rewrites which then start trying to process
-    // things on Sequences. Unfortunately, all the workers are then almost
-    // immediately shutdown by the call to RewriteDriverFactory::ShutDown()
-    // below. This causes a bunch of "Adding function to sequence after
-    // shutdown" log spam. Not sure much can be done about that.
-    central_controller_->Shutdown();
-    central_controller_ = nullptr;  // Must be freed before the thread_system.
-  }
-
   StopCacheActivity();
 
   // Next, we shutdown the fetchers before killing the workers in
@@ -592,6 +582,10 @@ void SystemRewriteDriverFactory::ShutDown() {
   caches_->ShutDown(message_handler());
 
   ShutDownMessageHandlers();
+
+  // Must be freed before the thread_system, but we still want it around for
+  // RewriteDriverFactory::ShutDown.
+  central_controller_.reset();
 
   if (is_root_process_) {
     // Cleanup statistics.

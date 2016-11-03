@@ -46,6 +46,12 @@ class ScheduleRewriteController {
   virtual void NotifyRewriteComplete(const GoogleString& key) = 0;
   virtual void NotifyRewriteFailed(const GoogleString& key) = 0;
 
+  // Implementations of this method should try to cancel any pending operations
+  // ASAP, and configure the object to immediately reject new incoming ones.
+  //
+  // Default implementation does nothing.
+  virtual void ShutDown() { }
+
  protected:
   ScheduleRewriteController() { }
 

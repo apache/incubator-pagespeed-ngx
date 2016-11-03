@@ -132,9 +132,9 @@ CentralControllerRpcClient::CentralControllerRpcClient(
 }
 
 CentralControllerRpcClient::~CentralControllerRpcClient() {
-  Shutdown();
+  ShutDown();
   // It's not possible to clear the GlobalCallbacks here, but since
-  // Shutdown prevents further clients from registering, that ought to
+  // ShutDown prevents further clients from registering, that ought to
   // be OK.
   // TODO(cheesy): A better solution would be to install a static object for the
   // handler. It could call back into "this" only while it has a non-null
@@ -145,9 +145,13 @@ void CentralControllerRpcClient::InitStats(Statistics* statistics) {
   statistics->AddUpDownCounter(kControllerReconnectTimeStatistic);
 }
 
-void CentralControllerRpcClient::Shutdown() {
+void CentralControllerRpcClient::ShutDown() {
   {
     ScopedMutex lock(mutex_.get());
+    if (state_ == SHUTDOWN) {
+      return;
+    }
+
     // This will reject all further requests.
     state_ = SHUTDOWN;
   }

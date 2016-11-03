@@ -41,6 +41,7 @@ NamedLockScheduleRewriteController::NamedLockScheduleRewriteController(
     Statistics* stats)
     : mutex_(thread_system->NewMutex()),
       lock_manager_(lock_manager),
+      shut_down_(false),
       locks_granted_(stats->GetTimedVariable(kLocksGranted)),
       locks_denied_(stats->GetTimedVariable(kLocksDenied)),
       locks_stolen_(stats->GetTimedVariable(kLocksStolen)),
@@ -70,14 +71,15 @@ NamedLockScheduleRewriteController::GetLockInfo(const GoogleString& key) {
   if (info == NULL) {
     info = new LockInfo();
   }
-  DCHECK_GE(info->num_pending_callbacks, 0);
+  DCHECK_GE(info->pin_count, 0);
   return info;
 }
 
 void NamedLockScheduleRewriteController::DeleteInfoIfUnused(
     LockInfo* info, const GoogleString& key) {
-  DCHECK_GE(info->num_pending_callbacks, 0);
-  if (info->lock.get() == NULL && info->num_pending_callbacks <= 0) {
+  DCHECK_GE(info->pin_count, 0);
+  if (info->lock.get() == nullptr && info->pin_count <= 0
+      && info->pending_callbacks.empty()) {
     size_t num_erased = locks_.erase(key);
     CHECK_EQ(1, num_erased);
     delete info;
@@ -89,8 +91,11 @@ void NamedLockScheduleRewriteController::LockObtained(Function* callback,
                                                       NamedLock* named_lock) {
   locks_granted_->IncBy(1);
   locks_currently_held_->Add(1);
+  bool shut_down;
   {
     ScopedMutex mutex_lock(mutex_.get());
+    shut_down = shut_down_;
+
     LockInfo* info = GetLockInfo(key);
     // This lock may have been held by someone else, but it isn't any more!
     if (info->lock.get() != NULL) {
@@ -101,34 +106,53 @@ void NamedLockScheduleRewriteController::LockObtained(Function* callback,
     // Your NamedLock implementation must support that, see
     // NamedLockTester::StealWithDelete (and UnlockWithDelete).
     info->lock.reset(named_lock);
-    --info->num_pending_callbacks;
+    info->pending_callbacks.erase(callback);
     // No point calling DeleteInfoIfUnused since we know the lock is held.
   }
-  callback->CallRun();
+
+  // After ::ShutDown, we are no longer responsible for invoking callbacks.
+  if (!shut_down) {
+    callback->CallRun();
+  }
 }
 
 void NamedLockScheduleRewriteController::LockFailed(Function* callback,
                                                     const GoogleString key,
                                                     NamedLock* named_lock) {
-  // named_lock is not actually held, so just delete it.
-  delete named_lock;
   locks_denied_->IncBy(1);
+  bool shut_down;
   {
     ScopedMutex mutex_lock(mutex_.get());
+    shut_down = shut_down_;
+    // named_lock is not actually held, so just delete it.
+    delete named_lock;
+
     LockInfo* info = GetLockInfo(key);
-    --info->num_pending_callbacks;
+    info->pending_callbacks.erase(callback);
     DeleteInfoIfUnused(info, key);
   }
-  callback->CallCancel();
+
+  // After ::ShutDown, we are no longer responsible for invoking callbacks.
+  if (!shut_down) {
+    callback->CallCancel();
+  }
 }
 
 void NamedLockScheduleRewriteController::ScheduleRewrite(
     const GoogleString& key, Function* callback) {
+  bool shut_down = false;
   {
     ScopedMutex mutex_lock(mutex_.get());
-    LockInfo* info = GetLockInfo(key);
-    ++info->num_pending_callbacks;
-    // No point calling DeleteInfoIfUnused since num_pending_callbacks is >0.
+    shut_down = shut_down_;
+    if (!shut_down) {
+      LockInfo* info = GetLockInfo(key);
+      info->pending_callbacks.insert(callback);
+      // Don't need DeleteInfoIfUnused() since pending_callbacks is non-empty.
+    }
+  }
+  if (shut_down) {
+    callback->CallCancel();
+    return;
   }
   NamedLock* named_lock = lock_manager_->CreateNamedLock(key);
   // We can't call this with a lock on mutex_ since it may call back
@@ -160,19 +184,19 @@ void NamedLockScheduleRewriteController::NotifyRewriteComplete(
       DeleteInfoIfUnused(info, key);
       return;
     }
-    ++info->num_pending_callbacks;
+    ++info->pin_count;
     // Steal the pointer out of the info, which marks the info as not locked.
     named_lock.reset(info->lock.release());
   }
   // Unlock could theoretically call back synchronously into one of our other
   // routines, so we must not hold mutex_ when unlocking. Holding "info" outside
   // the mutex is perfectly safe because we prevented it from being deleted by
-  // incrementing num_pending_callbacks above.
+  // incrementing pin_count above.
   locks_currently_held_->Add(-1);
   named_lock->Unlock();
   {
     ScopedMutex mutex_lock(mutex_.get());
-    --info->num_pending_callbacks;
+    --info->pin_count;
     // Note that a callback from Unlock() may have re-acquired the lock.
     DeleteInfoIfUnused(info, key);
   }
@@ -183,6 +207,27 @@ void NamedLockScheduleRewriteController::NotifyRewriteFailed(
   // This implemenation doesn't have special failure handling, so just call
   // Complete.
   this->NotifyRewriteComplete(key);
+}
+
+
+void NamedLockScheduleRewriteController::ShutDown() {
+  // After ShutDown, all existing callbacks will be cancelled, requests for
+  // scheduling will immediately be responded to with Cancel(), and the usual
+  // codepath will no longer involve callbacks.
+  std::vector<Function*> callbacks;
+  {
+    ScopedMutex mutex_lock(mutex_.get());
+    shut_down_ = true;
+    for (const auto& p : locks_) {
+      for (Function* f : p.second->pending_callbacks) {
+        callbacks.push_back(f);
+      }
+    }
+  }
+
+  for (Function* f : callbacks) {
+    f->CallCancel();
+  }
 }
 
 }  // namespace net_instaweb

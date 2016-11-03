@@ -46,6 +46,7 @@ class InProcessCentralController : public CentralController {
   void ScheduleRewrite(ScheduleRewriteCallback* callback) override;
 
   static void InitStats(Statistics* stats);
+  void ShutDown() override;
 
  private:
   scoped_ptr<ExpensiveOperationController> expensive_operation_controller_;

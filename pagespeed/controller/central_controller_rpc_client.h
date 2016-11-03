@@ -58,12 +58,12 @@ class CentralControllerRpcClient : public CentralController {
                              MessageHandler* handler);
   virtual ~CentralControllerRpcClient();
 
-  void Shutdown() LOCKS_EXCLUDED(mutex_);
-
   // CentralController implementation.
   void ScheduleExpensiveOperation(
       ExpensiveOperationCallback* callback) override;
   void ScheduleRewrite(ScheduleRewriteCallback* callback) override;
+
+  void ShutDown() override LOCKS_EXCLUDED(mutex_);
 
   static void InitStats(Statistics* stats);
 

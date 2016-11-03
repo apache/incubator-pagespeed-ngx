@@ -17,6 +17,8 @@
 #ifndef PAGESPEED_CONTROLLER_NAMED_LOCK_SCHEDULE_REWRITE_CONTROLLER_H_
 #define PAGESPEED_CONTROLLER_NAMED_LOCK_SCHEDULE_REWRITE_CONTROLLER_H_
 
+#include <unordered_set>
+
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/controller/schedule_rewrite_controller.h"
 #include "pagespeed/kernel/base/basictypes.h"
@@ -54,17 +56,22 @@ class NamedLockScheduleRewriteController : public ScheduleRewriteController {
   virtual void NotifyRewriteComplete(const GoogleString& key);
   virtual void NotifyRewriteFailed(const GoogleString& key);
 
+  void ShutDown() override;
+
   static void InitStats(Statistics* stats);
 
  private:
   struct LockInfo {
-    LockInfo() : num_pending_callbacks(0) { }
+    LockInfo() : pin_count(0) { }
     // lock is only non-NULL when we have successfully obtained it.
     scoped_ptr<NamedLock> lock;
-    // Normally num_pending_callbacks would just be a reference count with
-    // lock_held included as a reference. However, the lock stealing mechanic
-    // makes this a bit odd.
-    int num_pending_callbacks;
+
+    std::unordered_set<Function*> pending_callbacks;
+
+    // "Extra" refcount on top of lock and pending_callbacks we need
+    // occassionally to protect this data against a temporary lock
+    // relinquishment.
+    int pin_count;
 
    private:
     DISALLOW_COPY_AND_ASSIGN(LockInfo);
@@ -86,6 +93,7 @@ class NamedLockScheduleRewriteController : public ScheduleRewriteController {
   scoped_ptr<AbstractMutex> mutex_;
   NamedLockManager* lock_manager_;
   LockMap locks_ GUARDED_BY(mutex_);
+  bool shut_down_ GUARDED_BY(mutex_);
 
   TimedVariable* locks_granted_;
   TimedVariable* locks_denied_;

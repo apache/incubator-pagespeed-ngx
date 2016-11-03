@@ -678,6 +678,7 @@ void RewriteDriverFactory::ShutDown() {
   for (ServerContextSet::iterator p = server_contexts_.begin();
        p != server_contexts_.end(); ++p) {
     ServerContext* server_context = *p;
+    server_context->central_controller()->ShutDown();
     server_context->ShutDownDrivers();
   }
 

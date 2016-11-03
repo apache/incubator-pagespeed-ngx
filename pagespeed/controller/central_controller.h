@@ -42,6 +42,11 @@ class CentralController {
   // caller. Only one rewrite per callback.key() will be scheduled at once.
   virtual void ScheduleRewrite(ScheduleRewriteCallback* callback) = 0;
 
+  // Implementations of this method should try to cancel any pending operations
+  // ASAP, and immediately reject new incoming ones. This method should behave
+  // safely when called more than once.
+  virtual void ShutDown() = 0;
+
  protected:
   CentralController();
 

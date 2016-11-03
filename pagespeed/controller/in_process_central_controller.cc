@@ -132,6 +132,10 @@ void InProcessCentralController::InitStats(Statistics* statistics) {
   WorkBoundExpensiveOperationController::InitStats(statistics);
 }
 
+void InProcessCentralController::ShutDown() {
+  schedule_rewrite_controller_->ShutDown();
+}
+
 void InProcessCentralController::ScheduleExpensiveOperation(
     ExpensiveOperationCallback* callback) {
   // Starts the transaction and deletes itself when done.
