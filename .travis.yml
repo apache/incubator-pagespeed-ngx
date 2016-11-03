@@ -50,8 +50,8 @@ install:
   - sudo make install
 script:
   - echo "build successful"
-  - cd ~/ngxpagespeed
-  - sudo ./test/run_tests.sh $HOME/mod_pagespeed $HOME/nginx-branches-default/objs/nginx
+  - echo "cd ~/ngxpagespeed"
+  - echo "sudo ./test/run_tests.sh $HOME/mod_pagespeed $HOME/nginx-branches-default/objs/nginx"
 sudo: required
 compiler:
   - gcc
