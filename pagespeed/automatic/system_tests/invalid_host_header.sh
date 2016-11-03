@@ -1,9 +1,14 @@
 start_test Invalid HOST URL does not crash the server.
 
-HOST=$(echo $HOSTNAME | cut -d : -f 1)
-PORT=$(echo $HOSTNAME | cut -d : -f 2)
+if [[ "$HOSTNAME" == *:* ]]; then
+  host=$(echo $HOSTNAME | cut -d : -f 1)
+  port=$(echo $HOSTNAME | cut -d : -f 2)
+else
+  host=$HOSTNAME
+  port=80
+fi
 
-exec 3<>/dev/tcp/$HOST/$PORT
+exec 3<>/dev/tcp/$host/$port
 echo -e "GET /mod_pagespeed_example/ HTTP/1.1\nHost: 127.0.0.\xEF\xBF\xBD\n" >&3
 # Read first line of HTTP response with a timeout of 1 second.
 # It would be nice to get the whole body with:
