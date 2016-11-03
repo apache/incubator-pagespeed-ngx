@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/automatic/proxy_fetch.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/hasher.h"
@@ -144,7 +145,7 @@ bool ProxyInterface::UrlAndPortMatchThisServer(const GoogleUrl& url) {
     // "box.localsite.example.com".
     StringPiece host = url.Host();
     if (IsLocalhost(host, hostname_) ||
-        StringPiece(hostname_).starts_with(StrCat(host, "."))) {
+        strings::StartsWith(StringPiece(hostname_), StrCat(host, "."))) {
       ret = true;
     }
   }

@@ -37,7 +37,7 @@ bool StripUtf8Bom(StringPiece* contents) {
 
 const StringPiece GetCharsetForBom(const StringPiece contents) {
   // Bad/empty data?
-  if (contents == NULL || contents.length() == 0) {
+  if (contents.empty()) {
     return StringPiece();
   }
   // If it starts with a printable ASCII character it can't have a BOM, and

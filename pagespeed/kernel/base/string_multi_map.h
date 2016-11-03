@@ -224,7 +224,7 @@ template<class StringCompare> class StringMultiMap {
       if (value != NULL) {
         Add(string_multi_map.name(i), *value);
       } else {
-        Add(string_multi_map.name(i), NULL);
+        Add(string_multi_map.name(i), StringPiece());
       }
     }
   }

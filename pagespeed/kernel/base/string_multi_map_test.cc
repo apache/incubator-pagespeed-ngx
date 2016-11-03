@@ -23,7 +23,7 @@ class StringMultiMapTest : public testing::Test {
 
   virtual void SetUp() {
     string_map_.Add("a", "1");
-    string_map_.Add("b", NULL);
+    string_map_.Add("b", StringPiece());
     string_map_.Add("C", "2");
     string_map_.Add("d", "");
     string_map_.Add("A", "3");

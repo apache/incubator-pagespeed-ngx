@@ -1882,8 +1882,8 @@ class AttributeManipulationTest : public HtmlParseTest {
     node_->AddAttribute(html_parse_.MakeName(HtmlName::kClass), "search!",
                         HtmlElement::SINGLE_QUOTE);
     // Add a binary attribute (one without value).
-    node_->AddAttribute(html_parse_.MakeName(HtmlName::kSelected), NULL,
-                        HtmlElement::NO_QUOTE);
+    node_->AddAttribute(html_parse_.MakeName(HtmlName::kSelected),
+                        StringPiece(), HtmlElement::NO_QUOTE);
     html_parse_.CloseElement(node_, HtmlElement::BRIEF_CLOSE, 0);
   }
 

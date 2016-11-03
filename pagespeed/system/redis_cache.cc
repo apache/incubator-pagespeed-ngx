@@ -25,6 +25,7 @@
 
 #include "base/logging.h"
 #include "third_party/redis-crc/redis_crc.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/shared_string.h"
 #include "pagespeed/kernel/base/string.h"
 
@@ -274,10 +275,10 @@ RedisCache::RedisReply RedisCache::RedisCommand(
     redirected_to = ExternalServerSpec();
     if (reply && reply->type == REDIS_REPLY_ERROR) {
       StringPiece error(reply->str, reply->len);
-      if (error.starts_with("MOVED ")) {
+      if (strings::StartsWith(error, "MOVED ")) {
         redirected_to = ParseRedirectionError(error);
         with_asking = false;
-      } else if (error.starts_with("ASK ")) {
+      } else if (strings::StartsWith(error, "ASK ")) {
         redirected_to = ParseRedirectionError(error);
         with_asking = true;
       }

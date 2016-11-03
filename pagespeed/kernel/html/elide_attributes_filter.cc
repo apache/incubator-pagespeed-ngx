@@ -246,7 +246,7 @@ void ElideAttributesFilter::StartElement(HtmlElement* element) {
         HtmlElement::Attribute& attribute = *i;
         if (attribute.escaped_value() != NULL &&
             oneValueAttrs.count(attribute.keyword()) > 0) {
-          attribute.SetEscapedValue(NULL);
+          attribute.SetEscapedValue(StringPiece());
         }
       }
     }

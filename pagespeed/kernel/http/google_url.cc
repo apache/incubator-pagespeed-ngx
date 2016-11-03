@@ -143,7 +143,8 @@ bool GoogleUrl::IsAnyValid() const {
 GoogleUrl* GoogleUrl::CopyAndAddQueryParam(
     StringPiece unescaped_name, StringPiece unescaped_value) const {
   if (unescaped_value.data() == NULL) {
-    return CopyAndAddEscapedQueryParam(EscapeQueryParam(unescaped_name), NULL);
+    return CopyAndAddEscapedQueryParam(EscapeQueryParam(unescaped_name),
+                                       StringPiece());
   } else {
     return CopyAndAddEscapedQueryParam(EscapeQueryParam(unescaped_name),
                                        EscapeQueryParam(unescaped_value));

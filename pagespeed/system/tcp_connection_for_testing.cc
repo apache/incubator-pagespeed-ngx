@@ -4,6 +4,7 @@
 
 #include "apr_network_io.h"
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/system/apr_thread_compatible_pool.h"
 
 namespace net_instaweb {
@@ -51,7 +52,7 @@ GoogleString TcpConnectionForTesting::ReadBytes(int length) {
 GoogleString TcpConnectionForTesting::ReadUntil(StringPiece marker) {
   CHECK(socket_);
   GoogleString result;
-  while (!StringPiece(result).ends_with(marker)) {
+  while (!strings::EndsWith(StringPiece(result), marker)) {
     char data;
     apr_size_t length = 1;
     apr_status_t status = apr_socket_recv(socket_, &data, &length);

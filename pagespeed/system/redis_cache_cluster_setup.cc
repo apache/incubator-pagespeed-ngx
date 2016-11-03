@@ -25,6 +25,7 @@
 #include <algorithm>
 
 #include "base/logging.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/posix_timer.h"
 #include "pagespeed/kernel/base/string.h"
@@ -43,9 +44,9 @@ GoogleString ReadBulkString(TcpConnectionForTesting* conn) {
   GoogleString length_str_storage = conn->ReadLineCrLf();
   StringPiece length_str = length_str_storage;
   // Check that Redis answered with Bulk String
-  CHECK(length_str.starts_with("$"));
+  CHECK(strings::StartsWith(length_str, "$"));
   length_str.remove_prefix(1);
-  CHECK(length_str.ends_with("\r\n"));
+  CHECK(strings::EndsWith(length_str, "\r\n"));
   length_str.remove_suffix(2);
   int length;
   CHECK(StringToInt(length_str, &length));

@@ -20,11 +20,12 @@
 #include <memory>
 
 #include "base/logging.h"
-#include "pagespeed/system/serf_url_async_fetcher.h"
+#include "strings/stringpiece_utils.h"
 #include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/base/timer.h"
-#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/system/serf_url_async_fetcher.h"
 
 namespace net_instaweb {
 
@@ -338,7 +339,7 @@ SystemRewriteOptions* SystemRewriteOptions::DynamicCast(
 bool SystemRewriteOptions::ControllerPortOption::SetFromString(
     StringPiece value_string, GoogleString* error_detail) {
   // Valid values are: unix:<path> or a tcp port number.
-  if (value_string.starts_with("unix:") &&
+  if (strings::StartsWith(value_string, "unix:") &&
       value_string.size() > 5 /*strlen("unix:")*/) {
     set(value_string.as_string());
     return true;
