@@ -47,3 +47,39 @@ function wait_cmd_with_timeout() {
   done
   eval "${@:2}"
 }
+
+# Usage: run_with_log [--verbose] <logfile> CMD [ARG ...]
+# Runs CMD, writing its output to the supplied logfile. Normally silent
+# except on failure, but will tee the output if --verbose is supplied.
+function run_with_log() {
+  local verbose=
+  if [ "$1" = "--verbose" ]; then
+    verbose=1
+    shift
+  fi
+
+  local log_filename="$1"
+  shift
+
+  local start_msg="[$(date '+%k:%M:%S')] $@"
+  # echo what we're about to do to stdout, including log file location.
+  echo "$start_msg >> $log_filename"
+  # Now write the same thing to the log.
+  echo "$start_msg" >> "$log_filename"
+
+  local rc=0
+  if [ -n "$verbose" ]; then
+    "$@" 2>&1 | tee -a "$log_filename"
+    rc=${PIPESTATUS[0]}
+  else
+    "$@" >> "$log_filename" 2>&1 || { rc=$?; true; }
+  fi
+  echo "[$(date '+%k:%M:%S')] Completed with exit status $rc" >> "$log_filename"
+
+  if [ $rc -ne 0 ]; then
+    echo
+    echo "End of $log_filename:"
+    tail "$log_filename"
+  fi
+  return $rc
+}

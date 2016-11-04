@@ -336,7 +336,7 @@ flush_disk_cache :
 		APACHE_USER=$(APACHE_USER) mod_pagespeed_file_root
 
 # Starts Apache server
-start :
+start : enable_ports_and_file_access
 	sudo $(APACHE_START)
 stop :
 	sudo ./stop_apache.sh $(APACHE_CONTROL_PROGRAM) \
@@ -347,7 +347,7 @@ stop :
 
 # To run a complete iteration, stopping Apache, reconfiguring
 # it, and and restarting it, you can run 'make restart [args...]
-restart : stop
+restart : stop enable_ports_and_file_access
 	$(MAKE) staging
 	sudo $(MAKE) install \
 	    APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
@@ -405,20 +405,22 @@ apache_debug_stop : stop
 # used to test connection-refused handling via modpagespeed.com.  We don't
 # actually create a VirtualHost on 1023.
 enable_ports_and_file_access :
-	set -x; \
-	for port in 1023 8081 8082 $(APACHE_SECONDARY_PORT) \
-	    $(APACHE_TERTIARY_PORT) $(CONTROLLER_PORT); do \
-	    /usr/sbin/semanage port -a -t http_port_t -p tcp $$port || \
-	    /usr/sbin/semanage port -m -t http_port_t -p tcp $$port; \
-	done
-	set -x; \
-	for dir in $(MOD_PAGESPEED_CACHE) \
-	           $(MOD_PAGESPEED_CACHE)-alt \
-	           $(MOD_PAGESPEED_LOG) ; do \
-	  mkdir -p $$dir; \
-	  chown $(APACHE_USER) $$dir; \
-	  chcon -R --reference=$(APACHE_DOC_ROOT) $$dir || true; \
-	done
+	if [ -x /usr/sbin/semanage ]; then \
+	  set -x; \
+	  for port in 1023 8081 8082 $(APACHE_SECONDARY_PORT) \
+	      $(APACHE_TERTIARY_PORT) $(CONTROLLER_PORT); do \
+	      sudo /usr/sbin/semanage port -a -t http_port_t -p tcp $$port || \
+	      sudo /usr/sbin/semanage port -m -t http_port_t -p tcp $$port; \
+	  done; \
+	  for dir in $(MOD_PAGESPEED_CACHE) \
+	             $(MOD_PAGESPEED_CACHE)-alt \
+	             $(MOD_PAGESPEED_LOG) ; do \
+	    sudo mkdir -p $$dir; \
+	    sudo chown $(APACHE_USER) $$dir; \
+	    sudo chcon -R --reference=$(APACHE_DOC_ROOT) $$dir || true; \
+	  done; \
+	  /usr/sbin/setsebool httpd_can_network_connect on; \
+	fi
 
 # Hooks for tests we can only run in development due to needing extensive
 # configuration changes in Apache (and potentially different build flags).

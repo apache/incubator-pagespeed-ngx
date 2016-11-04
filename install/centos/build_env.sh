@@ -4,12 +4,17 @@
 #
 # Sets common environment variables requires for building PageSpeed stuff.
 
-devtoolset_enable=/opt/rh/devtoolset-2/enable
+devtoolset_dir=/opt/rh/devtoolset-2
+devtoolset_enable="${devtoolset_dir}/enable"
 if [ -f "$devtoolset_enable" ]; then
   # devtoolset_enable uses possibly unset vars, so disable set -u for it.
   set +u
   source "$devtoolset_enable"
   set -u
+  : ${CC:="${devtoolset_dir}/root/usr/bin/gcc"}
+  : ${CXX:="${devtoolset_dir}/root/usr/bin/g++"}
+  export CC CXX
+
 fi
 
 export SSL_CERT_DIR=/etc/pki/tls/certs

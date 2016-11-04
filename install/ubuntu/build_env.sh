@@ -8,6 +8,9 @@ compiler_path=/usr/lib/gcc-mozilla
 if [ -x "${compiler_path}/bin/gcc" ]; then
   export PATH="${compiler_path}/bin:$PATH"
   export LD_LIBRARY_PATH="${compiler_path}/lib:${LD_LIBRARY_PATH:-}"
+  : ${CC:="${compiler_path}/bin/gcc"}
+  : ${CXX:="${compiler_path}/bin/g++"}
+  export CC CXX
 fi
 
 export PATH=$HOME/bin:/usr/local/bin:$PATH
