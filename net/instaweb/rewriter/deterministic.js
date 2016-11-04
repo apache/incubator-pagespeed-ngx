@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+// Source:
+//   https://github.com/chromium/web-page-replay/blob/master/deterministic.js
+//
 // This js redefines the non-deterministic parts of JS, such as Date and
 // Math.random, so that contents of the rewritten page are more or less
 // deterministic when loaded repeatedly. This can help in reducing variance

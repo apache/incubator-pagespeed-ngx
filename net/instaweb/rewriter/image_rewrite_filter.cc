@@ -1170,6 +1170,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
               ResourceVector(1, input_resource), image->Contents(),
               output_type, StringPiece() /* no charset for images */,
               result.get())) {
+        // Static cast to avoid format string trouble.
         driver()->InfoAt(
             rewrite_context,
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",

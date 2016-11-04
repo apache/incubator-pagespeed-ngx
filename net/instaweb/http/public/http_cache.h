@@ -43,8 +43,27 @@ class Statistics;
 class Timer;
 class Variable;
 
-// Implements HTTP caching semantics, including cache expiration and
-// retention of the originally served cache headers.
+// Implements HTTP caching semantics, including cache expiration and retention
+// of the originally served cache headers.
+//
+// The cache is fragmented by the Host: header that the browser sends to the
+// server to prevent cache poisoning.  For example, if good.com and evil.com
+// were to use the same shared hosting provider with a shared cache and no
+// fragmentation, evil.com could put in a MapOriginDomain that would tell
+// PageSpeed to fetch good.com resources from henchman.com.  When the request
+// came into PageSpeed via evil.com and the response referenced resources on
+// good.com PageSpeed would fetch those resources from henchman.com and put them
+// in the cache.  If the cache were shared completely between good.com and
+// evil.com, then PageSpeed would use these poisoned files when serving
+// responses for good.com.  To break this attack we put files into their own
+// cache spaces, divided by Host: header.
+//
+// Note that it's not enough to do this by virtual host: some hosting providers
+// don't use separate vhosts for separate clients.
+//
+// In some cases we don't want fragmentation by vhost, for example
+// www.example.com and images.example.com would like to share a cache.  In that
+// case they can opt in to a shared cache by chosing their own fragment to use.
 class HTTPCache {
  public:
   // Names of statistics variables: exported for tests.

@@ -569,6 +569,9 @@ TEST_F(ServerContextTest, TestOutputInputUrl) {
                           true, "foo();");
 }
 
+// Test to make sure we do not let a crafted output resource URL to get us to
+// fetch and host things from a non-lawyer permitted external host; which could
+// lead to XSS vulnerabilities or a firewall bypass.
 TEST_F(ServerContextTest, TestOutputInputUrlEvil) {
   options()->EnableFilter(RewriteOptions::kRewriteJavascriptExternal);
   rewrite_driver()->AddFilters();

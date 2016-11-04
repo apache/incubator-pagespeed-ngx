@@ -97,6 +97,8 @@ class ProxyInterface : public UrlAsyncFetcher {
 
   // If the URL and port are for this server, don't proxy those (to avoid
   // infinite fetching loops). This might be the favicon or something...
+  // TODO(sligocki): It would be nice to be able to turn this off in situations
+  // where we're using a fetcher which definitely can't fetch from localhost.
   bool UrlAndPortMatchThisServer(const GoogleUrl& url);
 
   // This server's hostname and port (to avoid making circular requests).

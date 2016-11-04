@@ -1115,6 +1115,8 @@ TEST_F(HtmlAnnotationTest, UnclosedScriptOnlyWithFlush) {
 
 TEST_F(HtmlAnnotationTest, NulInAttrName) {
   // Tests that we don't crash with an embedded NUL in an attribute name.
+  // Without '%compare-lengths' in html_name.gperf, this would fail when built
+  // with asan.
   SetupWriter();
   html_parse_.StartParse("http://test.com/nul_in_attr.html");
   html_parse_.ParseText("<img src");

@@ -80,6 +80,7 @@ GoogleString EncodeVlq(int32 val);
 // Encodes mappings into a sequence of ; and , separated VLQ base64 values.
 bool EncodeMappings(const MappingVector& mappings,
                     GoogleString* result);
+// Percent encode < and > in URLs to avoid XSS shenanigans.
 GoogleString PercentEncode(StringPiece url);
 
 }  // namespace source_map

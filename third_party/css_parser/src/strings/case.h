@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// Implement strings/case.h in terms of memutil.h
 #ifndef WEBUTIL_CSS_OPEN_SOURCE_STRINGS_CASE_H_
 #define WEBUTIL_CSS_OPEN_SOURCE_STRINGS_CASE_H_
 

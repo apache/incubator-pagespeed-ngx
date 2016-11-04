@@ -185,8 +185,10 @@ void InPlaceResourceRecorder::ConsiderResponseHeaders(
         DroppedAsUncacheable();
       } else {
         // If we were able to learn the content-type early then the added
-        // caching pressure is not worth short-circuiting the filter, and
-        // we can simply bail here on every request.
+        // caching pressure is not worth short-circuiting the filter, and we can
+        // simply bail here on every request.
+        // scripts/siege_html_high_entropy.sh saw a 16% benefit with this
+        // strategy.
         failure_ = true;
       }
       return;

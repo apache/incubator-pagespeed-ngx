@@ -295,6 +295,11 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
   if (driver()->options()->Enabled(RewriteOptions::kComputeCriticalCss)) {
     // If compute_critical_css is enabled, add 'href' attribute to the style
     // node.
+    //
+    // compute_critical_css was used only for a google-internal system for
+    // computing critical css with a headless browser and storing it in pcache.
+    // It is never enabled for user requests.
+    //
     // Computing critical css needs this url to store the critical
     // css in the map.
     driver()->AddAttribute(style_element, HtmlName::kDataPagespeedHref,

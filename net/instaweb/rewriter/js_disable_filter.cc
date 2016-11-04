@@ -187,6 +187,7 @@ void JsDisableFilter::StartElementImpl(HtmlElement* element) {
     // TODO(ksimbili): Try fixing not adding non-Js code, if we can.
     // TODO(ksimbili): Call onloads on elements in the same order as they are
     // triggered.
+    // See the test file js_defer_onload_in_html.html
     onload->set_name(driver()->MakeName("data-pagespeed-onload"));
     driver()->AddEscapedAttribute(element, HtmlName::kOnload,
                                   kElementOnloadCode);

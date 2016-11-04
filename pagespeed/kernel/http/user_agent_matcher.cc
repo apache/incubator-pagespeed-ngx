@@ -87,6 +87,7 @@ const char* kLazyloadImagesBlacklist[] = {
 // We'll be updating this as and when required.
 // The blacklist is checked first, then if not in there, the whitelist is
 // checked.
+// Do allow googlebot, since we run defer js for modern browsers.
 // Note: None of the following should match a mobile UA.
 const char* kDeferJSWhitelist[] = {
   "*Chrome/*",
@@ -486,6 +487,8 @@ bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent,
                                        bool allow_mobile) const {
   // TODO(ksimbili): Use IsMobileRequest?
   if (GetDeviceTypeForUA(user_agent) != kDesktop) {
+    // TODO(ksimbili): IsMobileUserAgent returns true for tablets too.
+    // Fix it when we need to differentiate them.
     return allow_mobile && defer_js_mobile_whitelist_.Match(user_agent, false);
   }
   return user_agent.empty() || defer_js_whitelist_.Match(user_agent, false);

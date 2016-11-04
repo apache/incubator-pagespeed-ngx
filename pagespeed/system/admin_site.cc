@@ -328,6 +328,14 @@ void AdminSite::ConsoleJsonHandler(const QueryParams& params,
   } else {
     fetch->response_headers()->SetStatusAndReason(HttpStatus::kOK);
 
+    // TODO(morlovich): It would be more secure to do:
+    //    Content-Type: application/javascript; charset=utf-8
+    // instead of using a JSON one.  There are probably a few other
+    // anti-sniffing headers we could add as well.
+    //
+    // Also, it would be good to start what we serve with )]}' and a newline,
+    // and updating the client js, to make completely sure the browser can't be
+    // tricked into running it.
     fetch->response_headers()->Add(HttpAttributes::kContentType,
                                    kContentTypeJson.mime_type());
 

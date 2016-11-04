@@ -199,6 +199,13 @@ TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
               != GoogleString::npos) << output_buffer_;
 }
 
+TEST_F(AddInstrumentationFilterTest, Quoting) {
+  AddFilters();
+  GoogleString url = "http://example.com/?');alert('foo)";
+  ParseUrl(url, "<head></head><body></body>");
+  EXPECT_EQ(GoogleString::npos,
+            output_buffer_.find("?');alert('foo)"));
+}
 
 // Test that head script is inserted after title and meta tags.
 TEST_F(AddInstrumentationFilterTest, TestScriptAfterTitleAndMeta) {

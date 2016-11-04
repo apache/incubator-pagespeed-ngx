@@ -93,6 +93,11 @@ void LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
       port_section = StrCat(":", IntegerToString(own_port_));
     }
 
+    // Using GoogleUrl::Reset() here would be insecure (CVE-2016-3626) because
+    // Reset() is for resolving urls in the context of a web page. For example,
+    // Reset(base, "http://example.com") would completely disregard base and
+    // just give you http://example.com.
+    // See comments on GURL::Resolve().
     url = StrCat(scheme, "://", own_ip_, port_section, path_and_leaf);
 
     // Note that we end up with host: containing the actual URL's host, but

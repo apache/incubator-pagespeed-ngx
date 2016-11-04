@@ -2438,7 +2438,7 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
 }
 
 TEST_F(ImageRewriteTest, InlineTestWithResizeKeepDims) {
-  // their dimensions when we inline.
+  // Non-image elements should retain dimensions when we inline.
   options()->set_image_inline_max_bytes(10000);
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kInlineImages);

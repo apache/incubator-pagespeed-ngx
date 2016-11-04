@@ -184,6 +184,8 @@ const char kRewrittenCachableHtmlWithCollapseWhitespace[] =
     "<html>\n<link rel=stylesheet href=a.css> "
     "<link rel=stylesheet href=test/b.css></html>";
 
+// TODO(jmarantz): Add some more functional tests to RewriteDriver.  For the
+// moment this test really ensures that we can link a rewriting executable.
 TEST_F(RewriteDriverTest, NoChanges) {
   ValidateNoChanges("no_changes",
                     "<head><script src=\"foo.js\"></script></head>"

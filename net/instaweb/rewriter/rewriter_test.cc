@@ -113,6 +113,8 @@ TEST_F(RewriterTest, HandlingOfInvalidUrls) {
 
   // Fetching variants should not cause system problems.
   // Changing hash still works.
+  // Note: If we start rewriting personalized resources, this could be a
+  // security hole.
   // Note: If any of these switch from true to false, that's probably fine.
   // We'd just like to keep track of what causes errors and what doesn't.
   EXPECT_TRUE(TryFetchResource(Encode(kTestDomain, RewriteOptions::kCssFilterId,

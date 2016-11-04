@@ -300,6 +300,10 @@ pagespeed.CriticalImages.Beacon_.prototype.getImageRenderedMap = function() {
       };
     }
   }
+  // TODO(poojatandon): Some background images are larger than the view port,
+  // especially on mobile devices. In such cases it would be better to resize
+  // (or crop) the background image to the viewport size, because this would cut
+  // down the image size significantly.  But we don't do this yet.
   return renderedImageDimensions;
 };
 

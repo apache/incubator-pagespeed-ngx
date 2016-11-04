@@ -141,6 +141,7 @@ bool DisposeImage(const FrameSpec* frame, const FrameSpec* previous_frame,
   return true;
 }
 
+// BlendChannel was copied from libwebp/examples/gif2webp.c
 // Blend a single channel of 'src' over 'dst', given their alpha channel values.
 uint8_t BlendChannel(uint32_t src, uint8_t src_a, uint32_t dst, uint8_t dst_a,
                      uint32_t scale, int shift) {
@@ -151,6 +152,7 @@ uint8_t BlendChannel(uint32_t src, uint8_t src_a, uint32_t dst, uint8_t dst_a,
   return (blend_unscaled * scale) >> 24;
 }
 
+// BlendPixel was copied from libwebp/examples/gif2webp.c
 // Blend 'src' over 'dst'.
 uint32_t BlendPixel(uint32_t src, uint32_t dst) {
   const uint8_t src_a = (src >> 24) & 0xff;
@@ -422,6 +424,7 @@ ScanlineStatus WebpFrameWriter::CacheCurrentFrame() {
   if (!WebPAnimEncoderAdd(webp_encoder_, &webp_image_, current_time,
                           &libwebp_config_)) {
     if (webp_image_.error_code == kWebPErrorTimeout) {
+      // This seems to never be reached.
       return PS_LOGGED_STATUS(PS_LOG_ERROR, message_handler(),
                               SCANLINE_STATUS_TIMEOUT_ERROR,
                               FRAME_WEBPWRITER,
@@ -664,6 +667,8 @@ ScanlineStatus WebpScanlineReader::InitializeWithStatus(
                             SCANLINE_WEBPREADER, "WebPGetFeatures()");
   }
 
+  // TODO(huibao): Upgrade libwebp for open source and check if the
+  // input is an animated WebP.
 
   // Determine the pixel format and the number of channels.
   if (features.has_alpha) {

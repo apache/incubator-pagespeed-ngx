@@ -550,6 +550,7 @@ void HtmlLexer::EvalLiteralTag(char c) {
   // TODO(jmarantz): check for whitespace in unexpected places.
   if (c == '>') {
     // expecting "</x>" for tag x.
+    // Chromium source lacks CHECK_GT
     html_parse_->message_handler()->Check(
         literal_close_.size() > 3, "literal_close_.size() <= 3");  // NOLINT
     int literal_minus_close_size = literal_.size() - literal_close_.size();

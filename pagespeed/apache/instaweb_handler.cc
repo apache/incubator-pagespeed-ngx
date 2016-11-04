@@ -765,6 +765,10 @@ bool InstawebHandler::parse_body_from_post(const request_rec* request,
     *ret = HTTP_BAD_REQUEST;
     return false;
   }
+  // TODO(jud): Set the charset on the beacon to a known value (say, UTF-8), and
+  // check here that it's as expected. Intended as a cheap-and-nasty test that
+  // the beacon came from our JS and not some black hat. Easily subvertible but
+  // better than nothing (?).
   if (!StringCaseEqual(mime_type, "application/x-www-form-urlencoded") &&
       !StringCaseEqual(mime_type, "multipart/form-data")) {
     *ret = HTTP_BAD_REQUEST;

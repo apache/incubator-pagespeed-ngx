@@ -105,6 +105,16 @@ TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
   EXPECT_STREQ("somehost.com",
                dest.response_headers()->Lookup1("Host"));
 
+  // And also test handling of protocol-relative urls.
+  ExpectStringAsyncFetch destPR(
+      true, RequestContext::NewTestRequestContext(
+          thread_system_.get()));
+  loopback_route_fetcher_.Fetch("http://somehost.com//foo/bar",
+                                &handler_, &destPR);
+  EXPECT_STREQ(StrCat("http://", kOwnIp, ":42//foo/bar"),
+               destPR.buffer());
+  EXPECT_STREQ("somehost.com",
+               destPR.response_headers()->Lookup1("Host"));
 
   // Now make somehost.com known, as well as somehost.cdn.com
   options_.WriteableDomainLawyer()->AddOriginDomainMapping(

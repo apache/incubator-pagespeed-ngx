@@ -71,6 +71,8 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
   // This is encoded message body, a rewriter or fetcher
   // may opt to translate to entity-body only after removing
   // header which has encoding information.
+  // TODO(atulvasu): Support something like a Rope for larger post bodies.
+  // TODO(atulvasu): Use a Writer instead of a string.
   const GoogleString& message_body() const;
   void set_message_body(const GoogleString& data);
 

@@ -5096,6 +5096,10 @@ bool RewriteOptions::CacheFragmentOption::SetFromString(
   // The main thing here is that the fragment not contain '/' (the separator
   // used by HTTPCache) or '.' (so that a fragment can't be confused for a Host:
   // header) but use a whitelist to be on the safe side.
+  //
+  // This has security implications.  If you could set the fragment to
+  // "good.com" when running "evil.com" you could posion good.com's cache.  See
+  // the comment at the top of http_cache.h.
   for (int i = 0, n = value.length(); i < n; ++i) {
     const char c = value.data()[i];
     if (!IsAsciiAlphaNumeric(c) && c != '-' && c != '_') {

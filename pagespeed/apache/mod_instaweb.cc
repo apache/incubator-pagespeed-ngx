@@ -1067,6 +1067,8 @@ apr_status_t pagespeed_log_transaction(request_rec* request) {
   return DECLINED;
 }
 
+// Make sure that local requests from ourselves don't get marked as coming from
+// localhost, as we don't want them matching 'allow from localhost'.
 int pagespeed_modify_request(request_rec* r) {
   // Escape ASAP if we're in unplugged mode.
   ApacheServerContext* server_context =

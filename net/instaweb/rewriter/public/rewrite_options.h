@@ -1694,7 +1694,7 @@ class RewriteOptions {
   // may be invalidated, depending on whether there are wildcards in
   // the pattern, and whether enable_cache_purge() is true.  Note that
   // HTTP cache invalidation is always exactly for the URLs matching
-  // url_pattern.
+  // url_pattern.  This should probably always be set to false.
   void AddUrlCacheInvalidationEntry(StringPiece url_pattern,
                                     int64 timestamp_ms,
                                     bool ignores_metadata_and_pcache);
@@ -3898,6 +3898,8 @@ class RewriteOptions {
   Option<bool> oblivious_pagespeed_urls_;
 
   // Cache expiration time in msec for properties of finders.
+  // Critical images /flush early information will be valid for the time
+  // specified.
   Option<int64> finder_properties_cache_expiration_time_ms_;
 
   // Cache refresh time in msec for properties of finders. The properties are

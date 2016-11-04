@@ -144,6 +144,7 @@ TEST_F(SourceMapTest, Encode_JsonEscaping) {
   // need to be re-golded if the Json::FastWriter changes.
   EXPECT_EQ(")]}'\n"
             // " and \ are backslash escaped (' isn't).
+            // < and > are URL %XX escaped to avoid XSS shenanigans.
             "{\"file\":\"`~!@#$%^&*()-_=+[{]}\\\\|;:'\\\",%3C.%3E/?\","
             "\"mappings\":\"\",\"names\":[],\"sources\":[\""
             // Control chars U+00 to U+1F must be escaped as \uXXXX

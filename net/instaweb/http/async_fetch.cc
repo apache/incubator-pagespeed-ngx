@@ -30,6 +30,8 @@
 
 namespace net_instaweb {
 
+// TODO(piatek): Remove this default constructor that permits NULL request
+// contexts.
 AsyncFetch::AsyncFetch()
     : request_headers_(NULL),
       response_headers_(NULL),

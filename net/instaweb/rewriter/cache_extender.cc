@@ -324,6 +324,11 @@ RewriteResult CacheExtender::RewriteLoadedResource(
     // could execute scripts when loaded in a browser because that could
     // open XSS vectors in case of system misconfiguration.
     //
+    // In particular, if somehow a.com/b.com (incorrectly) authorize each other
+    // as trusted in the DomainLawyer an external fetch of
+    // a.com/,hb.com,_evil.html.pagespeed.ce.html, would run b.com's content
+    // inside a.com's domain, getting access to a.com frames.
+    //
     // We whitelist a set of safe Content-Types here.
     //
     // TODO(sligocki): Should we whitelist more Content-Types as well?

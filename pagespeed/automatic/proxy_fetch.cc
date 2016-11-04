@@ -391,6 +391,7 @@ void ProxyFetchPropertyCallbackCollector::ExecuteConnectProxyFetch(
   proxy_fetch_ = proxy_fetch;
 
   // Use global options in case options is NULL.
+  // options can be NULL if it is unconfigured domain.
   const RewriteOptions* options =
       options_ != NULL ? options_ : server_context_->global_options();
 

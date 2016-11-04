@@ -34,7 +34,7 @@ class RewriteGflags {
   // The constructor parses the options.
   RewriteGflags(const char* progname, int* argc, char*** argv);
 
-  // Constructor that does no option parsing.
+  // Constructor that does no option parsing.  You probably don't want this.
   RewriteGflags() {}
 
   // Apply the parsed options to the options and factory.  Note that some of

@@ -57,6 +57,7 @@ class JsDeferDisabledFilterTest : public RewriteTestBase {
   scoped_ptr<JsDeferDisabledFilter> js_defer_disabled_filter_;
 };
 
+// TODO(atulvasu): Write tests that actually execute script.
 TEST_F(JsDeferDisabledFilterTest, DeferScript) {
   InitJsDeferDisabledFilter(false);
 

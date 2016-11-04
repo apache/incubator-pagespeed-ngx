@@ -86,6 +86,7 @@ class MockSchedulerTest : public testing::Test {
         was_cancelled_(false) {}
 
   Scheduler::Alarm* AddTask(int64 wakeup_time_us, char c) {
+    // TODO(jefftk): switch to using MakeFunction without template qualification
     Function* append_char = MakeFunction<GoogleString, char>(
         &string_, &GoogleString::push_back, c);
     return scheduler_->AddAlarmAtUs(wakeup_time_us, append_char);

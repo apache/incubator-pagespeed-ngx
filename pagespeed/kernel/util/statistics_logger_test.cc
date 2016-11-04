@@ -339,6 +339,23 @@ TEST_F(StatisticsLoggerTest, NoMalformedJson) {
       json_dump_graphs;
 }
 
+TEST_F(StatisticsLoggerTest, Escaping) {
+  // Make sure we do proper escaping of variable names. Not
+  // escaping them from HTML can cause an XSS when IE6
+  // missniffs, while escaping for JSON is just pedantic
+  std::set<GoogleString> var_titles;
+  var_titles.insert("<bo_o>\\");
+  int64 start_time, end_time, granularity_ms;
+  CreateFakeLogfile(&var_titles, &start_time, &end_time,
+                    &granularity_ms);
+
+  GoogleString json_dump;
+  StringWriter writer(&json_dump);
+  logger_.DumpJSON(false, var_titles, start_time, end_time,
+                   granularity_ms, &writer, &handler_);
+  EXPECT_NE(GoogleString::npos, json_dump.find("&lt;bo_o&gt;\\\\"))
+      << json_dump;
+}
 
 // Make sure we return sensible results when there is data missing from log.
 // This is not just to deal with data corruption, but any time the set of
