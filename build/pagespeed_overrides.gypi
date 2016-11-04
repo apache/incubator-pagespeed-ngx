@@ -68,9 +68,6 @@
     'include_dirs': [
       '<(DEPTH)/third_party/chromium/src',
     ],
-    'defines': [
-      'CHROMIUM_REVISION=<(chromium_revision)',
-    ],
 
     # ABI-incompatible changes are trouble when you have a library, so turn off
     # _GLIBCXX_DEBUG --- it makes various STL objects have different types and

@@ -9,3 +9,4 @@ hooks.timestamp
 build/gyp_helper.pyc
 build/landmine_utils.pyc
 out/
+tools/closure/

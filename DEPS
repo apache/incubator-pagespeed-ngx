@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-vars = {
-  # We don't include @ inside the revision here as is customary since
-  # we want to pass this into a -D flag
-  "chromium_revision_num": "256281",
-}
-
 deps = { }
 
 include_rules = [
@@ -45,7 +39,6 @@ hooks = [
     # A change to a .gyp, .gypi, or to GYP itself should run the generator.
     "pattern": ".",
     "action": ["python", "build/gyp_chromium",
-               "-Dchromium_revision=" + Var("chromium_revision_num"),
                "--depth=."],
   },
 ]

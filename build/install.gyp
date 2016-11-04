@@ -112,69 +112,43 @@
           ],
         },
         {
-          'target_name': 'linux_packages',
+          'target_name': 'linux_package_deb_stable',
           'suppress_wildcard': 1,
-          'type': 'none',
-          'dependencies': [
-            'linux_package_deb',
-            'linux_package_rpm',
+          'variables': {
+            'channel': 'stable',
+          },
+          'includes': [
+            'linux_package_deb.gypi',
           ],
         },
         {
-          'target_name': 'linux_package_deb',
+          'target_name': 'linux_package_deb_beta',
           'suppress_wildcard': 1,
-          'type': 'none',
-          'dependencies': [
-            'all.gyp:All',
-            'linux_installer_configs',
-          ],
-          'actions': [
-            {
-              'variables': {
-                'channel%': 'beta',
-              },
-              'action_name': 'deb_package_<(channel)',
-              'process_outputs_as_sources': 1,
-              'inputs': [
-                '<(deb_build)',
-                '<@(packaging_files_binaries)',
-                '<@(packaging_files_common)',
-                '<@(packaging_files_deb)',
-              ],
-              'outputs': [
-                '<(PRODUCT_DIR)/mod-pagespeed-<(channel)-<(version)-r<(revision)_<(deb_arch).deb',
-              ],
-              'action': [ '<@(deb_cmd)', '-c', '<(channel)', ],
-            },
+          'variables': {
+            'channel': 'beta',
+          },
+          'includes': [
+            'linux_package_deb.gypi',
           ],
         },
         {
-          'target_name': 'linux_package_rpm',
+          'target_name': 'linux_package_rpm_stable',
           'suppress_wildcard': 1,
-          'type': 'none',
-          'dependencies': [
-            'all.gyp:All',
-            'linux_installer_configs',
+          'variables': {
+            'channel': 'stable',
+          },
+          'includes': [
+            'linux_package_rpm.gypi',
           ],
-          'actions': [
-            {
-              'variables': {
-                'channel%': 'beta',
-              },
-              'action_name': 'rpm_package_<(channel)',
-              'process_outputs_as_sources': 1,
-              'inputs': [
-                '<(rpm_build)',
-                '<(PRODUCT_DIR)/install/rpm/mod-pagespeed.spec.template',
-                '<@(packaging_files_binaries)',
-                '<@(packaging_files_common)',
-                '<@(packaging_files_rpm)',
-              ],
-              'outputs': [
-                '<(PRODUCT_DIR)/mod-pagespeed-<(channel)-<(version)-r<(revision).<(rpm_arch).rpm',
-              ],
-              'action': [ '<@(rpm_cmd)', '-c', '<(channel)', ],
-            },
+        },
+        {
+          'target_name': 'linux_package_rpm_beta',
+          'suppress_wildcard': 1,
+          'variables': {
+            'channel': 'beta',
+          },
+          'includes': [
+            'linux_package_rpm.gypi',
           ],
         },
       ],
