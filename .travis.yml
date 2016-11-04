@@ -28,7 +28,7 @@ install:
   - ~/bin/depot_tools/gclient sync --force --jobs=1 2>&1 > /dev/null
   - make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release -j3
   - python build/gyp_chromium -Dchannel=beta
-  - make BUILDTYPE=Release AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh linux_package_deb_release
+  - make BUILDTYPE=Release AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh linux_package_deb_stable
   - sudo dpkg -i out/Release/mod-pagespeed*.deb
 script:
   - cd ~/build_directory/src
