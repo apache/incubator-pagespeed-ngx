@@ -275,11 +275,12 @@ if [ -n "$ngx_module_link" ]; then
     if [ $ngx_module_link != DYNAMIC ]; then
       # ngx_module_order doesn't work with static modules,
       # so we must re-order filters here.
+      HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES \
+                             | sed "s/ngx_pagespeed//")
       if [ "$position_aux" = "true" ] ; then
         HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
       else
         HTTP_FILTER_MODULES=$(echo $HTTP_FILTER_MODULES \
-                             | sed "s/ngx_pagespeed//" \
                              | sed "s/$next/$next ngx_pagespeed/")
       fi
       # Make the etag header filter run immediately before range header filter.
