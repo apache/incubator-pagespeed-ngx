@@ -182,9 +182,13 @@ if ! var_defined PROXY_DOMAIN; then
 fi
 
 # Setup wget proxy information
-export http_proxy=${3:-}
-export https_proxy=${3:-}
-export ftp_proxy=${3:-}
+if [ -n "${3:-}" ]; then
+  export http_proxy=http://$3
+else
+  export http_proxy=""
+fi
+export https_proxy=${http_proxy}
+export ftp_proxy=${http_proxy}
 export no_proxy=""
 
 # Version timestamped with nanoseconds, making it extremely unlikely to hit.
@@ -755,7 +759,7 @@ function generate_url {
     RESULT="http://$DOMAIN$PATH"
   else
     RESULT="--header X-Google-Pagespeed-Config-Domain:$DOMAIN"
-    RESULT+=" $STATIC_DOMAIN$PATH"
+    RESULT+=" http://$STATIC_DOMAIN$PATH"
   fi
   echo $RESULT
 }

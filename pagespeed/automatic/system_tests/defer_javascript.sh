@@ -1,6 +1,6 @@
 start_test ?PageSpeed=noscript inserts canonical href link
 OUT=$($WGET_DUMP $EXAMPLE_ROOT/defer_javascript.html?PageSpeed=noscript)
-check_from "$OUT" egrep -q \
+check_from "$OUT" fgrep -q \
   "link rel=\"canonical\" href=\"$EXAMPLE_ROOT/defer_javascript.html\""
 
 # Checks that defer_javascript injects 'pagespeed.deferJs' from defer_js.js,
