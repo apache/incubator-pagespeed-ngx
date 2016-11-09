@@ -131,7 +131,7 @@ pagespeed.LazyloadImages.prototype.loadIfVisibleAndMaybeBeacon = function(a) {
         a.removeAttribute("onload");
         a.tagName && "IMG" == a.tagName && pagespeed.CriticalImages && pagespeedutils.addHandler(a, "load", function(a) {
           pagespeed.CriticalImages.checkImageForCriticality(this);
-          b.onload_done_ && (b.imgs_to_load_before_beaconing_--, b.imgs_to_load_before_beaconing_ || pagespeed.CriticalImages.checkCriticalImages());
+          b.onload_done_ && (b.imgs_to_load_before_beaconing_--, 0 == b.imgs_to_load_before_beaconing_ && pagespeed.CriticalImages.checkCriticalImages());
         });
         a.removeAttribute("data-pagespeed-lazy-src");
         a.removeAttribute("data-pagespeed-lazy-replaced-functions");
@@ -182,19 +182,19 @@ pagespeed.lazyLoadInit = function(a, b) {
     c.onload_done_ = !0;
     c.force_load_ = a;
     c.buffer_ = 200;
-    pagespeed.CriticalImages && (c.imgs_to_load_before_beaconing_ = c.countDeferredImgs_(), c.imgs_to_load_before_beaconing_ || pagespeed.CriticalImages.checkCriticalImages());
+    pagespeed.CriticalImages && (c.imgs_to_load_before_beaconing_ = c.countDeferredImgs_(), 0 == c.imgs_to_load_before_beaconing_ && pagespeed.CriticalImages.checkCriticalImages());
     c.loadVisible_();
   });
-  b.indexOf("data") && ((new Image).src = b);
+  0 != b.indexOf("data") && ((new Image).src = b);
   var d = function() {
     if (!(c.onload_done_ && a || c.scroll_timer_)) {
-      var b = 200;
-      200 < (new Date).getTime() - c.last_scroll_time_ && (b = 0);
+      var b = (new Date).getTime(), d = c.min_scroll_time_;
+      b - c.last_scroll_time_ > c.min_scroll_time_ && (d = 0);
       c.scroll_timer_ = window.setTimeout(function() {
         c.last_scroll_time_ = (new Date).getTime();
         c.loadVisible_();
         c.scroll_timer_ = null;
-      }, b);
+      }, d);
     }
   };
   pagespeedutils.addHandler(window, "scroll", d);

@@ -8,7 +8,7 @@ goog.exportPath_ = function(a, b, c) {
   c = c || goog.global;
   a[0] in c || !c.execScript || c.execScript("var " + a[0]);
   for (var d;a.length && (d = a.shift());) {
-    !a.length && goog.isDef(b) ? c[d] = b : c[d] ? c = c[d] : c = c[d] = {};
+    !a.length && goog.isDef(b) ? c[d] = b : c = c[d] ? c[d] : c[d] = {};
   }
 };
 goog.define = function(a, b) {
@@ -46,7 +46,7 @@ goog.module = function(a) {
     throw Error("Invalid module identifier");
   }
   if (!goog.isInModuleLoader_()) {
-    throw Error("Module " + a + " has been loaded incorrectly.");
+    throw Error("Module " + a + " has been loaded incorrectly. Note, modules cannot be loaded as normal scripts. They require some kind of pre-processing step. You're likely trying to load a module via a script tag or as a part of a concatenated bundle without rewriting the module. For more info see: https://github.com/google/closure-library/wiki/goog.module:-an-ES6-module-like-alternative-to-goog.provide.");
   }
   if (goog.moduleLoaderState_.moduleName) {
     throw Error("goog.module may only be called once per module.");
@@ -69,7 +69,7 @@ goog.module.getInternal_ = function(a) {
 };
 goog.moduleLoaderState_ = null;
 goog.isInModuleLoader_ = function() {
-  return !!goog.moduleLoaderState_;
+  return null != goog.moduleLoaderState_;
 };
 goog.module.declareLegacyNamespace = function() {
   if (!COMPILED && !goog.isInModuleLoader_()) {
@@ -128,17 +128,20 @@ goog.require = function(a) {
   if (!COMPILED) {
     goog.ENABLE_DEBUG_LOADER && goog.IS_OLD_IE_ && goog.maybeProcessDeferredDep_(a);
     if (goog.isProvided_(a)) {
-      return goog.isInModuleLoader_() ? goog.module.getInternal_(a) : null;
-    }
-    if (goog.ENABLE_DEBUG_LOADER) {
-      var b = goog.getPathFromDeps_(a);
-      if (b) {
-        return goog.writeScripts_(b), null;
+      if (goog.isInModuleLoader_()) {
+        return goog.module.getInternal_(a);
+      }
+    } else {
+      if (goog.ENABLE_DEBUG_LOADER) {
+        var b = goog.getPathFromDeps_(a);
+        if (b) {
+          goog.writeScripts_(b);
+        } else {
+          throw a = "goog.require could not find: " + a, goog.logToConsole_(a), Error(a);
+        }
       }
     }
-    a = "goog.require could not find: " + a;
-    goog.logToConsole_(a);
-    throw Error(a);
+    return null;
   }
 };
 goog.basePath = "";
@@ -165,7 +168,7 @@ goog.TRANSPILE = "detect";
 goog.TRANSPILER = "transpile.js";
 goog.DEPENDENCIES_ENABLED && (goog.dependencies_ = {loadFlags:{}, nameToPath:{}, requires:{}, visited:{}, written:{}, deferred:{}}, goog.inHtmlDocument_ = function() {
   var a = goog.global.document;
-  return !!a && "write" in a;
+  return null != a && "write" in a;
 }, goog.findBasePath_ = function() {
   if (goog.isDef(goog.global.CLOSURE_BASE_PATH)) {
     goog.basePath = goog.global.CLOSURE_BASE_PATH;
@@ -198,8 +201,8 @@ goog.DEPENDENCIES_ENABLED && (goog.dependencies_ = {loadFlags:{}, nameToPath:{},
 }, goog.maybeProcessDeferredDep_ = function(a) {
   goog.isDeferredModule_(a) && goog.allDepsAreAvailable_(a) && (a = goog.getPathFromDeps_(a), goog.maybeProcessDeferredPath_(goog.basePath + a));
 }, goog.isDeferredModule_ = function(a) {
-  var b = (a = goog.getPathFromDeps_(a)) && goog.dependencies_.loadFlags[a] || {};
-  return a && ("goog" == b.module || goog.needsTranspile_(b.lang)) ? goog.basePath + a in goog.dependencies_.deferred : !1;
+  var b = (a = goog.getPathFromDeps_(a)) && goog.dependencies_.loadFlags[a] || {}, c = b.lang || "es3";
+  return a && ("goog" == b.module || goog.needsTranspile_(c)) ? goog.basePath + a in goog.dependencies_.deferred : !1;
 }, goog.allDepsAreAvailable_ = function(a) {
   if ((a = goog.getPathFromDeps_(a)) && a in goog.dependencies_.requires) {
     for (var b in goog.dependencies_.requires[a]) {
@@ -255,16 +258,40 @@ goog.DEPENDENCIES_ENABLED && (goog.dependencies_ = {loadFlags:{}, nameToPath:{},
   if ("never" == goog.TRANSPILE) {
     return !1;
   }
-  if (!goog.transpiledLanguages_) {
-    goog.transpiledLanguages_ = {es5:!0, es6:!0, "es6-impl":!0};
+  goog.requiresTranspilation_ || (goog.requiresTranspilation_ = goog.createRequiresTranspilation_());
+  if (a in goog.requiresTranspilation_) {
+    return goog.requiresTranspilation_[a];
+  }
+  throw Error("Unknown language mode: " + a);
+}, goog.createRequiresTranspilation_ = function() {
+  function a(a, b) {
+    d ? c[a] = !0 : b() ? c[a] = !1 : d = c[a] = !0;
+  }
+  function b(a) {
     try {
-      goog.transpiledLanguages_.es5 = eval("[1,].length!=1"), eval('(()=>{"use strict";let a={};const X=class{constructor(){}x(z){return new Map([...arguments]).get(z[0])==3}};return new X().x([a,3])})()') && (goog.transpiledLanguages_["es6-impl"] = !1), eval('(()=>{"use strict";class X{constructor(){if(new.target!=String)throw 1;this.x=42}}let q=Reflect.construct(X,[],String);if(q.x!=42||!(q instanceof String))throw 1;for(const a of[2,3]){if(a==2)continue;function f(z={a}){let a=0;return z.a}{function f(){return 0;}}return f()==3}})()') && 
-      (goog.transpiledLanguages_.es6 = !1);
-    } catch (b) {
+      return !!eval(a);
+    } catch (e) {
+      return !1;
     }
   }
-  return !!goog.transpiledLanguages_[a];
-}, goog.transpiledLanguages_ = null, goog.lastNonModuleScriptIndex_ = 0, goog.onScriptLoad_ = function(a, b) {
+  var c = {es3:!1}, d = !1;
+  a("es5", function() {
+    return b("[1,].length==1");
+  });
+  a("es6", function() {
+    return b('(()=>{"use strict";class X{constructor(){if(new.target!=String)throw 1;this.x=42}}let q=Reflect.construct(X,[],String);if(q.x!=42||!(q instanceof String))throw 1;for(const a of[2,3]){if(a==2)continue;function f(z={a}){let a=0;return z.a}{function f(){return 0;}}return f()==3}})()');
+  });
+  a("es6-impl", function() {
+    return !0;
+  });
+  a("es7", function() {
+    return b("2 ** 2 == 4");
+  });
+  a("es8", function() {
+    return b("async () => 1, true");
+  });
+  return c;
+}, goog.requiresTranspilation_ = null, goog.lastNonModuleScriptIndex_ = 0, goog.onScriptLoad_ = function(a, b) {
   "complete" == a.readyState && goog.lastNonModuleScriptIndex_ == b && goog.loadQueuedModules_();
   return !0;
 }, goog.writeScripts_ = function(a) {
@@ -295,7 +322,7 @@ goog.DEPENDENCIES_ENABLED && (goog.dependencies_ = {loadFlags:{}, nameToPath:{},
   goog.moduleLoaderState_ = null;
   for (a = 0;a < c.length;a++) {
     if (e = c[a]) {
-      var h = f.loadFlags[e] || {}, k = goog.needsTranspile_(h.lang);
+      var h = f.loadFlags[e] || {}, k = goog.needsTranspile_(h.lang || "es3");
       "goog" == h.module || k ? goog.importProcessedScript_(goog.basePath + e, "goog" == h.module, k) : goog.importScript_(goog.basePath + e);
     } else {
       throw goog.moduleLoaderState_ = g, Error("Undefined script input");
@@ -323,7 +350,7 @@ goog.loadModule = function(a) {
     if (!goog.isString(d) || !d) {
       throw Error('Invalid module name "' + d + '"');
     }
-    goog.moduleLoaderState_.declareLegacyNamespace ? goog.constructNamespace_(d, c) : goog.SEAL_MODULE_EXPORTS && Object.seal && Object.seal(c);
+    goog.moduleLoaderState_.declareLegacyNamespace ? goog.constructNamespace_(d, c) : goog.SEAL_MODULE_EXPORTS && Object.seal && goog.isObject(c) && Object.seal(c);
     goog.loadedModules_[d] = c;
   } finally {
     goog.moduleLoaderState_ = b;
@@ -348,7 +375,7 @@ goog.loadFileSync_ = function(a) {
     var b = new goog.global.XMLHttpRequest;
     b.open("get", a, !1);
     b.send();
-    return b.status && 200 != b.status ? null : b.responseText;
+    return 0 == b.status || 200 == b.status ? b.responseText : null;
   } catch (c) {
     return null;
   }
@@ -372,7 +399,15 @@ goog.transpile_ = function(a, b) {
   var d = c.transpile;
   if (!d) {
     var f = goog.basePath + goog.TRANSPILER, e = goog.loadFileSync_(f);
-    e && (eval(e + "\n//# sourceURL=" + f), c = goog.global.$jscomp, d = c.transpile);
+    if (e) {
+      eval(e + "\n//# sourceURL=" + f);
+      if (goog.global.$gwtExport && goog.global.$gwtExport.$jscomp && !goog.global.$gwtExport.$jscomp.transpile) {
+        throw Error('The transpiler did not properly export the "transpile" method. $gwtExport: ' + JSON.stringify(goog.global.$gwtExport));
+      }
+      goog.global.$jscomp.transpile = goog.global.$gwtExport.$jscomp.transpile;
+      c = goog.global.$jscomp;
+      d = c.transpile;
+    }
   }
   d || (d = c.transpile = function(a, b) {
     goog.logToConsole_(b + " requires transpilation but no transpiler was found.");
@@ -449,7 +484,7 @@ goog.hasUid = function(a) {
   return !!a[goog.UID_PROPERTY_];
 };
 goog.removeUid = function(a) {
-  a && "removeAttribute" in a && a.removeAttribute(goog.UID_PROPERTY_);
+  null !== a && "removeAttribute" in a && a.removeAttribute(goog.UID_PROPERTY_);
   try {
     delete a[goog.UID_PROPERTY_];
   } catch (b) {
@@ -545,6 +580,9 @@ goog.globalEval = function(a) {
 };
 goog.evalWorksForGlobals_ = null;
 goog.getCssName = function(a, b) {
+  if ("." == String(a).charAt(0)) {
+    throw Error('className passed in goog.getCssName must not start with ".". You passed: ' + a);
+  }
   var c = function(a) {
     return goog.cssNameMapping_[a] || a;
   }, d = function(a) {
@@ -555,8 +593,8 @@ goog.getCssName = function(a, b) {
     return b.join("-");
   }, d = goog.cssNameMapping_ ? "BY_WHOLE" == goog.cssNameMappingStyle_ ? c : d : function(a) {
     return a;
-  };
-  return b ? a + "-" + d(b) : d(a);
+  }, d = b ? a + "-" + d(b) : d(a);
+  return goog.global.CLOSURE_CSS_NAME_MAP_FN ? goog.global.CLOSURE_CSS_NAME_MAP_FN(d) : d;
 };
 goog.setCssNameMapping = function(a, b) {
   goog.cssNameMapping_ = a;
@@ -565,7 +603,7 @@ goog.setCssNameMapping = function(a, b) {
 !COMPILED && goog.global.CLOSURE_CSS_NAME_MAPPING && (goog.cssNameMapping_ = goog.global.CLOSURE_CSS_NAME_MAPPING);
 goog.getMsg = function(a, b) {
   b && (a = a.replace(/\{\$([^}]+)}/g, function(a, d) {
-    return b && d in b ? b[d] : a;
+    return null != b && d in b ? b[d] : a;
   }));
   return a;
 };
@@ -586,10 +624,10 @@ goog.inherits = function(a, b) {
   a.prototype = new c;
   a.prototype.constructor = a;
   a.base = function(a, c, e) {
-    for (var g = Array(arguments.length - 2), h = 2;h < arguments.length;h++) {
-      g[h - 2] = arguments[h];
+    for (var d = Array(arguments.length - 2), f = 2;f < arguments.length;f++) {
+      d[f - 2] = arguments[f];
     }
-    return b.prototype[c].apply(a, g);
+    return b.prototype[c].apply(a, d);
   };
 };
 goog.base = function(a, b, c) {
@@ -638,7 +676,7 @@ goog.defineClass = function(a, b) {
   delete b.constructor;
   delete b.statics;
   goog.defineClass.applyProperties_(c.prototype, b);
-  d && (d instanceof Function ? d(c) : goog.defineClass.applyProperties_(c, d));
+  null != d && (d instanceof Function ? d(c) : goog.defineClass.applyProperties_(c, d));
   return c;
 };
 goog.defineClass.SEAL_CLASS_INSTANCES = goog.DEBUG;

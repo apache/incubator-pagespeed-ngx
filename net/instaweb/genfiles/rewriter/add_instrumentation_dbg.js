@@ -7,7 +7,7 @@ pagespeed.AddInstrumentation = function(a, c, b, d) {
   this.htmlUrl_ = d;
 };
 pagespeed.beaconUrl = "";
-pagespeed.AddInstrumentation.prototype.pagespeed_AddInstrumentation_prototype$sendBeacon = function() {
+pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
   var a = this.beaconUrlPrefix_, c = window.mod_pagespeed_start, b = Number(new Date) - c, a = a + (-1 == a.indexOf("?") ? "?" : "&"), a = a + "ets=" + ("load" == this.event_ ? "load:" : "unload:");
   if ("beforeunload" != this.event_ || !window.mod_pagespeed_loaded) {
     a = a + b + ("&r" + this.event_ + "=");
@@ -36,9 +36,9 @@ pagespeed.AddInstrumentation.prototype.pagespeed_AddInstrumentation_prototype$se
 pagespeed.addInstrumentationInit = function(a, c, b, d) {
   var e = new pagespeed.AddInstrumentation(a, c, b, d);
   window.addEventListener ? window.addEventListener(c, function() {
-    e.pagespeed_AddInstrumentation_prototype$sendBeacon();
+    e.sendBeacon();
   }, !1) : window.attachEvent("on" + c, function() {
-    e.pagespeed_AddInstrumentation_prototype$sendBeacon();
+    e.sendBeacon();
   });
 };
 pagespeed.addInstrumentationInit = pagespeed.addInstrumentationInit;

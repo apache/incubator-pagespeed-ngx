@@ -26,7 +26,7 @@ pagespeed.ClientDomainRewriter.prototype.addEventListeners = function() {
 };
 pagespeed.ClientDomainRewriter.prototype.processEvent = function(a, b) {
   for (var c = 0;c < this.mappedDomainNames_.length;c++) {
-    if (!a.indexOf(this.mappedDomainNames_[c])) {
+    if (0 == a.indexOf(this.mappedDomainNames_[c])) {
       window.location = window.location.protocol + "//" + window.location.hostname + "/" + a.substr(this.mappedDomainNames_[c].length);
       b.preventDefault();
       break;

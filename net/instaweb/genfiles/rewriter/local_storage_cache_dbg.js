@@ -65,11 +65,11 @@ pagespeed.LocalStorageCache.prototype.hasExpired = function(a) {
   return !isNaN(a) && a <= pagespeedutils.now();
 };
 pagespeed.LocalStorageCache.prototype.hasExpired = pagespeed.LocalStorageCache.prototype.hasExpired;
-pagespeed.LocalStorageCache.prototype.pagespeed_LocalStorageCache_prototype$getData = function(a) {
+pagespeed.LocalStorageCache.prototype.getData = function(a) {
   var b = a.indexOf(" "), b = a.indexOf(" ", b + 1);
   return a.substring(b + 1);
 };
-pagespeed.LocalStorageCache.prototype.getData = pagespeed.LocalStorageCache.prototype.pagespeed_LocalStorageCache_prototype$getData;
+pagespeed.LocalStorageCache.prototype.getData = pagespeed.LocalStorageCache.prototype.getData;
 pagespeed.LocalStorageCache.prototype.replaceLastScript = function(a) {
   var b = document.getElementsByTagName("script"), b = b[b.length - 1];
   b.parentNode.replaceChild(a, b);
@@ -77,13 +77,13 @@ pagespeed.LocalStorageCache.prototype.replaceLastScript = function(a) {
 pagespeed.LocalStorageCache.prototype.replaceLastScript = pagespeed.LocalStorageCache.prototype.replaceLastScript;
 pagespeed.LocalStorageCache.prototype.inlineCss = function(a) {
   var b = window.localStorage.getItem("pagespeed_lsc_url:" + a), c = document.createElement(b ? "style" : "link");
-  b && !this.hasExpired(b) ? (c.type = "text/css", c.appendChild(document.createTextNode(this.pagespeed_LocalStorageCache_prototype$getData(b)))) : (c.rel = "stylesheet", c.href = a, this.regenerate_cookie_ = !0);
+  b && !this.hasExpired(b) ? (c.type = "text/css", c.appendChild(document.createTextNode(this.getData(b)))) : (c.rel = "stylesheet", c.href = a, this.regenerate_cookie_ = !0);
   this.replaceLastScript(c);
 };
 pagespeed.LocalStorageCache.prototype.inlineCss = pagespeed.LocalStorageCache.prototype.inlineCss;
 pagespeed.LocalStorageCache.prototype.inlineImg = function(a, b) {
   var c = window.localStorage.getItem("pagespeed_lsc_url:" + a + " pagespeed_lsc_hash:" + b), d = document.createElement("img");
-  c && !this.hasExpired(c) ? d.src = this.pagespeed_LocalStorageCache_prototype$getData(c) : (d.src = a, this.regenerate_cookie_ = !0);
+  c && !this.hasExpired(c) ? d.src = this.getData(c) : (d.src = a, this.regenerate_cookie_ = !0);
   for (var c = 2, f = arguments.length;c < f;++c) {
     var e = arguments[c].indexOf("=");
     d.setAttribute(arguments[c].substring(0, e), arguments[c].substring(e + 1));
@@ -101,7 +101,7 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(a, b, c) {
       var k = e.getAttribute("data-pagespeed-lsc-expiry"), k = k ? (new Date(k)).getTime() : "", e = c(e);
       if (!e) {
         var l = window.localStorage.getItem(g);
-        l && (e = this.pagespeed_LocalStorageCache_prototype$getData(l));
+        l && (e = this.getData(l));
       }
       e && (window.localStorage.setItem(g, k + " " + h + " " + e), this.regenerate_cookie_ = !0);
     }
@@ -126,7 +126,7 @@ pagespeed.LocalStorageCache.prototype.generateCookie_ = function() {
             a.push(h);
             continue;
           } else {
-            if (l < c || !c) {
+            if (l < c || 0 == c) {
               c = l;
             }
           }

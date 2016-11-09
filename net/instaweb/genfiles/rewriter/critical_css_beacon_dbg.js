@@ -79,9 +79,9 @@ pagespeed.CriticalCssBeacon.prototype.sendBeacon_ = function() {
   pagespeedutils.sendBeacon(this.beaconUrl_, this.htmlUrl_, a);
 };
 pagespeed.CriticalCssBeacon.prototype.checkCssSelectors_ = function(a) {
-  for (var b = 0;250 > b && this.idx_ < this.selectors_.length;++b, ++this.idx_) {
+  for (var b = 0;b < this.MAXITERS_ && this.idx_ < this.selectors_.length;++b, ++this.idx_) {
     try {
-      document.querySelector(this.selectors_[this.idx_]) && this.criticalSelectors_.push(this.selectors_[this.idx_]);
+      null != document.querySelector(this.selectors_[this.idx_]) && this.criticalSelectors_.push(this.selectors_[this.idx_]);
     } catch (c) {
     }
   }
