@@ -28,7 +28,7 @@ DIR="$1"
 
 # If the version of the compiler is updated, the closure library submodule in
 # third_party/closure_library must also be updated.
-VERSION=20160713
+VERSION=20161024
 ZIP=compiler-$VERSION.zip
 JAR_IN=$DIR/closure-compiler-v$VERSION.jar
 JAR=$DIR/compiler.jar
