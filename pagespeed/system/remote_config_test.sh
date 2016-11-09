@@ -17,7 +17,7 @@ if [ "${HELPERS_LOADED:-0}" != 1 ]; then
 fi
 
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
-  start_test Starting up pathological server
+  start_test "Starting up pathological server on $RCPORT"
   "$this_dir/pathological_server.py" "$RCPORT" &
   server_pid=$!
   trap "kill $server_pid" EXIT

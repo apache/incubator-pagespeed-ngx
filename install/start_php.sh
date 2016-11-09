@@ -33,9 +33,21 @@ function get_php_pid() {
 
 existing_php_pid="$(get_php_pid)"
 if [ "$existing_php_pid" != "" ]; then
-  echo "PHP already running on $port with pid $existing_php_pid, killing it."
+  echo -n "PHP already running on $port with pid $existing_php_pid, killing it."
   if ! kill "$existing_php_pid"; then
+    echo
     echo "Failed to kill php."
+    exit 1
+  fi
+  # Wait for php to actually die.
+  timeout="$(($SECONDS + 10))"
+  while [ "$SECONDS" -lt "$timeout" ] && [ "$(get_php_pid)" != "" ]; do
+    sleep 0.1
+    echo -n .
+  done
+  echo
+  if [ "$(get_php_pid)" != "" ]; then
+    echo "php did not die."
     exit 1
   fi
 fi
