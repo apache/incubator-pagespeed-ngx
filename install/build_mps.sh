@@ -36,15 +36,6 @@ fi
 
 MAKE_ARGS=(BUILDTYPE=$build_type)
 
-# TODO(cheesy): gclient will be going away soon.
-if [ -d depot_tools ]; then
-  (cd depot_tools && git pull)
-else
-  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-fi
-
-PATH="$PATH:$PWD/depot_tools"
-
 rm -rf log
 mkdir -p log
 
@@ -52,9 +43,10 @@ mkdir -p log
 # out/Release_x64. The fix for that seems to be setting product_dir, see:
 # https://groups.google.com/forum/#!topic/gyp-developer/_D7qoTgelaY
 
-run_with_log $log_verbose log/gclient.log gclient config \
-  https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name="$PWD"
-run_with_log $log_verbose log/gclient.log gclient sync --force
+run_with_log $log_verbose log/submodule.log \
+  git submodule update --init --recursive
+
+run_with_log $log_verbose log/gyp.log python build/gyp_chromium --depth=.
 
 make_targets=(mod_pagespeed)
 if $run_tests; then

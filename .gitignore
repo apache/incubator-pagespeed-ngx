@@ -2,9 +2,7 @@ Makefile
 !third_party/libjpeg_turbo/yasm/source/config/linux/Makefile
 *.mk
 *.Makefile
-/.gclient
-/.gclient_entries
-gclient.timestamp
+client.timestamp
 hooks.timestamp
 build/gyp_helper.pyc
 build/landmine_utils.pyc

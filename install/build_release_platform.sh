@@ -9,7 +9,7 @@
 # Where $RELEASE is either the 4 segment version number, e.g 0.10.21.2, or the
 # word "trunk" and $CHANNEL is either "beta" or "stable".
 #
-# The optional "patch_file" will be applied after runing 'gclient sync'.
+# The optional "patch_file" will be applied after runing 'git checkout'
 # Also note that if you re-run the same build command multiple times,
 # pre-applied patches will remain.
 #
@@ -196,6 +196,7 @@ cd $build_dir/src
 if [ "$TAG" != "trunk" ]; then  # Just treat "trunk" as master.
   git checkout "$TAG"
 fi
+git submodule update --init --recursive
 
 if [ "$EXT" = "rpm" ] ; then
   # MANYLINUX1 is required for CentOS 5 (but probably not newer CentOS):
@@ -223,13 +224,6 @@ EOF
   echo "$killall_patch" | tr '>' '\t' | git apply
 fi
 
-cd $build_dir/src
-check gclient.log \
-    gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
-check gclient.log gclient sync --nohooks
-check gclient.log git submodule update --init --recursive
-check gclient.log gclient sync --force
-
 # Neither buildbot is using a compiler recent enough to provide stdalign.h,
 # which boringssl needs.  Even on Centos 5's gcc 4.1 we do have a way to set
 # alignment, though, so following
@@ -242,18 +236,17 @@ if [ $do_patch -eq "1" ]; then
   echo Applying patch-file $patch_file
   git apply $patch_file
 
-  echo "Re-running gclient in case the patch touched DEPS"
-  check gclient.log gclient sync
+  echo "Updating submodules in case the patch touched deps"
+  git submodule update --init --recursive
 fi
 
 # This is needed on the vms, but not on our workstations for some reason.
 find $build_dir/src -name "*.sh" | xargs chmod +x
-cd $build_dir
-echo src/build/gyp_chromium -Dchannel=$CHANNEL
+cd $build_dir/src
+echo build/gyp_chromium -Dchannel=$CHANNEL
 export AR_host=$build_dir/src/build/wrappers/ar.sh
-check gyp_chromium.log python src/build/gyp_chromium -Dchannel=$CHANNEL
+check gyp_chromium.log python build/gyp_chromium -Dchannel=$CHANNEL
 
-cd src
 # It would be better to have AR.target overridden at gyp time, but
 # that functionality seems broken.
 MODPAGESPEED_ENABLE_UPDATES=1 check build.log \
