@@ -49,7 +49,8 @@ void DeterministicJsFilter::StartElementImpl(HtmlElement* element) {
         static_asset_manager->GetAsset(
             StaticAssetEnum::DETERMINISTIC_JS, driver()->options());
     AddJsToElement(deterministic_js, script);
-    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
+    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer,
+                           StringPiece());
   }
 }
 

@@ -70,7 +70,7 @@ class RewriteQueryTest : public RewriteTestBase {
       CHECK_EQ(2, attr_value.size());
       request_headers.Add(attr_value[0], attr_value[1]);
     }
-    return ParseAndScan(request_url, in_query, NULL, &request_headers,
+    return ParseAndScan(request_url, in_query, StringPiece(), &request_headers,
                         NULL, out_query, out_req_string, &out_resp_string);
   }
 
@@ -191,7 +191,7 @@ class RewriteQueryTest : public RewriteTestBase {
         expected_quality_preference);
 
     const RewriteOptions* options = ParseAndScan(
-        kHtmlUrl, in_query, NULL, request_headers, &response_headers,
+        kHtmlUrl, in_query, StringPiece(), request_headers, &response_headers,
         &out_query, &out_req_string, &out_resp_string);
     if (!expected_parsing_result) {
       EXPECT_TRUE(options == NULL);
@@ -259,8 +259,8 @@ TEST_F(RewriteQueryTest, OffResponseHeader) {
 
   response_headers.Add("ModPagespeed", "off");
   const RewriteOptions* options = ParseAndScan(
-      kHtmlUrl, in_query, NULL, &request_headers, &response_headers, &out_query,
-      &out_req_string, &out_resp_string);
+      kHtmlUrl, in_query, StringPiece(), &request_headers, &response_headers,
+      &out_query, &out_req_string, &out_resp_string);
   ASSERT_TRUE(options != NULL);
   EXPECT_FALSE(options->enabled());
 }
@@ -284,8 +284,8 @@ TEST_F(RewriteQueryTest, OffResponseHeaderPageSpeed) {
 
   response_headers.Add("PageSpeed", "off");
   const RewriteOptions* options = ParseAndScan(
-      kHtmlUrl, in_query, NULL, &request_headers, &response_headers, &out_query,
-      &out_req_string, &out_resp_string);
+      kHtmlUrl, in_query, StringPiece(), &request_headers, &response_headers,
+      &out_query, &out_req_string, &out_resp_string);
   ASSERT_TRUE(options != NULL);
   EXPECT_FALSE(options->enabled());
 }
@@ -401,8 +401,8 @@ TEST_F(RewriteQueryTest, SetFiltersResponseHeaders) {
 
   response_headers.Add("ModPagespeedFilters", "remove_quotes");
   const RewriteOptions* options = ParseAndScan(
-      kHtmlUrl, in_query, NULL, &request_headers, &response_headers, &out_query,
-      &out_req_string, &out_resp_string);
+      kHtmlUrl, in_query, StringPiece(), &request_headers, &response_headers,
+      &out_query, &out_req_string, &out_resp_string);
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRemoveQuotes));
@@ -655,13 +655,12 @@ TEST_F(RewriteQueryTest, OutputQueryandHeadersPostRequest) {
   request_headers.Add("xyz", "6");
   request_headers.set_message_body("pqr");
 
-  ParseAndScan(kHtmlUrl, "ModPagespeedCssInlineMaxBytes=3"
+  ParseAndScan(kHtmlUrl,
+               "ModPagespeedCssInlineMaxBytes=3"
                "&abc=1"
                "&def",
-               NULL,
-               &request_headers,
-               NULL,
-               &output_query, &output_req_headers, &output_resp_headers);
+               StringPiece(), &request_headers, NULL, &output_query,
+               &output_req_headers, &output_resp_headers);
   EXPECT_EQ(output_query, "abc=1&def");
   EXPECT_EQ(output_req_headers, "POST  HTTP/1.0\r\nxyz: 6\r\n\r\n");
   EXPECT_EQ(request_headers.message_body(), "pqr");
@@ -675,13 +674,12 @@ TEST_F(RewriteQueryTest, OutputQueryandHeadersPostRequestPageSpeed) {
   request_headers.Add("xyz", "6");
   request_headers.set_message_body("pqr");
 
-  ParseAndScan(kHtmlUrl, "PageSpeedCssInlineMaxBytes=3"
+  ParseAndScan(kHtmlUrl,
+               "PageSpeedCssInlineMaxBytes=3"
                "&abc=1"
                "&def",
-               NULL,
-               &request_headers,
-               NULL,
-               &output_query, &output_req_headers, &output_resp_headers);
+               StringPiece(), &request_headers, NULL, &output_query,
+               &output_req_headers, &output_resp_headers);
   EXPECT_EQ(output_query, "abc=1&def");
   EXPECT_EQ(output_req_headers, "POST  HTTP/1.0\r\nxyz: 6\r\n\r\n");
   EXPECT_EQ(request_headers.message_body(), "pqr");
@@ -1067,9 +1065,8 @@ TEST_F(RewriteQueryTest, CacheControlNoTransform) {
   GoogleString in_query, out_query, out_req_string, out_resp_string;
 
   const RewriteOptions* options = ParseAndScan(
-      kHtmlUrl, in_query, NULL, &request_headers,
-      &response_headers, &out_query,
-      &out_req_string, &out_resp_string);
+      kHtmlUrl, in_query, StringPiece(), &request_headers, &response_headers,
+      &out_query, &out_req_string, &out_resp_string);
   ASSERT_TRUE(options != NULL);
   EXPECT_FALSE(options->enabled());
   EXPECT_TRUE(request_headers.Lookup1(HttpAttributes::kCacheControl) != NULL);
@@ -1083,10 +1080,11 @@ TEST_F(RewriteQueryTest, DisableScriptsWithXHR) {
   ResponseHeaders response_headers;
   GoogleString in_query, out_query, out_req_string, out_resp_string;
 
-  scoped_ptr<RewriteOptions> options(ParseAndScan(
-      kHtmlUrl, in_query, NULL, &request_headers,
-      &response_headers, &out_query,
-      &out_req_string, &out_resp_string)->Clone());
+  scoped_ptr<RewriteOptions> options(
+      ParseAndScan(kHtmlUrl, in_query, StringPiece(), &request_headers,
+                   &response_headers, &out_query, &out_req_string,
+                   &out_resp_string)
+          ->Clone());
   // Convert disabled -> forbidden for easier testing.
   options->set_forbid_all_disabled_filters(true);
 
@@ -1108,9 +1106,8 @@ TEST_F(RewriteQueryTest, CacheControlPrivateNoTransformResponse) {
   GoogleString in_query, out_query, out_req_string, out_resp_string;
 
   const RewriteOptions* options = ParseAndScan(
-      kHtmlUrl, in_query, NULL, &request_headers,
-      &response_headers, &out_query,
-      &out_req_string, &out_resp_string);
+      kHtmlUrl, in_query, StringPiece(), &request_headers, &response_headers,
+      &out_query, &out_req_string, &out_resp_string);
   ASSERT_TRUE(options != NULL);
   EXPECT_FALSE(options->enabled());
 
@@ -1129,9 +1126,8 @@ TEST_F(RewriteQueryTest, NoCustomOptionsWithCacheControlPrivate) {
   GoogleString in_query, out_query, out_req_string, out_resp_string;
 
   const RewriteOptions* options = ParseAndScan(
-      kHtmlUrl, in_query, NULL, &request_headers,
-      &response_headers, &out_query,
-      &out_req_string, &out_resp_string);
+      kHtmlUrl, in_query, StringPiece(), &request_headers, &response_headers,
+      &out_query, &out_req_string, &out_resp_string);
   EXPECT_TRUE(options == NULL);
 }
 

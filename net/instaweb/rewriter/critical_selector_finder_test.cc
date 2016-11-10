@@ -515,7 +515,7 @@ TEST_F(UnverifiedSelectorsTest, NonCandidatesAreStored) {
   selectors.insert(".noncandidate");
   selectors.insert("#noncandidate");
   finder_->WriteCriticalSelectorsToPropertyCache(
-      selectors, NULL /* no nonce */, rewrite_driver());
+      selectors, StringPiece() /* no nonce */, rewrite_driver());
   EXPECT_STREQ("#noncandidate,.a,.noncandidate", CriticalSelectorsString());
 }
 
@@ -525,14 +525,14 @@ TEST_F(UnverifiedSelectorsTest, MultipleResultsReplace) {
   StringSet selectors;
   selectors.insert(".noncandidate");
   finder_->WriteCriticalSelectorsToPropertyCache(
-      selectors, NULL /* no nonce */, rewrite_driver());
+      selectors, StringPiece() /* no nonce */, rewrite_driver());
   EXPECT_STREQ(".noncandidate", CriticalSelectorsString());
 
   selectors.clear();
   selectors.insert(".another");
   Beacon();
   finder_->WriteCriticalSelectorsToPropertyCache(
-      selectors, NULL /* no nonce */, rewrite_driver());
+      selectors, StringPiece() /* no nonce */, rewrite_driver());
   EXPECT_STREQ(".another", CriticalSelectorsString());
 }
 

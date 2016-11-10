@@ -144,8 +144,8 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
         }
         HtmlElement* script_element =
             driver()->NewElement(element->parent(), HtmlName::kScript);
-        driver()->AddAttribute(
-            script_element, HtmlName::kDataPagespeedNoDefer, NULL);
+        driver()->AddAttribute(script_element, HtmlName::kDataPagespeedNoDefer,
+                               StringPiece());
         if (driver()->ReplaceNode(element, script_element)) {
           driver()->AppendChild(script_element,
                                 driver()->NewCharactersNode(element, snippet));
@@ -167,8 +167,8 @@ void LocalStorageCacheFilter::InsertOurScriptElement(HtmlElement* before) {
                                                      HtmlName::kScript);
   driver()->InsertNodeBeforeNode(before, script_element);
   AddJsToElement(initialized_js, script_element);
-  driver()->AddAttribute(
-        script_element, HtmlName::kDataPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script_element, HtmlName::kDataPagespeedNoDefer,
+                         StringPiece());
   script_inserted_ = true;
 }
 

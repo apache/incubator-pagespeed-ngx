@@ -564,10 +564,8 @@ TEST_F(CssCombineFilterCustomOptions, CssCombineAcrossProxyDomains) {
   // Proxy http://kProxyMapDomain/ onto http://kTestDomain/proxied/
   DomainLawyer* lawyer = options()->WriteableDomainLawyer();
   GoogleString proxy_target = StrCat(kTestDomain, "proxied/");
-  ASSERT_TRUE(lawyer->AddProxyDomainMapping(proxy_target,
-                                            kProxyMapDomain,
-                                            NULL,
-                                            &message_handler_));
+  ASSERT_TRUE(lawyer->AddProxyDomainMapping(proxy_target, kProxyMapDomain,
+                                            StringPiece(), &message_handler_));
   CssCombineFilterTest::SetUp();
   SetHtmlMimetype();
 

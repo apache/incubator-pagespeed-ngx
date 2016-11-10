@@ -120,7 +120,8 @@ void AddInstrumentationFilter::EndElementImpl(HtmlElement* element) {
       GoogleString js = GetScriptJs(kUnloadTag);
       HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
       if (!driver()->defer_instrumentation_script()) {
-        driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
+        driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer,
+                               StringPiece());
       }
       driver()->InsertNodeBeforeCurrent(script);
       AddJsToElement(js, script);
@@ -139,7 +140,8 @@ void AddInstrumentationFilter::EndDocument() {
   GoogleString js = GetScriptJs(kLoadTag);
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
   if (!driver()->defer_instrumentation_script()) {
-    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
+    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer,
+                           StringPiece());
   }
   InsertNodeAtBodyEnd(script);
   AddJsToElement(js, script);

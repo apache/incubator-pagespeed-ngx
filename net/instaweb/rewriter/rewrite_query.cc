@@ -354,7 +354,7 @@ RewriteQuery::Status RewriteQuery::Scan(
           return status;
       }
     } else {
-      temp_query_params.AddEscaped(query_params_.name(i), NULL);
+      temp_query_params.AddEscaped(query_params_.name(i), StringPiece());
     }
   }
   if (status == kSuccess) {

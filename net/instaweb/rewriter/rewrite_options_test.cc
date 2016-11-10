@@ -407,7 +407,7 @@ TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
   EXPECT_TRUE(RewriteOptions::ParseRewriteLevel("MobilizeFilters", &level));
   EXPECT_EQ(RewriteOptions::kMobilizeFilters, level);
 
-  EXPECT_FALSE(RewriteOptions::ParseRewriteLevel(NULL, &level));
+  EXPECT_FALSE(RewriteOptions::ParseRewriteLevel(StringPiece(), &level));
   EXPECT_FALSE(RewriteOptions::ParseRewriteLevel("", &level));
   EXPECT_FALSE(RewriteOptions::ParseRewriteLevel("Garbage", &level));
 }
@@ -2571,7 +2571,7 @@ TEST_F(RewriteOptionsTest, FilterLookupMethods) {
   EXPECT_EQ(RewriteOptions::kEndOfFilters,
             RewriteOptions::LookupFilterById(""));
   EXPECT_EQ(RewriteOptions::kEndOfFilters,
-            RewriteOptions::LookupFilterById(NULL));
+            RewriteOptions::LookupFilterById(StringPiece()));
 
   EXPECT_EQ(RewriteOptions::kAnalyticsID,
             RewriteOptions::LookupOptionNameById("ig"));
@@ -2580,7 +2580,7 @@ TEST_F(RewriteOptionsTest, FilterLookupMethods) {
   EXPECT_TRUE(RewriteOptions::LookupOptionNameById("  ").empty());
   EXPECT_TRUE(RewriteOptions::LookupOptionNameById("junk").empty());
   EXPECT_TRUE(RewriteOptions::LookupOptionNameById("").empty());
-  EXPECT_TRUE(RewriteOptions::LookupOptionNameById(NULL).empty());
+  EXPECT_TRUE(RewriteOptions::LookupOptionNameById(StringPiece()).empty());
 }
 
 TEST_F(RewriteOptionsTest, ParseBeaconUrl) {

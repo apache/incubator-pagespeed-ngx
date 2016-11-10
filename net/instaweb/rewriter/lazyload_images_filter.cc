@@ -338,7 +338,8 @@ void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
     GoogleString lazyload_js = GetLazyloadJsSnippet(
         driver()->options(), static_asset_manager);
     AddJsToElement(lazyload_js, script);
-    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
+    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer,
+                           StringPiece());
   }
   main_script_inserted_ = true;
 }
@@ -348,7 +349,8 @@ void LazyloadImagesFilter::InsertOverrideAttributesScript(
   if (num_images_lazily_loaded_ > 0) {
     HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
     driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
-    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
+    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer,
+                           StringPiece());
     HtmlNode* script_code = driver()->NewCharactersNode(
         script, kOverrideAttributeFunctions);
     if (is_before_script) {

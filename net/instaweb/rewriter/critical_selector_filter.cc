@@ -367,7 +367,8 @@ void CriticalSelectorFilter::RenderDone() {
     }
 
     HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
-    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
+    driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer,
+                           StringPiece());
     InsertNodeAtBodyEnd(script);
     GoogleString js =
         driver()->server_context()->static_asset_manager()->GetAsset(

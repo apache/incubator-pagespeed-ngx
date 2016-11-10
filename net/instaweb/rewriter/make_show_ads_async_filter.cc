@@ -193,7 +193,7 @@ void MakeShowAdsAsyncFilter::ReplaceShowAdsWithAdsByGoogleElement(
     HtmlElement* script_element = driver()->NewElement(
         container_element, HtmlName::kScript);
     script_element->set_style(HtmlElement::EXPLICIT_CLOSE);
-    driver()->AddAttribute(script_element, HtmlName::kAsync, NULL);
+    driver()->AddAttribute(script_element, HtmlName::kAsync, StringPiece());
     driver()->AddAttribute(script_element,
                            HtmlName::kSrc,
                            ads_util::kAdsByGoogleJavascriptSrc);

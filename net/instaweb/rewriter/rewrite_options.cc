@@ -977,7 +977,7 @@ int RewriteOptions::NumFilterIds() {
 bool RewriteOptions::ParseRewriteLevel(
     const StringPiece& in, RewriteLevel* out) {
   bool ret = false;
-  if (in != NULL) {
+  if (!in.empty()) {
     if (StringCaseEqual(in, "CoreFilters")) {
       *out = kCoreFilters;
       ret = true;

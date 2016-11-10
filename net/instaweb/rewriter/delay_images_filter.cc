@@ -98,7 +98,8 @@ void DelayImagesFilter::MaybeAddImageOnloadJsSnippet(HtmlElement* element) {
   }
   added_image_onload_js_ = true;
   HtmlElement* script = driver()->NewElement(NULL, HtmlName::kScript);
-  driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer,
+                         StringPiece());
   // Always add the image-onload js before the current node, because the
   // current node might be an img node that needs the image-onload js for
   // setting its onload handler.
@@ -214,8 +215,8 @@ void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
         kDelayImagesSuffix);
     HtmlElement* script_element =
         driver()->NewElement(element, HtmlName::kScript);
-    driver()->AddAttribute(
-        script_element, HtmlName::kDataPagespeedNoDefer, NULL);
+    driver()->AddAttribute(script_element, HtmlName::kDataPagespeedNoDefer,
+                           StringPiece());
     if (insert_after_element) {
       DCHECK(element->keyword() == HtmlName::kImg ||
              element->keyword() == HtmlName::kInput);
@@ -242,8 +243,8 @@ void DelayImagesFilter::InsertLowResImagesAndJs(HtmlElement* element,
               "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
     HtmlElement* low_res_element =
         driver()->NewElement(current_element, HtmlName::kScript);
-    driver()->AddAttribute(
-        low_res_element, HtmlName::kDataPagespeedNoDefer, NULL);
+    driver()->AddAttribute(low_res_element, HtmlName::kDataPagespeedNoDefer,
+                           StringPiece());
     if (insert_after_element) {
       driver()->InsertNodeAfterNode(current_element, low_res_element);
       current_element = low_res_element;
@@ -268,7 +269,8 @@ void DelayImagesFilter::InsertHighResJs(HtmlElement* body_element) {
               "\npagespeed.delayImages.replaceWithHighRes();\n");
   }
   HtmlElement* script = driver()->NewElement(body_element, HtmlName::kScript);
-  driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script, HtmlName::kDataPagespeedNoDefer,
+                         StringPiece());
   driver()->AppendChild(body_element, script);
   AddJsToElement(js, script);
 }

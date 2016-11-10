@@ -1004,8 +1004,8 @@ TEST_F(DomainLawyerTest, ProxyExternalResourceToCDN) {
 TEST_F(DomainLawyerTest, ProxyExternalResourceFromHttps) {
   GoogleUrl context_gurl("http://origin.com/index.html");
   ASSERT_TRUE(domain_lawyer_.AddProxyDomainMapping(
-      "http://origin.com/external", "https://external.com/static", NULL,
-      &message_handler_));
+      "http://origin.com/external", "https://external.com/static",
+      StringPiece(), &message_handler_));
 
   // Map proxy_this.png to a subdirectory in origin.com.
   GoogleUrl resolved_request;

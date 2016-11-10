@@ -83,7 +83,8 @@ void JsDisableFilter::InsertJsDeferExperimentalScript() {
       driver()->NewElement(NULL, HtmlName::kScript);
 
   driver()->AddAttribute(script_node, HtmlName::kType, "text/javascript");
-  driver()->AddAttribute(script_node, HtmlName::kDataPagespeedNoDefer, NULL);
+  driver()->AddAttribute(script_node, HtmlName::kDataPagespeedNoDefer,
+                         StringPiece());
   HtmlNode* script_code =
       driver()->NewCharactersNode(script_node, kEnableJsExperimental);
   InsertNodeAtBodyEnd(script_node);

@@ -394,7 +394,7 @@ bool GoogleAnalyticsFilter::MatchUnhandledCalls(
 void GoogleAnalyticsFilter::FindRewritableScripts() {
   if (html_parse_->IsRewritable(script_element_)) {
     StringPiece src = script_element_->AttributeValue(HtmlName::kSrc);
-    if (src != NULL && !src.empty()) {
+    if (!src.empty()) {
       if (src.ends_with(kGaJsUrlSuffix)) {
         html_parse_->InfoHere("Found ga.js load: script src");
         is_load_found_ = true;
