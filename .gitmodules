@@ -104,3 +104,10 @@
 [submodule "tools/gyp"]
 	path = tools/gyp
 	url = https://chromium.googlesource.com/external/gyp
+# For building a development apache.
+[submodule "third_party/nghttp2"]
+	path = third_party/nghttp2
+	url = https://github.com/nghttp2/nghttp2
+[submodule "third_party/mod_fcgid"]
+	path = third_party/mod_fcgid
+	url = https://github.com/pagespeed/mod_fcgid.git
