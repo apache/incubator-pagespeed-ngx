@@ -389,7 +389,7 @@ inline bool operator!=(const UnicodeText& lhs, const UnicodeText& rhs) {
 
 // UnicodeTextRange is a pair of iterators, useful for specifying text
 // segments. If the iterators are ==, the segment is empty.
-typedef pair<UnicodeText::const_iterator,
+typedef std::pair<UnicodeText::const_iterator,
              UnicodeText::const_iterator> UnicodeTextRange;
 
 inline bool UnicodeTextRangeIsEmpty(const UnicodeTextRange& r) {
