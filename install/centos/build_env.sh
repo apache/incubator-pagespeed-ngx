@@ -17,6 +17,8 @@ if [ -f "$devtoolset_enable" ]; then
 
 fi
 
+export CHROOT_DIR=/var/chroot/centos_i386
+
 export SSL_CERT_DIR=/etc/pki/tls/certs
 export SSL_CERT_FILE=/etc/pki/tls/cert.pem
 
