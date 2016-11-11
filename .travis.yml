@@ -1,14 +1,4 @@
 language: c++
-# Remove broken repo, per: https://github.com/travis-ci/travis-ci/issues/6588
-# Undo this once the repo is fixed.
-before_install:
-  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ main restricted'"
-  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ universe'"
-  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ multiverse'"
-  - "sudo add-apt-repository http://archive.ubuntu.com/ubuntu/"
-  - "sudo add-apt-repository 'http://archive.ubuntu.com/ubuntu/ universe'"
-  - "sudo add-apt-repository 'http://archive.ubuntu.com/ubuntu/ multiverse'"
-  - "sudo apt-get -qq update"
 install:
   - sudo sh -c 'echo "deb http://opensource.wandisco.com/ubuntu precise svn18" >> /etc/apt/sources.list.d/subversion18.list'
   - sudo wget -q http://opensource.wandisco.com/wandisco-debian.gpg -O- | sudo apt-key add -
@@ -24,10 +14,8 @@ install:
   - cd ~/bin
   - git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
   - cd ~/build_directory/src
-  - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
-  - ~/bin/depot_tools/gclient sync --force --jobs=1 2>&1 > /dev/null
+  - python build/gyp_chromium --depth=.
   - make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release -j3
-  - python build/gyp_chromium -Dchannel=beta
   - make BUILDTYPE=Release AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh linux_package_deb_stable
   - sudo dpkg -i out/Release/mod-pagespeed*.deb
 script:
