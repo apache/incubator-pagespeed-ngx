@@ -375,6 +375,29 @@ http {
   server {
     listen @@SECONDARY_PORT@@;
     listen [::]:@@SECONDARY_PORT@@;
+    server_name experiment.ajax.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel CoreFilters;
+    pagespeed DisableFilters add_instrumentation;
+    pagespeed JsInlineMaxBytes 1;
+    pagespeed RunExperiment on;
+    pagespeed UseAnalyticsJs false;
+    pagespeed ExperimentSpec "id=1;percent=100;level=CoreFilters;enable=collapse_whitespace;options=JsInlineMaxBytes=1";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name ajax.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel CoreFilters;
+    pagespeed EnableFilters add_instrumentation;
+    pagespeed JsInlineMaxBytes 1;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
     server_name preserveurls.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
