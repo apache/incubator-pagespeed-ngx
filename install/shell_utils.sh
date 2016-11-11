@@ -48,6 +48,105 @@ function wait_cmd_with_timeout() {
   eval "${@:2}"
 }
 
+GIT_VERSION=2.0.4
+GIT_SHA256SUM=dd9df02b7dcc75f9777c4f802c6b8562180385ddde4e3b8479e079f99cd1d1c9
+
+WGET_VERSION=1.12
+WGET_SHA256SUM=7578ed0974e12caa71120581fa3962ee5a69f7175ddc3d6a6db0ecdcba65b572
+
+MEMCACHED_VERSION=1.4.20
+MEMCACHED_SHA256SUM=25d121408eed0b1522308ff3520819b130f04ba0554c68a673af23a915a54018
+
+PYTHON_VERSION=2.7.8
+PYTHON_SHA256SUM=74d70b914da4487aa1d97222b29e9554d042f825f26cb2b93abd20fdda56b557
+
+REDIS_VERSION=3.2.4
+REDIS_SHA256SUM=2ad042c5a6c508223adeb9c91c6b1ae091394b4026f73997281e28914c9369f1
+
+GIT_SRC_URL=https://kernel.org/pub/software/scm/git/git-$GIT_VERSION.tar.gz
+WGET_SRC_URL=https://ftp.gnu.org/gnu/wget/wget-$WGET_VERSION.tar.gz
+# This is available on https, but CentOS 6's wget doesn't like the cert.
+MEMCACHED_SRC_URL=http://www.memcached.org/files/memcached-$MEMCACHED_VERSION.tar.gz
+PYTHON_SRC_URL=https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz
+REDIS_SRC_URL=http://download.redis.io/releases/redis-$REDIS_VERSION.tar.gz
+
+# Usage: install_from_src [package] [...]
+# For all supplied package names, downloads and installs from source.
+function install_from_src() {
+  local pkg
+  for pkg in "$@"; do
+    if [ -e "/usr/local/bin/$pkg" ]; then
+      echo "$pkg already installed, will not re-install"
+      continue
+    fi
+
+    case "$pkg" in
+      git) [ "$(lsb_release -is)" = "CentOS" ] && yum -y install curl-devel;
+           install_src_tarball $GIT_SRC_URL $GIT_SHA256SUM ;;
+      memcached) install_src_tarball $MEMCACHED_SRC_URL $MEMCACHED_SHA256SUM ;;
+      python2.7)
+        install_src_tarball $PYTHON_SRC_URL $PYTHON_SHA256SUM altinstall
+        # On Centos5, yum needs /usr/bin/python to be 2.4 but gclient needs
+        # python on the path to be 2.6 or later.
+        if [ "$(lsb_release -is)" = "CentOS" ] && \
+           version_compare "$(lsb_release -rs)" -lt 6; then
+          for dir in $HOME ~$SUDO_USER; do
+            mkdir -p $dir/bin && ln -sf /usr/local/bin/python2.7 $dir/bin/python
+          done
+        fi ;;
+      wget) install_src_tarball $WGET_SRC_URL $WGET_SHA256SUM ;;
+      redis-server) install_src_tarball $REDIS_SRC_URL $REDIS_SHA256SUM ;;
+      *) echo "Internal error: Unknown source package: $pkg" >&2; return 1 ;;
+    esac
+  done
+}
+
+# Usage: install_src_tarball <tarball_url> [install_target]
+# Downloads the supplied tarball, builds and installs the contents.
+# If install_target is supplied it will be used instead of "make install".
+function install_src_tarball() {
+  if [ $# -lt 2 -o $# -gt 3 ]; then
+    echo "Usage: install_src_tarball <tarball> <sha256sum> [install_target]" >&2
+    exit 1
+  fi
+
+  local url="$1"
+  local expected_256sum="$2"
+  local install_target="${3:-install}"
+  local filename="$(basename "$url")"
+  local dirname="$(basename "$filename" .tar.gz)"
+  dirname="$(basename "$dirname" .tgz)"
+
+  local tmpdir="$(mktemp -d)"
+  pushd "$tmpdir"
+  # CentOS 5 can't fetch from the git repo because it has an ancient OpenSSL,
+  # so if a file has been scp'd manually, use it.
+  if [ -e "$HOME/$filename" ]; then
+    filename="$HOME/$filename"
+  else
+    wget "$url"
+  fi
+
+  local actual_256sum="$(sha256sum "$filename" | cut -d ' ' -f 1)"
+  if [ "$actual_256sum" != "$expected_256sum" ]; then
+    echo "sha256sum mismatch on $filename." >&2
+    echo "Expected $expected_256sum got $actual_256sum" >&2
+    exit 1
+  fi
+
+  # There's no error handling here because we ought to be running under set -e.
+  tar -xf "$filename"
+  cd "$dirname"
+  if [ -e ./configure ]; then
+    ./configure
+  fi
+  make
+  echo "Installing $dirname"
+  sudo make $install_target
+  popd
+  rm -rf "$tmpdir"
+}
+
 # Usage: run_with_log [--verbose] <logfile> CMD [ARG ...]
 # Runs CMD, writing its output to the supplied logfile. Normally silent
 # except on failure, but will tee the output if --verbose is supplied.

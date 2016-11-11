@@ -22,7 +22,6 @@ export CHROOT_DIR=/var/chroot/centos_i386
 export SSL_CERT_DIR=/etc/pki/tls/certs
 export SSL_CERT_FILE=/etc/pki/tls/cert.pem
 
-# TODO(cheesy): Is -std=c99 still required?
 export CFLAGS="-DGPR_MANYLINUX1 -std=gnu99 ${CFLAGS:-}"
 
 export PATH=$HOME/bin:/usr/local/bin:$PATH
