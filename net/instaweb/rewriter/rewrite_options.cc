@@ -692,6 +692,20 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   // in a noscript block and the page will still load / function normally.
 };
 
+// List of filters that require a 'head' element to exist.
+const RewriteOptions::Filter kAddHeadFilters[] = {
+  RewriteOptions::kAddBaseTag,
+  RewriteOptions::kAddHead,
+  RewriteOptions::kAddInstrumentation,
+  RewriteOptions::kCombineHeads,
+  RewriteOptions::kDeterministicJs,
+  RewriteOptions::kHandleNoscriptRedirect,
+  RewriteOptions::kMakeGoogleAnalyticsAsync,
+  RewriteOptions::kMobilize,
+  RewriteOptions::kMoveCssAboveScripts,
+  RewriteOptions::kMoveCssToHead,
+};
+
 // List of filters which are essential for mobilizing webpages, i.e., for
 // making webpages designed for desktop computers look good on mobile devices.
 //
@@ -938,11 +952,6 @@ const RenamedOptionMap kRenamedOptionNameData[] = {
       "WebpRecompressionQualityForSmallScreens"}
 };
 
-std::vector<RenamedOptionMap> kRenamedOptionNameList(
-    kRenamedOptionNameData,
-    kRenamedOptionNameData + arraysize(kRenamedOptionNameData)
-);
-
 // Will be initialized to a sorted list of headers not allowed in
 // AddResourceHeader.
 const StringPieceVector* fixed_resource_headers = NULL;
@@ -1131,6 +1140,7 @@ RewriteOptions::RewriteOptions(ThreadSystem* thread_system)
                          arraysize(kJsPreserveUrlDisabledFilters));
   CheckFilterSetOrdering(kCssPreserveUrlDisabledFilters,
                          arraysize(kCssPreserveUrlDisabledFilters));
+  CheckFilterSetOrdering(kAddHeadFilters, arraysize(kAddHeadFilters));
 
   // Ensure that all filters have unique IDs.
   StringSet id_set;
@@ -2556,6 +2566,9 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // ckeditor.js, ckeditor_basic.js, ckeditor_basic_source.js, ...
   Disallow("*ckeditor*");
 
+  // https://github.com/pagespeed/mod_pagespeed/issues/1405
+  Disallow("*/wp-admin/*");
+
   // http://github.com/pagespeed/mod_pagespeed/issues/207
   // jquery-ui-1.8.2.custom.min.js, jquery-1.4.4.min.js, jquery.fancybox-...
   //
@@ -3236,14 +3249,13 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName3(
 
 StringPiece RewriteOptions::GetEffectiveOptionName(StringPiece name) {
   StringPiece effective_name = name;
-  std::vector<RenamedOptionMap>::iterator id =
-       std::lower_bound(kRenamedOptionNameList.begin(),
-                        kRenamedOptionNameList.end(),
-                        name,
-                        RenamedOptionMap::LessThan);
-  if (id != kRenamedOptionNameList.end() &&
-      StringCaseEqual(name, id->deprecated_option_name)) {
-    effective_name = id->new_option_name;
+  const RenamedOptionMap* end = kRenamedOptionNameData +
+      arraysize(kRenamedOptionNameData);
+  const RenamedOptionMap* entry =
+      std::lower_bound(kRenamedOptionNameData, end, name,
+                       &RenamedOptionMap::LessThan);
+  if ((entry != end) && StringCaseEqual(name, entry->deprecated_option_name)) {
+    effective_name = entry->new_option_name;
   }
   return effective_name;
 }
@@ -3546,19 +3558,49 @@ int64 RewriteOptions::MaxImageInlineMaxBytes() const {
 
 void RewriteOptions::GetEnabledFiltersRequiringScriptExecution(
     RewriteOptions::FilterVector* filters) const {
-  for (int i = 0, n = arraysize(kRequiresScriptExecutionFilterSet); i < n;
-       ++i) {
-    if (Enabled(kRequiresScriptExecutionFilterSet[i])) {
-      filters->push_back(kRequiresScriptExecutionFilterSet[i]);
+  for (RewriteOptions::Filter filter : kRequiresScriptExecutionFilterSet) {
+    if (Enabled(filter)) {
+      filters->push_back(filter);
     }
   }
 }
 
 void RewriteOptions::DisableFiltersRequiringScriptExecution() {
-  for (int i = 0, n = arraysize(kRequiresScriptExecutionFilterSet); i < n;
-       ++i) {
-    DisableFilter(kRequiresScriptExecutionFilterSet[i]);
+  for (RewriteOptions::Filter filter : kRequiresScriptExecutionFilterSet) {
+    DisableFilter(filter);
   }
+}
+
+void RewriteOptions::DisableFiltersThatCantRunInAjax() {
+  DisableFiltersRequiringScriptExecution();
+  for (RewriteOptions::Filter filter : kAddHeadFilters) {
+    DisableFilter(filter);
+  }
+
+  // Note that kPrioritizeCriticalCss does not require script execution for
+  // correct behavior because it adds its own <noscript> block.  This is better
+  // than a noscript-redirect, which is what we need to do for filters that
+  // require JS to run for the page to render correctly.  But we still need
+  // to disable it for ajax requests because it's fundamentally a whole-page
+  // optimization.
+  DisableFilter(RewriteOptions::kPrioritizeCriticalCss);
+
+  // Don't modify URLs for ajax requests, in case they are relative.
+  //
+  // TODO(jmarantz): would be better to enable rewriting of absolute URLs but
+  // disable rewriting of relative URLs.
+  set_css_preserve_urls(true);
+  set_image_preserve_urls(true);
+  set_js_preserve_urls(true);
+}
+
+bool RewriteOptions::RequiresAddHead() const {
+  for (RewriteOptions::Filter filter : kAddHeadFilters) {
+    if (Enabled(filter)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool RewriteOptions::UsePerOriginPropertyCachePage() const {

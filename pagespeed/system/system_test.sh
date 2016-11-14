@@ -85,6 +85,7 @@ if [ $statistics_enabled = "1" ]; then
 fi
 run_test prioritize_critical_css
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
+  run_test ajax_overrides_experiments
   run_test query_params_dont_enable_core_filters
   run_test optimize_for_bandwidth
   run_test shm_cache

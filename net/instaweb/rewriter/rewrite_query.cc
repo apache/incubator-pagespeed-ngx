@@ -207,23 +207,34 @@ RewriteQuery::Status RewriteQuery::Scan(
       ? request_headers->GetAllCookies()
       : no_cookies);
 
-  // For XmlHttpRequests, disable filters that insert js. Otherwise, there
-  // will be two copies of the same scripts in the html dom -- one from main
-  // html page and another from html content fetched from ajax --- which will
-  // generally confuse the heck out of it. The code for this is a little
-  // special since unlike a PageSpeedFoo= header we should not take it as an
-  // invitation to turn stuff on.
+  // For XmlHttpRequests, disable filters that can't run in Ajax.
+  //
+  // For example, for filters that insert scripts, there will be two
+  // copies of the same scripts in the html dom -- one from main html
+  // page and another from html content fetched from ajax --- which
+  // will generally confuse the heck out of it. The code for this is a
+  // little special since unlike a PageSpeedFoo= header we should not
+  // take it as an invitation to turn stuff on.
+  //
+  // Another commmon case is filters that require a <head> element -- we
+  // don't want to add a <head> in the ajax response, so we can't run
+  // any filters that might depend on that.
   //
   // TODO(sriharis): Set a flag in RewriteOptions indicating that we are
   // working with Ajax and thus should not assume the base URL is correct.
   // Note that there is no guarantee that the header will be set on an ajax
   // request and so the option will not be set for all ajax requests.
+  //
+  // TODO(jmarantz): Ajax status should probably be in RequestProperties
+  // rather than RewriteOptions so we don't have to create a new driver
+  // on an ajax request, but can instead reference properties.  However
+  // that change may be fairly significant.
   if (request_headers != NULL && request_headers->IsXmlHttpRequest()) {
     if (options_.get() == NULL) {
       options_.reset(factory->NewRewriteOptionsForQuery());
     }
-    options_->DisableFiltersRequiringScriptExecution();
-    options_->DisableFilter(RewriteOptions::kPrioritizeCriticalCss);
+    options_->DisableFiltersThatCantRunInAjax();
+    status = kSuccess;
   }
 
   // See if anything looks even remotely like one of our options before doing

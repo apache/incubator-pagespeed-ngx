@@ -1849,6 +1849,27 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeedExperimentSpec "id=1;percent=100;matches_device_type=mobile;enable=recompress_images"
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName experiment.ajax.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@/"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel CoreFilters
+  ModPagespeedDisableFilters add_instrumentation
+  ModPagespeedRunExperiment on
+  ModPagespeedUseAnalyticsJs false
+  ModPagespeedJsInlineMaxBytes 1
+  ModPagespeedExperimentSpec "id=1;percent=100;level=CoreFilters;enable=collapse_whitespace;options=JsInlineMaxBytes=1"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName ajax.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@/"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedJsInlineMaxBytes 1
+  ModPagespeedRewriteLevel CoreFilters
+  ModPagespeedDisableFilters add_instrumentation
+</VirtualHost>
+
 # Support for embedded configurations, where image flags in the
 # VirtualHost serving HTML is not the same as the one serving resources,
 # and thus we must embed the image flags in the rewritten image URLs.

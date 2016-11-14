@@ -29,7 +29,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/config/rewrite_options_manager.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -127,6 +126,7 @@
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/message_handler.h"
+#include "pagespeed/kernel/base/proto_util.h"
 #include "pagespeed/kernel/base/request_trace.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/sha1_signature.h"
@@ -1039,16 +1039,7 @@ void RewriteDriver::AddPreRenderFilters() {
     AddOwnedPostRenderFilter(resp_filter2);
   }
 
-  if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag) ||
-      rewrite_options->Enabled(RewriteOptions::kAddHead) ||
-      rewrite_options->Enabled(RewriteOptions::kAddInstrumentation) ||
-      rewrite_options->Enabled(RewriteOptions::kCombineHeads) ||
-      rewrite_options->Enabled(RewriteOptions::kDeterministicJs) ||
-      rewrite_options->Enabled(RewriteOptions::kHandleNoscriptRedirect) ||
-      rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
-      rewrite_options->Enabled(RewriteOptions::kMobilize) ||
-      rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts) ||
-      rewrite_options->Enabled(RewriteOptions::kMoveCssToHead)) {
+  if (rewrite_options->RequiresAddHead()) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
     AddOwnedEarlyPreRenderFilter(new AddHeadFilter(

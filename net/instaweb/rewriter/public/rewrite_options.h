@@ -1388,6 +1388,13 @@ class RewriteOptions {
   // Disables all filters that depend on executing custom javascript.
   void DisableFiltersRequiringScriptExecution();
 
+  // Disables all filters that cannot be run in an Ajax call.
+  void DisableFiltersThatCantRunInAjax();
+
+  // Determines whether any filter is enabled that requires a 'head'
+  // element to work.
+  bool RequiresAddHead() const;
+
   // Returns true if any filter benefits from per-origin property cache
   // information.
   bool UsePerOriginPropertyCachePage() const;
