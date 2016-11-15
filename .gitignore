@@ -1,6 +1,7 @@
 Makefile
 !third_party/libjpeg_turbo/yasm/source/config/linux/Makefile
 *.mk
+!install/**/*.mk
 *.Makefile
 client.timestamp
 hooks.timestamp
