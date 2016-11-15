@@ -244,13 +244,12 @@ fi
 find $build_dir/src -name "*.sh" | xargs chmod +x
 cd $build_dir/src
 echo build/gyp_chromium -Dchannel=$CHANNEL
-export AR_host=$build_dir/src/build/wrappers/ar.sh
 check gyp_chromium.log python build/gyp_chromium -Dchannel=$CHANNEL
 
 # It would be better to have AR.target overridden at gyp time, but
 # that functionality seems broken.
 MODPAGESPEED_ENABLE_UPDATES=1 check build.log \
-  make BUILDTYPE=Release AR.host=${AR_host} AR.target=${AR_host} V=1 \
+  make BUILDTYPE=Release V=1 \
     linux_package_$EXT mod_pagespeed_test pagespeed_automatic_test
 
 ls -l $PWD/out/Release/mod-pagespeed-${CHANNEL}*
@@ -309,8 +308,7 @@ if [ "$EXT" = "rpm" -a "$CHANNEL" = "beta" ]; then
 
   for buildtype in Release Debug; do
     cd $build_dir/src
-    check psol_build.log make BUILDTYPE=$buildtype \
-      AR.host=${AR_host} AR.target=${AR_host} V=1 \
+    check psol_build.log make BUILDTYPE=$buildtype V=1 \
       mod_pagespeed_test pagespeed_automatic_test
 
 
@@ -327,8 +325,7 @@ if [ "$EXT" = "rpm" -a "$CHANNEL" = "beta" ]; then
     # TODO(sligocki): Fix and use
     # check psol_automatic_build.log
     set +e
-    make MOD_PAGESPEED_ROOT=$build_dir/src BUILDTYPE=$buildtype \
-      AR.host=${AR_host} AR.target=${AR_host} V=1 \
+    make MOD_PAGESPEED_ROOT=$build_dir/src BUILDTYPE=$buildtype V=1 \
       CXXFLAGS="-DSERF_HTTPS_FETCHING=1" \
       all \
       >> psol_automatic_build.log 2>&1

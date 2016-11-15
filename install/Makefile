@@ -31,7 +31,6 @@
 # as Makefile variables which can be overridden on the command line.
 # They have defaults, which will often need to be changed.
 
-
 # The location of the Apache root installation directory.  This helps form
 # defaults for other variables, but each of those can be overridden.
 APACHE_ROOT = /etc/httpd
@@ -114,6 +113,11 @@ APACHE_USER = www-data
 
 # Set this to 1 to enable mod_proxy and mod_rewrite
 ENABLE_PROXY = 0
+
+# Load system-specific make variables. Do this after all the defaults have been
+# set above.
+DISTRO_NAME = $(shell lsb_release -is | tr A-Z a-z)
+include $(MOD_PAGESPEED_ROOT)/install/$(DISTRO_NAME)/make_vars.mk
 
 .PHONY : config_file echo_vars
 
