@@ -14,8 +14,8 @@ script:
   - ./install/run_program_with_ext_caches.sh ./out/Release/mod_pagespeed_test '&&' ./out/Release/pagespeed_automatic_test
   - find . -name "*.sh" | xargs chmod +x
   - cd install
-  - sudo -E ./ubuntu.sh apache_debug_restart
-  - sudo -E ./ubuntu.sh apache_vm_system_tests
+  - sudo make -C install apache_debug_restart
+  - sudo make -C install apache_vm_system_tests
 sudo: required
 compiler:
   - gcc
