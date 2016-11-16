@@ -26,8 +26,8 @@ Options:
       If you don't specify a version, defaults to latest-stable unless --devel
       is specified, in which case it defaults to trunk-tracking.
 
-      Doesn't make sense if we're running within an existing ngx_pagespeed
-      checkout.
+      This option doesn't make sense if we're running within an existing
+      ngx_pagespeed checkout.
 
   -n, --nginx-version <nginx version>
       What version of nginx to build.  If not set, this script only prepares the
