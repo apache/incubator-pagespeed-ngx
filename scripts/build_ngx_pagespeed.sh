@@ -581,7 +581,16 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     fi
     run pushd "$MOD_PAGESPEED_DIR"
     run git submodule update --init --recursive
-    run install/build_me_now.sh "$BUILD_TYPE"  # this doesn't exist yet
+
+    if "$DEVEL"; then
+      if [ ! -d "$HOME/apache2" ]; then
+        run install/build_development_apache.sh 2.2 prefork
+      fi
+      cd devel
+      run make apache_debug_psol
+    else
+      run install/build_psol.sh --skip_tests --skip_packaging
+    fi
     PSOL_BINARY="$MOD_PAGESPEED_DIR/out/$BUILD_TYPE/pagespeed_automatic.a"
     run popd
   else
