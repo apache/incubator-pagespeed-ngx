@@ -26,6 +26,7 @@
 #include "pagespeed/kernel/base/ref_counted_ptr.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 
 namespace net_instaweb {
 
@@ -99,7 +100,7 @@ class RateController {
   ThreadSystem* thread_system_;
 
   // Map containing per-host information tracking outgoing and queued fetches.
-  HostFetchInfoMap fetch_info_map_;
+  HostFetchInfoMap fetch_info_map_ GUARDED_BY(mutex_);
   scoped_ptr<AbstractMutex> mutex_;
 
   TimedVariable* queued_fetch_count_;

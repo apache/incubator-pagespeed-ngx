@@ -31,6 +31,7 @@
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
 #include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/http_names.h"
@@ -88,7 +89,7 @@ class RateController::HostFetchInfo
   ~HostFetchInfo() {}
 
   // Returns the number of outbound fetches for the given host.
-  int num_outbound_fetches() {
+  int num_outbound_fetches() LOCKS_EXCLUDED(mutex_) {
     ScopedMutex lock(mutex_.get());
     return num_outbound_fetches_;
   }
@@ -96,8 +97,7 @@ class RateController::HostFetchInfo
   // Checks if the number of outbound fetches is less than the threshold. If so,
   // increments the number of outbound fetches and returns true. Returns false
   // otherwise.
-  bool IncrementIfCanTriggerFetch() {
-    ScopedMutex lock(mutex_.get());
+  bool IncrementIfCanTriggerFetch() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
     if (num_outbound_fetches_ < per_host_outgoing_request_threshold_) {
       ++num_outbound_fetches_;
       return true;
@@ -106,15 +106,14 @@ class RateController::HostFetchInfo
   }
 
   // Decreases the number of outbound fetches by 1.
-  void decrement_num_outbound_fetches() {
+  void decrement_num_outbound_fetches() LOCKS_EXCLUDED(mutex_) {
     ScopedMutex lock(mutex_.get());
     DCHECK_GT(num_outbound_fetches_, 0);
     --num_outbound_fetches_;
   }
 
   // Increases the number of outbound fetches by 1.
-  void increment_num_outbound_fetches() {
-    ScopedMutex lock(mutex_.get());
+  void increment_num_outbound_fetches() EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
     DCHECK_GE(num_outbound_fetches_, 0);
     ++num_outbound_fetches_;
   }
@@ -122,8 +121,8 @@ class RateController::HostFetchInfo
   bool EnqueueFetchIfWithinThreshold(const GoogleString& url,
                                      UrlAsyncFetcher* fetcher,
                                      MessageHandler* handler,
-                                     AsyncFetch* fetch) {
-    ScopedMutex lock(mutex_.get());
+                                     AsyncFetch* fetch)
+      EXCLUSIVE_LOCKS_REQUIRED(mutex_) {
     if (fetch_queue_.size() <
         static_cast<size_t>(per_host_queued_request_threshold_)) {
       fetch_queue_.push(new DeferredFetch(url, fetcher, fetch, handler));
@@ -133,7 +132,8 @@ class RateController::HostFetchInfo
   }
 
   // Gets the next fetch from the queue. Returns NULL if the queue is empty.
-  DeferredFetch* PopNextFetchAndIncrementCountIfWithinThreshold() {
+  DeferredFetch* PopNextFetchAndIncrementCountIfWithinThreshold()
+      LOCKS_EXCLUDED(mutex_) {
     ScopedMutex lock(mutex_.get());
     if (fetch_queue_.empty() ||
         num_outbound_fetches_ >= per_host_outgoing_request_threshold_) {
@@ -148,19 +148,27 @@ class RateController::HostFetchInfo
   // Returns the host associated with this HostFetchInfo object.
   const GoogleString& host() { return host_; }
 
-  bool AnyInFlightOrQueuedFetches() const {
+  bool AnyInFlightOrQueuedFetches() const LOCKS_EXCLUDED(mutex_) {
     ScopedMutex lock(mutex_.get());
     DCHECK_GE(num_outbound_fetches_, 0);
     return num_outbound_fetches_ > 0 || !fetch_queue_.empty();
   }
 
+  void Lock() EXCLUSIVE_LOCK_FUNCTION(mutex_) {
+    mutex_->Lock();
+  }
+
+  void Unlock() UNLOCK_FUNCTION(mutex_) {
+    mutex_->Unlock();
+  }
+
  private:
   GoogleString host_;
-  int num_outbound_fetches_;
+  int num_outbound_fetches_ GUARDED_BY(mutex_);
   const int per_host_outgoing_request_threshold_;
   const int per_host_queued_request_threshold_;
   scoped_ptr<AbstractMutex> mutex_;
-  std::queue<DeferredFetch*> fetch_queue_;
+  std::queue<DeferredFetch*> fetch_queue_ GUARDED_BY(mutex_);
 
   DISALLOW_COPY_AND_ASSIGN(HostFetchInfo);
 };
@@ -285,6 +293,8 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
     fetch_info_map_[host] = new_fetch_info_ptr;
   }
 
+  fetch_info_ptr->Lock();
+
   if (!fetch->IsBackgroundFetch() ||
       fetch_info_ptr->IncrementIfCanTriggerFetch()) {
     // If this is a user-facing fetch or the number of outgoing fetches is
@@ -293,21 +303,27 @@ void RateController::Fetch(UrlAsyncFetcher* fetcher,
       // Increment the count if the request is not a background fetch.
       fetch_info_ptr->increment_num_outbound_fetches();
     }
+    fetch_info_ptr->Unlock();
     mutex_->Unlock();
     CustomFetch* wrapper_fetch = new CustomFetch(fetch_info_ptr, fetch, this);
     return fetcher->Fetch(url, message_handler, wrapper_fetch);
   } else if (current_global_fetch_queue_size_->Get() < max_global_queue_size_ &&
              fetch_info_ptr->EnqueueFetchIfWithinThreshold(
                  url, fetcher, message_handler, fetch)) {
-    mutex_->Unlock();
     // If the number of globally queued up fetches is within the threshold and
     // the number of queued requests for this host is less than the threshold,
     // push it to the back of the per-host queue.
+    // Note that we want to increase the queue size while still holding the
+    // fetch_info_ptr lock, since otherwise the entry may get dequeued
+    // with the size stat not yet updated, confusing us about it being 0.
     current_global_fetch_queue_size_->Add(1);
+    fetch_info_ptr->Unlock();
+    mutex_->Unlock();
     queued_fetch_count_->IncBy(1);
     return;
   }
 
+  fetch_info_ptr->Unlock();
   mutex_->Unlock();
 
   dropped_fetch_count_->IncBy(1);
