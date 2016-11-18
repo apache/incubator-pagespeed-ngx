@@ -5,8 +5,12 @@ language: c++
 #  submodules: false
 #before_install:
 #  - git submodule update --init --recursive --jobs=4
+env:
+  global:
+    - MAKEFLAGS=-j3
 script:
-  - install/build_release.sh --skip_psol
+  # We need --verbose or Travis thinks our build has stalled.
+  - install/build_release.sh --verbose --skip_psol
 sudo: required
 compiler:
   - gcc

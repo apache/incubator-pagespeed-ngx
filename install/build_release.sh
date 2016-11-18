@@ -4,16 +4,17 @@ source "$(dirname "$BASH_SOURCE")/build_env.sh" || exit 1
 
 build_32bit=false
 build_psol=true
-build_stable=
+build_mps_args=(--build_$PKG_EXTENSION)
 
-options="$(getopt --long 32bit,skip_psol,stable -o '' -- "$@")"
+options="$(getopt --long 32bit,skip_psol,stable,verbose -o '' -- "$@")"
 eval set -- "$options"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --32bit) build_32bit=true; shift ;;
     --skip_psol) build_psol=false; shift ;;
-    --stable) build_stable=--stable_package; shift ;;
+    --stable) build_mps_args+=(--stable_package); shift ;;
+    --verbose) build_mps_args+=(--verbose); shift ;;
     --) shift; break ;;
     *) echo "getopt error" >&2; exit 1 ;;
   esac
@@ -59,7 +60,7 @@ fi
 
 sudo $run_in_chroot \
   install/install_required_packages.sh --additional_test_packages
-$run_in_chroot install/build_mps.sh --build_$PKG_EXTENSION $build_stable
+$run_in_chroot install/build_mps.sh "${build_mps_args[@]}"
 sudo $run_in_chroot \
   install/test_package.sh out/Release/mod-pagespeed*.$PKG_EXTENSION
 
