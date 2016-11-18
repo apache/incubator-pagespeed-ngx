@@ -1,4 +1,8 @@
 #!/bin/bash
+# Copyright 2016 Google Inc. All Rights Reserved.
+# Author: cheesy@google.com (Steve Hill)
+#
+# Script to build mod_pagespeed.
 
 source $(dirname "$BASH_SOURCE")/build_env.sh || exit 1
 
@@ -7,9 +11,10 @@ package_channel=beta
 package_type=
 log_verbose=
 run_tests=true
+run_extcache_tests=true
 
-options="$(getopt --long \
-  build_deb,build_rpm,debug,release,skip_tests,stable_package,verbose \
+options="$(getopt --long build_deb,build_rpm,debug,release \
+  --long skip_extcache_tests,skip_tests,stable_package,verbose \
   -o '' -- "$@")"
 eval set -- "$options"
 
@@ -18,6 +23,7 @@ while [ $# -gt 0 ]; do
     --build_deb) package_type=deb; shift ;;
     --build_rpm) package_type=rpm; shift ;;
     --debug) build_type=Debug; shift ;;
+    --skip_extcache_tests) run_extcache_tests=false; shift ;;
     --skip_tests) run_tests=false; shift ;;
     --stable_package) package_channel=stable; shift ;;
     --verbose) log_verbose=--verbose; shift ;;
@@ -51,22 +57,28 @@ run_with_log $log_verbose log/gyp.log python build/gyp_chromium --depth=.
 make_targets=(mod_pagespeed)
 if $run_tests; then
   make_targets+=(mod_pagespeed_test pagespeed_automatic_test)
+  if $run_extcache_tests; then
+    make_targets+=(redis_cache_cluster_setup)
+  fi
 fi
 
 run_with_log $log_verbose log/build.log make \
   "${MAKE_ARGS[@]}" "${make_targets[@]}"
 
 if $run_tests; then
+  test_wrapper=
+  if $run_extcache_tests; then
+    test_wrapper=install/run_program_with_ext_caches.sh
+  fi
   run_with_log $log_verbose log/unit_test.log \
-    out/Release/mod_pagespeed_test
-  run_with_log $log_verbose log/unit_test.log \
-    out/Release/pagespeed_automatic_test
+    $test_wrapper out/Release/mod_pagespeed_test '&&' \
+                  out/Release/pagespeed_automatic_test
 fi
 
 if [ -n "$package_type" ]; then
   package_target=linux_package_${package_type}_${package_channel}
-  MODPAGESPEED_ENABLE_UPDATES=1 run_with_log $log_verbose build.log \
+  MODPAGESPEED_ENABLE_UPDATES=1 run_with_log $log_verbose log/pkg_build.log \
     make "${MAKE_ARGS[@]}" $package_target
 fi
 
-echo "Build succeeded at $(date)"
+echo "$(basename "$0") succeeded at $(date)"

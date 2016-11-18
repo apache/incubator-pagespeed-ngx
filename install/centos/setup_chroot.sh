@@ -10,6 +10,8 @@ if [ -z "${CHROOT_DIR:-}" ]; then
   exit 1
 fi
 
+install_dir="$(dirname "$BASH_SOURCE")/.."
+
 if [ -d "$CHROOT_DIR" ]; then
   "$install_dir/run_in_chroot.sh" /bin/true >/dev/null 2>&1
   if [ $? -eq 0 ]; then
@@ -39,7 +41,6 @@ if version_compare "$centos_version" -lt 6; then
 elif version_compare "$centos_version" -lt 7; then
   # CentOS 6
   release_rpm_url=http://mirror.centos.org/centos/6/os/i386/Packages/centos-release-6-8.el6.centos.12.3.i686.rpm
-  # TODO(cheesy): Once gclient is gone, we may be able to use the git rpm.
 else
   # CentOS 7
   release_rpm_url=http://mirror.centos.org/altarch/7/os/i386/Packages/centos-release-7-2.1511.el7.centos.2.9.i686.rpm
@@ -112,9 +113,12 @@ mount -a
 
 # The previous yum install above probably did all the updates,
 # but it doesn't hurt to ask.
-install/run_in_chroot.sh yum -y update
-install/run_in_chroot.sh yum -y install which redhat-lsb curl wget $git_pkg
+"$install_dir"/run_in_chroot.sh yum -y update
+"$install_dir"/run_in_chroot.sh \
+  yum -y install which redhat-lsb curl wget $git_pkg
 
 if [ -z "$git_pkg" ]; then
-  install/run_in_chroot.sh install/install_from_source.sh git
+  # Install the bare minimum deps before building git.
+  "$install_dir"/run_in_chroot.sh yum -y install gcc zlib-devel
+  "$install_dir"/run_in_chroot.sh install/install_from_source.sh git
 fi

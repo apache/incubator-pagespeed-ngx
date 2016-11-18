@@ -25,3 +25,5 @@ export SSL_CERT_FILE=/etc/pki/tls/cert.pem
 export CFLAGS="-DGPR_MANYLINUX1 -std=gnu99 ${CFLAGS:-}"
 
 export PATH=$HOME/bin:/usr/local/bin:$PATH
+
+PKG_EXTENSION=rpm

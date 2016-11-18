@@ -35,13 +35,13 @@ fi
 install_sl_gcc=
 
 if version_compare "$(lsb_release -rs)" -ge 7; then
-  binary_packages+=(python27 wget git)
+  binary_packages+=(python wget git)
   if "$additional_test_packages"; then
     binary_packages+=(memcached)
   fi
 elif version_compare "$(lsb_release -rs)" -ge 6; then
   install_sl_gcc=6
-  binary_packages+=(python26 wget)
+  binary_packages+=(python wget)
   # gyp runs "git rev-list --all --count" which the CentOS 6 package is too old
   # for.
   src_packages+=(git)

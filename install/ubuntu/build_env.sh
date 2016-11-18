@@ -17,3 +17,5 @@ export PATH=$HOME/bin:/usr/local/bin:$PATH
 
 # precise_i386, for instance.
 CHROOT_NAME="$(lsb_release -cs)_i386"
+
+PKG_EXTENSION=deb
