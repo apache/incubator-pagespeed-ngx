@@ -158,6 +158,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   run_test pass_through_headers
   run_test purging_disabled
   run_test inline_google_font_css
+  run_test content_encoding_leak
 fi
 
 run_test proxying

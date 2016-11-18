@@ -1584,6 +1584,16 @@ ModPagespeedMessagesDomains Allow localhost
   ModPagespeedEnableFilters debug
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName content-encoding.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters debug
+  ModPagespeedSlurpDirectory @@APACHE_DOC_ROOT@@/mod_pagespeed_test/bogus_content_encoding/
+  ModPagespeedSlurpReadOnly on
+</VirtualHost>
+
 #STATS_LOGGING ModPagespeedStatistics on
 #STATS_LOGGING ModPagespeedStatisticsLogging on
 #STATS_LOGGING ModPagespeedLogDir "@@MOD_PAGESPEED_LOG@@"

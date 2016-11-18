@@ -496,9 +496,12 @@ InstawebContext* build_context_for_request(request_rec* request) {
     // We don't know the encoding, so we cannot rewrite the HTML.
     const char* encoding = apr_table_get(request->headers_out,
                                          HttpAttributes::kContentEncoding);
-    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+    ap_log_rerror(APLOG_MARK, APLOG_INFO, APR_SUCCESS, request,
                   "Request not rewritten because: Content-Encoding is "
                   "unsupported (was %s)", encoding);
+    // We need to cleanup the rewrite driver; the pool will clean up the
+    // context object.
+    context->Finish();
     return NULL;
   }
 
