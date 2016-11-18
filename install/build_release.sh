@@ -5,6 +5,7 @@ source "$(dirname "$BASH_SOURCE")/build_env.sh" || exit 1
 build_32bit=false
 build_psol=true
 build_mps_args=(--build_$PKG_EXTENSION)
+verbose=false
 
 options="$(getopt --long 32bit,skip_psol,stable,verbose -o '' -- "$@")"
 eval set -- "$options"
@@ -14,7 +15,7 @@ while [ $# -gt 0 ]; do
     --32bit) build_32bit=true; shift ;;
     --skip_psol) build_psol=false; shift ;;
     --stable) build_mps_args+=(--stable_package); shift ;;
-    --verbose) build_mps_args+=(--verbose); shift ;;
+    --verbose) verbose=true; shift ;;
     --) shift; break ;;
     *) echo "getopt error" >&2; exit 1 ;;
   esac
@@ -58,11 +59,21 @@ fi
 
 # Run the various build scripts.
 
+if $verbose; then
+  build_mps_args+=(--verbose)
+fi
+
 sudo $run_in_chroot \
   install/install_required_packages.sh --additional_test_packages
 $run_in_chroot install/build_mps.sh "${build_mps_args[@]}"
-sudo $run_in_chroot \
-  install/test_package.sh out/Release/mod-pagespeed*.$PKG_EXTENSION
+
+verbose_flag=
+if $verbose; then
+  verbose_flag='--verbose'
+fi
+
+sudo $run_in_chroot install/test_package.sh \
+  $verbose_flag out/Release/mod-pagespeed*.$PKG_EXTENSION
 
 if $build_psol; then
   $run_in_chroot install/build_psol.sh
