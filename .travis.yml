@@ -1,19 +1,12 @@
 language: c++
-install:
-  - sudo sh -c 'echo "deb http://opensource.wandisco.com/ubuntu precise svn18" >> /etc/apt/sources.list.d/subversion18.list'
-  - sudo wget -q http://opensource.wandisco.com/wandisco-debian.gpg -O- | sudo apt-key add -
-  - sudo apt-get update 2>&1 > /dev/null
-  - sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4 php5-common php5 php5-cgi libapache2-mod-php5 redis-server 2>&1 > /dev/null
-  - nohup php-cgi -b 127.0.0.1:9000 &
-  - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
-  - python build/gyp_chromium --depth=.
-  - make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release -j3
-  - make BUILDTYPE=Release AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh linux_package_deb_stable
-  - sudo dpkg -i out/Release/mod-pagespeed*.deb
+# Theoretically, this would allow us to clone subdmoules in parallel, which is quite slow.
+# However, travis's git submodule doesn't understand --jobs
+#git:
+#  submodules: false
+#before_install:
+#  - git submodule update --init --recursive --jobs=4
 script:
-  - ./install/run_program_with_ext_caches.sh ./out/Release/mod_pagespeed_test '&&' ./out/Release/pagespeed_automatic_test
-  - sudo make -C install apache_debug_restart
-  - sudo make -C install apache_vm_system_tests
+  - install/build_release.sh --skip_psol
 sudo: required
 compiler:
   - gcc
