@@ -10,7 +10,7 @@ env:
     - MAKEFLAGS=-j3
 script:
   # We need --verbose or Travis thinks our build has stalled.
-  - install/build_release.sh --verbose --skip_psol
+  - install/build_release.sh --verbose --skip_psol --stable
 sudo: required
 compiler:
   - gcc
