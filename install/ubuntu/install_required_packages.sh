@@ -41,4 +41,7 @@ if "$additional_test_packages"; then
 fi
 
 apt-get -y install "${binary_packages[@]}"
-install_from_src "${src_packages[@]}"
+
+# src_packages might be empty. The below placates set -u, see:
+# http://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
+install_from_src ${src_packages[@]+"${src_packages[@]}"}

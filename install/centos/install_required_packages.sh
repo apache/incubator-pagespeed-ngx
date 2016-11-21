@@ -101,7 +101,9 @@ if [ -n "$include_line_number" -a -n "$loglevel_line_number" ] && \
   sed -i.pagespeed_bak "s/^LogLevel[[:space:]]/#&/; 0,/^Include/s//$loglevel_line\\n&/" $httpd_conf
 fi
 
-install_from_src "${src_packages[@]}"
+# src_packages might be empty. The below placates set -u, see:
+# http://stackoverflow.com/questions/7577052/bash-empty-array-expansion-with-set-u
+install_from_src ${src_packages[@]+"${src_packages[@]}"}
 
 # Start memcached if it was installed from source
 # TODO(cheesy): This should probably happen as part of the test setup, though
