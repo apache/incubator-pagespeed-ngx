@@ -1729,6 +1729,27 @@ http {
     pagespeed EnableFilters debug;
   }
   server {
+    pagespeed on;
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name broken-fetch.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@/broken-fetch";
+
+    # Set up a fetch proxy that will 404 every request.
+    pagespeed FetchProxy "brokenfetch.example.com:1111";
+
+    # Prevent loopback fetch by explicitly authorizing the domain.  Loopback
+    # fetches would work, and for this test, we're trying to have fetches fail,
+    # so they are instead picked up by the ipro recorder.
+    pagespeed Domain http://broken-fetch.example.com;
+    pagespeed InPlaceResourceOptimization on;
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_javascript;
+    pagespeed DisableFilters add_instrumentation;
+    pagespeed CriticalImagesBeaconEnabled false;
+  }
+  server {
     listen @@PRIMARY_PORT@@;
     listen [::]:@@PRIMARY_PORT@@;
     server_name  localhost;
