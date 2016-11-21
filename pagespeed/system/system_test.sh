@@ -86,6 +86,7 @@ fi
 run_test prioritize_critical_css
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   run_test ajax_overrides_experiments
+  run_test broken_fetch_ipro_record
   run_test query_params_dont_enable_core_filters
   run_test optimize_for_bandwidth
   run_test shm_cache

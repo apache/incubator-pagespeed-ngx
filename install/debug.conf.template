@@ -2080,6 +2080,26 @@ Listen 127.0.0.2:@@APACHE_TERTIARY_PORT@@
   ModPagespeedDisableFilters add_instrumentation
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName broken-fetch.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/broken-fetch"
+
+  # Set up a fetch proxy that will 404 every request.
+  ModPagespeedFetchProxy "brokenfetch.example.com:1111"
+
+  # Prevent loopback fetch by explicitly authorizing the domain.  Loopback
+  # fetches would work, and for this test, we're trying to have fetches fail,
+  # so they are instead picked up by the ipro recorder.
+  ModPagespeedDomain http://broken-fetch.example.com
+  ModPagespeedInPlaceResourceOptimization on
+
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_javascript
+  ModPagespeedDisableFilters add_instrumentation
+  ModPagespeedCriticalImagesBeaconEnabled false
+</VirtualHost>
+
 # In case the system has not added webp as an installed mimetype, this
 # is needed to allow automatic/system_tests/resource_content_type_html.sh
 # to work, as that is needed for
