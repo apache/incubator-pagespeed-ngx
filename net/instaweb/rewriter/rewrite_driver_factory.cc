@@ -43,6 +43,7 @@
 #include "pagespeed/controller/in_process_central_controller.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/checking_thread_system.h"
+#include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
 #include "pagespeed/kernel/base/file_system.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/hasher.h"
@@ -675,11 +676,14 @@ void RewriteDriverFactory::ShutDown() {
   }
 
   // Now get active RewriteDrivers for each manager to wrap up.
+  int timeout_secs = RunningOnValgrind() ? 20 : 5;
+  int64 cutoff_time_ms = timer_->NowMs() + timeout_secs * Timer::kSecondMs;
+
   for (ServerContextSet::iterator p = server_contexts_.begin();
        p != server_contexts_.end(); ++p) {
     ServerContext* server_context = *p;
     server_context->central_controller()->ShutDown();
-    server_context->ShutDownDrivers();
+    server_context->ShutDownDrivers(cutoff_time_ms);
   }
 
   // Shut down the remaining worker threads, to quiesce the system while

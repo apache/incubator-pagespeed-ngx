@@ -51,7 +51,6 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "pagespeed/kernel/base/abstract_mutex.h"
 #include "pagespeed/kernel/base/basictypes.h"
-#include "pagespeed/kernel/base/dynamic_annotations.h"  // RunningOnValgrind
 #include "pagespeed/kernel/base/escaping.h"
 #include "pagespeed/kernel/base/hasher.h"
 #include "pagespeed/kernel/base/md5_hasher.h"
@@ -817,7 +816,7 @@ void ServerContext::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
   }
 }
 
-void ServerContext::ShutDownDrivers() {
+void ServerContext::ShutDownDrivers(int64 cutoff_time_ms) {
   // Try to get any outstanding rewrites to complete, one-by-one.
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
@@ -848,17 +847,13 @@ void ServerContext::ShutDownDrivers() {
     return;
   }
 
-  int timeout_secs = RunningOnValgrind() ? 20 : 1;
-  int64 cutoff_time_ms = timer_->NowMs() + timeout_secs * Timer::kSecondMs;
-
   for (RewriteDriver* active : active_rewrite_drivers_) {
-    // Negative wait means forever, so we must guard against that.
+    // <= 0 wait means forever, so we must guard against that.
     int64 wait_ms = cutoff_time_ms - timer_->NowMs();
-    if (wait_ms > 0) {
-      active->BoundedWaitFor(RewriteDriver::kWaitForShutDown, wait_ms);
-    } else {
-      break;
+    if (wait_ms <= 0) {
+      wait_ms = 1;
     }
+    active->BoundedWaitFor(RewriteDriver::kWaitForShutDown, wait_ms);
     // Note: It is not safe to call Cleanup() on the driver here. Something
     // else is planning to do that and if it happens after this point, they
     // can DCHECK fail because the refcount is already 0. Instead we just cross

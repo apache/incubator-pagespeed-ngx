@@ -469,7 +469,7 @@ class ServerContext {
   // TODO(jmarantz): Change New*RewriteDriver() calls to return NULL
   // when run after shutdown.  This requires changing call-sites to
   // null-check their drivers and gracefully fail.
-  void ShutDownDrivers();
+  void ShutDownDrivers(int64 cutoff_time_ms);
 
   // Take any headers that are not caching-related, and not otherwise
   // filled in by SetDefaultLongCacheHeaders or SetContentType, but
