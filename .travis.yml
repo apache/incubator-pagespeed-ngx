@@ -10,7 +10,7 @@ install:
 #  - git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
   - mkdir ~/mod_pagespeed
   - cd ~/mod_pagespeed
-  - git clone https://github.com/pagespeed/mod_pagespeed.git src
+  - git clone --recursive https://github.com/pagespeed/mod_pagespeed.git src
   - cd src
   - python build/gyp_chromium --depth=.
   - cd ~/mod_pagespeed/src/pagespeed/automatic
