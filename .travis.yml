@@ -1,35 +1,20 @@
 language: c++
-# Remove broken repo, per: https://github.com/travis-ci/travis-ci/issues/6588
-# Undo this once the repo is fixed.
-before_install:
-  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ main restricted'"
-  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ universe'"
-  - "sudo add-apt-repository --remove 'http://us-central1.gce.archive.ubuntu.com/ubuntu/ multiverse'"
-  - "sudo add-apt-repository http://archive.ubuntu.com/ubuntu/"
-  - "sudo add-apt-repository 'http://archive.ubuntu.com/ubuntu/ universe'"
-  - "sudo add-apt-repository 'http://archive.ubuntu.com/ubuntu/ multiverse'"
-  - "sudo apt-get -qq update"
 install:
-  - sudo sh -c 'echo "deb http://opensource.wandisco.com/ubuntu precise svn18" >> /etc/apt/sources.list.d/subversion18.list'
-  - sudo wget -q http://opensource.wandisco.com/wandisco-debian.gpg -O- | sudo apt-key add -
-  - sudo apt-get update 2>&1 > /dev/null
   - mv $TRAVIS_BUILD_DIR ~/ngxpagespeed
-  - sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev unzip g++ python subversion gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4 2>&1 > /dev/null
-  - sudo mv /bin/nc.traditional /usr/bin/nc
+  - sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev unzip g++ python gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4 2>&1 > /dev/null
   - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
   - sudo ln -sf /usr/lib/gcc-mozilla/lib/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
-  - sudo sh -c 'echo "image/webp webp" >> /etc/mime.types'
-  - mkdir -p ~/bin
-  - cd ~/bin
-  - git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+#  - sudo sh -c 'echo "image/webp webp" >> /etc/mime.types'
+#  - mkdir -p ~/bin
+#  - cd ~/bin
+#  - git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
   - mkdir ~/mod_pagespeed
   - cd ~/mod_pagespeed
   - git clone https://github.com/pagespeed/mod_pagespeed.git src
   - cd src
-  - ~/bin/depot_tools/gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=$PWD
-  - ~/bin/depot_tools/gclient sync --force --jobs=1
+  - python build/gyp_chromium --depth=.
   - cd ~/mod_pagespeed/src/pagespeed/automatic
-  - make BUILDTYPE=Release -C ../../pagespeed/automatic AR.host="$PWD/../../build/wrappers/ar.sh" AR.target="$PWD/../../build/wrappers/ar.sh" all
+  - make BUILDTYPE=Release -C ../../pagespeed/automatic all
   - cd ~
   - git clone https://github.com/FRiCKLE/ngx_cache_purge.git
   - NGX_CACHE_PURGE=$PWD/ngx_cache_purge
