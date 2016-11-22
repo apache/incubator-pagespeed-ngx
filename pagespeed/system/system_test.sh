@@ -8,7 +8,10 @@
 # Default to not running the controller, unless specified to
 # do so via an environment variable.
 RUN_CONTROLLER_TEST=${RUN_CONTROLLER_TEST:-off}
-
+IS_FILE_CACHE=false
+if [ "${MEMCACHED_PORT:-0}" -eq 0 ] && [ "${REDIS_PORT:-0}" -eq 0 ]; then
+  IS_FILE_CACHE=true
+fi
 FIRST_RUN=${FIRST_RUN:-false}
 
 # To fetch from the secondary test root, we must set
@@ -86,7 +89,14 @@ fi
 run_test prioritize_critical_css
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   run_test ajax_overrides_experiments
-  run_test broken_fetch_ipro_record
+
+  # The broken_fetch test can only run with a file-cache, not with
+  # an external cache.
+  if $IS_FILE_CACHE; then
+    run_test broken_fetch_ipro_record
+  else
+    echo Skipping broken_fetch_ipro_record, which only runs with file cache.
+  fi
   run_test query_params_dont_enable_core_filters
   run_test optimize_for_bandwidth
   run_test shm_cache
