@@ -41,7 +41,7 @@ done
 
 # We need to add the following configuration snippet into the global conf file,
 # if not already present.
-conf_file="$APACHE_CONF_D/pagespeed_test.conf"
+conf_file="$APACHE_CONF_DIR/pagespeed_test.conf"
 if grep -q pagespeed_test.conf $APACHE_CONF_FILE; then
   echo $conf_file is already included in $APACHE_CONF_FILE
 else

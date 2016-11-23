@@ -91,16 +91,6 @@ PAGESPEED_MODULE = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed.so
 PAGESPEED_MODULE_24 = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed_ap24.so
 PAGESPEED_JS_MINIFY = $(MOD_PAGESPEED_ROOT)/out/Release/js_minify
 
-# On systems dervied from the NCSA configuration files by Rob McCool,
-# you enable a module by writing its .conf file into
-# $(APACHE_ROOT)/mods-available/pagespeed.conf, and a single Load command into
-# $(APACHE_ROOT)/mods-enabled/pagespeed.conf.  So if that exists, then we'll
-# try to automate that.
-MODS_ENABLED_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-enabled ]; then \
-	echo $(APACHE_ROOT)/mods-enabled; fi)
-MODS_AVAILABLE_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-available ]; then \
-	echo $(APACHE_ROOT)/mods-available; fi)
-
 # Determines where mod_pagespeed should put cache.
 MOD_PAGESPEED_CACHE = /var/cache/mod_pagespeed
 
@@ -118,6 +108,16 @@ ENABLE_PROXY = 0
 # set above.
 DISTRO_NAME = $(shell lsb_release -is | tr A-Z a-z)
 include $(MOD_PAGESPEED_ROOT)/install/$(DISTRO_NAME)/make_vars.mk
+
+# On systems derived from the NCSA configuration files by Rob McCool,
+# you enable a module by writing its .conf file into
+# $(APACHE_ROOT)/mods-available/pagespeed.conf, and a single Load command into
+# $(APACHE_ROOT)/mods-enabled/pagespeed.conf.  So if that exists, then we'll
+# try to automate that.
+MODS_ENABLED_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-enabled ]; then \
+	echo $(APACHE_ROOT)/mods-enabled; fi)
+MODS_AVAILABLE_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-available ]; then \
+	echo $(APACHE_ROOT)/mods-available; fi)
 
 .PHONY : config_file echo_vars
 
@@ -154,16 +154,16 @@ echo_vars :
 # but there is no implicit loading of modules, so we write our Load line
 # directly into our config file.
 
-# In either case, independent configuration files go here (this directory
-# is read by both distributions on startup after the modules load).
-APACHE_CONF_D = $(APACHE_ROOT)/conf.d
-
 ifeq ($(MODS_ENABLED_DIR),)
 
 # This is a CentOS-like installation, where there is no explicit .load
 # file, and we instead pre-pend the LoadModule command to the .conf file.
-APACHE_CONF_DIR = $(APACHE_CONF_D)
+APACHE_CONF_DIR = $(APACHE_ROOT)/conf.d
 CONF_SOURCES = $(STAGING_DIR)/pagespeed.load $(STAGING_DIR)/pagespeed.conf
+
+MODS_ENABLED_INSTALL_COMMANDS = \
+  cp -f $(STAGING_DIR)/pagespeed_libraries.conf \
+    $(APACHE_CONF_DIR)/pagespeed_libraries.conf
 
 else
 
@@ -171,9 +171,10 @@ else
 # separately into a mods-enabled directory, and the .conf file is loaded
 # independently.
 MODS_ENABLED_INSTALL_COMMANDS = \
-	rm -f $(MODS_ENABLED_DIR)/pagespeed.load ; \
-	cp -f $(STAGING_DIR)/pagespeed.load $(MODS_AVAILABLE_DIR) ; \
-	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/pagespeed.load ; \
+	for file in pagespeed.load pagespeed_libraries.conf; do \
+	  cp -f $(STAGING_DIR)/$$file $(MODS_AVAILABLE_DIR) ; \
+	  cd $(MODS_ENABLED_DIR) && ln -sf ../mods-available/$$file ; \
+	done; \
 	rm -f $(MODS_ENABLED_DIR)/headers.load ; \
 	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/headers.load ; \
 	rm -f $(MODS_ENABLED_DIR)/deflate.load ; \
@@ -309,8 +310,6 @@ staging : staging_except_module
 install_except_module : mod_pagespeed_file_root
 	$(MODS_ENABLED_INSTALL_COMMANDS)
 	cat $(CONF_SOURCES) > $(APACHE_CONF_DIR)/pagespeed.conf
-	cp -f $(STAGING_DIR)/pagespeed_libraries.conf \
-	      $(APACHE_CONF_D)/pagespeed_libraries.conf
 	ln -Tsf $(STAGING_DIR)/mod_pagespeed_example \
 	        $(APACHE_DOC_ROOT)/mod_pagespeed_example
 	ln -Tsf $(STAGING_DIR)/mod_pagespeed_test \
@@ -383,7 +382,7 @@ setup_test_machine :
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	APACHE_CONF_FILE=$(APACHE_CONF_FILE) \
 	MOD_PAGESPEED_ROOT=$(MOD_PAGESPEED_ROOT) \
-	APACHE_CONF_D=$(APACHE_CONF_D) \
+	APACHE_CONF_DIR=$(APACHE_CONF_DIR) \
 	./setup_test_machine.sh
 	sudo $(APACHE_CONTROL_PROGRAM) restart
 

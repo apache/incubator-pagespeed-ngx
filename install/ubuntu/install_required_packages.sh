@@ -33,7 +33,7 @@ install_redis_from_src=false
 if "$additional_test_packages"; then
   binary_packages+=(memcached libapache2-mod-php5)
 
-  if version_compare $(lsb_release -sr) -ge 14.04; then
+  if version_compare $(lsb_release -sr) -ge 16.04; then
     binary_packages+=(redis-server)
   else
     src_packages+=(redis-server)
