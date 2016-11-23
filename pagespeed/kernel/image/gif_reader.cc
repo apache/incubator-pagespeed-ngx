@@ -32,14 +32,6 @@ extern "C" {
 #include "png.h"                                               // NOLINT
 #else
 #include "third_party/libpng/src/png.h"
-
-  // gif_reader currently inspects "private" fields of the png_info
-  // structure. Thus we need to include pnginfo.h. Eventually we should
-  // fix the callsites to use the public API only, and remove this
-  // include.
-#if PNG_LIBPNG_VER >= 10400
-#include "third_party/libpng/pnginfo.h"
-#endif
 #endif
 
 #include "third_party/giflib/lib/gif_lib.h"
@@ -109,7 +101,10 @@ bool AddTransparencyChunk(png_structp png_ptr,
                           int transparent_palette_index,
                           MessageHandler* handler) {
   const int num_trans = transparent_palette_index + 1;
-  if (num_trans <= 0 || num_trans > info_ptr->num_palette) {
+  png_colorp palette;
+  int num_palette = 0;
+  png_get_PLTE(png_ptr, info_ptr, &palette, &num_palette);
+  if (num_trans <= 0 || num_trans > num_palette) {
     PS_LOG_INFO(handler, "Transparent palette index out of bounds.");
     return false;
   }
@@ -178,12 +173,12 @@ bool ReadImageDescriptor(GifFileType* gif_file,
     return false;
   }
 
+  png_bytepp rows = png_get_rows(png_ptr, info_ptr);
   if (gif_file->Image.Interlace == 0) {
     // Not interlaced. Read each line into the PNG buffer.
     for (GifWord i = 0; i < height; ++i) {
       if (DGifGetLine(gif_file,
-                      static_cast<GifPixelType*>(
-                          &info_ptr->row_pointers[row + i][pixel]),
+                      static_cast<GifPixelType*>(&rows[row + i][pixel]),
                       width) == GIF_ERROR) {
         PS_DLOG_INFO(handler, "Failed to DGifGetLine");
         return false;
@@ -197,8 +192,7 @@ bool ReadImageDescriptor(GifFileType* gif_file,
            j < row + height;
            j += kInterlaceJumps[i]) {
         if (DGifGetLine(gif_file,
-                        static_cast<GifPixelType*>(
-                            &info_ptr->row_pointers[j][pixel]),
+                        static_cast<GifPixelType*>(&rows[j][pixel]),
                         width) == GIF_ERROR) {
           PS_DLOG_INFO(handler, "Failed to DGifGetLine");
           return false;
@@ -207,7 +201,7 @@ bool ReadImageDescriptor(GifFileType* gif_file,
     }
   }
 
-  info_ptr->valid |= PNG_INFO_IDAT;
+  png_set_rows(png_ptr, info_ptr, rows);  // Marks iDAT as valid.
   return true;
 }
 
@@ -275,23 +269,22 @@ png_uint_32 AllocatePngPixels(png_structp png_ptr,
     return 0;
   }
 
-#ifdef PNG_FREE_ME_SUPPORTED
   png_free_data(png_ptr, info_ptr, PNG_FREE_ROWS, 0);
-#endif
-  if (info_ptr->row_pointers == NULL) {
+  if (png_get_rows(png_ptr, info_ptr) == NULL) {
+    png_uint_32 height = png_get_image_height(png_ptr, info_ptr);
+
     // Allocate the array of pointers to each row.
-    const png_size_t row_pointers_size =
-        info_ptr->height * png_sizeof(png_bytep);
-    info_ptr->row_pointers = static_cast<png_bytepp>(
+    const png_size_t row_pointers_size = height * sizeof(png_bytep);
+    png_bytepp row_pointers = static_cast<png_bytepp>(
         png_malloc(png_ptr, row_pointers_size));
-    memset(info_ptr->row_pointers, 0, row_pointers_size);
-#ifdef PNG_FREE_ME_SUPPORTED
-    info_ptr->free_me |= PNG_FREE_ROWS;
-#endif
+    memset(row_pointers, 0, row_pointers_size);
+    png_set_rows(png_ptr, info_ptr, row_pointers);
+    png_data_freer(png_ptr, info_ptr,
+                   PNG_DESTROY_WILL_FREE_DATA, PNG_FREE_ROWS);
 
     // Allocate memory for each row.
-    for (png_uint_32 row = 0; row < info_ptr->height; ++row) {
-      info_ptr->row_pointers[row] =
+    for (png_uint_32 row = 0; row < height; ++row) {
+      row_pointers[row] =
           static_cast<png_bytep>(png_malloc(png_ptr, row_size));
     }
   }
@@ -328,14 +321,17 @@ bool ExpandColorMap(png_structp paletted_png_ptr,
     return false;
   }
 
+  png_bytepp rgb_row_pointers = png_get_rows(rgb_png_ptr, rgb_info_ptr);
+  png_bytepp pal_row_pointers = png_get_rows(paletted_png_ptr,
+                                             paletted_info_ptr);
   for (png_uint_32 row = 0; row < height; ++row) {
-    png_bytep rgb_next_byte = rgb_info_ptr->row_pointers[row];
+    png_bytep rgb_next_byte = rgb_row_pointers[row];
     if (have_alpha) {
       // Make the row opaque initially.
       memset(rgb_next_byte, 0xff, row_size);
     }
     for (png_uint_32 column = 0; column < width; ++column) {
-      png_byte palette_entry = paletted_info_ptr->row_pointers[row][column];
+      png_byte palette_entry = pal_row_pointers[row][column];
       if (have_alpha &&
           (palette_entry == static_cast<png_byte>(transparent_palette_index))) {
         // Transparent: clear RGBA bytes.
@@ -347,7 +343,9 @@ bool ExpandColorMap(png_structp paletted_png_ptr,
       rgb_next_byte += bytes_per_pixel;
     }
   }
-  rgb_info_ptr->valid |= PNG_INFO_IDAT;
+
+  // Marks iDAT as valid.
+  png_set_rows(rgb_png_ptr, rgb_info_ptr, rgb_row_pointers);
   return true;
 }
 
@@ -359,7 +357,7 @@ bool ReadGifToPng(GifFileType* gif_file,
                   bool require_opaque,
                   MessageHandler* handler) {
   if (static_cast<png_size_t>(gif_file->SHeight) >
-      PNG_UINT_32_MAX/png_sizeof(png_bytep)) {
+      PNG_UINT_32_MAX/sizeof(png_bytep)) {
     PS_DLOG_INFO(handler, "GIF image is too big to process.");
     return false;
   }
@@ -408,9 +406,11 @@ bool ReadGifToPng(GifFileType* gif_file,
   }
 
   // Fill the rows with the background color.
-  memset(paletted_info_ptr->row_pointers[0],
-         gif_file->SBackGroundColor, row_size);
-  for (png_uint_32 row = 1; row < paletted_info_ptr->height; ++row) {
+  png_bytepp row_pointers = png_get_rows(paletted_png_ptr, paletted_info_ptr);
+  memset(row_pointers[0], gif_file->SBackGroundColor, row_size);
+  png_uint_32 height = png_get_image_height(paletted_png_ptr,
+                                            paletted_info_ptr);
+  for (png_uint_32 row = 1; row < height; ++row) {
     memcpy(paletted_info_ptr->row_pointers[row],
            paletted_info_ptr->row_pointers[0],
            row_size);
