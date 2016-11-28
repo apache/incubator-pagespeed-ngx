@@ -58,6 +58,9 @@ personality=linux32
 preserve-environment=true
 root-groups=sudo
 groups=sudo
+# This may expand to empty, which is OK.
+root-users=${SUDO_USER:-}
+users=${SUDO_USER:-}
 EOF
 
 cat >> /etc/schroot/default/fstab << EOF
