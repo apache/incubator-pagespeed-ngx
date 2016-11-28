@@ -393,17 +393,6 @@ string UnicodeText::DebugString() const {
 
 UnicodeText::const_iterator::const_iterator() : it_(nullptr) {}
 
-UnicodeText::const_iterator::const_iterator(const const_iterator& other)
-    : it_(other.it_) {
-}
-
-UnicodeText::const_iterator&
-UnicodeText::const_iterator::operator=(const const_iterator& other) {
-  if (&other != this)
-    it_ = other.it_;
-  return *this;
-}
-
 UnicodeText::const_iterator UnicodeText::begin() const {
   return const_iterator(repr_.data_);
 }
