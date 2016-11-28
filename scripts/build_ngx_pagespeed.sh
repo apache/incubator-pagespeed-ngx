@@ -728,8 +728,8 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       echo
       echo "To rebuild after changes:"
       echo "  First, if you change things in PSOL or update it:"
-      echo "    cd $MOD_PAGESPEED_DIR"
-      echo "    scripts/rebuild_me_now.sh"  # this doesn't exist yet
+      echo "    cd $MOD_PAGESPEED_DIR/devel"
+      echo "    make apache_debug_psol"
       echo "  Then, whether or not you updated PSOL, rebuild nginx:"
       echo "    cd $install_dir/nginx"
       echo "    make && make install"
