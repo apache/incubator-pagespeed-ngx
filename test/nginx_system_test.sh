@@ -49,7 +49,11 @@ rm -rf "$TEST_TMP"
 mkdir -p "$TEST_TMP"
 echo TEST_TMP=$TEST_TMP
 
-APACHE_DOC_SRC="$MOD_PAGESPEED_DIR/src/install/"
+if [ -d "$MOD_PAGESPEED_DIR/src" ]; then
+  MOD_PAGESPEED_DIR+="/src"
+fi
+
+APACHE_DOC_SRC="$MOD_PAGESPEED_DIR/install/"
 SERVER_ROOT="$TEST_TMP/root"
 echo SERVER_ROOT=$SERVER_ROOT
 rm -rf "$SERVER_ROOT"
@@ -311,7 +315,7 @@ SERVER_NAME=nginx
 RUN_CONTROLLER_TEST=${RUN_CONTROLLER_TEST:-off}
 
 # run generic system tests
-PAGESPEED_DIR="$MOD_PAGESPEED_DIR/src/pagespeed"
+PAGESPEED_DIR="$MOD_PAGESPEED_DIR/pagespeed"
 SYSTEM_TEST_FILE="$PAGESPEED_DIR/system/system_test.sh"
 REMOTE_CONFIG_TEST_FILE="$PAGESPEED_DIR/system/remote_config_test.sh"
 
@@ -1420,7 +1424,7 @@ OUT=$(cat "$ERROR_LOG" \
     | grep -v "\\[error\\].*forbidden.example.com*" \
     | grep -v "\\[error\\].*custom-paths.example.com*" \
     | grep -v "\\[error\\].*bogus_format*" \
-    | grep -v "\\[error\\].*src/install/foo*" \
+    | grep -v "\\[error\\].*/install/foo*" \
     | grep -v "\\[error\\].*recv() failed*" \
     | grep -v "\\[error\\].*send() failed*" \
     | grep -v "\\[error\\].*Invalid url requested: js_defer.js.*" \
