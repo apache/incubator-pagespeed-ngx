@@ -440,7 +440,7 @@ DEFINE_bool(serve_xhr_access_control_headers, false,
             "If set to true, adds access control headers to response headers.");
 
 DEFINE_string(access_control_allow_origins, "",
-              "Comma seperated list of origins that are allowed to make "
+              "Comma separated list of origins that are allowed to make "
               "cross-origin requests. These domain requests are served with "
               "Access-Control-Allow-Origin header.");
 

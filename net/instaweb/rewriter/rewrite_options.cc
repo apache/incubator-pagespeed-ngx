@@ -2088,7 +2088,7 @@ void RewriteOptions::AddProperties() {
       "", &RewriteOptions::access_control_allow_origins_,
       "acao", kAccessControlAllowOrigins,
       kDirectoryScope,
-      "Comma seperated list of origins that are allowed to make cross-origin "
+      "Comma separated list of origins that are allowed to make cross-origin "
       "requests", false);
 
   AddBaseProperty(

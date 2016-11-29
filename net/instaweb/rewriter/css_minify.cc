@@ -112,7 +112,7 @@ void CssMinify::WriteURL(const UnicodeText& url) {
 }
 
 // Write out minified version of each element of vector using supplied function
-// seperated by sep.
+// separated by sep.
 template<typename Container>
 void CssMinify::JoinMinify(const Container& container, const StringPiece& sep) {
   JoinMinifyIter(container.begin(), container.end(), sep);

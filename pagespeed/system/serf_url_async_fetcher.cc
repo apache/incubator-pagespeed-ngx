@@ -456,7 +456,7 @@ apr_status_t SerfFetch::HandleSSLCertValidation(
 apr_status_t SerfFetch::HandleResponse(serf_bucket_t* response) {
   if (response == NULL) {
     message_handler_->Message(
-        kInfo, "serf HandlerReponse called with NULL response for %s",
+        kInfo, "serf HandleResponse called with NULL response for %s",
         DebugInfo().c_str());
     CallCallback(false);
     return APR_EGENERAL;

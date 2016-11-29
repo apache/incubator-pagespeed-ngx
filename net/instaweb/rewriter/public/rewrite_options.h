@@ -4033,7 +4033,7 @@ class RewriteOptions {
   // Non cacheables used when partial HTML is cached.
   Option<GoogleString> non_cacheables_for_cache_partial_html_;
 
-  // Comma seperated list of origins that are allowed to make cross-origin
+  // Comma separated list of origins that are allowed to make cross-origin
   // requests. These domain requests are served with
   // Access-Control-Allow-Origin header.
   Option<GoogleString> access_control_allow_origins_;
