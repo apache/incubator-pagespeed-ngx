@@ -584,15 +584,8 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
   PSOL_BINARY=""
   if "$PSOL_FROM_SOURCE"; then
     MOD_PAGESPEED_DIR="$PWD/testing-dependencies/mod_pagespeed"
-    if ! "$DEVEL"; then
-      # In a devel setup we have everything checked out with git and can use
-      # submodules.  But if we're just trying to build PSOL from source we don't
-      # have that and need to clone it here.
-      run git clone "git@github.com:pagespeed/mod_pagespeed.git" \
-          "$MOD_PAGESPEED_DIR"
-    fi
+    git submodule update --init --recursive -- "$MOD_PAGESPEED_DIR"
     run pushd "$MOD_PAGESPEED_DIR"
-    run git submodule update --init --recursive
 
     if "$DEVEL"; then
       if [ ! -d "$HOME/apache2" ]; then
