@@ -62,9 +62,9 @@ Options:
       When building PSOL from source, what to tell it for BUILD_TYPE.  Defaults
       to 'Release' unless --devel is set in which case it defaults to 'Debug'.
 
-  -y, --assume-yes
-      Assume the answer to all prompts is 'yes, please continue'.  Intended for
-      automated usage, such as buildbots.
+  -u, --unattended
+      Assume the answer to all prompts is 'yes, please continue', and that we
+      want verbose output for later interpretation.  Intended for buildbots.
 
   -d, --dryrun
       Don't make any changes to the system, just print what changes you
@@ -242,7 +242,7 @@ function gcc_too_old() {
 }
 
 function continue_or_exit() {
-  if "$ASSUME_YES"; then
+  if "$UNATTENDED"; then
     return
   fi
 
@@ -288,10 +288,10 @@ function build_ngx_pagespeed() {
     fail "Your version of getopt is too old.  Exiting with no changes made."
   fi
 
-  opts=$(getopt -o v:n:mb:pslt:ydh \
+  opts=$(getopt -o v:n:mb:pslt:udh \
     --longoptions ngx-pagespeed-version:,nginx-version:,dynamic-module \
     --longoptions buildir:,no-deps-check,psol-from-source,devel,build-type: \
-    --longoptions assume-yes,dryrun,help \
+    --longoptions unattended,dryrun,help \
     -n "$(basename "$0")" -- "$@")
   if [ $? != 0 ]; then
     usage
@@ -306,7 +306,7 @@ function build_ngx_pagespeed() {
   PSOL_FROM_SOURCE=false
   DEVEL=false
   BUILD_TYPE=""
-  ASSUME_YES=false
+  UNATTENDED=false
   DRYRUN=false
   DYNAMIC_MODULE=false
   while true; do
@@ -339,8 +339,8 @@ function build_ngx_pagespeed() {
         BUILD_TYPE="$1"
         shift
         ;;
-      -y | --assume-yes) shift
-        ASSUME_YES="true"
+      -u | --unattended) shift
+        UNATTENDED="true"
         ;;
       -d | --dryrun) shift
         DRYRUN="true"
@@ -594,7 +594,11 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       cd devel
       run make apache_debug_psol
     else
-      run install/build_psol.sh --skip_tests --skip_packaging
+      VERBOSITY=""
+      if "$UNATTENDED"; then
+        VERBOSITY="--verbose"
+      fi
+      run install/build_psol.sh "$VERBOSITY" --skip_tests --skip_packaging
     fi
     PSOL_BINARY="$MOD_PAGESPEED_DIR/out/$BUILD_TYPE/pagespeed_automatic.a"
     run popd
@@ -692,7 +696,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     run cd "$nginx_dir"
 
     configure=("$configure_location/configure" "${configure_args[@]}")
-    if ! "$ASSUME_YES"; then
+    if ! "$UNATTENDED"; then
       echo "About to build nginx.  Do you have any additional ./configure"
       echo "arguments you would like to set?  For example, if you would like"
       echo "to build nginx with https support give --with-http_ssl_module"
