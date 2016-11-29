@@ -3,7 +3,7 @@ env:
   global:
     - MAKEFLAGS=-j3
 install:
-  scripts/build_ngx_pagespeed.sh --devel --unattended
+  scripts/build_ngx_pagespeed.sh --devel --assume-yes
   test/run_tests.sh $PWD/testing-dependencies/mod_pagespeed/ \
                     $PWD/nginx/sbin/nginx
 sudo: required
