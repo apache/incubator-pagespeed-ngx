@@ -571,7 +571,7 @@ void ImageRewriteFilter::Context::Render() {
 
   CHECK_EQ(1, num_slots());
 
-  CachedResult* result = output_partition(0);
+  const CachedResult* result = output_partition(0);
   bool rewrote_url = false;
   ResourceSlot* resource_slot = slot(0).get();
   if (place_ == Place::kCss || !has_parent()) {
@@ -579,6 +579,19 @@ void ImageRewriteFilter::Context::Render() {
     if (place_ == Place::kCss) {
       rewrote_url = filter_->FinishRewriteCssImageUrl(
           css_image_inline_max_bytes_, result, resource_slot, &inline_result);
+      if (Driver()->options()->Enabled(RewriteOptions::kInlineImages)) {
+        const char* message = MessageForInlineResult(inline_result);
+        if (message != nullptr) {
+          RewriteContext* context = parent();
+          if (context != nullptr) {
+            CachedResult* css_result = context->mutable_output_partition(0);
+            // We want to have the CSS context retain this, so we can
+            // annotate the HTML that references the CSS with the image.
+            // So we write the debug message into the CSS context.
+            filter_->SaveDebugMessageToCache(message, css_result);
+          }
+        }
+      }
     } else if (place_ == Place::kHtmlAttr) {
       // We use manual rendering for HTML, as we have to consider whether to
       // inline, and may also pass in width and height attributes.
@@ -598,20 +611,12 @@ void ImageRewriteFilter::Context::Render() {
           filter_->RegisterImageInfo(aii);
         }
       }
-    }
-
-    if (Driver()->options()->Enabled(RewriteOptions::kInlineImages) &&
-        (place_ == Place::kCss || place_ == Place::kHtmlAttr)) {
-      // Show the debug message for inlining only when this option has been
-      // enabled. We also don't inline srcset images.
-      // Note: Although debug message is saved to the cached_result, it is
-      // *not* cached because the cached_result has already been stored in
-      // the cache previously. This is good because the exact debug message
-      // here depends upon factors that may not be in the cache key (such
-      // as whether this is a responsive image). So we should not be storing
-      // the result in the cache.
-      filter_->SaveDebugMessageToCache(
-          MessageForInlineResult(inline_result), this, result);
+      if (Driver()->options()->Enabled(RewriteOptions::kInlineImages)) {
+        const char* message = MessageForInlineResult(inline_result);
+        if (message != nullptr) {
+          Driver()->InsertDebugComment(message, html_slot->element());
+        }
+      }
     }
     // Use standard rendering in case the rewrite is nested and not inside CSS.
   }
@@ -1227,7 +1232,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   cached->set_optimized_image_type(optimized_image_type);
   cached->set_size(rewrite_result == kRewriteOk ? image->output_size() :
                    image->input_size());
-  SaveDebugMessageToCache(image->debug_message(), rewrite_context, cached);
+  SaveDebugMessageToCache(image->debug_message(), cached);
 
   // Try inlining input image if output hasn't been inlined already.
   if (!cached->has_inlined_data()) {
@@ -1801,7 +1806,6 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 }
 
 void ImageRewriteFilter::SaveDebugMessageToCache(const GoogleString& message,
-                                                 Context* rewrite_context,
                                                  CachedResult* cached_result) {
   if (!message.empty()) {
     // We always save our result to our cache entry, since it will be propagated

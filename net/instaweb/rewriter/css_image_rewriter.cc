@@ -196,7 +196,8 @@ void CssImageRewriter::InheritChildImageInfo(RewriteContext* context) {
   for (AssociatedImageInfoMap::iterator i = child_image_info.begin(),
                                         e = child_image_info.end();
        i != e; ++i) {
-    *context->output_partition(0)->add_associated_image_info() = i->second;
+    *context->mutable_output_partition(0)->add_associated_image_info() =
+        i->second;
   }
 }
 

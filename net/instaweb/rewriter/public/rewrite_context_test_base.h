@@ -343,7 +343,7 @@ class CombiningFilter : public RewriteFilter {
     virtual void Render();
     virtual void WillNotRender();
     virtual void Cancel();
-    void DisableRemovedSlots(CachedResult* partition);
+    void DisableRemovedSlots(const CachedResult* partition);
     virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
     virtual const char* id() const { return kFilterId; }
     virtual OutputResourceKind kind() const {

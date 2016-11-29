@@ -47,6 +47,7 @@
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/request_headers.h"
 #include "pagespeed/kernel/http/response_headers.h"
 #include "pagespeed/kernel/http/semantic_type.h"
 #include "pagespeed/opt/logging/enums.pb.h"
@@ -252,7 +253,7 @@ void CacheExtender::Context::RewriteSingle(
   }
   RewriteDone(
       extender_->RewriteLoadedResource(
-          input_resource, output_resource, output_partition(0)), 0);
+          input_resource, output_resource, mutable_output_partition(0)), 0);
 }
 
 void CacheExtender::Context::Render() {

@@ -284,7 +284,6 @@ class ImageRewriteFilter : public RewriteFilter {
   bool StoreUrlInPropertyCache(const StringPiece& url);
 
   void SaveDebugMessageToCache(const GoogleString& message,
-                               Context* rewrite_context,
                                CachedResult* cached_result);
 
   GoogleString UrlForDebugMessages(const Context* context) const;

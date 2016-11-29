@@ -27,6 +27,7 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/input_info.pb.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -40,7 +41,6 @@
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/kernel/base/charset_util.h"
-#include "pagespeed/kernel/base/proto_util.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
 #include "pagespeed/kernel/base/statistics.h"
 #include "pagespeed/kernel/base/string.h"
@@ -50,6 +50,7 @@
 #include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/google_url.h"
+#include "pagespeed/kernel/http/semantic_type.h"
 #include "pagespeed/opt/logging/enums.pb.h"
 #include "webutil/css/parser.h"
 
@@ -271,7 +272,7 @@ class CssCombineFilter::Context : public RewriteContext {
 
   virtual void Render() {
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
-      CachedResult* partition = output_partition(p);
+      const CachedResult* partition = output_partition(p);
       if (partition->input_size() == 0) {
         continue;
       }
@@ -321,7 +322,7 @@ class CssCombineFilter::Context : public RewriteContext {
     }
   }
 
-  void DisableRemovedSlots(CachedResult* partition) {
+  void DisableRemovedSlots(const CachedResult* partition) {
     // Slot 0 will be replaced by the combined resource as part of
     // rewrite_context.cc.  But we still need to delete links for slots 1-N,
     // and to prevent further acting on them.

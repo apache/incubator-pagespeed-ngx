@@ -22,6 +22,7 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/dependencies.pb.h"
+#include "net/instaweb/rewriter/input_info.pb.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/dependency_tracker.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -38,6 +39,7 @@
 #include "pagespeed/kernel/base/thread_annotations.h"
 #include "pagespeed/kernel/base/thread_system.h"
 #include "pagespeed/kernel/html/html_element.h"
+#include "pagespeed/kernel/html/html_name.h"
 #include "pagespeed/kernel/http/data_url.h"
 #include "pagespeed/kernel/http/google_url.h"
 #include "pagespeed/kernel/http/semantic_type.h"
@@ -232,13 +234,15 @@ class CollectDependenciesFilter::Context : public RewriteContext {
     // the first dependency we collected, or nullptr.
     if (num_output_partitions() == 1 &&
         output_partition(0)->collected_dependency_size() > 0) {
-      CachedResult* result = output_partition(0);
+      // Deep copy here because output_partition is already written, and it
+      // makes no sense to mutate it.
+      CachedResult result = *output_partition(0);
 
       // Top-level stuff just gets its dep_id_ as the sorting key.
-      result->mutable_collected_dependency(0)->add_order_key(dep_id_);
+      result.mutable_collected_dependency(0)->add_order_key(dep_id_);
 
       dep_tracker->ReportDependencyCandidate(dep_id_,
-                                             &result->collected_dependency(0));
+                                             &result.collected_dependency(0));
 
       // Any other dependencies stored in result->collected_dependency >= 1
       // are things we discovered *inside* whatever is described by
@@ -252,9 +256,9 @@ class CollectDependenciesFilter::Context : public RewriteContext {
       // (dep_id_ + 1) or some larger number. Note that we produce order keys
       // at most 2 deep because we (for now?) only collect dependencies that
       // deep.
-      for (int c = 1; c < result->collected_dependency_size(); ++c) {
+      for (int c = 1; c < result.collected_dependency_size(); ++c) {
         int additional_dep_id = dep_tracker->RegisterDependencyCandidate();
-        Dependency* child_dep = result->mutable_collected_dependency(c);
+        Dependency* child_dep = result.mutable_collected_dependency(c);
         child_dep->add_order_key(dep_id_);
         child_dep->add_order_key(c);
         dep_tracker->ReportDependencyCandidate(additional_dep_id, child_dep);

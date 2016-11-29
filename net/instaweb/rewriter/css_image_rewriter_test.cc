@@ -1175,10 +1175,10 @@ TEST_F(CssImageRewriterTest, DebugMessage) {
       ")}");
 
   debug_message_ =
+      "<!--The image was not inlined because it has too many bytes.-->"
       "<!--Image http://test.com/foo.png does not appear to need resizing.-->"
       "<!--Image http://test.com/foo.png has no transparent pixels, "
-      "is not sensitive to compression noise, and has no animation.-->"
-      "<!--The image was not inlined because it has too many bytes.-->";
+      "is not sensitive to compression noise, and has no animation.-->";
   ValidateRewriteInlineCss("recompress_css_images", kCss, kCssAfter,
                            kNoStatCheck | kExpectCached);
 }

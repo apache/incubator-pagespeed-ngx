@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/input_info.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
@@ -301,7 +302,8 @@ void CombiningFilter::Context::Cancel() {
   ++filter_->num_cancel_;
 }
 
-void CombiningFilter::Context::DisableRemovedSlots(CachedResult* partition) {
+void CombiningFilter::Context::DisableRemovedSlots(
+    const CachedResult* partition) {
   if (filter_->disable_successors_) {
     slot(0)->set_disable_further_processing(true);
   }

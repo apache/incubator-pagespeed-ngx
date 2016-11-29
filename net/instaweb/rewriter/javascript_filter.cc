@@ -245,7 +245,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     if (num_output_partitions() != 1) {
       return;
     }
-    CachedResult* result = output_partition(0);
+    const CachedResult* result = output_partition(0);
     ResourceSlot* output_slot = slot(0).get();
     if (!result->url_relocatable()) {
       Driver()->InsertDebugComment(

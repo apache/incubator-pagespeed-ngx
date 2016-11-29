@@ -155,7 +155,8 @@ class CssFlattenImportsContext : public SingleRewriteContext {
     hierarchy_->RollUpContents();
 
     // Our result is the combination of all our imports and our own rules.
-    output_partition(0)->set_inlined_data(hierarchy_->minified_contents());
+    mutable_output_partition(0)->set_inlined_data(
+        hierarchy_->minified_contents());
 
     ServerContext* server_context = FindServerContext();
     server_context->MergeNonCachingResponseHeaders(input_resource_,

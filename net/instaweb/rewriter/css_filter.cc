@@ -437,7 +437,7 @@ bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
     // comment? There are often a lot and they can be quite long, so I'm not
     // sure it's the best idea. Perhaps better to ask users to use the command
     // line utility? Or is it better to give them all the info in one place?
-    output_partition(0)->add_debug_message(StrCat(
+    mutable_output_partition(0)->add_debug_message(StrCat(
         "CSS rewrite failed: Parse error in ", css_base_gurl.Spec()));
   } else {
     // Edit stylesheet.
@@ -550,7 +550,7 @@ bool CssFilter::Context::FallbackRewriteUrls(
             resource, fallback_transformer_->map(), url.Spec()));
         css_image_rewriter_->RewriteSlot(slot, ImageInlineMaxBytes(), this);
       } else if (!is_authorized) {
-        output_partition(0)->add_debug_message(
+        mutable_output_partition(0)->add_debug_message(
             StrCat("A resource was not rewritten because ", url.Host(),
                    " is not an authorized domain"));
       }
@@ -580,7 +580,7 @@ void CssFilter::Context::Harvest() {
       filter_->num_fallback_failures_->Add(1);
       GoogleUrl css_base_gurl;
       GetCssBaseUrlToUse(input_resource_, &css_base_gurl);
-      output_partition(0)->add_debug_message(StrCat(
+      mutable_output_partition(0)->add_debug_message(StrCat(
           "CSS rewrite failed: Fallback transformer error in ",
           css_base_gurl.Spec()));
     }
@@ -656,8 +656,8 @@ void CssFilter::Context::Harvest() {
       server_context->MergeNonCachingResponseHeaders(input_resource_,
                                                      output_resource_);
     } else {
-      output_partition(0)->set_inlined_data(out_text);
-      output_partition(0)->set_is_inline_output_resource(true);
+      mutable_output_partition(0)->set_inlined_data(out_text);
+      mutable_output_partition(0)->set_is_inline_output_resource(true);
     }
     ok = Driver()->Write(ResourceVector(1, input_resource_),
                          out_text,
@@ -667,7 +667,7 @@ void CssFilter::Context::Harvest() {
   }
 
   if (!hierarchy_.flattening_failure_reason().empty()) {
-    output_partition(0)->add_debug_message(
+    mutable_output_partition(0)->add_debug_message(
         hierarchy_.flattening_failure_reason());
   }
 
@@ -716,7 +716,7 @@ bool CssFilter::Context::SerializeCss(int64 in_text_size,
                          Integer64ToString(-bytes_saved).c_str());
       }
       filter_->num_rewrites_dropped_->Add(1);
-      output_partition(0)->add_debug_message(StrCat(
+      mutable_output_partition(0)->add_debug_message(StrCat(
           "CSS rewrite failed: Cannot improve ", css_base_gurl.Spec()));
     }
   }

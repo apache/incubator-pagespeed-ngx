@@ -24,12 +24,14 @@
 
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/input_info.pb.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "pagespeed/controller/schedule_rewrite_callback.h"
+#include "pagespeed/kernel/base/atomic_bool.h"
 #include "pagespeed/kernel/base/basictypes.h"
 #include "pagespeed/kernel/base/function.h"
 #include "pagespeed/kernel/base/scoped_ptr.h"
@@ -202,7 +204,7 @@ class RewriteContext {
   // but may also be accessed in ::Render.
   int num_output_partitions() const;
   const CachedResult* output_partition(int i) const;
-  CachedResult* output_partition(int i);
+  CachedResult* mutable_output_partition(int i);
 
   // Returns true if this context is chained to some predecessors, and
   // must therefore be started by a predecessor and not RewriteDriver.
@@ -262,6 +264,10 @@ class RewriteContext {
   // Returns true if this is a child rewriter and its parent has the given
   // id.
   bool IsNestedIn(StringPiece id) const;
+
+  // Checks to make sure that partitions_ is not frozen when it is
+  // about to be modified, calling LOG(DFATAL) if there is a problem.
+  void CheckNotFrozen();
 
   // Allows a nested rewriter to walk up its parent hierarchy.
   RewriteContext* parent() { return parent_; }
@@ -890,6 +896,12 @@ class RewriteContext {
   // UrlAsyncFetcher.
 
   bool started_;
+
+  // This is only used in debug, but it's better not to have conditionally
+  // compiled member variables in case someone wants to compile only some
+  // PSOL modules for debug.
+  AtomicBool frozen_;
+
   scoped_ptr<OutputPartitions> partitions_;
   OutputResourceVector outputs_;
   int outstanding_fetches_;

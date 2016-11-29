@@ -310,8 +310,9 @@ void InPlaceRewriteContext::Harvest() {
     if (nested_context->num_slots() == 1 && num_output_partitions() == 1 &&
         nested_context->slot(0)->was_optimized()) {
       ResourcePtr nested_resource = nested_context->slot(0)->resource();
-      CachedResult* partition = output_partition(0);
-      CachedResult* nested_partition = nested_context->output_partition(0);
+      CachedResult* partition = mutable_output_partition(0);
+      const CachedResult* nested_partition =
+          nested_context->output_partition(0);
       VLOG(1) << "In-place rewrite succeeded for " << url_
               << " and the rewritten resource is "
               << nested_resource->url();

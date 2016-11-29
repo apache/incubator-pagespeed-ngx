@@ -21,7 +21,6 @@
 #include <cstddef>                     // for size_t
 #include <iterator>
 #include <map>
-#include <memory>
 #include <set>
 #include <utility>
 #include <vector>
@@ -844,7 +843,7 @@ class ImageCombineFilter::Context : public RewriteContext {
   // except for one, don't use it.
   virtual void Render() {
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
-      CachedResult* partition = output_partition(p);
+      const CachedResult* partition = output_partition(p);
       int num_inputs = partition->input_size();
       if (num_inputs > 1) {
         if (!partition->has_spriter_result()) {

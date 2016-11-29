@@ -1056,7 +1056,8 @@ const CachedResult* RewriteContext::output_partition(int i) const {
   return &partitions_->partition(i);
 }
 
-CachedResult* RewriteContext::output_partition(int i) {
+CachedResult* RewriteContext::mutable_output_partition(int i) {
+  CheckNotFrozen();
   return partitions_->mutable_partition(i);
 }
 
@@ -1315,6 +1316,7 @@ void RewriteContext::AddRecheckDependency() {
                    resource->fetch_response_status()) * Timer::kSecondMs;
     }
   }
+  CheckNotFrozen();
   InputInfo* force_recheck = partitions_->add_other_dependency();
   force_recheck->set_type(InputInfo::CACHED);
   force_recheck->set_expiration_time_ms(now_ms + ttl_ms);
@@ -1394,6 +1396,7 @@ void RewriteContext::OutputCacheHit(bool write_partitions) {
 void RewriteContext::OutputCacheMiss() {
   is_metadata_cache_miss_ = true;
   outputs_.clear();
+  CheckNotFrozen();
   partitions_->Clear();
   ServerContext* server_context = FindServerContext();
   if (server_context->shutting_down()) {
@@ -1510,6 +1513,7 @@ void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
   if (primary->was_too_busy_) {
     MarkTooBusy();
   }
+  CheckNotFrozen();
   partitions_->CopyFrom(*primary->partitions_);
   for (int i = 0, n = primary->num_outputs(); i < n; ++i) {
     outputs_.push_back(primary->outputs_[i]);
@@ -1716,6 +1720,7 @@ void RewriteContext::PartitionDone(RewriteResult result_or_busy) {
   }
 
   if (!result) {
+    CheckNotFrozen();
     partitions_->clear_partition();
     outputs_.clear();
   }
@@ -1777,8 +1782,8 @@ void RewriteContext::WritePartition() {
             DCHECK(gurl.IsWebValid()) << partition.url();
           }
         }
+        frozen_.set_value(true);
 #endif
-
         StringOutputStream sstream(&buf);  // finalizes buf in destructor
         partitions_->SerializeToZeroCopyStream(&sstream);
       }
@@ -1888,6 +1893,7 @@ void RewriteContext::CheckAndAddOtherDependency(const InputInfo& input_info) {
     return;
   }
 
+  CheckNotFrozen();
   InputInfo* dep = partitions_->add_other_dependency();
   *dep = input_info;
   // The input index here is with respect to the nested context's inputs,
@@ -1949,6 +1955,7 @@ void RewriteContext::RewriteDoneImpl(RewriteResult result,
   if (result == kTooBusy) {
     MarkTooBusy();
   } else {
+    CheckNotFrozen();
     CachedResult* partition =
         partitions_->mutable_partition(partition_index);
     bool optimizable = (result == kRewriteOk);
@@ -2014,7 +2021,7 @@ void RewriteContext::Propagate(bool render_slots) {
                                     slot(0)->element());
     }
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
-      CachedResult* partition = output_partition(p);
+      const CachedResult* partition = output_partition(p);
       int n = partition->input_size();
       if (partition->debug_message_size() > 0) {
         if (has_parent()) {
@@ -2090,7 +2097,7 @@ void RewriteContext::Finalize() {
 }
 
 void RewriteContext::RenderPartitionOnDetach(int rewrite_index) {
-  CachedResult* partition = output_partition(rewrite_index);
+  const CachedResult* partition = output_partition(rewrite_index);
   for (int i = 0; i < partition->input_size(); ++i) {
     int slot_index = partition->input(i).index();
     slot(slot_index)->set_was_optimized(true);
@@ -2152,6 +2159,7 @@ void RewriteContext::RunSuccessors() {
 void RewriteContext::StartRewriteForFetch() {
   // Make a fake partition that has all the inputs, since we are
   // performing the rewrite for only one output resource.
+  CheckNotFrozen();
   CachedResult* partition = partitions_->add_partition();
   bool ok_to_rewrite = true;
   for (int i = 0, n = slots_.size(); i < n; ++i) {
@@ -2584,12 +2592,13 @@ void RewriteContext::FetchCacheDone(CacheLookupResult* cache_result) {
   // locking things, fetching inputs, rewriting, and so on.
 
   scoped_ptr<CacheLookupResult> owned_cache_result(cache_result);
+  CheckNotFrozen();
   partitions_.reset(owned_cache_result->partitions.release());
   LogMetadataCacheInfo(owned_cache_result->cache_ok,
                        owned_cache_result->can_revalidate);
 
   if (owned_cache_result->cache_ok && (num_output_partitions() == 1)) {
-    CachedResult* result = output_partition(0);
+    const CachedResult* result = output_partition(0);
     OutputResourcePtr output_resource;
     if (result->optimizable() &&
         CreateOutputResourceForCachedOutput(result, &output_resource)) {
@@ -2715,6 +2724,7 @@ void RewriteContext::StartFetchImpl() {
 void RewriteContext::StartFetchReconstruction() {
   // Note that in case of fetches we continue even if we didn't manage to
   // take the lock.
+  CheckNotFrozen();
   partitions_->Clear();
   FetchInputs();
 }
@@ -2851,6 +2861,14 @@ void AppendInt(GoogleString* out, const char* name, int val,
 
 bool RewriteContext::IsNestedIn(StringPiece id) const {
   return parent_ != NULL && id == parent_->id();
+}
+
+void RewriteContext::CheckNotFrozen() {
+#ifndef NDEBUG
+  if (frozen_.value()) {
+    LOG(DFATAL) << "output_partitions_ mutated after being written";
+  }
+#endif
 }
 
 GoogleString RewriteContext::ToString() const {

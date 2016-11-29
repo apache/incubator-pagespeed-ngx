@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/css_summarizer_base.h"
 
 #include <cstddef>
-#include <memory>
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -49,11 +48,10 @@
 #include "pagespeed/kernel/html/html_node.h"
 #include "pagespeed/kernel/http/content_type.h"
 #include "pagespeed/kernel/http/data_url.h"
+#include "pagespeed/kernel/util/url_segment_encoder.h"
 #include "webutil/css/parser.h"
 
 namespace net_instaweb {
-
-class UrlSegmentEncoder;
 
 // Rewrite context for CssSummarizerBase --- it invokes the filter's
 // summarization functions on parsed CSS ASTs when available, and synchronizes
@@ -206,7 +204,7 @@ void CssSummarizerBase::Context::RewriteSingle(
   parser.set_quirks_mode(false);
 
   scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
-  CachedResult* result = output_partition(0);
+  CachedResult* result = mutable_output_partition(0);
   if (stylesheet.get() == NULL ||
       parser.errors_seen_mask() != Css::Parser::kNoError) {
     // TODO(morlovich): do we want a stat here?

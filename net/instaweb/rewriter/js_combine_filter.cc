@@ -31,6 +31,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/input_info.pb.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -338,7 +339,7 @@ class JsCombineFilter::Context : public RewriteContext {
   // original script for that tag.
   virtual void Render() {
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
-      CachedResult* partition = output_partition(p);
+      const CachedResult* partition = output_partition(p);
       int partition_size = partition->input_size();
       if (partition_size > 1) {
         // Make sure we can edit every element here.
@@ -404,7 +405,7 @@ class JsCombineFilter::Context : public RewriteContext {
 
   // Create an element for the combination of all the elements in the
   // partition. Insert it before first one.
-  void MakeCombinedElement(CachedResult* partition) {
+  void MakeCombinedElement(const CachedResult* partition) {
     int first_index = partition->input(0).index();
     HtmlResourceSlot* first_slot =
         static_cast<HtmlResourceSlot*>(slot(first_index).get());
