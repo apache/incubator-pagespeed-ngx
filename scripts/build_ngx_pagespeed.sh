@@ -593,10 +593,11 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       fi
       cd devel
       run make apache_debug_psol
+      PSOL_BINARY="$MOD_PAGESPEED_DIR/out/$BUILD_TYPE/pagespeed_automatic.a"
     else
       run install/build_psol.sh --skip_tests --skip_packaging
+      PSOL_BINARY="$MOD_PAGESPEED_DIR/pagespeed/automatic/pagespeed_automatic.a"
     fi
-    PSOL_BINARY="$MOD_PAGESPEED_DIR/out/$BUILD_TYPE/pagespeed_automatic.a"
     run popd
   else
     # Now we need to figure out what precompiled version of PSOL to build
