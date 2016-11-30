@@ -5,7 +5,8 @@ env:
 # By default travis loads submodules serially, but we can load them in parallel
 # if we install an updated git and use --jobs.  Some timing numbers:
 #   serial: 257s
-#   jobs=4: 187s (34s to install new git, 153s to run the downloads)
+#   jobs=4: 182s (29s to install new git, 153s to run the downloads)
+#   jobs=8: 179s (29s to install new git, 150s to run the downloads)
 # We can't use --depth=1, though, because github doesn't have
 # allowReachableSHA1InWant set.
 git:
