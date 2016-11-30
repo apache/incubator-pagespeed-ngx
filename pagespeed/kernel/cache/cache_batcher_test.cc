@@ -433,12 +433,17 @@ TEST_F(CacheBatcherTest, CoalesceDuplicateGetsParallel) {
   // n0 is in flight and delayed, but we still have one ready thread to use.
   // These gets should not interfere with CacheBatcher's ability to track the
   // in flight get of "n0".
+  //
+  // (We must delay "n1", to prevent a data race when we make one of its
+  // fetches invalid.)
+  DelayKey("n1");
   Callback* n1 = InitiateGet("n1");
   Callback* not_found = InitiateGet("not_found");
   Callback* n2 = InitiateGet("n2");
   Callback* not_found_dup = InitiateGet("not_found");
   Callback* n1_dup = InitiateGet("n1");
   n1_dup->set_invalid_key("n1");
+  ReleaseKey("n1");
 
   WaitAndCheck(n1, "v1");
   WaitAndCheckNotFound(n1_dup);  // Check duplicate non-validated hit.
