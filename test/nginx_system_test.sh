@@ -191,7 +191,7 @@ else
 fi
 
 if [ "$RUN_CONTROLLER_TEST" = "on" ]; then
-  CONTROLLER="pagespeed CentralControllerPort $CONTROLLER_PORT;"
+  CONTROLLER="pagespeed ExperimentalCentralControllerPort $CONTROLLER_PORT;"
 else
   CONTROLLER=""
 fi
