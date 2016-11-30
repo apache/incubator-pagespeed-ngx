@@ -2,13 +2,17 @@ language: c++
 env:
   global:
     - MAKEFLAGS=-j3
+# By default travis loads submodules serially, but we can load them in parallel
+# if we install an updated git and use --jobs.  Some timing numbers:
+#   serial: 257s
+#   jobs=4: 187s (34s to install new git, 153s to run the downloads)
 git:
   submodules: false
 before_install:
   - sudo add-apt-repository --yes ppa:git-core/ppa
   - sudo apt-get update
   - sudo apt-get install git
-  - git submodule update --init --recursive --jobs=4
+  - git submodule update --init --recursive --jobs=4 --depth=1
 install:
   scripts/build_ngx_pagespeed.sh --devel --assume-yes
 script:
