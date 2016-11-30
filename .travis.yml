@@ -6,13 +6,15 @@ env:
 # if we install an updated git and use --jobs.  Some timing numbers:
 #   serial: 257s
 #   jobs=4: 187s (34s to install new git, 153s to run the downloads)
+# We can't use --depth=1, though, because github doesn't have
+# allowReachableSHA1InWant set.
 git:
   submodules: false
 before_install:
   - sudo add-apt-repository --yes ppa:git-core/ppa
   - sudo apt-get update
   - sudo apt-get install git
-  - git submodule update --init --recursive --jobs=4 --depth=1
+  - git submodule update --init --recursive --jobs=8
 install:
   scripts/build_ngx_pagespeed.sh --devel --assume-yes
 script:
