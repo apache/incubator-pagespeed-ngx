@@ -73,7 +73,7 @@ ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/content_type_present \
 ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/content_type_absent \
                            http://@@PAGESPEED-TEST-HOST@@:8092
 
-#CONTROLLER ModPagespeedCentralControllerPort @@CONTROLLER_PORT@@
+#CONTROLLER ModPagespeedExperimentalCentralControllerPort @@CONTROLLER_PORT@@
 
 # Turn on "KeepAlive" so we can test it in system_test.sh.
 KeepAlive On

@@ -38,11 +38,11 @@ const char kFetchHttps[] = "FetchHttps";
 }  // namespace
 
 const char SystemRewriteOptions::kCentralControllerPort[] =
-    "CentralControllerPort";
+    "ExperimentalCentralControllerPort";
 const char SystemRewriteOptions::kPopularityContestMaxInFlight[] =
-    "PopularityContestMaxInFlight";
+    "ExperimentalPopularityContestMaxInFlight";
 const char SystemRewriteOptions::kPopularityContestMaxQueueSize[] =
-    "PopularityContestMaxQueueSize";
+    "ExperimentalPopularityContestMaxQueueSize";
 const char SystemRewriteOptions::kStaticAssetCDN[] = "StaticAssetCDN";
 const char SystemRewriteOptions::kRedisServer[] = "RedisServer";
 const char SystemRewriteOptions::kRedisReconnectionDelayMs[] =
@@ -347,7 +347,8 @@ bool SystemRewriteOptions::ControllerPortOption::SetFromString(
   int port;
   if (!StringToInt(value_string, &port)) {
     *error_detail =
-        StrCat("CentralControllerPort is not a valid number or 'unix:' path: '",
+        StrCat(kCentralControllerPort,
+               " is not a valid number or 'unix:' path: '",
                value_string, "'");
     return false;
   }
