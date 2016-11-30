@@ -2,10 +2,6 @@ language: c++
 env:
   global:
     - MAKEFLAGS=-j3
-git:
-  submodules: false
-before_install:
-  git submodule update --init --recursive --jobs=5
 install:
   scripts/build_ngx_pagespeed.sh --devel --assume-yes
   test/run_tests.sh $PWD/testing-dependencies/mod_pagespeed/ \
