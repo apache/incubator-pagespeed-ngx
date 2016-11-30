@@ -2,8 +2,16 @@ language: c++
 env:
   global:
     - MAKEFLAGS=-j3
+git:
+  submodules: false
+before_install:
+  - sudo add-apt-repository ppa:git-core/ppa
+  - sudo apt-get update
+  - sudo apt-get install git
+  - git submodule update --init --recursive --jobs=4
 install:
   scripts/build_ngx_pagespeed.sh --devel --assume-yes
+script:
   test/run_tests.sh $PWD/testing-dependencies/mod_pagespeed/ \
                     $PWD/nginx/sbin/nginx
 sudo: required
