@@ -178,7 +178,12 @@ function run_with_log() {
   if [ $rc -ne 0 ]; then
     echo
     echo "End of $log_filename:"
-    tail "$log_filename"
+    if [ -n "${TRAVIS:-}" ]; then
+      # Travis has a 4MB total log output limit. -c 3000 is ~3MB.
+      tail -c 3000 "$log_filename"
+    else
+      tail -n 20 "$log_filename"
+    fi
   fi
   return $rc
 }

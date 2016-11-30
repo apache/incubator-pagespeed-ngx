@@ -70,9 +70,9 @@ if $run_tests; then
   if $run_extcache_tests; then
     test_wrapper=install/run_program_with_ext_caches.sh
   fi
-  run_with_log $log_verbose log/unit_test.log \
-    $test_wrapper out/Release/mod_pagespeed_test '&&' \
-                  out/Release/pagespeed_automatic_test
+  BUILDTYPE=$build_type run_with_log $log_verbose log/unit_test.log \
+    $test_wrapper out/$build_type/mod_pagespeed_test '&&' \
+                  out/$build_type/pagespeed_automatic_test
 fi
 
 if [ -n "$package_type" ]; then

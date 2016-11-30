@@ -2,18 +2,20 @@
 
 source "$(dirname "$BASH_SOURCE")/build_env.sh" || exit 1
 
+build_debug=false
 build_32bit=false
 build_psol=true
 build_mps_args=(--build_$PKG_EXTENSION)
 build_stable=false
 verbose=false
 
-options="$(getopt --long 32bit,skip_psol,stable,verbose -o '' -- "$@")"
+options="$(getopt --long 32bit,debug,skip_psol,stable,verbose -o '' -- "$@")"
 eval set -- "$options"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --32bit) build_32bit=true; shift ;;
+    --debug) build_debug=true; shift ;;
     --skip_psol) build_psol=false; shift ;;
     --stable) build_stable=true; shift ;;
     --verbose) verbose=true; shift ;;
@@ -23,7 +25,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ $# -ne 0 ]; then
-  echo "Usage: $(basename $0) [--32bit] [--stable] [--skip_psol]" >&2
+  echo "Usage: $(basename $0) [--32bit] [--debug] [--stable] [--skip_psol]" >&2
   exit 1
 fi
 
@@ -48,14 +50,25 @@ else
   release_dir="$release_dir/x64"
 fi
 
+if $build_debug; then
+  release_dir="${release_dir}_dbg"
+fi
+
 rm -rf "$release_dir"
+rm -rf log/
+mkdir -p log/
 
 # Setup chroot if we need it.
+
+log_verbose=
+if $verbose; then
+  log_verbose='--verbose'
+fi
 
 run_in_chroot=
 if $build_32bit && ! $host_is_32bit; then
   run_in_chroot=install/run_in_chroot.sh
-  sudo install/setup_chroot.sh
+  run_with_log $log_verbose log/setup_chroot.log sudo install/setup_chroot.sh
 fi
 
 # Run the various build scripts.
@@ -64,12 +77,17 @@ if $verbose; then
   build_mps_args+=(--verbose)
 fi
 
+if $build_debug; then
+  build_mps_args+=(--debug)
+fi
+
 if $build_stable; then
   build_mps_args+=(--stable_package)
 fi
 
 sudo $run_in_chroot \
-  install/install_required_packages.sh --additional_test_packages
+  install/run_with_log.sh $log_verbose log/install_packages.log \
+    install/install_required_packages.sh --additional_test_packages
 $run_in_chroot install/build_mps.sh "${build_mps_args[@]}"
 
 verbose_flag=
@@ -77,13 +95,21 @@ if $verbose; then
   verbose_flag='--verbose'
 fi
 
-package="$(echo out/Release/mod-pagespeed-*.${PKG_EXTENSION})"
+outdir=out/Release
+if $build_debug; then
+  outdir=out/Debug
+fi
+package="$(echo "${outdir}"/mod-pagespeed-*.${PKG_EXTENSION})"
 
 echo "Testing $package"
 sudo $run_in_chroot install/test_package.sh $verbose_flag "$package"
 
 if $build_psol; then
-  $run_in_chroot install/build_psol.sh
+  debug=
+  if $build_debug; then
+    debug='--debug'
+  fi
+  $run_in_chroot install/build_psol.sh $debug
 fi
 
 # Builds all complete, now copy release artifacts into $release_dir.
@@ -104,7 +130,7 @@ else
 fi
 
 for lib in libmod_pagespeed libmod_pagespeed_ap24; do
-  cp "out/Release/${lib}.so" \
+  cp "${outdir}/${lib}.so" \
     "$release_dir/unstripped_${lib}_${unstripped_suffix}.so"
 done
 
@@ -112,4 +138,4 @@ if $build_psol; then
   cp psol-*.tar.gz "$release_dir/"
 fi
 
-echo "Build complete"
+echo "[$(date '+%k:%M:%S')] Build complete"
