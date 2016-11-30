@@ -5,7 +5,7 @@ env:
 git:
   submodules: false
 before_install:
-  - sudo add-apt-repository ppa:git-core/ppa
+  - sudo add-apt-repository --yes ppa:git-core/ppa
   - sudo apt-get update
   - sudo apt-get install git
   - git submodule update --init --recursive --jobs=4
