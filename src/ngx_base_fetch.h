@@ -171,6 +171,7 @@ class NgxBaseFetch : public AsyncFetch {
   const RewriteOptions* options_;
   bool need_flush_;
   bool done_called_;
+  bool successful_;
   bool last_buf_sent_;
   // How many active references there are to this fetch. Starts at two,
   // decremented once when Done() is called and once when Detach() is called.
