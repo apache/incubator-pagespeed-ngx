@@ -1,23 +1,40 @@
 language: c++
-# Theoretically, this would allow us to clone subdmoules in parallel, which is quite slow.
-# However, travis's git submodule doesn't understand --jobs
-#git:
-#  submodules: false
-#before_install:
-#  - git submodule update --init --recursive --jobs=4
-env:
-  global:
-    - MAKEFLAGS=-j3
-install:
-  - sudo install/install_required_packages.sh --additional_test_packages
-  - install/build_mps.sh --verbose --build_deb
-  - sudo dpkg -i out/Release/mod-pagespeed*.deb
-script:
-  - install/run_program_with_ext_caches.sh ./out/Release/mod_pagespeed_test '&&' ./out/Release/pagespeed_automatic_test
-  - sudo make -C install apache_debug_restart apache_vm_system_tests
 sudo: required
 compiler:
   - gcc
+
+git:
+  # It takes a while to clone our submodules, so we'd like to use --jobs to
+  # speed it up. Here we prevent travis from using git clone --recursive, so
+  # below in before_install we can manually update including --jobs.
+  submodules: false
+
+before_install:
+  # Unfortunately, the version of git we get by default is too low to support
+  # --jobs on subdmodule, so update git before pulling in the submodules.
+  - sudo add-apt-repository -y ppa:git-core/ppa
+  - sudo apt-get update -q
+  - sudo apt-get install -q -y git
+  - git submodule update --init --recursive --jobs=6
+
+env:
+  global:
+    - MAKEFLAGS=-j3
+  matrix:
+    - BIT_FLAG=
+    # This would do another build for 32-bit, but we're already borderline
+    # too slow on faster 64-bit, so skip this for now.
+    # - BIT_FLAG=--32bit
+
+script:
+  # Travis will time out our build if doesn't output anything for > 10 mintes,
+  # but --verbose sometimes outputs more than 4 MB of data, which will also
+  # cause our build to be killed. travis_wait allows the command to be silent
+  # for longer, but has the downside of not producing output if we timeout. See:
+  # https://docs.travis-ci.com/user/common-build-problems/#Build-times-out-because-no-output-was-received
+  # For now, stick with --verbose and keep an eye on the logs.
+  - install/build_release.sh --verbose --skip_psol --debug $BIT_FLAG
+
 notifications:
   email:
     - cheesy@google.com
