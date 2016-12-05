@@ -49,6 +49,28 @@ using pagespeed::image_compression::PngCompressParams;
 
 namespace {
 
+// A wrapper that ensures that any padding bytes are initialized
+// deterministically.
+void* PngWrapMalloc(png_structp ptr, png_size_t size) {
+  if ((size & 7) == 0) {
+    return malloc(size);
+  } else {
+    png_size_t extra = 8 - (size & 7);
+    png_size_t rounded = size + extra;
+    DCHECK_NE(rounded, 0);
+    if (rounded == 0) {
+      return nullptr;
+    }
+    char* p = reinterpret_cast<char*>(malloc(rounded));
+    memset(p + (rounded - 8), 0, 8);
+    return p;
+  }
+}
+
+static void PngWrapFree(png_structp, png_voidp ptr) {
+  free(ptr);
+}
+
 // we use these four combinations because different images seem to benefit from
 // different parameters and this combination of 4 seems to work best for a large
 // set of PNGs from the web.
@@ -187,6 +209,7 @@ ScopedPngStruct::ScopedPngStruct(Type type,
     info_ptr_ = png_create_info_struct(png_ptr_);
   }
 
+  png_set_mem_fn(png_ptr_, nullptr, &PngWrapMalloc, &PngWrapFree);
   png_set_error_fn(png_ptr_, message_handler_, &PngErrorFn, &PngWarningFn);
 }
 
