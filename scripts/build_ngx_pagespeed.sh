@@ -24,7 +24,7 @@ Options:
       * a version number, such as 1.11.33.4
 
       If you don't specify a version, defaults to latest-stable unless --devel
-      is specified, in which case it defaults to trunk-tracking.
+      is specified, in which case it defaults to master.
 
       This option doesn't make sense if we're running within an existing
       ngx_pagespeed checkout.
@@ -375,7 +375,7 @@ function build_ngx_pagespeed() {
     fi
   elif [ "$NPS_VERSION" = "DEFAULT" ]; then
     if "$DEVEL"; then
-      NPS_VERSION="trunk-tracking"
+      NPS_VERSION="master"
     else
       NPS_VERSION="latest-stable"
     fi
