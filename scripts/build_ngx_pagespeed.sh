@@ -567,6 +567,13 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     if "$DEVEL"; then
       status "Downloading dependencies..."
       run git submodule update --init --recursive
+      if [[ "$CONTINUOUS_INTEGRATION" != true ]]; then
+        status "Switching submodules over to git protocol."
+        # This lets us push to github by public key.
+        for config in $(find .git/ -name config) ; do
+          run sed -i s~https://github.com/~git@github.com:~ $config ;
+        done
+      fi
     fi
   else
     nps_baseurl="https://github.com/pagespeed/ngx_pagespeed/archive"
