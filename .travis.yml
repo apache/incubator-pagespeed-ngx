@@ -1,50 +1,29 @@
 language: c++
+env:
+  global:
+    - MAKEFLAGS=-j3
+# By default travis loads submodules serially, but we can load them in parallel
+# if we install an updated git and use --jobs.  Some timing numbers:
+#   serial: 257s
+#   jobs=4: 182s (29s to install new git, 153s to run the downloads)
+#   jobs=8: 179s (29s to install new git, 150s to run the downloads)
+# We can't use --depth=1, though, because github doesn't have
+# allowReachableSHA1InWant set.
+git:
+  submodules: false
+before_install:
+  - sudo add-apt-repository --yes ppa:git-core/ppa
+  - sudo apt-get update
+  - sudo apt-get install git
+  - git submodule update --init --recursive --jobs=8
 install:
-  - mv $TRAVIS_BUILD_DIR ~/ngxpagespeed
-  - sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev unzip g++ python gperf make devscripts fakeroot git curl netcat-traditional gcc-mozilla clang-3.4 2>&1 > /dev/null
-  - export PATH=/usr/lib/gcc-mozilla/bin:$PATH
-  - sudo ln -sf /usr/lib/gcc-mozilla/lib/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
-#  - sudo sh -c 'echo "image/webp webp" >> /etc/mime.types'
-#  - mkdir -p ~/bin
-#  - cd ~/bin
-#  - git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-  - mkdir ~/mod_pagespeed
-  - cd ~/mod_pagespeed
-  - git clone --recursive https://github.com/pagespeed/mod_pagespeed.git src
-  - cd src
-  - python build/gyp_chromium --depth=.
-  - cd ~/mod_pagespeed/src/pagespeed/automatic
-  - make BUILDTYPE=Release -C ../../pagespeed/automatic all
-  - cd ~
-  - git clone https://github.com/FRiCKLE/ngx_cache_purge.git
-  - NGX_CACHE_PURGE=$PWD/ngx_cache_purge
-  - wget https://openresty.org/download/ngx_openresty-1.9.7.2.tar.gz
-  - tar xzf ngx_openresty-*.tar.gz
-  - cd ngx_openresty-*/
-  - ./configure --with-luajit
-  - make
-  - NGX_DEVEL_KIT=$(echo $HOME/ngx_openresty-*/build/ngx_devel_kit-*/)
-  - SET_MISC_MODULE=$(echo $HOME/ngx_openresty-*/build/set-misc-nginx-module-*/)
-  - HEADERS_MORE_MODULE=$(echo $HOME/ngx_openresty-*/build/headers-more-nginx-module-*/)
-  - cd ~
-  - wget https://github.com/nginx/nginx/archive/branches/default.zip
-  - unzip default.zip
-  - cd nginx-branches-default
-  - MOD_PAGESPEED_DIR="$HOME/mod_pagespeed/src" ./auto/configure --add-module=$HOME/ngxpagespeed --add-module="$NGX_CACHE_PURGE" --add-module="$NGX_DEVEL_KIT" --add-module="$SET_MISC_MODULE" --add-module="$HEADERS_MORE_MODULE" --with-ipv6
-  - make
-  - sudo make install
+  scripts/build_ngx_pagespeed.sh --devel --assume-yes
 script:
-  - echo "build successful"
-  - echo "cd ~/ngxpagespeed"
-  - echo "sudo ./test/run_tests.sh $HOME/mod_pagespeed $HOME/nginx-branches-default/objs/nginx"
+  test/run_tests.sh $PWD/testing-dependencies/mod_pagespeed/ \
+                    $PWD/nginx/sbin/nginx
 sudo: required
 compiler:
   - gcc
 notifications:
   email:
-    - cheesy@google.com
     - jefftk@google.com
-    - morlovich@google.com
-    - jmarantz@google.com
-    - huibao@google.com
-    - jcrowell@google.com

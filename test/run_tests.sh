@@ -58,10 +58,12 @@ NGINX_EXECUTABLE="$2"
 : ${CONTROLLER_PORT:=8053}
 : ${RCPORT:=9991}
 : ${PAGESPEED_TEST_HOST:=selfsigned.modpagespeed.com}
+: ${PHP_PORT:=9000}
 
 this_dir="$( cd $(dirname "$0") && pwd)"
 
 function run_test_checking_failure() {
+  "$MOD_PAGESPEED_DIR/install/start_php.sh" "$PHP_PORT"
   USE_VALGRIND="$USE_VALGRIND" \
     PRIMARY_PORT="$PRIMARY_PORT" \
     SECONDARY_PORT="$SECONDARY_PORT" \
