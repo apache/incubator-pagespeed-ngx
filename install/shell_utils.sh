@@ -158,6 +158,7 @@ function run_with_log() {
   fi
 
   local log_filename="$1"
+  mkdir -p "$(dirname "$log_filename")"
   shift
 
   local start_msg="[$(date '+%k:%M:%S')] $@"

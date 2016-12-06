@@ -1,0 +1,136 @@
+#!/bin/bash
+
+# Run the checkin tests for mod_pagespeed.  These help ensure the build won't
+# break.
+#
+# Extra parmeters are passed to make. For example, pass V=1 to get verbose
+# gyp builds.
+#
+# We don't clean by default in checkin tests.  That makes checkin tests take way
+# too long, especially when re-running after a failure.  This adds risk because
+# someone might break the build by checking in a dependence on a file that
+# cannot be regenerated, but that risk seems low compared with the cost of total
+# rebuilds.
+
+echo Starting tests at time `date`
+
+# Don't leave processes hanging around on exit.  "jobs -p" gives all background
+# processes.
+trap 'kill $(jobs -p)' SIGINT SIGTERM EXIT
+
+APACHE_DEBUG_ROOT="$HOME/apache2"
+
+FAIL=
+if [ ! -d "$APACHE_DEBUG_ROOT" ]; then
+  echo "You must install a local Apache before running checkin tests, e.g."
+  echo "    install/build_development_apache.sh 2.2 prefork"
+  FAIL=true
+fi
+
+required_binaries="autoconf g++ gperf libtool valgrind memcached redis-server"
+missing=""
+for bin in $required_binaries; do
+  which $bin >/dev/null || missing="$missing $bin"
+done
+if [ "$missing" != "" ]; then
+  echo You are missing required packages $missing.  Type:
+  echo sudo apt-get install $missing
+  FAIL=true
+fi
+
+if ! locale -a | grep -q tr_TR.utf8; then
+  echo "You are missing language-pack-tr-base. Type:"
+  echo "sudo apt-get install language-pack-tr-base"
+  FAIL=true
+fi
+
+if [ ! -f /usr/bin/php5-cgi ]; then
+  echo "You are missing php5. Type:"
+  echo "sudo apt-get install php5-cgi"
+  FAIL=true
+fi
+
+if [ ! -f $APACHE_DEBUG_ROOT/modules/mod_fcgid-src_build.so ]; then
+  echo "You are missing source build of fcgid. Please re-run "
+  echo "build_development_apache.sh"
+  FAIL=true
+fi
+
+this_dir=$(dirname "${BASH_SOURCE[0]}")
+cd "$this_dir"
+
+tests_missing=$(./check_tests_are_run.sh)
+if [ ! -z "$tests_missing" ]; then
+  echo "$tests_missing"
+  FAIL=true
+fi
+
+if [ -n "$FAIL" ]; then
+  echo "***" Please correct above errors and try again.
+  exit 1
+fi
+
+export OBJDIR=/tmp/instaweb.$$
+make_log=/tmp/checkin.make.$$
+blaze_log=/tmp/checkin.blaze.$$
+
+function kill_subprocesses() {
+  echo "^C caught by $0, killing jobs..."
+  kill -INT $(jobs -p)
+
+  # Make is resilient to kills, partially due to our recursive make calls.
+  # Also we need to be wary of other 'make' processes on the system for
+  # different clients, but we always use OBJDIR=$OBJDIR on the command-line for
+  # our recursive makes.  So keep finding them and killing them until they are
+  # all dead dead dead.
+
+  continue=1
+  while [ $continue -eq 1 ];
+  do
+    # TODO(jmarantz): jmaessen suggests:  How about
+    # processes=$(ps auxw | awk "/[m]ake OBJDIR=$OBJDIR/{ print \$2 }")
+    # This would be more silent.  But I'm inclined to leave it noisy for
+    # now until we are confident it's working well.
+    ps auxw | grep "make OBJDIR=$OBJDIR" | grep -v grep
+
+    if [ $? -eq 0 ]; then
+      processes=$(ps auxw|grep "make OBJDIR=$OBJDIR"|awk '{ print $2 }')
+      kill -TERM $processes
+      sleep 5
+    else
+      # All done.  Let the 'checkin' script itself exit.
+      continue=0
+    fi
+  done
+}
+
+trap '{ kill_subprocesses; exit 1; }' INT
+
+echo "$this_dir/checkin.make $* &> $make_log &"
+rm -f "$make_log"
+touch "$make_log"
+echo $PWD
+# TODO(jefftk): combine checkin and checkin.make
+./checkin.make "$@" &> "$make_log" &
+make_pid=$!
+
+# Show make's output as it runs...
+tail -f $make_log &
+
+exit_status=0
+
+# Wait for make to finish.
+wait $make_pid
+MAKE_STATUS="$?"
+
+if [ "$MAKE_STATUS" = "0" ]; then
+  echo checkin.make Passed.
+  rm "$make_log"
+else
+  echo "*** checkin.make failed: check $make_log for details.  Last 4 lines:"
+  tail -n 4 "$make_log"
+  exit_status=1
+fi
+
+echo Exiting checkin at "$(date)" with status "$exit_status"
+exit $exit_status

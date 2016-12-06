@@ -40,6 +40,9 @@ echo Starting replicas...
 
   echo Running redis_cache_cluster_setup...
   SETUP_DIR=out/$BUILDTYPE
+  if [ ! -e $SETUP_DIR ]; then                                        # [google]
+    SETUP_DIR=$TEST_SRCDIR/google3/third_party/pagespeed/system/      # [google]
+  fi                                                                  # [google]
   $SETUP_DIR/redis_cache_cluster_setup || exit 1
   echo done
 

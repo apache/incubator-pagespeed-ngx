@@ -1,0 +1,22 @@
+#!/bin/bash
+# This script takes the output of trace_stress_test.sh and reports cheap and
+# cheerful median, 75th, 90th, 95th, 99th, and worst latencies.
+if [ "X$1" == "X" ]; then
+  # work from stdin
+  sorted="/tmp/latency-$$-sorted.txt"
+  sort -r -g -k 1 > $sorted
+else
+  # construct sorted file name
+  sorted="${1%%.txt}-sorted.txt"
+  sort -r -g -k 1 "$1" > "$sorted"
+fi
+echo "Sorted latency data in: $sorted" 1>&2
+echo "%  ms            status url" 1>&2
+lines=$(wc -l < "$sorted")
+for i in 50 75 90 95 99; do
+  divisor=$((100 / (100 - $i)))
+  echo -n "$i "
+  head -$(($lines / $divisor)) "$sorted" | tail -1
+done
+echo -n "mx "
+head -1 "$sorted"

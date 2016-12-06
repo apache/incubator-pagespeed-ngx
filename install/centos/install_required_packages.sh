@@ -10,14 +10,14 @@ if [ "$UID" -ne 0 ]; then
   exit 1  # NOTREACHED
 fi
 
-additional_test_packages=false
-if [ "${1:-}" = "--additional_test_packages" ]; then
-  additional_test_packages=true
+additional_dev_packages=false
+if [ "${1:-}" = "--additional_dev_packages" ]; then
+  additional_dev_packages=true
   shift
 fi
 
 if [ $# -ne 0 ]; then
-  echo "Usage: $(basename $0) [--additional_test_packages]" >&2
+  echo "Usage: $(basename $0) [--additional_dev_packages]" >&2
   exit 1
 fi
 
@@ -26,8 +26,8 @@ binary_packages=(subversion httpd gcc-c++ gperf make rpm-build
   libevent-devel rsync redhat-lsb)
 src_packages=()
 
-if "$additional_test_packages"; then
-  binary_packages+=(php php-mbstring)
+if "$additional_dev_packages"; then
+  binary_packages+=(php php-mbstring autoconf libtool valgrind pcre-devel)
   src_packages+=(redis-server)
 fi
 
@@ -36,7 +36,7 @@ install_sl_gcc=
 
 if version_compare "$(lsb_release -rs)" -ge 7; then
   binary_packages+=(python wget git)
-  if "$additional_test_packages"; then
+  if "$additional_dev_packages"; then
     binary_packages+=(memcached)
   fi
 elif version_compare "$(lsb_release -rs)" -ge 6; then
@@ -45,7 +45,7 @@ elif version_compare "$(lsb_release -rs)" -ge 6; then
   # gyp runs "git rev-list --all --count" which the CentOS 6 package is too old
   # for.
   src_packages+=(git)
-  if "$additional_test_packages"; then
+  if "$additional_dev_packages"; then
     binary_packages+=(memcached)
   fi
 else
@@ -54,7 +54,7 @@ else
   # OpenSSL. You need to manually scp up the contents of $GIT_SRC_URL from
   # shell_utils.sh.
   src_packages+=(python2.7 wget git)
-  if "$additional_test_packages"; then
+  if "$additional_dev_packages"; then
     src_packages+=(memcached)
   fi
 fi

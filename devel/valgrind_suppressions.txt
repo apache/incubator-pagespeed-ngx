@@ -1,0 +1,133 @@
+{
+   Jpeg*Test - chromium_jpeg - Conditional jump or move depends on uninitialised value(s)
+   Memcheck:Cond
+   ...
+   fun:chromium_jpeg_*
+   ...
+   fun:*Jpeg*Test_*
+}
+{
+   Jpeg*Test - chromium_jpeg - Use of uninitialised value of size 8
+   Memcheck:Value8
+   ...
+   fun:chromium_jpeg_*
+   ...
+   fun:*Jpeg*Test_*
+}
+{
+   ImageTest - WebPEncode - Use of uninitialised value of size 8
+   Memcheck:Value8
+   ...
+   fun:WebPEncode
+   ...
+   fun:*ImageTest_*
+}
+{
+   PngOptimizerTest - DGifGetLine - Conditional jump or move depends on uninitialised value(s)
+   Memcheck:Cond
+   ...
+   fun:DGifGetLine
+   ...
+   fun:*PngOptimizerTest_*
+}
+{
+   JpegReaderTest - DecodeAndCompareImagesByPSNRENS - Conditional jump or move depends on uninitialised value(s)
+   Memcheck:Cond
+   ...
+   fun:*DecodeAndCompareImagesByPSNRENS*
+   ...
+   fun:*JpegReaderTest_*
+}
+{
+   re2 leaks a little memory on startup due to InitEmpty - Ignore it
+   Memcheck:Leak
+   ...
+   fun:*re2*InitEmpty*
+   ...
+}
+{
+   protobufs with introspection leak a little memory -- Ignore it
+   Memcheck:Leak
+   ...
+   fun:*google*protobuf*internal*InitEmptyString*
+   ...
+}
+{
+   ImageAnalysisTest - PhotoMetric - Conditional jump or move depends on uninitialised value(s)
+   Memcheck:Cond
+   ...
+   fun:*PhotoMetric*
+   ...
+   fun:*ImageAnalysisTest_*
+}
+{
+   ImageAnalysisTest - PhotoMetric - Use of uninitialised value of size 8
+   Memcheck:Value8
+   ...
+   fun:*Histogram*
+   ...
+   fun:*ImageAnalysisTest_*
+}
+{
+   ScanlineResizerTest - ResizeAndWrite - Conditional jump or move depends on uninitialised value(s)
+   Memcheck:Cond
+   ...
+   fun:*chromium_jpeg_write_scanlines*
+   ...
+   fun:*ScanlineResizerTest_*
+}
+{
+   ScanlineResizerTest - ResizeAndWrite - Conditional jump or move depends on uninitialised value(s)
+   Memcheck:Cond
+   ...
+   fun:*chromium_jpeg_finish_compress*
+   ...
+   fun:*ScanlineResizerTest_*
+}
+{
+   ScanlineResizerTest - ResizeAndWrite - Use of uninitialised value of size 8
+   Memcheck:Value8
+   ...
+   fun:*chromium_jpeg_finish_compress*
+   ...
+   fun:*ScanlineResizerTest_*
+}
+{
+   OpenSSL fancy math
+   Memcheck:Value8
+   fun:bn_mul_mont
+}
+{
+   OpenSSL fancy math
+   Memcheck:Value8
+   fun:bn_mul4x_mont
+}
+{
+   mod_ssl leak
+   Memcheck:Leak
+   ...
+   fun:EC_GROUP_new_by_curve_name
+   ...
+   fun:ssl_init_Module
+}
+{
+   GFlags bookkeeping
+   Memcheck:Leak
+   ...
+   fun:_ZN6google14FlagRegistererC1EPKcS2_S2_S2_PvS3_
+   ...
+}
+{
+   RE2::Init singleton "leak"
+   Memcheck:Leak
+   ...
+   fun:_ZZN3re23RE24InitERKNS_11StringPieceERKNS0_7OptionsEENKUlvE_clEv
+}
+
+{
+   grpc error "leak" -- TODO(cheesy): find the root cause and eliminate.
+   Memcheck:Leak
+   ...
+   fun:grpc_error_create
+   fun:grpc_server_add_insecure_http2_port
+}

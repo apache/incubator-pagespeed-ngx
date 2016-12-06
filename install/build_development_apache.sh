@@ -8,28 +8,11 @@
 set -e
 set -u
 
-# Note: It is ok if we include packages here that are already installed.
-# (Can't use lsb_release here because RedHat-derived distros don't install it by
-# default.)
-if [ -f /etc/debian_version ]; then
-  deps="autoconf g++ curl gperf git libssl-dev make"
-  deps+=" subversion valgrind libev-dev libpcre3-dev zlib1g-dev"
+this_dir="$(dirname "${BASH_SOURCE[0]}")"
+src="$this_dir/.."
+third_party="$(readlink -m "$src/third_party")"
 
-  if [ -n "$(apt-cache search --names-only '^libtool-bin$')" ]; then
-    # With Ubuntu 16+ we need libtool-bin instead.
-    deps+=" libtool-bin"
-  else
-    deps+=" libtool"
-  fi
-  sudo apt-get install $deps
-elif [ -f /etc/redhat-release ]; then
-  sudo yum install autoconf gcc-c++ curl gperf libtool git \
-                   subversion valgrind libev-devel pcre-devel zlib-devel \
-                   openssl-devel
-else
-  echo "Unknown linux distro; can't install deps."
-  exit 1
-fi
+"$src/install/install_required_packages.sh" --additional_dev_packages
 
 if [ $# -ne 2 ]; then
   echo Usage: $0 '2.2|2.4 worker|event|prefork|prefork-debug'
@@ -66,9 +49,6 @@ fi
 # There does not appear to be a good reason to make different source directories
 # for different MPMs -- the sources do not change so we can debug against any of
 # them.
-
-this_dir="$(dirname "${BASH_SOURCE[0]}")"
-third_party="$(readlink -m "$this_dir/../third_party")"
 
 cd "$third_party/$HTTPD_DIR/src"
 

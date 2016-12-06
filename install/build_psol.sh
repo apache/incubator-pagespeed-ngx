@@ -4,16 +4,22 @@
 #
 # Builds psol tarball from a mod_pagespeed checkout.
 
-source $(dirname "$BASH_SOURCE")/build_env.sh || exit 1
+cd $(dirname "$BASH_SOURCE")/..
+source install/build_env.sh || exit 1
 
 buildtype=Release
+install_deps=true
 run_tests=true
+run_packaging=true
 
-eval set -- "$(getopt --long debug,skip_tests -o '' -- "$@")"
+eval set -- "$(getopt --long debug,skip_deps,skip_packaging,skip_tests \
+                      -o '' -- "$@")"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --debug) buildtype=Debug; shift; ;;
+    --skip_deps) install_deps=false; shift ;;
+    --skip_packaging) run_packaging=false; shift; ;;
     --skip_tests) run_tests=false; shift; ;;
     --) shift; break ;;
     *) echo "getopt error" >&2; exit 1 ;;
@@ -21,18 +27,26 @@ while [ $# -gt 0 ]; do
 done
 
 if [ $# -ne 0 ]; then
-  echo "Usage: $(basename $0) [--debug] [--skip_tests]" >&2
+  echo "Usage: $(basename $0) [--debug] [--skip_packaging] [--skip_tests]" >&2
   exit 1
 fi
 
-if [ -e psol ] ; then
+if $run_packaging && [ -e psol ] ; then
   echo "A psol/ directory already exists. Move it somewhere else and rerun."
   exit 1
+fi
+
+if $install_deps; then
+  echo Installing required packages...
+  run_with_log log/install_deps.log \
+    sudo install/install_required_packages.sh --additional_dev_packages
 fi
 
 echo Building PSOL binaries...
 
 MAKE_ARGS=(V=1 BUILDTYPE=$buildtype)
+
+run_with_log log/gyp.log python build/gyp_chromium --depth=.
 
 if $run_tests; then
   run_with_log log/psol_build.log make "${MAKE_ARGS[@]}" \
@@ -42,8 +56,9 @@ fi
 # Using a subshell to contain the cd.
 mps_root=$PWD
 (cd pagespeed/automatic && \
- run_with_log ../../log/psol_automatic_build.log make "${MAKE_ARGS[@]}" \
-     MOD_PAGESPEED_ROOT=$mps_root CXXFLAGS="-DSERF_HTTPS_FETCHING=1" all)
+  run_with_log ../../log/psol_automatic_build.log \
+  make "${MAKE_ARGS[@]}" MOD_PAGESPEED_ROOT=$mps_root \
+  CXXFLAGS="-DSERF_HTTPS_FETCHING=1" all)
 
 version_h=out/$buildtype/obj/gen/net/instaweb/public/version.h
 if [ ! -f $version_h ]; then
@@ -58,6 +73,11 @@ if ! grep -q "^#define MOD_PAGESPEED_VERSION_STRING \"$build_version\"$" \
           $version_h; then
   echo "Wrong version found in $version_h" >&2
   exit 1
+fi
+
+echo "PSOL built as pagespeed/automatic/pagespeed_automatic.a"
+if ! $run_packaging; then
+  exit 0
 fi
 
 mkdir psol/

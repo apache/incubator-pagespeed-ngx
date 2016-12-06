@@ -10,14 +10,14 @@ if [ "$UID" -ne 0 ]; then
   exit 1  # NOTREACHED
 fi
 
-additional_test_packages=false
-if [ "${1:-}" = "--additional_test_packages" ]; then
-  additional_test_packages=true
+additional_dev_packages=false
+if [ "${1:-}" = "--additional_dev_packages" ]; then
+  additional_dev_packages=true
   shift
 fi
 
 if [ $# -ne 0 ]; then
-  echo "Usage: $(basename $0) [--additional_test_packages]" >&2
+  echo "Usage: $(basename $0) [--additional_dev_packages]" >&2
   exit 1
 fi
 
@@ -29,15 +29,35 @@ if version_compare $(lsb_release -rs) -lt 14.04; then
   binary_packages+=(gcc-mozilla)
 fi
 
+# Sometimes the names of packages change between versions.  This goes through
+# its arguments and returns the first package name that exists on this OS.
+function first_available_package() {
+  for candidate_version in "$@"; do
+    if [ -n "$(apt-cache search --names-only "^${candidate_version}$")" ]; then
+      echo "$candidate_version"
+      return
+    fi
+  done
+  echo "error: no available version of $@" >&2
+  exit 1
+}
+
 install_redis_from_src=false
-if "$additional_test_packages"; then
-  binary_packages+=(memcached libapache2-mod-php5)
+if "$additional_dev_packages"; then
+  binary_packages+=(memcached autoconf valgrind libev-dev libssl-dev
+    libpcre3-dev openjdk-7-jre language-pack-tr-base gperf uuid-dev)
 
   if version_compare $(lsb_release -sr) -ge 16.04; then
     binary_packages+=(redis-server)
   else
     src_packages+=(redis-server)
   fi
+
+  binary_packages+=( \
+    $(first_available_package libtool-bin libtool)
+    $(first_available_package php-cgi php5-cgi)
+    $(first_available_package libapache2-mod-php libapache2-mod-php5)
+    $(first_available_package php-mbstring libapache2-mod-php5))
 fi
 
 apt-get -y install "${binary_packages[@]}"

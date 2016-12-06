@@ -20,12 +20,13 @@
 # The tests include the fetching and proxying of a variety of content,
 # including some of the /mod_pagespeed_example directory, plus some other
 # content in /do_not_modify and /no_content.
-#
-# This is not intended to be called directly.  It should be called
-# from the platform scripts which will set up some paths, e.g.
-#    ./ubuntu.sh setup_test_machine
-# or
-#    ./centos.sh setup_test_machine
+
+if [ -z "$APACHE_DOC_ROOT" ]; then
+  echo "This is not intended to be called directly.  It should be called"
+  echo "from the makefile:"
+  echo"   make setup_test_machine"
+  exit 1
+fi
 
 set -e
 set -u
@@ -33,7 +34,7 @@ set -u
 for subdir in do_not_modify mod_pagespeed_example; do
   sudo rm -rf $APACHE_DOC_ROOT/$subdir
   tarfile=/tmp/subdir.$$.tmp
-  (cd $MOD_PAGESPEED_ROOT/install; tar czf $tarfile $subdir)
+  (cd $GIT_SRC/install; tar czf $tarfile $subdir)
   (cd $APACHE_DOC_ROOT; sudo tar xf $tarfile)
   echo Updating $APACHE_DOC_ROOT/$subdir
   rm -f $tarfile
@@ -48,7 +49,7 @@ else
   tmp_conf=/tmp/pagespeed_test.conf.$$
   tmp_file=/tmp/conf_snippet.$$
   sed -e "s@APACHE_DOC_ROOT@$APACHE_DOC_ROOT@g" \
-    < $MOD_PAGESPEED_ROOT/install/test.conf.template \
+    < $GIT_SRC/install/test.conf.template \
     > $tmp_conf
   sudo cp $tmp_conf "$conf_file"
   rm -f $tmp_conf

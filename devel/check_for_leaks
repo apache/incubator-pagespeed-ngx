@@ -1,0 +1,229 @@
+#!/bin/bash
+
+set -u  # exit the script if any variable is uninitialized
+
+this_dir=$(dirname "${BASH_SOURCE[0]}")
+cd "$this_dir/.."
+src="$PWD"
+
+if [ ! -d install ]; then
+  echo "Expected to see install."
+  exit 1
+fi
+
+source "$src/install/shell_utils.sh" || exit 1
+
+# In order to set up the pagespeed.conf file correctly for external cache
+# tests, we must have a special env variable established.  The easiest way
+# to do that is to re-run this script under 'run_program_with_<cache-type>.sh',
+# which executes a command and then brings down external cache server.
+#
+# So when we run this script, if we don't already have our external cache
+# configured, we just re-run the script under run_program_with_*.sh. That will
+# establish a single external cache server for all the unit tests and system
+# tests.
+
+# One weird trick for testing a variable for whether it is set, without
+# triggering an error due to "set -u" above:
+# http://stackoverflow.com/questions/3601515/how-to-check-if-a-variable-is-set-in-bash
+if [[ -z ${MEMCACHED_PORT+x} ]]; then
+  exec "$src/install/run_program_with_memcached.sh" "$0" "$@"
+fi
+if [[ -z ${REDIS_PORT+x} ]]; then
+  exec "$src/install/run_program_with_redis.sh" "$0" "$@"
+fi
+
+valgrind="/usr/bin/valgrind"
+if [ ! -e $valgrind ]; then
+  echo "***" You must install the system valgrind into $valgrind
+  echo sudo apt-get install valgrind
+  exit 1
+fi
+
+install_log_file=/tmp/install.log.$$
+valgrind_test_out=/tmp/valgrind.test.out.$$
+valgrind_httpd_out=/tmp/valgrind.httpd.out.$$
+system_test_log=/tmp/system_test.log.$$
+apache_test_log=/tmp/apache_test.log.$$
+exit_status=0
+failures=""
+run_unit_tests=1
+OPTIONS="${OPTIONS:-""} VALGRIND_TEST=1"
+
+if [ $1 == "--no_unit_tests" ]; then
+  run_unit_tests="0"
+  shift
+fi
+apache_debug_root=$1
+shift
+server=$1
+shift
+
+function record_error() {
+  exit_status=1
+  failures="$failures $@"
+  echo FAIL: $@
+}
+
+function check_valgrind_log_for_problems() {
+  # TODO(jmaessen): Consider checking 'Use of uninitialized', but
+  # that will require image library exclusions.
+  grep 'Invalid .* of size' $2 && \
+    record_error "$1 contains invalid memory operations."
+  grep 'definitely lost: [1-9][0-9,]* bytes in [1-9][0-9,]* blocks' $2 && \
+    record_error "$1 Directly lost bytes"
+  grep "indirectly lost: [1-9][0-9,]* bytes in [1-9][0-9,]* blocks" $2 && \
+    record_error "$1 Indirectly Lost bytes"
+}
+
+# Because valgrind is so slow, we want to run it under tee.  But tee swallows
+# the exit status code, so we can get false positives.  Instead we ignore the
+# exit status from tee and search for a pattern in the log that indicates an
+# error.
+#
+# $1 = the program to be run
+# $2 = the log file
+# $3 = the error-pattern to search for in the log.
+function run_and_grep_for_error {
+  echo `date`: Running "$1 in $PWD ..."
+  $1 2>&1 | tee $2
+  grep "$3" $2 >/dev/null
+  if [ $? -eq 0 ]; then
+    record_error "$1 failed: \"$3\" found in $2"
+  fi
+}
+
+SUPPRESSIONS="$src/devel/valgrind_suppressions.txt"
+
+function check_unit_test_for_leaks() {
+  exe=$1
+  shards=$2
+  echo `date`: Running $exe with $valgrind, log to $valgrind_test_out.$exe
+  cd $src
+  # For the unit tests only we use --child-silent-after-fork so that
+  # cross-process communication tests don't trigger false leak warnings
+  # at exit of kids they fork.
+
+  # If one sets envvars GTEST_TOTAL_SHARDS as well as GTEST_SHARD_INDEX
+  # with 0 <= GTEST_SHARD_INDEX < GTEST_TOTAL_SHARDS, gtest will only
+  # execute a portion of tests in a given process, letting us to parallelize
+  # unit test execution.
+  export GTEST_TOTAL_SHARDS=$shards
+  last_shard=$((GTEST_TOTAL_SHARDS - 1))
+  LOGS=
+  for i in $(seq 0 $last_shard); do
+    export GTEST_SHARD_INDEX=$i
+    LOG=$valgrind_test_out.$exe.$i
+    LOGS="$LOGS $LOG"
+
+    echo $valgrind --leak-check=full \
+        --suppressions=$SUPPRESSIONS \
+        --read-var-info=yes --num-callers=20 --child-silent-after-fork=yes \
+        ./out/Debug/$exe "2>&1" "|" tee $LOG "&"
+    $valgrind --leak-check=full --suppressions=$SUPPRESSIONS \
+        --read-var-info=yes --num-callers=20 --child-silent-after-fork=yes \
+        ./out/Debug/$exe 2>&1 | tee $LOG &
+  done
+  wait
+
+  run_and_grep_for_error "cat $LOGS" $valgrind_test_out.$exe '^\[  FAILED  \] '
+  check_valgrind_log_for_problems $exe $valgrind_test_out.$exe
+}
+
+# Checks the system-tests using a pagespeed.conf configuration.  An
+# argument must be supplied that will be used as a suffix for log files.
+function check_system_test_for_leaks() {
+  suffix=$1
+
+  local options="HTTPS_TEST=0 $OPTIONS"
+  if [[ $suffix == "memcached" ]]; then
+    options+=" MEMCACHED_TEST=1"
+  elif [[ $suffix == "redis" ]]; then
+    options+=" REDIS_TEST=1"
+  fi
+
+  echo make apache_debug_install apache_install_conf \
+    OPTIONS="$options" '>&' "$install_log_file"
+  make apache_debug_install apache_install_conf \
+    OPTIONS="$options" >& $install_log_file
+
+  outfile=$valgrind_httpd_out.$suffix
+  echo `date`: Running httpd $valgrind with output spewed to $outfile
+  ps auxww | grep httpd
+
+  echo $valgrind --gen-suppressions=all --leak-check=full --trace-children=yes \
+    --suppressions=$SUPPRESSIONS \
+    $apache_debug_root/bin/httpd --enable-pool-debug \
+    ">&" $outfile "&"
+  $valgrind --gen-suppressions=all --leak-check=full --trace-children=yes \
+    --suppressions=$SUPPRESSIONS \
+    $apache_debug_root/bin/httpd --enable-pool-debug \
+    >& $outfile &
+
+  local apache_timeout=30
+  echo -n Waiting up to "$apache_timeout" seconds for valgrind/httpd \
+          to start listening
+  if ! wait_cmd_with_timeout "$apache_timeout" \
+    wget -q --timeout=2 -O/dev/null "http://$server"
+  then
+    record_error apache/valgrind did not start after "$apache_timeout" seconds.
+    return 1
+  fi
+
+  run_and_grep_for_error "$src/pagespeed/apache/system_test.sh \
+     $server" $apache_test_log '^\FAIL\.'
+
+  $apache_debug_root/bin/apachectl graceful-stop
+
+  echo -n Waiting for httpd to actually exit...
+  while [ -f $apache_debug_root/logs/httpd.pid ]; do sleep 1; done
+  echo done.
+
+  echo `date`: Waiting for $valgrind to finish spewing to $outfile
+  wait
+  check_valgrind_log_for_problems httpd $outfile
+  echo `date`: Cleaning up
+
+  tail -12 $outfile | tee $outfile.tail
+}
+
+set +u
+PAGESPEED_TEST_HOST=${PAGESPEED_TEST_HOST:-selfsigned.modpagespeed.com}
+export PAGESPEED_TEST_HOST
+set -u
+
+$apache_debug_root/bin/apachectl graceful-stop
+if [ $? -ne 0 ]; then
+  record_error restart failed:  please see log $install_log_file
+else
+  if [ $run_unit_tests = "1" ]; then
+    # We use 1 shard here for convenience of memcached setup, since this
+    # test is quick.
+    check_unit_test_for_leaks mod_pagespeed_test 1
+
+    # 3 shards here in hope of using the idle CPU while not overwhelming things
+    # if other things (e.g. checkin.blaze) are parallel to us.
+    check_unit_test_for_leaks pagespeed_automatic_test 3
+  fi
+
+  cd "$src/devel"
+
+  echo Running system tests using a file cache...
+  check_system_test_for_leaks file_cache
+
+  echo Running system tests using memcached...
+  check_system_test_for_leaks memcached
+
+  echo Running system tests using redis...
+  check_system_test_for_leaks redis
+fi
+
+if [ $exit_status -eq 0 ]; then
+  echo PASS
+else
+  echo FAIL: $failures
+fi
+echo NOTE: there can be multiple LEAK SUMMARY entries in Valgrid log, which
+echo can be located in different parts of log, not necessarily in the end.
+
+exit $exit_status

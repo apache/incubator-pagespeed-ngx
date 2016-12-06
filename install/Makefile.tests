@@ -15,7 +15,7 @@
 #  APACHE_HTTPS_PORT
 #  APACHE_DEBUG_PAGESPEED_CONF
 #  MOD_PAGESPEED_CACHE
-#  MOD_PAGESPEED_ROOT
+#  GIT_SRC
 #  INSTALL_DATA_DIR
 #  RCPORT
 
@@ -36,12 +36,7 @@ export APACHE_SECONDARY_PORT
 export APACHE_TERTIARY_PORT
 export SERVER_NAME = apache
 
-PAGESPEED_DIR = $(realpath $(shell \
-  if [ -f $(MOD_PAGESPEED_ROOT)/pagespeed/apache/system_test.sh ]; then \
-    echo $(MOD_PAGESPEED_ROOT)/pagespeed ;\
-  else \
-    echo $(MOD_PAGESPEED_ROOT)/third_party/pagespeed ;\
-  fi))
+PAGESPEED_DIR = $(GIT_SRC)/pagespeed
 
 apache_vm_system_tests : setup_doc_root
 	$(MAKE) FAST_RESTART=1 apache_debug_smoke_test

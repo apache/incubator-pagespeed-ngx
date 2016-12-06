@@ -87,7 +87,7 @@ fi
 
 sudo $run_in_chroot \
   install/run_with_log.sh $log_verbose log/install_packages.log \
-    install/install_required_packages.sh --additional_test_packages
+    install/install_required_packages.sh --additional_dev_packages
 $run_in_chroot install/build_mps.sh "${build_mps_args[@]}"
 
 verbose_flag=
