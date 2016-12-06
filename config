@@ -26,7 +26,8 @@ if [ "$mod_pagespeed_dir" = "unset" ] ; then
   if [ ! -e "$mod_pagespeed_dir" ] ; then
     echo "ngx_pagespeed: pagespeed optimization library not found:"
 
-    psol_binary_url="$(cat $ngx_addon_dir/PSOL_BINARY_URL)"
+    psol_binary_url="$($ngx_addon_dir/scripts/format_binary_url.sh \
+                           $ngx_addon_dir/PSOL_BINARY_URL)"
     if [[ "$psol_binary_url" != https://* ]]; then
       echo "
   This is a development branch of ngx_pagespeed, which means there is no

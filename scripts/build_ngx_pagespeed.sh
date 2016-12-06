@@ -614,7 +614,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     elif [ -e PSOL_BINARY_URL ]; then
       # Releases after 1.11.33.4 there is a PSOL_BINARY_URL file that tells us
       # where to look.
-      psol_url="$(cat PSOL_BINARY_URL)"
+      psol_url="$(scripts/format_binary_url.sh PSOL_BINARY_URL)"
       if [[ "$psol_url" != https://* ]]; then
         fail "Got bad psol binary location information: $psol_url"
       fi
