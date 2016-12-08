@@ -77,6 +77,8 @@ fi
 
 if [ "$NGX_DEBUG" = "YES" ]; then
   buildtype=Debug
+  # If we're using a psol tarball that doesn't contain Debug/ (which is the case
+  # from 1.12 onward) then this will be overriden to buildtype=Release below.
 else
   buildtype=Release
 fi
@@ -144,6 +146,9 @@ if [ "$psol_binary" = "unset" ] ; then
     psol_binary="\
         $mod_pagespeed_dir/pagespeed/automatic/pagespeed_automatic.a"
   else
+    if ! [ -d "$ngx_addon_dir/psol/lib/$buildtype" ]; then
+      buildtype=Release
+    fi
     psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
     psol_binary="$psol_library_dir/pagespeed_automatic.a"
   fi
