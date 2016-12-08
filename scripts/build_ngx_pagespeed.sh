@@ -420,8 +420,15 @@ function build_ngx_pagespeed() {
 
   if "$DYNAMIC_MODULE"; then
     # Check that ngx_pagespeed and nginx are recent enough to support dynamic
-    # modules.
-    if version_older_than "$NPS_VERSION" "1.10.33.5"; then
+    # modules.  Unfortunately NPS_VERSION might be a tag, in which case we don't
+    # know.  If it's not a numeric version number, then assume it's recent
+    # enough and if it's not they'll get an ugly compilation error later.
+    # Luckily 1.10.33.5 was a while ago now.
+    #
+    # I'd like to use =~ here, but they changed syntax between v3 and v4 (quotes
+    # moved from mandatory to optional to prohibited).
+    if [[ "${NPS_VERSION#*[^0-9.]}" = "$NPS_VERSION" ]] &&
+         version_older_than "$NPS_VERSION" "1.10.33.5"; then
       fail "
 You're trying to build ngx_pagespeed $NPS_VERSION as a dynamic module, but
 ngx_pagespeed didn't add support for dynamic modules until 1.10.33.5."
