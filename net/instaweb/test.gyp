@@ -473,6 +473,11 @@
       'target_name': 'test_util',
       'type': '<(library)',
       'dependencies': [
+        # OpenSSL is transitively included by various deps below, as is
+        # ICU. However, system ICU puts -L/usr/lib into LDFLAGS. If we want
+        # to use non-system OpenSSL, we need to make sure the openssl GYP
+        # file is "seen" first.
+        '<(DEPTH)/third_party/serf/select_openssl.gyp:select_openssl',
         'test_infrastructure',
         '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/pagespeed/kernel.gyp:kernel_test_util',

@@ -38,7 +38,7 @@ eval set -- "$options"
 while [ $# -gt 0 ]; do
   case "$1" in
     --build_branch) branch="$2"; shift 2 ;;
-    --centos) image_family="centos-6"; shift 2 ;;
+    --centos) image_family="centos-6"; shift ;;
     --delete_existing_machine) delete_existing_machine=true; shift ;;
     --image_family) image_family="$2"; shift 2 ;;
     --keep_machine) keep_machine=true; shift ;;
@@ -78,11 +78,11 @@ if [ -z "$machine_name" ]; then
     fi
   done
 
-  # gcloud doesn't allow dashes in machine names.
-  sanitized_branch="$(tr _ - <<< "$branch")"
+  # gcloud is pretty fussy about machine names.
+  sanitized_branch="$(tr _ - <<< "$branch" | tr -d .)"
 
   machine_name="${USER}-${image_family}${bit_suffix}"
-  machine_name+="-${sanitized_branch}-mps-build"
+  machine_name+="-${sanitized_branch}-mps-build${bit_suffix}"
 fi
 
 instances=$(gcloud compute instances list -q "$machine_name")
