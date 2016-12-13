@@ -147,6 +147,19 @@ if [ "$psol_binary" = "unset" ] ; then
         $mod_pagespeed_dir/pagespeed/automatic/pagespeed_automatic.a"
   else
     if ! [ -d "$ngx_addon_dir/psol/lib/$buildtype" ]; then
+      echo "
+You have set --with-debug for building nginx, but precompiled Debug binaries for
+PSOL, which ngx_pagespeed depends on, aren't available.  You can either build
+PSOL from source with debugging information, or you can just go ahead and use
+the Release binaries."
+      echo -n "
+Use the available Release binaries?"
+      read -p " [Y/n] " yn
+      if [[ "$yn" == N* || "$yn" == n* ]]; then
+        echo "Cancelled."
+        exit 0
+      fi
+
       buildtype=Release
     fi
     psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
