@@ -198,7 +198,7 @@ pagespeed_include="\
   $mod_pagespeed_dir/url"
 ngx_feature_path="$pagespeed_include"
 
-pagespeed_libs="$psol_binary $pagespeed_libs -lrt -pthread -lm"
+pagespeed_libs="$psol_binary $pagespeed_libs -lrt -pthread -lm -luuid"
 ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="
 
