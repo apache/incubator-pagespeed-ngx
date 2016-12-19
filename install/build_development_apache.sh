@@ -77,7 +77,7 @@ cd "$third_party/apr/src"
 ./buildconf --prefix=$TARGET
 ./configure --prefix=$TARGET
 make
-make install
+make install -j1
 
 cd "$third_party/aprutil/src"
 ./buildconf --with-apr="$third_party/apr/src" --prefix=$TARGET
