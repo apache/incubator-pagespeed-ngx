@@ -9,6 +9,9 @@ env:
 #   jobs=8: 179s (29s to install new git, 150s to run the downloads)
 # We can't use --depth=1, though, because github doesn't have
 # allowReachableSHA1InWant set.
+#
+# TODO(jefftk): once we're running on a server with git 2.8 or later we can have
+#               --jobs without installing a new git.
 git:
   submodules: false
 before_install:
@@ -21,9 +24,14 @@ install:
 script:
   test/run_tests.sh $PWD/testing-dependencies/mod_pagespeed/ \
                     $PWD/nginx/sbin/nginx
+dist: trusty
 sudo: required
 compiler:
   - gcc
 notifications:
   email:
+    - cheesy@google.com
     - jefftk@google.com
+    - morlovich@google.com
+    - jmarantz@google.com
+    - huibao@google.com
