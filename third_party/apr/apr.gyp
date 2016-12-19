@@ -81,6 +81,7 @@
                   'link_settings': {
                     'libraries': [
                       '-ldl',
+                      '-luuid',
                   ]},
                 }],
               ],
