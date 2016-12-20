@@ -34,8 +34,8 @@ set -u  # exit the script if any variable is uninitialized
 
 function usage {
   echo -n "create_distro_tarball_debian.sh [ --minimal ] [ --checkout_dir dir ] tarball"
-  echo " [ --git_tag tag | source_tree ]"
-  echo "examples of git_tag would be 'master', '33', '1.11.33.4' or 04e3237"
+  echo " [ --checkout commit_ish | source_tree ]"
+  echo "examples of commit_ish would be 'master', '33', '1.11.33.4' or 04e3237"
   exit 1
 }
 
@@ -95,7 +95,7 @@ fi
 touch $TARBALL
 TARBALL=$(realpath $TARBALL)
 
-if [ "$2" == --git_tag ]; then
+if [ "$2" == --checkout ]; then
   if [ -z $3 ]; then
     usage
   else
@@ -105,9 +105,10 @@ if [ "$2" == --git_tag ]; then
     fi
     SRC_DIR=$CHECKOUT_DIR
     cd $CHECKOUT_DIR
-    git clone https://github.com/pagespeed/mod_pagespeed.git src\
-      --branch "$GIT_TAG" --recursive
+    git clone https://github.com/pagespeed/mod_pagespeed.git src
     cd src
+    git checkout "$GIT_TAG"
+    git submodule update --init --recursive
   fi
 else
   SRC_DIR=$2
