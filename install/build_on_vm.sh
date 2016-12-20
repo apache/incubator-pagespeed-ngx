@@ -128,8 +128,11 @@ gcloud compute ssh "$machine_name" -- bash << EOF
   else
     sudo apt-get -y install git
   fi
-  git clone -b "$branch" https://github.com/pagespeed/mod_pagespeed.git
+  # CentOS 6's git is old enough that git clone -b <tag> doesn't work and
+  # silently checks out HEAD. To be safe we use an explicit checkout below.
+  git clone https://github.com/pagespeed/mod_pagespeed.git
   cd mod_pagespeed
+  git checkout "$branch"
   install/build_release.sh $@
 EOF
 
