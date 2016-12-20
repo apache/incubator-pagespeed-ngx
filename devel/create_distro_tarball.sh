@@ -25,7 +25,9 @@
 # If --minimal is passed, it will cut out even more things. This was meant
 # for packaging properly Debian, which has a particularly extensive package
 # repository. At the moment this configuration requires further patching of
-# the .gyp[i] files and doesn't work out of the box.
+# the .gyp[i] files and doesn't work out of the box. The pruning was also done
+# as of branch 33, so further tweaks might be required for this mode in
+# 34 or newer.
 
 set -e  # exit script if any command returns an error
 set -u  # exit the script if any variable is uninitialized
@@ -103,11 +105,9 @@ if [ "$2" == --git_tag ]; then
     fi
     SRC_DIR=$CHECKOUT_DIR
     cd $CHECKOUT_DIR
-    # For trunk, this should just use a recursive clone.
-    # This should not be using gyp, however, since that slobbers .mk and .pyc
-    # files all over the tarball (which the tar command tries to exclude).
-    gclient config "https://github.com/pagespeed/mod_pagespeed.git@$GIT_TAG" --name=src
-    gclient sync --nohooks
+    git clone https://github.com/pagespeed/mod_pagespeed.git src\
+      --branch "$GIT_TAG" --recursive
+    cd src
   fi
 else
   SRC_DIR=$2
@@ -179,6 +179,7 @@ tar cj --dereference --exclude='.git' --exclude='.svn' --exclude='.hg' -f $TARBA
     $DIR/src/install \
     $DIR/src/net/instaweb \
     $DIR/src/pagespeed \
+    $DIR/src/strings \
     $GTEST \
     $DIR/src/third_party/apr/apr.gyp \
     $DIR/src/third_party/aprutil/aprutil.gyp \
@@ -187,6 +188,7 @@ tar cj --dereference --exclude='.git' --exclude='.svn' --exclude='.hg' -f $TARBA
     $DIR/src/third_party/httpd/httpd.gyp \
     $DIR/src/third_party/httpd24/httpd24.gyp \
     $DIR/src/third_party/base64 \
+    $DIR/src/third_party/brotli \
     $DIR/src/third_party/chromium/src/base \
     --exclude src/third_party/chromium/src/base/third_party/xdg_mime \
     --exclude src/third_party/chromium/src/base/third_party/xdg_user_dirs \
@@ -194,16 +196,16 @@ tar cj --dereference --exclude='.git' --exclude='.svn' --exclude='.hg' -f $TARBA
     --exclude $DIR/src/third_party/chromium/src/build/android \
     $DIR/src/third_party/chromium/src/googleurl \
     $DIR/src/third_party/chromium/src/net/tools \
-    $DIR/src/third_party/closure/externs/ \
+    $DIR/src/third_party/closure/ \
     $DIR/src/third_party/closure_library/ \
     $DIR/src/third_party/css_parser \
     $DIR/src/third_party/domain_registry_provider \
     $GFLAGS \
     $GIFLIB \
     $DIR/src/third_party/google-sparsehash \
+    $DIR/src/third_party/grpc \
+    $DIR/src/third_party/hiredis \
     $ICU \
-    $DIR/src/third_party/mod_spdy/src/mod_spdy/mod_spdy.h \
-    $DIR/src/third_party/mod_spdy/src/mod_spdy/apache/slave_connection_api.h \
     $JSONCPP \
     $DIR/src/third_party/libjpeg_turbo/libjpeg_turbo.gyp \
     $DIR/src/third_party/libpng/libpng.gyp \
@@ -213,6 +215,7 @@ tar cj --dereference --exclude='.git' --exclude='.svn' --exclude='.hg' -f $TARBA
     $PROTOBUF  \
     $DIR/src/third_party/rdestl \
     $RE2 \
+    $DIR/src/third_party/redis-crc \
     $DIR/src/third_party/serf \
     $DIR/src/third_party/zlib/zlib.gyp \
     $DIR/src/tools/gyp \
