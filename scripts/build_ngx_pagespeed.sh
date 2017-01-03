@@ -80,6 +80,13 @@ Options:
       Assume the answer to all prompts is 'yes, please continue'.  Intended for
       automated usage, such as buildbots.
 
+  -a, --additional-nginx-configure-arguments
+      When running ./configure for nginx, you may want to specify additional
+      arguments, such as --with-http_ssl_module.  By default this script will
+      pause and prompt you for them, but this option lets you pass them in.  For
+      example, you might do:
+        -a '--with-http_ssl_module --with-cc-opt=\"-I /usr/local/include\"'
+
   -d, --dryrun
       Don't make any changes to the system, just print what changes you
       would have made.
@@ -302,10 +309,10 @@ function build_ngx_pagespeed() {
     fail "Your version of getopt is too old.  Exiting with no changes made."
   fi
 
-  opts=$(getopt -o v:n:mb:pslt:ydh \
+  opts=$(getopt -o v:n:mb:pslt:ya:dh \
     --longoptions ngx-pagespeed-version:,nginx-version:,dynamic-module \
     --longoptions buildir:,no-deps-check,psol-from-source,devel,build-type: \
-    --longoptions assume-yes,dryrun,help \
+    --longoptions assume-yes,additional-nginx-configure-arguments:,dryrun,help \
     -n "$(basename "$0")" -- "$@")
   if [ $? != 0 ]; then
     usage
@@ -355,6 +362,10 @@ function build_ngx_pagespeed() {
         ;;
       -y | --assume-yes) shift
         ASSUME_YES="true"
+        ;;
+      -a | --additional-nginx-configure-arguments) shift
+        ADDITIONAL_NGINX_CONFIGURE_ARGUMENTS="$1"
+        shift
         ;;
       -d | --dryrun) shift
         DRYRUN="true"
@@ -721,19 +732,26 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     run cd "$nginx_dir"
 
     configure=("$configure_location/configure" "${configure_args[@]}")
-    if ! "$ASSUME_YES"; then
-      echo "About to build nginx.  Do you have any additional ./configure"
-      echo "arguments you would like to set?  For example, if you would like"
-      echo "to build nginx with https support give --with-http_ssl_module"
-      echo "If you don't have any, just press enter."
-      read -p "> " additional_configure_args
-      if [ -n "$additional_configure_args" ]; then
-        # Split additional_configure_args respecting any internal quotation.
-        # Otherwise things like --with-cc-opt='-foo -bar' won't work.
-        eval additional_configure_args=("$additional_configure_args")
-        configure=("${configure[@]}" "${additional_configure_args[@]}")
+    additional_configure_args=""
+    if [ -z "${ADDITIONAL_NGINX_CONFIGURE_ARGUMENTS+x}" ]; then
+      if ! "$ASSUME_YES"; then
+        echo "About to build nginx.  Do you have any additional ./configure"
+        echo "arguments you would like to set?  For example, if you would like"
+        echo "to build nginx with https support give --with-http_ssl_module"
+        echo "If you don't have any, just press enter."
+        read -p "> " additional_configure_args
       fi
+    else
+      additional_configure_args="$ADDITIONAL_NGINX_CONFIGURE_ARGUMENTS"
     fi
+
+    if [ -n "$additional_configure_args" ]; then
+      # Split additional_configure_args respecting any internal quotation.
+      # Otherwise things like --with-cc-opt='-foo -bar' won't work.
+      eval additional_configure_args=("$additional_configure_args")
+      configure=("${configure[@]}" "${additional_configure_args[@]}")
+    fi
+
     echo "About to configure nginx with:"
     echo "   $(quote_arguments "${configure[@]}")"
     continue_or_exit "Does this look right?"
