@@ -1,0 +1,161 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lazyload Images</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Lazyload Images</h1>
+<h2>Configuration</h2>
+<p>
+The 'Lazyload Images' filter is enabled by specifying
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters lazyload_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters lazyload_images;</pre>
+</dl>
+in the configuration file.
+
+<h2>Objective</h2>
+<p>
+Optimize browser rendering and reduce number of HTTP round-trips by deferring
+the loading of images which are not in the client's viewport.  This filter
+implements the PageSpeed rules for <a
+  href="/speed/docs/best-practices/rendering" target="_blank">optimizing browser
+  rendering</a> and <a href="/speed/docs/best-practices/rtt" target="_blank">minimizing round
+  trip times</a>.
+</a>
+</p>
+
+<h2>Description</h2>
+<p>
+The lazyload_images filter defers loading of images until they
+become visible in the client's viewport or the page's <code>onload</code>
+event fires. This avoids blocking the download of other critical resources
+necessary for rendering the above the fold section of the page.
+</p>
+<p>
+The filter changes the <code>src</code> attributes of <code>&lt;img&gt;</code>
+elements on each HTML page to <code>data-pagespeed-lazy-src</code>. It attaches
+an <code>onload</code> handler to these elements to determine whether the
+element is in the client's viewport, and if so, loads it. It also attaches an
+<code>onscroll</code> handler to the page, so that elements below the fold
+are loaded when they become visible in the client's viewport as the user
+scrolls down the page.
+</p>
+
+
+<h2 id="lazyload-after-onload">Lazyload After Onload</h2>
+<p>
+Additionally, in 1.8.31.2 and later, all images on the page that haven't yet
+been loaded will be forcefully loaded after the page's <code>onload</code> event
+is fired. This reduces jank when scrolling the page, especially on mobile
+devices, at the cost of downloading bytes for images that may never be displayed
+to the user.
+</p>
+<p>
+To disable loading of images on page <code>onload</code>, set:</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedLazyloadImagesAfterOnload off</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed LazyloadImagesAfterOnload off;</pre>
+</dl>
+
+<h2 id="lazyload-blank-url">Blank Url</h2>
+<p>
+By default, when the page is initially viewed, a 1x1 blank image is served from
+<a href="configuration#pagespeed_static">pagespeed_static</a>.  It is also
+possible to use the same image served by Google's network, or any image that you
+choose, by specifying:</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedLazyloadImagesBlankUrl "http://www.gstatic.com/psa/static/1.gif"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed LazyloadImagesBlankUrl "http://www.gstatic.com/psa/static/1.gif";</pre>
+</dl>
+<p>An advantage of this approach is that this gif may already be in
+the browser cache since any PageSpeed-enabled site can share it.
+However, this would send traffic to Google with your page as the
+Referer.
+</p>
+
+<p>
+  These directives can be used in
+  <a href="configuration#htaccess">location-specific configuration
+  sections</a>.
+</p>
+
+<h2 id="pagespeed_no_defer">Disabling Lazyloading Per-image</h2>
+<p>
+lazyload_images doesn't defer an <code>img</code> tag if it has
+the <code>data-pagespeed-no-defer</code> attribute (preferred) or <code>pagespeed_no_defer</code>
+attribute (deprecated).  Usage:
+<pre class="prettyprint">
+&lt;img data-pagespeed-no-defer src=.../&gt;
+</pre>
+</p>
+
+<h2 id="ua-blacklist">User-Agent Blacklist</h2>
+<p>
+To ensure images are only lazyloaded in supported browsers, lazyload_images
+uses a User Agent blacklist.  Browsers that will not see images loaded lazily
+are:
+<ul>
+  <li>BlackBerry 5.0 and older</li>
+  <li>The Google
+    Plus <a href="https://developers.google.com/+/web/snippet/">thumbnail
+    fetcher</a></li>
+  <li>Web Spiders
+    (<a href="https://github.com/pagespeed/mod_pagespeed/blob/master/pagespeed/kernel/http/bot_checker.gperf">full
+    list</a>)</li>
+</ul>
+</p>
+
+<h2 id="beacons">Lazily loading only images below the fold</h2>
+<p>
+By default lazyload_images injects JavaScript that uses
+a <a href="faq#beacons">beacon</a> to report back to the server the images that
+are visible in the client's initial viewport (<em>above the fold</em>).
+It takes a few accesses of a page for the data to be reported back and
+processed but eventually the above-the-fold images will be known and will be
+loaded immediately while all the other below-the-fold images will be lazily
+loaded; until then all images are lazily loaded.
+</p>
+<p>
+The use of beacons can be disabled using the
+<a href="config_filters#beacons">ModPagespeedCriticalImagesBeaconEnabled</a>
+directive. If they are disabled, lazyload_images will not inject the
+JavaScript and will revert to lazily loading all images.
+</p>
+
+<h2>Example</h2>
+<p>
+The effect of this filter can be observed by comparing the
+number of requests <a
+  href="http://www.modpagespeed.com/lazyload_images.html?ModPagespeed=off">
+  before</a>
+and <a
+  href="http://www.modpagespeed.com/lazyload_images.html?ModPagespeed=on&ModPagespeedFilters=lazyload_images">
+  after</a> rewriting.
+As you scroll down, you will notice that images below the fold are only
+requested after they become visible in the viewport.
+</p>
+
+<h2>Risks</h2>
+<p>
+The computation of each image's position in the viewport may consume
+additional CPU cycles on the client side.  Sites that employ
+JavaScript libraries to implement lazy-loading may not work properly
+with this mechanism.</p>
+
+</div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>
+

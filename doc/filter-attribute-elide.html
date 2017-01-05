@@ -1,0 +1,100 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Elide Attributes</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Elide Attributes</h1>
+
+
+<h2>Configuration</h2>
+<p>
+The 'Elide Attributes' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters elide_attributes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters elide_attributes;</pre>
+</dl>
+<p>
+in the configuration file.
+
+<h2>Description</h2>
+<p>
+The 'Elide Attributes' filter reduces the transfer size of HTML files
+by removing attributes from tags when the specified value is equal to
+the default value for that attribute. This can save a modest number of
+bytes, and may make the document more compressible by canonicalizing
+the affected tags.
+</p>
+
+<h2>Operation</h2>
+<p>
+There are two cases where an attribute value can be removed.  First,
+some attributes are "single-valued" or "boolean", in that the value
+specified for the attribute is irrelevant -- all that matters is
+whether the attribute is present or not.  In such cases, the filter
+will remove the value from the tag, leaving only the attribute name.
+</p>
+<p>
+For example, the following tag:
+</p>
+<pre class="prettyprint">
+  &lt;button name="ok" disabled="disabled"&gt;
+</pre>
+<p>
+can be rewritten to:
+</p>
+<pre class="prettyprint">
+  &lt;button name="ok" disabled&gt;
+</pre>
+<p>
+The second case is an optional attribute with a default value.  If an
+HTML attribute includes an explicit value for an attribute (perhaps to
+aid readability) that is equal to the default attribute, the filter
+will remove the attribute name and value, knowing that the browser
+will infer the intended attribute anyway.  For example, the following
+tag:
+</p>
+<pre class="prettyprint">
+  &lt;form method=get&gt;
+</pre>
+<p>
+can be rewritten to:
+</p>
+<pre class="prettyprint">
+  &lt;form&gt;
+</pre>
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/elide_attributes.html?ModPagespeed=on&amp;ModPagespeedFilters=elide_attributes">example</a>.
+</p>
+
+<h2>Requirements</h2>
+<p>
+The 'Elide Attributes' filter must be wary of documents with an XHTML
+doctype, as removing the value from a single-valued attribute will
+result in invalid XHTML.  The filter attempts to recognize XHTML
+doctype declarations and will disable this rewriting feature in such
+cases.
+</p>
+
+<h2>Risks</h2>
+<p>This filter is considered medium risk. It is safe for most pages, but
+  might break CSS formatting on certain pages that match on default attributes
+  that this filter removes. Further, JavaScript can be written that inspects
+  the DOM looking for the presence of certain attributes. Such JavaScript may
+  behave differently on a page which has removed otherwise unnecessary
+  attributes.</p>
+
+
+</div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

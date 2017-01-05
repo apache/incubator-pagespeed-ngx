@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Strip Scripts</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Strip Scripts</h1>    <h2>Configuration</h2>
+    <p>
+      The 'Strip Scripts' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters strip_scripts</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters strip_scripts;</pre>
+</dl>
+    <p>
+      in the configuration file.
+    </p>
+    <h2>Description</h2>
+    <p>
+      The <code>strip_scripts</code> filter completely removes scripts from a
+      page.  Obviously this will break functionality, and is disabled by
+      default.  This can be used to facilitate timing tests showing the
+      maximum possible benefit of improving a site's JavaScript performance.
+    </p>
+    <h2>Risks</h2>
+    <p>
+      All functionality and visual effects that are dependent on JavaScript
+      will not work.
+    </p>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

@@ -1,0 +1,122 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Combine Heads</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Combine Heads</h1>
+
+
+<h2>Configuration</h2>
+<p>
+The 'Combine Heads' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters combine_heads</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters combine_heads;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+'Combine Heads' combines multiple heads into one.  Technically HTML documents
+are not allowed to have multiple <code>&lt;head&gt;</code> sections, but sites
+which aggregate content from multiple sources sometimes have them.  This filter
+moves the content from later <code>&lt;head&gt;</code> sections into the first
+head.  This filter can change the order of content (e.g. CSS and JS) in the
+later <code>&lt;head&gt;</code> sections relative to
+intervening <code>&lt;body&gt;</code> elements.
+</p>
+
+<h2>Operation</h2>
+<p>
+The 'Combine Heads' filter operates by moving the content of
+all <code>&lt;head&gt;</code> sections into the first <code>&lt;head&gt;</code>
+section.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/yellow.css"&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/blue.css"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+  &lt;head&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/big.css"&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/bold.css"&gt;
+  &lt;/head&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/yellow.css"&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/blue.css"&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/big.css"&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/bold.css"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/combine_heads.html?ModPagespeed=on&amp;ModPagespeedFilters=combine_heads">example</a>.
+</p>
+
+<h2>Limitations</h2>
+The 'Combine Heads' filter operates within the scope of a "flush window".
+Specifically, large or dynamically generated HTML files my be "flushed"
+by the resource generator before they are complete. If the CSS combiner
+encounters a Flush prior to the end of the first <code>&lt;head&gt;</code>,
+then subsequent <code>&lt;head&gt;</code>s will not be merged in.
+
+<h2>Note</h2>
+<p>
+In some browsers, the original version will flash quickly as the browser
+will render the "Hello, world!" text before it sees second set of
+style tags providing definitions for "big and bold".  This
+transformation will eliminate that flashing, but the end result will
+be the same.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered medium-risk.  If there are style or script tags in the
+body, between two heads, then this rewrite pass can change their order.  The
+risk is reduced if the <a href="filter-css-to-head">move_css_to_head</a> filter
+is also enabled.  Additionally, JavaScript that is executed before a
+later <code>&lt;head&gt;</code> will see a different view of the DOM in the
+presence of this rewriter.  If there is such JavaScript embedded in the middle
+of a page then this rewriter may change its behavior.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

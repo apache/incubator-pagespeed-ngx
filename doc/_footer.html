@@ -1,0 +1,91 @@
+<div id=footer>
+  <!--#include virtual="_navline.html" -->
+</div>
+
+<script>
+function buildTocHelper(node, headers) {
+  if (node.nodeType == 1) {
+    // Element node.
+    var nodeName = node.nodeName.toLowerCase();
+    if (nodeName == "h2" || nodeName == "h3" || nodeName == "h4" ||
+        nodeName == "h5" || nodeName == "h6") {
+      if (node.id) {
+        headers.push([nodeName, node.innerHTML, node.id]);
+	node.appendChild(document.createTextNode("\u00A0"));  // nbsp
+	var a = document.createElement("a");
+	a.class = "header-link";
+	a.href = "#" + node.id;
+	a.textContent = "\uD83D\uDD17";  // link symbol
+	node.appendChild(a);
+      }
+    } else {
+      for (var i = 0; i < node.childNodes.length; i++) {
+        buildTocHelper(node.childNodes[i], headers);
+      }
+    }
+  }
+}
+
+function buildToc() {
+  var headers = [];
+  buildTocHelper(document.body, headers);
+  if (headers.length == 0) {
+    return;
+  }
+
+  var toc = document.getElementById("toc");
+  var tocContents = document.createElement("div");
+  tocContents.id = "toc-contents";
+  tocContents.textContent = "Contents";
+  toc.appendChild(tocContents);
+
+  var level = 1;
+  var currentUl = null;
+  for (var i = 0; i < headers.length; i++) {
+    var header = headers[i];
+    var headerLevel = header[0];
+    var headerValue = header[1];
+    var headerId = header[2];
+
+    var newLevel = parseInt(headerLevel.substring(1));
+    while (newLevel > level) {
+      // We loop here to handle the case where we have h2 ... h4.  This
+      // isn't a good way to write html, but someone may still do it.
+
+      var newUl = document.createElement("ul");
+      if (currentUl == null) {
+        toc.appendChild(newUl);
+      } else {
+        currentUl.appendChild(newUl);
+      }
+      currentUl = newUl;
+      level++;
+    }
+    while (newLevel < level) {
+      currentUl = currentUl.parentNode;
+      level--;
+    }
+    var li = document.createElement("li");
+    var a = document.createElement("a");
+    a.href = "#" + headerId;
+    a.textContent = headerValue;
+    li.appendChild(a);
+    currentUl.appendChild(li);
+  }
+}
+
+function wrapTables() {
+  var tables = document.getElementsByTagName("table");
+  for (var i = 0; i < tables.length; i++) {
+    var table = tables[i];
+    var parent = table.parentNode;
+    var div = document.createElement('div');
+    div.className = "table-wrapper";
+    parent.insertBefore(div, table);
+    div.appendChild(table);
+  }
+}
+
+buildToc();
+wrapTables();
+</script>

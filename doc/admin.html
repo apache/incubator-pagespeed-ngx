@@ -1,0 +1,392 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageSpeed Admin Pages</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>PageSpeed Admin Pages</h1>
+<p>
+  The admin pages are a collection of features that provide visibility
+  into the operation of the PageSpeed optimizations.
+</p>
+<p>
+The pagespeed_admin and pagespeed_global_admin pages aggregate a set of pages
+showing server state so they can be accessed from a single handler.  By
+organizing all these features under a single admin page, this can be done once,
+and can serve as a launching point for future administration features.
+Before <strong>version 1.9.32.1</strong> the admin pages were read-only, but
+starting in <strong>version 1.9.32.1</strong>, cache purging is supported.
+</p>
+<img src="images/admin_config.png" style="border:1px solid black" />
+<p>
+  The name of the currently active page is underlined in the top navigation bar.
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Page</th>
+      <th>Related Options</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Statistics</td>
+      <td>
+        <a href="#statistics"><code>Statistics</code></a><br/>
+        <a href="#virtual-hosts-and-stats"
+           ><code>UsePerVHostStatistics</code></a><br/>
+        <code>mod_pagespeed_beacon</code><br/>
+        <code>ngx_pagespeed_beacon</code>
+      </td>
+      <td>
+        Shows server statistics since startup, such as how many
+        resources are being optimized by filters, as well as various
+        latency and cache effectiveness metrics.
+      </td>
+    </tr>
+    <tr>
+      <td>Configuration</td>
+      <td><a href="config_filters">Configuring Filters</a><br/>
+        <a href="https_support#spdy_configuration"
+             ><code>ModPagespeedIf</code></a> (Apache only)</td>
+      <td>
+        Shows detailed configuration information including all filters,
+        options, and the current cache flush timestamp.
+      </td>
+    </tr>
+    <tr>
+      <td>Histograms</td>
+      <td>
+        <a href="filter-instrumentation-add"
+           ><code>add_instrumentation</code></a><br/>
+      </td>
+      <td>
+        Shows detailed latency data for Page Load Time, rewriting,
+        caches and HTTP fetching.
+      </td>
+    </tr>
+    <tr>
+      <td>Caches</td>
+      <td>
+        <a href="system#memcached"><code>MemcachedServers</code></a>
+        <a href="system#shm_cache"><code>CreateSharedMemoryMetadataCache</code></a>
+        <a href="system#purge_cache"><code>EnableCachePurge</code></a>
+      </td>
+      <td>
+        Shows detailed cache configuration information.  When accessed
+        from the Admin handler, it can be used to inspect the contents
+        of the cache, and provides an interface to purge the cache.
+      </td>
+    </tr>
+    <tr>
+      <td>Console</td>
+      <td>
+        <a href="admin#statistics"><code>Statistics</code></a><br/>
+        <a href="console#configuring"><code>StatisticsLogging</code></a><br/>
+        <a href="console#configuring"><code>LogDir</code></a>
+      </td>
+      <td>
+        Displays a <a href="console">console</a> of graphs
+        of server optimization behavior over time.
+      </td>
+    </tr>
+    <tr>
+      <td>Message History</td>
+      <td>
+        <a href="#message-buffer-size"><code>MessageBufferSize</code></a>
+      </td>
+      <td>
+        Server-wide history of recent logging output from PageSpeed,
+        including messages that are omitted from the server log file based on
+        its log level.
+      </td>
+    </tr>
+  </tbody>
+</table>
+<p>
+  Before 1.8.31.2, the main admin page is not available, but there
+  are page-specific handlers for statistics, messages, and the
+  console.  In 1.8.31.2 and later, the <code>*_pagespeed_*</code> handlers, such
+  as <code>mod_pagespeed_statistics</code>, will continue to be supported:
+<ul>
+  <li>They provide read-only access to server operation.  There may
+    be cases where a site owner wants to share statistics or console
+    information but not the ability to purge the cache.</li>
+  <li>Existing configurations must continue to work after an upgrade to
+    a release that supports pagespeed_admin.</li>
+  <li>The admin pages may later gain support for modifying the server
+    state</li>
+</ul>
+</p>
+<h2 id="config">Configuring Admin Pages</h2>
+
+<p>
+  In this table we use the term "server" for an Apache VirtualHost and
+  an nginx Server Block.  We use the term "global" to mean the entire
+  Apache or nginx system, covering all the configured VirtualHost and
+  Server Blocks.
+</p>
+<table>
+  <thead>
+    <tr><th>Apache Handler</th><th>Nginx Option</th><th>Version</th>
+      <th>Description</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>pagespeed_admin</code></td>
+      <td><code>AdminPath</code></td>
+      <td>1.8.31.2+</td><td>Covers all administrative functions for
+        a host in one handler.  If you establish this handler,
+        you don't need any of the other server-scoped methods.  Only
+        give 'admin' page access to clients that you are comfortable
+        allowing to modify the state of your PageSpeed configuration.
+      </td>
+    </tr>
+    <tr>
+      <td><code>pagespeed_global_admin</code></td>
+      <td><code>GlobalAdminPath</code></td>
+      <td>1.8.31.2+</td><td>Covers all administrative functions for
+        the entire global state in one handler.  If you establish this
+        handler, you don't
+        need <code>mod_pagespeed_global_statistics</code>.</td>
+    </tr>
+    <tr>
+      <td><code>mod_pagespeed_statistics</code></td>
+      <td><code>StatisticsPath</code> (1.8.31.2+)</td>
+      <td>All</td><td>Launchpad for Statistics, Histograms, and
+        a subset of the Caches page as described above.</td>
+    </tr>
+    <tr>
+      <td><code>mod_pagespeed_global_statistics</code></td>
+      <td><code>GlobalStatisticsPath</code> (1.8.31.2+)</td>
+      <td>1.1+</td><td>Same as above, but aggregates statistics across all
+        configured servers.  You must enable
+        <a href="#virtual-hosts-and-stats"
+           ><code>UsePerVHostStatistics</code></a> for separate global
+        statistics to be retained, otherwise all statistics will be global.</td>
+    </tr>
+    <tr>
+      <td><code>mod_pagespeed_message</code></td>
+      <td><code>MessagesPath</code> (1.8.31.2+)</td>
+      <td>1.0+</td><td>Displays recent log messages printed by PageSpeed,
+        including messages that may be below the current server loglevel
+        threshold such as "Info" messages.  Requires that
+        <a href="#message-buffer-size"><code>MessageBufferSize</code></a> be set.</td>
+    </tr>
+    <tr>
+      <td><code>pagespeed_console</code></td>
+      <td><code>ConsolePath</code> (1.8.31.2+)</td>
+      <td>1.6+</td><td>Displays a <a href="console">console</a> of graphs
+        of server optimization behavior over time.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="handlers">Establishing Handlers in Apache</h2>
+<p>
+  Each handler is optional; add them individually to enable
+  admin features.  Note that when you add handlers for
+  <code>pagespeed_admin</code> and <code>pagespeed_global_admin</code>
+  you are granting read/write access to server-state.  The other handlers
+  are read-only.  A sample handler that filters on IP address is
+  in the default configuration, whose general form is:
+</p>
+<pre class="prettyprint lang-sh">
+&lt;Location /PATH&gt;
+   Order allow,deny
+   Allow from localhost
+   Allow from 127.0.0.1
+   SetHandler HANDLER_NAME
+&lt;/Location&gt;
+</pre>
+<p>
+  You can choose any path for a handler, but you must specify the handler
+  name exactly as it appears in the table above.  By convention we use
+  use the handler name for the path.  You may also want to
+  employ login-based access to the admin pages, using
+  <code>AllowOverride AuthConfig</code>.  Please see the Apache
+  <a href="http://httpd.apache.org/docs/2.2/howto/auth.html">2.2</a>
+  or
+  <a href="http://httpd.apache.org/docs/2.4/howto/auth.html">2.4</a>
+  Documentation for details.
+</p>
+<h3 id="handlers">Establishing Handlers in Nginx</h2>
+<p>
+  In nginx, the handlers must be specified as location blocks.
+</p>
+<pre class="prettyprint lang-sh">
+location /ngx_pagespeed_statistics { allow 127.0.0.1; deny all; }
+location /ngx_pagespeed_global_statistics { allow 127.0.0.1; deny all; }
+location /ngx_pagespeed_message { allow 127.0.0.1; deny all; }
+location /pagespeed_console { allow 127.0.0.1; deny all; }
+location ~ ^/pagespeed_admin { allow 127.0.0.1; deny all; }
+location ~ ^/pagespeed_global_admin { allow 127.0.0.1; deny all; }
+</pre>
+<p class="note">
+  Note that these handlers must precede the
+  "<code>\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+</code>" location block.
+</p>
+<p>
+  In version 1.8.31.2 and later, the above location blocks are
+  needed for each path you elect to enable in PageSpeed options:
+</p>
+<pre>
+pagespeed StatisticsPath /ngx_pagespeed_statistics;
+pagespeed GlobalStatisticsPath /ngx_pagespeed_global_statistics;
+pagespeed MessagesPath /ngx_pagespeed_message;
+pagespeed ConsolePath /pagespeed_console;
+pagespeed AdminPath /pagespeed_admin;
+pagespeed GlobalAdminPath /pagespeed_global_admin;
+</pre>
+<p>
+  You can choose any path, as long as it's consistent between
+  the <code>pagespeed Path</code> and the <code>location</code>.  By
+  convention we use the names as specified in the example.
+</p>
+<p>
+  Prior to version 1.8.31.2, the above "Path" settings do not exist,
+  and the failure to specify location blocks leaves the paths active
+  with no access restrictions. The module will service requests
+  to the paths whether the location blocks are specified or not.
+  This applies to  <code>/ngx_pagespeed_statistics</code>,
+  <code>/ngx_pagespeed_global_statistics</code>,
+  <code>/ngx_pagespeed_message</code>, and <code>/pagespeed_console</code>.
+</p>
+<p class="note">
+  If you define access control for <code>/pagespeed_admin</code> or
+  <code>/pagespeed_console</code>, you must do so earlier in the configuration
+  file than the path to handle <code>.pagespeed</code> resources, to ensure
+  that the handlers are disambiguated.
+</p>
+<h3 id="limiting-handlers">Limiting Handler Access</h3>
+<p class="note"><strong>Note: New feature as of 1.10.33.0</strong></p>
+<p>
+  Apache's SetHandler access controls are accessible to anyone who can
+  modify <code>.htaccess</code> files, so in a typical shared hosting context
+  the global admin site isn't sufficiently protected.  As of 1.10.33.0,
+  PageSpeed allows setting an additional restriction of what domains are allowed
+  to load handlers.  For example, to deny access entirely, you could put:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+>ModPagespeedStatisticsDomains Disallow *
+ModPagespeedGlobalStatisticsDomains Disallow *
+ModPagespeedMessagesDomains Disallow *
+ModPagespeedConsoleDomains Disallow *
+ModPagespeedAdminDomains Disallow *
+ModPagespeedGlobalAdminDomains Disallow *</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+>pagespeed StatisticsDomains Disallow *;
+pagespeed GlobalStatisticsDomains Disallow *;
+pagespeed MessagesDomains Disallow *;
+pagespeed ConsoleDomains Disallow *;
+pagespeed AdminDomains Disallow *;
+pagespeed GlobalAdminDomains Disallow *;</pre>
+</dl>
+<p>
+  To allow access only to an admin, define a new VHost
+  like <code>admin.example.com</code>, use standard web-server access control
+  (IP or password) to restrict access to only that admin, and then at the top
+  level of your config put:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+>ModPagespeedStatisticsDomains Allow admin.example.com
+ModPagespeedGlobalStatisticsDomains Allow admin.example.com
+ModPagespeedMessagesDomains Allow admin.example.com
+ModPagespeedConsoleDomains Allow admin.example.com
+ModPagespeedAdminDomains Allow admin.example.com
+ModPagespeedGlobalAdminDomains Allow admin.example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+>pagespeed StatisticsDomains Allow admin.example.com;
+pagespeed GlobalStatisticsDomains Allow admin.example.com;
+pagespeed MessagesDomains Allow admin.example.com;
+pagespeed ConsoleDomains Allow admin.example.com;
+pagespeed AdminDomains Allow admin.example.com;
+pagespeed GlobalAdminDomains Allow admin.example.com;</pre>
+</dl>
+<p>
+  Now when you visit <code>admin.example.com/pagespeed_global_admin</code>
+  you'll see global (server-level) admin information, but users are not able to
+  access this under their own domain or turn the handler on
+  with <code>.htaccess</code>.
+</p>
+<p>
+  For all six of these options the default value is <code>Allow *</code>.  If
+  you explicitly <code>Allow</code> access to any site, all others are
+  automatically <code>Disallow</code>ed.  Wildcards are allowed, and additional
+  directives are applied in sequence.  For example, consider the following
+  config:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+>ModPagespeedAdminDomains Allow *.example.*
+ModPagespeedAdminDomains Disallow *.example.org
+ModPagespeedAdminDomains Allow www.example.org</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+>pagespeed AdminDomains Allow *.example.*;
+pagespeed AdminDomains Disallow *.example.org;
+pagespeed AdminDomains Allow www.example.org;</pre>
+</dl>
+<p>
+  This would allow access to <code>www.example.com/pagespeed_admin</code>,
+  and <code>www.example.org/pagespeed_admin</code> but
+  not <code>shared.example.com/pagespeed_admin</code>.
+</p>
+
+<h3 id="statistics">Shared Memory Statistics</h2>
+<p>
+  By default PageSpeed collects cross-process statistics.  While
+  they're mostly intended for debugging and evaluation
+  using <code>/mod_pagespeed_statistics</code>, <code>/ngx_pagespeed_statistics</code>,
+  and the <a href="console">PageSpeed Console</a>, statistics are also
+  necessary for limiting concurrent image rewrites
+  and <a href="#rate_limit_background_fetches">background fetches</a>.
+  It's not recommended to turn them off, as their performance impact
+  is minimal, but if you need to you can do so with:
+  <dl>
+    <dt>Apache:<dd><pre class="prettyprint"
+                        >ModPagespeedStatistics off</pre></dd></dt>
+    <dt>Nginx:<dd><pre class="prettyprint"
+                       >pagespeed Statistics off;</pre></dd></dt>
+  </dl>
+</p>
+<h3 id="virtual-hosts-and-stats">Virtual hosts and statistics</h3>
+<p>
+  You can choose whether PageSpeed aggregates its statistics
+  over all virtual hosts (the default), or to keeps separate counts for each. You
+  can chose the latter by specifying
+  <code>UsePerVHostStatistics on</code>. In that
+  case, <code>/pagespeed_admin</code>, <code>/mod_pagespeed_statistics</code>
+  and <code>/ngx_pagespeed_statistics</code> will show the data for
+  whatever virtual host is being accessed. If you do turn per-virtual
+  host statistics on, you can still access the aggregates
+  under <code>/pagespeed_global_admin</code>, <code>/mod_pagespeed_global_statistics</code>
+  or <code>/ngx_pagespeed_global_statistics</code>.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">ModPagespeedUsePerVhostStatistics on</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">pagespeed UsePerVhostStatistics on;</pre>
+</dl>
+
+<h3 id="message-buffer-size">Message Buffer Size</h3>
+<p>
+  Determines the number of bytes of shared memory to allocate as a circular
+  buffer for holding recent PageSpeed log messages.  By default, the size of
+  this buffer is zero, and no messages will be retained.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">ModPagespeedMessageBufferSize 100000</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">pagespeed MessageBufferSize 100000;</pre>
+</dl>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

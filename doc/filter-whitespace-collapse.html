@@ -1,0 +1,124 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Collapse Whitespace</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Collapse Whitespace</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Collapse Whitespace' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters collapse_whitespace</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters collapse_whitespace;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+The 'Collapse Whitespace' filter reduces bytes transmitted in an HTML file
+by removing unnecessary whitespace.
+</p>
+
+<h2>Operation</h2>
+The filter reduces the transfer size of HTML files by replacing contiguous
+whitespace with a single whitespace character. Because HTML is often
+formatted with extra whitespace for human readability or as an incidental
+effect of the templates used to generate it, this technique can reduce
+the number of bytes needed to transmit HTML resources.
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+
+  &lt;head&gt;
+    &lt;title&gt;Hello,   world!   &lt;/title&gt;
+    &lt;script&gt; var x = 'Hello,   world!';&lt;/script&gt;
+  &lt;/head&gt;
+
+  &lt;body&gt;
+    Hello, World!
+    &lt;pre&gt;
+      Hello,
+        World!
+    &lt;/pre&gt;
+  &lt;/body&gt;
+
+&lt;/html&gt;
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+&lt;head&gt;
+&lt;title&gt;Hello, world!&lt;/title&gt;
+&lt;script&gt; var x = 'Hello,   world!';&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+Hello, World!
+&lt;pre&gt;
+      Hello,
+        World!
+&lt;/pre&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/collapse_whitespace.html?ModPagespeed=on&amp;ModPagespeedFilters=collapse_whitespace">example</a>.
+</p>
+
+<h2>Requirements</h2>
+<p>
+The 'Collapse Whitespace' filter will not modify whitespace appearing
+within <code>&lt;pre&gt;</code>, <code>&lt;textarea&gt;</code>, <code>&lt;script&gt;</code> and <code>&lt;style&gt;</code>. Extraneous whitespace
+within inline scripts and styles can be removed using the
+<a href="filter-js-minify">JS Minify</a> and <a href="filter-css-rewrite"
+>CSS Minify</a> filters.
+</p>
+<p>
+The 'Collapse Whitespace' filter will attempt to preserve newline
+characters to an extent -- a contiguous sequence of whitespace with at
+least one newline anywhere in it will always collapse to a single new line.
+Why?  See the <a href="faq#collapse-newlines">collapse newlines entry in the
+FAQ</a>.
+</p>
+
+<h2>Risks</h2>
+<p>
+Although contiguous whitespace in HTML (beyond the first space) is
+normally ignored by the browser outside of tags like <code>&lt;pre&gt;
+</code> and <code>&lt;textarea&gt;</code>, one can use CSS properties
+such as <code>"white-space: pre"</code> to make the browser preserve
+whitespace within a portion of the document: compare this example
+<a href="http://www.modpagespeed.com/mod_pagespeed_example/css_whitespace.html?ModPagespeed=on&amp;ModPagespeedFilters=collapse_whitespace">with</a>
+and
+<a href="http://www.modpagespeed.com/mod_pagespeed_example/css_whitespace.html?ModPagespeed=off">without</a>
+the filter enabled.
+</p>
+<p>
+Use of such properties is relatively rare, however, the 'Collapse
+Whitespace' filter is not yet CSS-aware, so any pages that might use
+such CSS properties (either statically or dynamically) should  not use
+this filter at this time.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

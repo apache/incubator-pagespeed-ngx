@@ -1,0 +1,59 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Convert Meta Tags</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Convert Meta Tags</h1>
+<h2>Configuration</h2>
+<p>
+The 'Convert Meta Tags' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters convert_meta_tags</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters convert_meta_tags;</pre>
+</dl>
+<p>
+in the configuration file, but it is also enabled automatically by the core
+filter set.
+</p>
+
+<h2>Description</h2>
+<p>
+The 'Convert Meta Tags' filter adds a response header that matches each meta
+tag with an http-equiv attribute.  For example, HTML
+<pre class="prettyprint"
+     >&lt;meta http-eqiv="Content-Type" content="text/html; charset=UTF-8"&gt;</pre>
+would add an HTTP header:
+<pre class="prettyprint"
+     >Content-Type: text/html; charset=UTF-8</pre>
+in the response headers.
+</p>
+<p>
+The original tag is left unchanged.
+</p>
+<p>
+Certain http-equiv meta tags, specifically those that specify content-type,
+require a browser to reparse the html document if they do not match the headers.
+By ensuring that the headers match the meta tags, these reparsing delays are
+avoided.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered minimal risk because at this time,
+Content-Type is the only <code>http-equiv</code> value that is transformed into
+an HTTP header.  Other http-equiv values have been found to have unexpected semantic
+implications when transformed to HTTP.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

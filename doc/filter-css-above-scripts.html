@@ -1,0 +1,133 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Move CSS Above Scripts</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Move CSS Above Scripts</h1>
+
+
+<h2>Configuration</h2>
+<p>
+  The 'Move CSS Above Scripts' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters move_css_above_scripts</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters move_css_above_scripts;</pre>
+</dl>
+<p>
+  in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+  'Move CSS Above Scripts' seeks to make sure scripts do not block the
+  loading of CSS resources.
+</p>
+<p>
+  This is based on the
+  <a href="/speed/docs/best-practices/rtt#PutStylesBeforeScripts">
+    best practice for downloading resources early.
+  </a>
+</p>
+
+<h2>Operation</h2>
+<p>
+  The 'Move CSS Above Scripts' filter operates only on CSS
+  <code>&lt;link&gt;</code> and <code>&lt;style&gt;</code> tags found after the
+  first <code>&lt;script&gt;</code> tag and moves these tags above the first
+  <code>&lt;script&gt;</code>.
+</p>
+<p>
+  For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;script src="script.js" type="text/javascript"&gt;&lt;/script&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+    &lt;style type="text/css"&gt;
+      .foo { color: red; }
+    &lt;/style&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/all_styles.css"&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+  Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;style type="text/css"&gt;
+      .foo { color: red; }
+    &lt;/style&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/all_styles.css"&gt;
+    &lt;script src="script.js" type="text/javascript"&gt;&lt;/script&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<p>
+  In some browsers the original version will not even download the CSS file
+  until the JavaScript has been downloaded and run. This transformation will
+  make sure the CSS file is loaded first.
+</p>
+<p class="note">
+  Note: You may also want to enable
+  the <a href="filter-css-to-head">move_css_to_head</a> filter to avoid a flash
+  of unstyled content.  When both filters are enabled, stylesheets are moved
+  into the head and above the first script.
+</p>
+
+<h3>Example</h3>
+<p>
+  You can see the filter in action at <code>www.modpagespeed.com</code> on this
+  <a href="http://www.modpagespeed.com/move_css_above_scripts.html?ModPagespeed=on&amp;ModPagespeedFilters=move_css_above_scripts">example</a>.
+</p>
+
+<h2>Limitations</h2>
+<p>
+  This filter operates within the scope of a "flush window". Specifically,
+  large, or dynamically generated HTML files may be "flushed" by the
+  resource generator before they are complete. If the filter
+  encounters a flush after the first <code>&lt;script&gt;</code> tag,
+  subsequently encountered CSS elements will not be moved above it.
+</p>
+
+<h2>Risks</h2>
+<p>
+  This filter is considered low risk. However, JavaScript that is
+  executed before a CSS element will see a different view of the DOM in
+  the presence of this rewriter:  the CSS element will now be in the head.
+  If there is such JavaScript embedded in the middle of a page then this
+  rewriter may change its behavior.
+</p>
+<p>
+  This filter may slow down your webpages for some browsers. Just as JavaScript
+  can block download of CSS in some browsers, some others will not execute
+  JavaScript until preceding CSS has been rendered. This filter is currently
+  considered experimental while we measure its effectiveness.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

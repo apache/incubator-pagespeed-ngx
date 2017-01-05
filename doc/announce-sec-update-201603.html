@@ -1,0 +1,149 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>March 2016 PageSpeed Security Update.</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>March 2016 PageSpeed Security Update.</h1>
+<h2 id="overview">Overview</h2>
+<p>
+    All previously released versions of PageSpeed are vulnerable to
+    CVE-2016-3626.  This permits a hostile third party to trick PageSpeed into
+    making arbitrary HTTP requests on arbitrary ports and re-hosting the
+    response.  If the machine running PageSpeed has access to services that are
+    not otherwise available, this can reveal those resources.  Additionally,
+    this can be exploited for cross-site scripting.
+</p>
+<p>
+    Users are <b>strongly</b> encouraged to update immediately.
+</p>
+
+<p>To be notified of further security updates subscribe to the
+<a href="mailing-lists#announcements">announcements mailing list</a>.
+
+<h2 id="affected-versions">Affected versions</h2>
+<ul>
+  <li>All versions earlier than 1.9.</li>
+  <li>Versions 1.9.32.0 &ndash; 1.9.33.13 (fixed in 1.9.32.14).</li>
+  <li>Versions 1.10.33.0 &ndash; 1.10.33.6 (fixed in 1.10.33.7).</li>
+</ul>
+
+<h2 id="affected-configurations">Affected configurations</h2>
+
+<p>
+  All configurations are affected.
+</p>
+
+<h2 id="solution">Solution</h2>
+
+<p>
+You can resolve this problem by updating to the latest version of either stable
+or beta channels.  If that is not possible,
+a <a href="#workaround">workaround</a> is available.
+
+</p>
+
+<h3 id="latest">Upgrading to the latest version</h3>
+
+<p>If you installed the .rpm package, you can update with:
+<pre>
+sudo yum update
+sudo /etc/init.d/httpd restart
+</pre>
+
+<p>If you installed the .deb package, you can update with:
+<pre>
+sudo apt-get update
+sudo apt-get upgrade
+sudo /etc/init.d/apache2 restart
+</pre>
+
+It is also possible to <a href="https://developers.google.com/speed/pagespeed/module/build_mod_pagespeed_from_source">
+build from source. </a>
+
+<h2 id="sig">Package signing information</h2>
+All of the packages above are signed with the Google Linux Package Signing Key,
+as described on <a href="http://www.google.com/linuxrepositories/">
+http://www.google.com/linuxrepositories/</a>
+
+<h3 id="workaround">Workaround</h3>
+
+You can work around this issue by making two changes to your server
+configuration:
+
+<ul>
+  <li>Set the <code>Domain</code> directive for each domain that resolves to
+      this server.  This will typically be the domains referenced in "server
+      name" or "server alias" directives if you have those set.  Set them both
+      alone and with a wildcard port number, and for both http and https:
+      <dl>
+        <dt>Apache:<dd><pre class="prettyprint"
+>ModPagespeedDomain http://www.example.com
+ModPagespeedDomain http://www.example.com:*
+ModPagespeedDomain https://www.example.com
+ModPagespeedDomain https://www.example.com:*
+</pre>
+        <dt>Nginx:<dd><pre class="prettyprint"
+>pagespeed Domain http://www.example.com;
+pagespeed Domain http://www.example.com:*;
+pagespeed Domain https://www.example.com;
+pagespeed Domain https://www.example.com:*;</pre>
+      </dl>
+
+      This is sufficient to prevent XSS on the referenced domains.
+
+      <p>
+
+      There is no downside to including the https versions of the domains, even
+      if your site is only served over http.
+  </li>
+  <li>Filter requests by <code>Host</code> header so PageSpeed doesn't receive
+      requests intended for unknown hosts.  Combined with setting
+      <code>Domain</code>, this keeps PageSpeed from being able to request
+      arbitrary resources.
+
+      <p>
+
+      In Apache, turn on <a
+      href="http://httpd.apache.org/docs/2.2/mod/core.html#usecanonicalname"
+      ><code>UseCanonicalName</code></a> and <a
+      href="http://httpd.apache.org/docs/2.2/mod/core.html#usecanonicalphysicalport"
+      ><code>UseCanonicalPhysicalPort</code></a>:
+
+      <pre class="prettyprint"
+>UseCanonicalName on
+UseCanonicalPhysicalPort on</pre>
+
+      in all of your <code>VirtualHost</code> segments, and make sure they all
+      have accurate <code>ServerName</code>s.
+
+      <p>
+
+      In Nginx, set up an empty catch-all virtual host.  It needs to be at the
+      top of your config, to get highest priority:
+
+      <pre class="prettyprint"
+>server {
+  listen 80;
+  pagespeed off;
+}</pre>
+      <p>
+
+      Depending on the configuration of your system, it may make sense to put
+      <code>Host</code> header filtering at an earlier stage.
+  </li>
+</ul>
+
+
+
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

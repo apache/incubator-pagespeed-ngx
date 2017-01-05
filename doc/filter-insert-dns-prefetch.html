@@ -1,0 +1,95 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pre-Resolve DNS</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Pre-Resolve DNS</h1>
+<h2>Objective</h2>
+<p>
+Reduce DNS lookup time by pre-resolving at the browser.
+</p>
+
+  <h2>Configuration</h2>
+  <p>
+  The 'Pre-Resolve DNS' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters insert_dns_prefetch</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters insert_dns_prefetch;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+DNS resolution time varies from &lt;1ms for locally cached results, to hundreds
+of milliseconds due to the cascading nature of DNS. This can contribute
+significantly towards total page load time. This filter reduces DNS lookup time
+by providing hints to the browser at the beginning of the HTML, which allows the
+browser to pre-resolve DNS for resources on the page.
+</p>
+
+<h2>Operation</h2>
+<p>
+This filter inserts the tag <code>&lt;link rel="dns-prefetch"&gt;</code> (or
+<code>&lt;link rel="prefetch"&gt;</code> for IE9) in the HEAD section, for all
+domains present in the HTML document.
+</p>
+
+<h2>Example</h2>
+<p>
+The example below shows the HTML before rewriting:
+</p>
+
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;img src="www.domain1.com/image1.jpeg"&gt;
+    &lt;script src="www.domain2.com/script1.js"&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<p>
+and after rewriting:
+</p>
+
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;link rel="dns-prefetch" href="//www.domain1.com"&gt;
+    &lt;link rel="dns-prefetch" href="//www.domain2.com"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;img src="www.domain1.com/image1.jpeg"&gt;
+    &lt;script src="www.domain2.com/script1.js"&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<h2>Limitations</h2>
+<p>
+This filter will be applied only on Firefox 3.5+, Chrome, Safari 5+ and IE
+9+.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered minimal risk.
+</p>
+</div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>
+

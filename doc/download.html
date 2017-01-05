@@ -1,0 +1,110 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Installing From Packages</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Installing From Packages</h1>
+<p class="note">
+  If you're using Nginx you need
+  to <a href="build_ngx_pagespeed_from_source">build from source</a>.  These
+  packages are Apache-only.
+</p>
+
+<div id="downloads">
+<dl>
+  <dt>Latest Beta Version</dt>
+  <dd>
+<div class=download><a href="https://dl-ssl.google.com/dl/linux/direct/mod-pagespeed-beta_current_i386.deb">mod_pagespeed 32-bit .deb (Debian/Ubuntu)</a></div>
+<div class=download><a href="https://dl-ssl.google.com/dl/linux/direct/mod-pagespeed-beta_current_amd64.deb">mod_pagespeed 64-bit .deb (Debian/Ubuntu)</a></div>
+<div class=download><a href="https://dl-ssl.google.com/dl/linux/direct/mod-pagespeed-beta_current_i386.rpm">mod_pagespeed 32-bit .rpm (CentOS/Fedora)</a></div>
+<div class=download><a href="https://dl-ssl.google.com/dl/linux/direct/mod-pagespeed-beta_current_x86_64.rpm">mod_pagespeed 64-bit .rpm (CentOS/Fedora)</a></div>
+  </dd>
+  <dt>Latest Stable Version</dt>
+  <dd>
+<div class=download><a href="https://dl-ssl.google.com/dl/linux/direct/mod-pagespeed-stable_current_i386.deb">mod_pagespeed 32-bit .deb (Debian/Ubuntu)</a></div>
+<div class=download><a href="https://dl-ssl.google.com/dl/linux/direct/mod-pagespeed-stable_current_amd64.deb">mod_pagespeed 64-bit .deb (Debian/Ubuntu)</a></div>
+<div class=download><a href="https://dl-ssl.google.com/dl/linux/direct/mod-pagespeed-stable_current_i386.rpm">mod_pagespeed 32-bit .rpm (CentOS/Fedora)</a></div>
+<div class=download><a href="https://dl-ssl.google.com/dl/linux/direct/mod-pagespeed-stable_current_x86_64.rpm">mod_pagespeed 64-bit .rpm (CentOS/Fedora)</a></div>
+  </dd>
+</dl>
+</div>
+
+<h3>Supported platforms</h3>
+<ul>
+<li>CentOS/Fedora (32-bit and 64-bit)</li>
+<li>Debian/Ubuntu (32-bit and 64-bit)</li>
+</ul>
+
+<p>To install the packages, on Debian/Ubuntu, please run the following
+command:</p>
+<pre class="prettyprint lang-bsh">
+sudo dpkg -i mod-pagespeed-*.deb
+sudo apt-get -f install
+</pre>
+
+<p>For CentOS/Fedora, please execute:</p>
+<pre class="prettyprint">
+sudo yum install at  # if you do not already have 'at' installed
+sudo rpm -U mod-pagespeed-*.rpm
+</pre>
+
+<p>Installing mod_pagespeed will add the Google repository so your system
+will automatically keep mod_pagespeed up to date. If you don't want Google's
+repository, do <code>sudo touch /etc/default/mod-pagespeed</code> before
+installing the package.</p>
+
+<p>You can also download a number of <a href="https://dl-ssl.google.com/page-speed/mod-pagespeed/mod_pagespeed_examples.tar.gz">system tests</a>. These are the same tests available on <a href="http://www.modpagespeed.com">ModPageSpeed.com</a>.</p>
+
+<h3>What is installed</h3>
+<ul>
+<li>The mod_pagespeed packages install two versions of the mod_pagespeed code
+itself, <code>mod_pagespeed.so</code> for Apache 2.2
+and <code>mod_pagespeed_ap24.so</code> for Apache 2.4.</li>
+<li>Configuration files: <code>pagespeed.conf</code>, <code>pagespeed_libraries.conf</code>, and (on Debian) <code>pagespeed.load</code>.  If you modify one of these configuration files, that file will not be upgraded automatically in the future.</li>
+<li>A standalone JavaScript minifier <code>pagespeed_js_minify</code> based on
+the one used in mod_pagespeed, that can
+both <a href="build_from_source#js-minify">minify JavaScript</a>
+and <a href="filter-canonicalize-js#sample">generate metadata for library
+canonicalization</a>. </li>
+</ul>
+
+<h2>How to upgrade</h2>
+<p>To upgrade from a previous version, use the standard <code>yum</code> or
+<code>apt-get</code> update commands. For example:</p>
+<dl>
+  <dt>.rpm
+  <dd><pre>
+sudo yum update mod-pagespeed-beta  # Or mod-pagespeed-stable
+sudo /etc/init.d/httpd restart</pre>
+  <dt>.deb
+  <dd><pre>
+sudo apt-get update
+sudo apt-get upgrade
+sudo /etc/init.d/apache2 restart</pre>
+</dl>
+
+<h2>How to Change Channels</h2>
+<p>To convert from one channel to another, uninstall one and re-install
+the other. For example, if you would like to move from stable to beta
+channel:</p>
+<dl>
+  <dt>.rpm
+  <dd><pre>
+sudo yum remove mod-pagespeed-stable
+sudo yum install mod-pagespeed-beta</pre>
+  <dt>.deb
+  <dd><pre>
+sudo apt-get remove mod-pagespeed-stable
+sudo apt-get install mod-pagespeed-beta</pre>
+</dl>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

@@ -1,0 +1,783 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Image Filter and Option Reference</title>
+  <link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Image Filter and Option Reference</h1>
+<h2>Filter Reference</h2>
+
+<h3 id="convert_gif_to_png">Convert GIF to PNG</h3>
+<p>
+This filter losslessly converts GIF images to PNG, a more recent image format
+that can generally achieve higher compression than GIF. This filter only
+converts single-frame GIFs, as PNG only supports single-frame images.
+Animated GIFs can be converted to the WebP format using the
+<code>convert_to_webp_animated</code> filter.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters convert_gif_to_png</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters convert_gif_to_png;</pre>
+</dl>
+
+<h3 id="convert_jpeg_to_progressive">Convert JPEG to progressive</h3>
+<p>
+This filter uses progressive format to encode large (more than 10KB) JPEG
+images. Progressive format generally yields better compression for large
+images, and permits incremental display by the browser.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters convert_jpeg_to_progressive</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters convert_jpeg_to_progressive;</pre>
+</dl>
+
+<h3 id="convert_jpeg_to_webp">Convert JPEG to WebP</h3>
+<p>
+This filter converts JPEG to lossily-encoded WebP format if the latter is
+supported by the browser
+(see <a href="https://developers.google.com/speed/webp/faq">
+list of browsers supporting WebP</a>);
+otherwise, this filter is ignored.
+</p>
+<p>
+With this filter enabled, GIF and PNG images can also be converted to
+lossily-encoded WebP if the configuration allows them to be converted to JPEG
+(i.e., if <code>convert_gif_to_png</code> and <code>convert_png_to_jpeg</code>
+are also enabled), and if PageSpeed determines that the images are not
+sensitive to compression noise.
+</p>
+<p class="note"><strong>
+Note: Before 1.8.31.2, if <code>convert_to_webp_lossless</code> was enabled,
+GIF and PNG images were converted to losslessly-encoded WebP even if they
+could be converted to JPEG or lossily-encoded WebP.
+</strong></p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters convert_jpeg_to_webp</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters convert_jpeg_to_webp;</pre>
+</dl>
+
+<h3 id="convert_png_to_jpeg">Convert PNG to JPEG</h3>
+<p>
+This filter converts GIF and PNG images to JPEG if they have no transparent
+pixels and if PageSpeed determines that they are not sensitive to compression
+noise. The conversion is lossy but the optimized JPEG images are usually
+substantially smaller than the original.
+</p>
+<p class="note"><strong>
+Note: before 1.8.31.2 mod_pagespeed did not check whether the image was
+sensitive to compression noise and converted the image to JPEG as long as it
+did not have transparent pixels.
+</strong></p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters convert_png_to_jpeg</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters convert_png_to_jpeg;</pre>
+</dl>
+<p>
+
+<h3 id="convert_to_webp_animated">Convert to WebP animated</h3>
+<p>
+This filter converts animated GIF to animated WebP if the latter format is
+supported by the browser; otherwise, this filter is ignored. Check
+<a href=
+"https://developers.google.com/speed/webp/faq#why_should_i_use_animated_webp">
+here</a>
+for the advantages of animated WebP and a list of supporting browsers.
+</p>
+<p class="note"><strong>Note: New feature as of 1.10.33.0</strong></p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters convert_to_webp_animated</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters convert_to_webp_animated;</pre>
+</dl>
+
+<h3 id="convert_to_webp_lossless">Convert to WebP lossless</h3>
+<p>
+This filter converts PNG and non-animated GIF images to losslessly-encoded
+WebP if PageSpeed determines that the images are sensitive to compression
+noise and if the latter format is supported by the browser
+(see <a href="https://developers.google.com/speed/webp/faq">
+list of browsers supporting WebP</a>);
+otherwise, this filter is ignored.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters convert_to_webp_lossless</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters convert_to_webp_lossless;</pre>
+</dl>
+
+<h3 id="inline_images">Inline images</h3>
+<p>
+This filter replaces references to small images by converting them to inline
+<code>data:</code> URLs, eliminating the need to initiate new connections for
+fetching the image data.
+</p>
+<p id="inline_beacons">
+By default <code>inline_images</code> injects JavaScript that
+uses a <a href="faq#beacons">beacon</a> to report back to the server the
+images that are visible in the client's initial viewport (above-the-fold).
+It takes a few accesses of a page for the data to be reported back and
+processed but eventually the above-the-fold images will be identified and
+inlined, while below-the-fold images will not be inlined; until then all
+small images will be inlined.
+</p>
+<p>
+The use of beacons can be disabled using the
+<a href="config_filters#beacons">CriticalImagesBeaconEnabled</a> option.
+If they are disabled, <code>inline_images</code> will not inject the
+JavaScript and will revert to inlining small images.
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters inline_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters inline_images;</pre>
+</dl>
+
+<h3 id="inline_preview">Inline preview images</h3>
+<p>
+This filter replaces each image URL with an inline <code>data:</code> URL of
+reduced quality; then, after the page's onload event, loads the full-size
+images. Inlining reduced-quality images makes the page render much faster.
+As the full-size images load in later, the final experience is a fast page
+load without loss of detail.
+See <a href="filter-inline-preview-images">Inline Preview Images</a>
+for more details.
+</p>
+
+<h3 id="insert_image_dimensions">Insert image dimensions</h3>
+<p>
+This filter adds <code>width=</code> and <code>height=</code> attributes to the
+<code>&lt;img&gt;</code> tags if they are missing. Values for the
+<code>width=</code> and <code>height=</code> attributes are computed from the
+image.
+</p>
+<p>
+Note: This filter may cause stretching or shrinking distortion if you have CSS
+rules that modify an image's dimensions.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters insert_image_dimensions</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters insert_image_dimensions;</pre>
+</dl>
+
+<h3 id="recompress_images">Recompress images</h3>
+<p>
+This is a filter group consisting of
+<code>convert_gif_to_png</code>, <code>convert_jpeg_to_progressive</code>,
+<code>convert_jpeg_to_webp</code>, <code>convert_png_to_jpeg</code>,
+<code>jpeg_subsampling</code>, <code>recompress_jpeg</code>,
+<code>recompress_png</code>, <code>recompress_webp</code>,
+<code>strip_image_color_profile</code>,
+and <code>strip_image_meta_data</code>.
+</p>
+<p class="note"><strong>
+Note: before 1.11.33.0 <code>convert_png_to_jpeg</code> was not part of
+<code>recompress_images</code> and needed to be enabled separately.
+</strong></p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters recompress_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters recompress_images;</pre>
+</dl>
+
+<h3 id="recompress_jpeg">Recompress JPEG</h3>
+<p>
+This filter recompresses JPEG images. Quality for the output image is the
+minimum of the original image and that specified in the configuration.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters recompress_jpeg</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters recompress_jpeg;</pre>
+</dl>
+
+<h3 id="recompress_png">Recompress PNG</h3>
+<p>
+This filter recompresses PNG images.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters recompress_png</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters recompress_png;</pre>
+</dl>
+
+<h3 id="recompress_webp">Recompress WebP</h3>
+<p>
+This filter recompresses single-frame (non-animated) WebP images to the quality
+specified in the configuration.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters recompress_webp</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters recompress_webp;</pre>
+</dl>
+
+<h3 id="jpeg_subsampling">Reduce JPEG subsampling</h3>
+<p>
+This filter uses 4:2:0 chroma subsampling for JPEG images, wherein hue and
+saturation have only 25% as many samples as brightness. Because human vision
+is less sensitive to hue and saturation than to brightness, this subsampling
+can significantly reduce image size with little effect on perception.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters jpeg_subsampling</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters jpeg_subsampling;</pre>
+</dl>
+
+<h3 id="resize_images">Resize images</h3>
+<p>
+This filter shrinks the dimensions of an image to the <code>width=</code> or
+<code>height=</code> attribute specified in the <code>&lt;img&gt;</code> tag
+or in the inline <code>style=</code> attribute.
+</p>
+<p>
+Note: This filter always strips color profiles and metadata. The resized image
+may also be recompressed or converted to a new format and quality based on
+your configuration.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters resize_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters resize_images;</pre>
+</dl>
+
+<h3 id="resize_rendered_image_dimensions">
+Resize images to rendered dimensions
+</h3>
+<p>
+This filter shrinks images to their rendered dimensions on the web page.
+Unlike <code>resize_images</code>, it ignores any <code>width</code> and
+<code>height</code> attributes specified for the images. If the same image
+appears more than once on a page it is resized to the largest rendered
+dimensions.
+</p>
+<p>
+To report the rendered dimensions back to the server, this filter
+injects JavaScript code to your pages which <a href="faq#beacons">beacon</a>
+the sizes back. Your page needs to be visited several times before the server
+figures out the rendered dimensions. To use this filter, the
+<a href="config_filters#beacons">CriticalImagesBeaconEnabled</a> filter must
+be enabled (this is the default).
+</p>
+<p>
+Note: If both <code>resize_rendered_image_dimensions</code> and
+<code>resize_images</code> are enabled,
+<code>resize_rendered_image_dimensions</code> takes precedence.
+</p>
+<p>
+Note: This filter always strips color profiles and metadata. The resized image
+may be recompressed or converted to a new format and quality based on your
+configuration.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters resize_rendered_image_dimensions</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters resize_rendered_image_dimensions;</pre>
+</dl>
+
+<h3 id="rewrite_images">Rewrite images</h3>
+<p>
+This is a filter group that includes <code>inline_images</code>,
+<code>recompress_images</code>, <code>convert_to_webp_lossless</code>,
+and <code>resize_images</code>.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters rewrite_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters rewrite_images;</pre>
+</dl>
+
+<h3 id="strip_image_color_profile">Strip image color profile</h3>
+<p>
+This filter strips color profiles from images. The stripped images
+may also be recompressed or converted to a new format and quality based on
+your configuration.
+</p>
+<p>
+Note: Image resizing or format conversion always removes color profiles.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters strip_image_color_profile</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters strip_image_color_profile;</pre>
+</dl>
+
+<h3 id="strip_image_meta_data">Strip image metadata</h3>
+<p>
+This filter strips metadata, i.e., data which is not displayed, from images.
+The stripped images may also be recompressed or converted to a new format and
+quality based on your configuration.
+</p>
+<p>
+Note: Image resizing or format conversion always removes metadata.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters strip_image_meta_data</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters strip_image_meta_data;</pre>
+</dl>
+
+<h2>Option Reference</h2>
+
+<h3 id="AllowVaryOn">AllowVaryOn</h3>
+<p>
+This option controls the response headers PageSpeed may use when deciding
+how to recompress images in
+<a href="system#ipro">In-Place Resource Optimization</a> mode.
+PageSpeed uses only the specified headers to tailor the format and quality
+to the client device and then emits a <code>Vary</code> response header which
+lists the headers it actually used. If you are using a CDN or caching proxy
+in front of PageSpeed, it must support the specified headers so the optimized
+images will be cached correctly in IPRO mode.
+</p>
+<p>
+Valid values for this option are:
+</p>
+
+<ul>
+  <li>
+    <code>None</code>: This option offers the best caching but disables some
+    of PageSpeed's image optimization features, including WebP transcoding.
+  </li>
+    <li><code>Auto</code>: This is equivalent to
+    "<code>Accept</code>, <code>Save-Data</code>" when the request from your
+    user has the <code>Via</code> header (i.e., the request came through
+    a proxy), or "<code>User-Agent</code>, <code>Save-Data</code>" otherwise.
+  </li>
+  <li>
+    One or more headers from the following, separated by comma:
+    <code>Accept</code>, <code>Save-Data</code>, <code>User-Agent</code>.
+  </li>
+</ul>
+
+<p>
+The default is <code>Auto</code>.
+</p>
+<p>
+When you allow PageSpeed to vary on <code>User-Agent</code>, either directly
+or via <code>Auto</code>, PageSpeed tries all image formats and all image
+qualities that you have enabled. For example, PageSpeed uses all modes of WebP
+and qualities for small screens if they apply. However, because of the huge
+number of user-agents, allowing vary on <code>User-Agent</code> can take up
+a huge amount of disk space in a cache. Therefore, PageSpeed does not
+recommend using vary on <code>User-Agent</code> if you use a caching proxy
+or CDN.
+</p>
+<p>
+On the other hand, when you allow PageSpeed to vary on <code>Accept</code>,
+either directly or via <code>Auto</code>, PageSpeed will consider all image
+formats supported by the <code>Accept</code> header, e.g., the lossy mode of
+WebP. The <code>Accept</code> header does not indicate whether the device is a
+small screen, so the qualities for small screens will not be used.
+The <code>Accept</code> header is not enough to conclude that browser supports
+the lossless or animated mode of WebP, so they are not used.
+</p>
+<p>
+When you allow PageSpeed to vary on <code>Save-Data</code>, PageSpeed uses the
+image qualities that you set for the <code>Save-Data</code> mode if the
+request has the <code>Save-Data</code> header.
+</p>
+<p class="note"><strong>Note: new feature as of 1.11.33.0</strong></p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedAllowVaryOn headers</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed AllowVaryOn headers;</pre>
+</dl>
+
+<h3 id="CssImageInlineMaxBytes">CssImageInlineMaxBytes</h3>
+<p>
+This option sets the maximum size in bytes of any image that will be inlined
+into CSS. For inline CSS in HTML files, the value used is the smaller of
+<code>MaxBytes</code> or <code>ImageInlineMaxBytes</code>. The default value
+is 3072. This is higher than <code>ImageInlineMaxBytes</code> because external
+CSS resources are often cacheable and can be shared between multiple pages,
+increasing the benefit of a high inlining threshold compared to non-cacheable,
+non-shareable HTML files.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedCssImageInlineMaxBytes MaxBytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed CssImageInlineMaxBytes MaxBytes;</pre>
+</dl>
+
+<h3 id="ImageInlineMaxBytes">ImageInlineMaxBytes</h3>
+<p>
+This option sets the maximum size in bytes of any image that will be inlined
+into an HTML file. The default value is 2048.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedImageInlineMaxBytes MaxBytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ImageInlineMaxBytes MaxBytes;</pre>
+</dl>
+
+<h3 id="JpegNumProgressiveScans">ImageJpegNumProgressiveScans</h3>
+<p>
+This option sets how many scans (how many groups to divide image data into)
+are used for progressive JPEGs. More scans allows finer granular increase of
+display quality, but at the cost of more computation. The range is 1 to 10
+and the default is 10.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedImageJpegNumProgressiveScans Scans</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ImageJpegNumProgressiveScans Scans;</pre>
+</dl>
+
+<h3 id="JpegNumProgressiveScansForSmallScreens"
+   >ImageJpegNumProgressiveScansForSmallScreens</h3>
+<p>
+This option overrides <code>ImageJpegNumProgressiveScans</code> specifically
+for mobile visitors.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedImageJpegNumProgressiveScansForSmallScreens Scans</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ImageJpegNumProgressiveScansForSmallScreens Scans;</pre>
+</dl>
+
+<h3 id="ImageLimitOptimizedPercent">ImageLimitOptimizedPercent</h3>
+<p>PageSpeed only keeps optimized images whose size after recompression is
+less than the given percent of the original image size. For example, setting
+this to 95 will retain an optimized image only if it is at least 5% smaller
+than the original image it would replace. The default value is 100, meaning
+any savings at all will cause the optimized image to be used.
+</p>
+<p>
+Note: Do not set this option to 0 to disable image optimization; disable
+<code>rewrite_images</code> or the related filters instead. If you set this
+to 0 PageSpeed will still try to compress all your images, but will throw the
+output away for showing insufficient compression gains.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedImageLimitOptimizedPercent Percent</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ImageLimitOptimizedPercent Percent;</pre>
+</dl>
+
+<h3 id="ImageLimitResizeAreaPercent">ImageLimitResizeAreaPercent</h3>
+<p>
+PageSpeed only attempts to resize images whose area in pixels after
+optimization is less than the given percent of the original image area.
+For example, setting this to 90 will only resize images if the image area
+shrinks by at least 10%. The default value is 100, meaning any shrinkage
+at all will cause an image to be resized.
+</p>
+<p>
+Note: Do not set this option to 0 to disable image resizing, as that just adds
+computational overhead during page load; disable the
+<code>resize_images</code> and
+<code>resize_rendered_image_dimensions</code> filters instead.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedImageLimitResizeAreaPercent Percent</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ImageLimitResizeAreaPercent Percent;</pre>
+</dl>
+
+<h3 id="ImageMaxRewritesAtOnce">ImageMaxRewritesAtOnce</h3>
+<p>
+This option sets the maximum number of images to optimize concurrently.
+The default value is 8.
+</p>
+<p>
+To allow optimizing an unlimited number of images concurrently, set this
+option to "-1". To stop optimizing images, instead disable
+<code>recompress_images</code> or the related filters.
+</p>
+<p>
+Note: For backward compatibility, a value of "0" is treated equivalently
+to "-1", removing the restriction on the number of concurrent image
+optimizations PageSpeed will attempt.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedImageMaxRewritesAtOnce NumImages</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ImageMaxRewritesAtOnce NumImages;</pre>
+</dl>
+
+<h3 id="ImageResolutionLimitBytes">ImageResolutionLimitBytes</h3>
+<p>
+To avoid using too much memory, PageSpeed has a limit on the size of images it
+will optimize. The limit is expressed in bytes of <em>uncompressed</em> image,
+with a default of 32 MB. PageSpeed may need four bytes to represent each pixel,
+so divide by four to compute how many pixels that is. This means with the
+default settings the largest images PageSpeed will try to optimize are ones
+with 8 million pixels (8MP). You can calculate the total number of pixels in
+an image by multiplying its width and height. For example, a 2000x4000 image
+is 8MP. If you have images that are larger than this limit, and you're
+comfortable allowing PageSpeed to use the memory it needs to process them,
+increase <code>ImageResolutionLimitBytes</code>. For example, to allow
+PageSpeed to process images up to 32 MP (4000x8000) you can set:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedImageResolutionLimitBytes 128000000</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ImageResolutionLimitBytes 128000000;</pre>
+</dl>
+If you are not comfortable giving more memory to PageSpeed, or you only have
+a few images that are over 8MP, you might want to consider manually resizing
+the images instead. The ImageMagick
+<a href="http://www.imagemagick.org/script/convert.php">convert</a>
+command is a convenient way to do this:
+  <pre>convert -resize 8000000@\&gt; input.jpg output.jpg</pre>
+If <code>input.jpg</code> is larger than 8MP then this command will resize it
+to just below 8MP while maintaining the aspect ratio. If the image is already
+smaller than 8MP, <code>convert</code> will leave it alone.
+</p>
+<p>
+PageSpeed also has a <a href="restricting_urls#content_length">limit on the
+maximum on-disk size of resources it is willing to optimize</a>, which as of
+1.12.34.1 defaults to 16MB.  While <code>ImageResolutionLimitBytes</code> is a
+limit on the uncompressed size of images, PageSpeed will be completely bypassed
+for any object, not just images, whose on-disk size is larger than
+<code>MaxCacheableContentLength</code>.  You may need to raise that limit
+as well if you want PageSpeed to optimize larger images.
+</p>
+
+<h3 id="JpegQualityForSaveData">JpegQualityForSaveData</h3>
+<p>
+This option sets the quality for JPEG images if the visitor requests to save
+data and you decide to honor it. By default, PageSpeed supports
+<code>Save-Data</code> requests. See <a href="#AllowVaryOn">AllowVaryOn</a>
+for information about how to change it. This option overrides
+<code>JpegRecompressionQuality</code>, unless it is set to -1. The default
+value is 50.
+</p>
+<p class="note"><strong>Note: new feature as of 1.11.33.0</strong></p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedJpegQualityForSaveData Quality</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed JpegQualityForSaveData Quality;</pre>
+</dl>
+
+<h3 id="JpegRecompressionQuality">JpegRecompressionQuality</h3>
+<p>
+This option sets the quality for JPEG images. It overrides
+<code>ImageRecompressionQuality</code>, unless it is set to -1. The default
+value is 85.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedJpegRecompressionQuality Quality</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed JpegRecompressionQuality Quality;</pre>
+</dl>
+
+<h3 id="JpegRecompressionQualityForSmallScreens"
+   >JpegRecompressionQualityForSmallScreens</h3>
+<p>
+This option sets the quality for JPEG images for users visiting your site from
+a mobile device. It overrides <code>JpegRecompressionQuality</code>, unless it
+is set to -1.  The default is 70.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedJpegRecompressionQualityForSmallScreens Quality</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed JpegRecompressionQualityForSmallScreens Quality;</pre>
+</dl>
+
+<h3 id="NoTransformOptimizedImages">NoTransformOptimizedImages</h3>
+<p>
+By default, PageSpeed-optimized resources are served with response headers
+that allow proxies and browsers to cache them for a long time, e.g.:
+</p>
+<pre>Cache-Control: max-age=31536000</pre>
+<p>
+With these headers, proxies are free to
+<a href="http://calendar.perfplanet.com/2013/mobile-isp-image-recompression/">
+recompress images further</a>.
+This may be beneficial to the overall user experience because it can reduce
+bandwidth. However, if you already use PageSpeed to compress images as much
+as you're comfortable with, then you can prevent compliant proxies from
+further recompressing them by turning on this feature, resulting in responses
+with header:
+<pre>Cache-Control: max-age=31536000,no-transform</pre>
+</p>
+<p class="note"><strong>Note: new feature as of 1.9.32.1</strong></p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedNoTransformOptimizedImages on</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed NoTransformOptimizedImages on;</pre>
+</dl>
+
+<h3 id="ProgressiveJpegMinBytes">ProgressiveJpegMinBytes</h3>
+<p>
+Progressive JPEG offers better compression for large images, while
+non-progressive JPEG does better for small images. This option sets the
+cut-off position for the use of these two formats.
+</p>
+<p>
+Note: PageSpeed predicts the size of the final compressed JPEG image and then
+compares the predicted size with this option to determine whether to use
+progressive format. Due to the accuracy of prediction, some optimized images
+that are encoded in non-progressive format might be larger than this option,
+or vice versa.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedProgressiveJpegMinBytes min_bytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ProgressiveJpegMinBytes min_bytes;</pre>
+</dl>
+
+<h3 id="ImageRecompressionQuality">ImageRecompressionQuality</h3>
+<p>
+This option sets the quality for JPEG and WebP formats. It can be overridden
+by any format-specific or application-specific quality.  The default is 85.
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedImageRecompressionQuality Quality</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ImageRecompressionQuality Quality;</pre>
+</dl>
+
+<h3 id="serve_webp_urls">ServeRewrittenWebpUrlsToAnyAgent</h3>
+<p>
+When PageSpeed rewrites an <code>&lt;img&gt;</code> tag in HTML or a
+<code>background-url</code> in CSS in response to a request from a
+WebP-capable browser, it may transcode the image to WebP format and
+rewrites the URL using a <code>.webp</code> extension. If a site visitor
+copies the <code>.webp</code> image URL and shares it, only WebP-capable
+browsers will be able to display the image. Sites that place a high value
+on such URL sharing can make PageSpeed serve PNG/JPEG on <code>.webp</code>
+URLs by disabling the option
+<code>ServeRewrittenWebpUrlsToAnyAgent</code>:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedServeRewrittenWebpUrlsToAnyAgent off</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ServeRewrittenWebpUrlsToAnyAgent off;</pre>
+</dl>
+<p>
+The default value of <code>ServeRewrittenWebpUrlsToAnyAgent</code>
+is <code>on</code> because some proxy caches strip the
+<code>User-Agent</code> and <code>Accept</code> headers when transmitting
+requests for resources to origin. In that scenario, PageSpeed cannot determine
+whether the browser requesting the image can display WebP images. Thus it is
+not possible to have all three of these features at the same time:
+</p>
+<ul>
+  <li>
+    Provide the best possible bandwidth and latency experience for visitors
+    using modern browsers
+  </li>
+  <li>
+    Enable the sharing of URLs between visitors and their friends using older
+    browsers
+  </li>
+  <li>
+    Use a proxy cache that strips <code>User-Agent</code> and
+    <code>Accept</code> headers
+  </li>
+</ul>
+<p>
+If the first two features are important, the site should use proxy cache
+technology or CDNs that do not strip <code>User-Agent</code> and
+<code>Accept</code>. Be sure to check with your proxy cache or CDN vendor to
+understand their policy on transmitting these headers.
+</p>
+
+<h3 id="WebpAnimatedRecompressionQuality">WebpAnimatedRecompressionQuality</h3>
+<p>
+This option sets the quality for animated WebP images. It overrides
+<code>WebpRecompressionQuality</code> and applies to users from both mobile
+and non-mobile devices, unless it is set to -1. The default is 70.
+</p>
+<p class="note"><strong>Note: new feature as of 1.10.33.0</strong></p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedWebpAnimatedRecompressionQuality Quality</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed WebpAnimatedRecompressionQuality Quality;</pre>
+</dl>
+
+<h3 id="WebpQualityForSaveData">WebpQualityForSaveData</h3>
+<p>
+This option sets the quality for WebP images if both your site and your
+user have agreed to use save-data. See <a href="#AllowVaryOn">AllowVaryOn</a>
+to learn how to enable save-data. This option overrides
+<code>WebpRecompressionQuality</code>
+and <code>ModPagespeedWebpAnimatedRecompressionQuality</code>, unless it is set
+to -1. The default value is 50.
+</p>
+<p class="note"><strong>Note: new feature as of 1.11.33.0</strong></p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedWebpQualityForSaveData Quality</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed WebpQualityForSaveData Quality;</pre>
+</dl>
+
+<h3 id="WebpRecompressionQuality">WebpRecompressionQuality</h3>
+<p>
+This option sets the quality for WebP images. It overrides
+<code>ImageRecompressionQuality</code>, unless it is set to -1. The default
+value is 80.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedWebpRecompressionQuality Quality</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed WebpRecompressionQuality Quality;</pre>
+</dl>
+
+<h3 id="WebpRecompressionQualityForSmallScreens"
+   >WebpRecompressionQualityForSmallScreens</h3>
+<p>
+This option sets the quality for WebP images for users visiting your site from
+a mobile device. It overrides <code>WebpRecompressionQuality</code>,
+unless it is set to -1.  The default is 70.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedWebpRecompressionQualityForSmallScreens Quality</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed WebpRecompressionQualityForSmallScreens Quality;</pre>
+</dl>
+
+</div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

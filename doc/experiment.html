@@ -1,0 +1,430 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Experimenting with PageSpeed</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Experimenting with PageSpeed</h1>
+<h2 id="Framework">Experimental Framework</h2>
+<p>
+The <a href="module-run-experiment.html">Run Experiment</a> module allows you to
+gather data on what filters perform best for your site using A/B testing.  It
+reports to your <a href="http://www.google.com/analytics/">Google Analytics</a>
+account, storing data in
+a <a href="/analytics/devguides/collection/gajs/gaTrackingCustomVariables">custom
+variable</a>.  It often makes sense to first experiment manually using the
+per-request configuration described below to get an idea of which filters might
+help your site, and then <a href="module-run-experiment.html">run a controlled
+experiment</a> to test whether these filters actually speed it up in practice.
+</p>
+
+<h2 id="PerRequest">Per-request configuration</h2>
+
+<p>
+Query parameters, request headers, and response headers can be used to disable
+PageSpeed, specify the set of filters applied to an HTML page, and control some
+inlining limits.
+</p>
+
+<p>
+Query parameters take the form of <code>name=value</code>
+and parameters are separated by an ampersand (&amp;). For example:
+</p>
+<pre>
+  <a href="http://modpagespeed.com/rewrite_css.html?PageSpeed=on&PageSpeedFilters=rewrite_css">http://modpagespeed.com/rewrite_css.html?PageSpeed=on&PageSpeedFilters=rewrite_css</a>
+</pre>
+
+<p>
+Request and response headers take the form of <code>name: value</code>
+and each header is on its own line. For example:
+</p>
+<pre class="prettyprint">
+GET /rewrite_css.html HTTP/1.1
+Host: modpagespeed.com
+PageSpeed: on
+PageSpeedFilters: rewrite_css</pre>
+
+<p>
+For backwards compatibility, these can start with <code>ModPagespeed</code>
+instead of <code>PageSpeed</code>, but this usage is deprecated.
+</p>
+
+<p>
+Query parameters can be added to the URL of the page or resource being
+fetched, request headers can be set in the request for pages and
+resources, and response headers can be set in the response of HTML
+pages (but not resources). These settings affect only the given
+request. If all three (query parameters and both headers) are used in
+the same request the query parameters will be applied first, followed
+by the request headers, followed by the response headers. Later
+settings override earlier settings but a filter disable in any
+location always overrides subsequent enables.
+</p>
+
+<p>
+There are two supported methods of adding response headers that PageSpeed will
+be able to observe and process.  The first is to add response headers with a
+content handler such as PHP or Perl.  The second is to add response headers at
+an origin server and run PageSpeed as a proxy in front of it. The use of
+mod_headers (Apache) or add_header (Nginx) on the same webserver as PageSpeed
+will not work because headers will be inserted after PageSpeed has already
+processed the page.
+</p>
+
+<h3 id="StickyQueryParams">Sticky Query Parameters</h3>
+<p>
+Query parameters can be set to be &quot;sticky&quot; and persist across
+requests using cookies. Sticky query parameters can be set by providing the
+sticky query parameter option in  a request, and the server will respond with
+a cookie, valid for the duration specified in the PageSpeed configuration.
+</p>
+<p>
+To prevent abuse, a &quot;secret token&quot; must be provided in the initial
+request to enable setting cookies.
+</p>
+<dl>
+<dt>Apache:</dt>
+<dd>
+<pre class="prettyprint">ModPagespeedStickyQueryParameters example_token</pre>
+</dd>
+<dt>Nginx:</dt>
+<dd>
+<pre class="prettyprint">pagespeed StickyQueryParameters example_token</pre>
+</dd>
+</dl>
+<p>
+The duration, in milliseconds, for which the cookie will be valid can be set in
+the PageSpeed configuration.
+</p>
+<dl>
+<dt>Apache:</dt>
+<dd>
+<pre class="prettyprint">ModPagespeedOptionCookiesDurationMs 12345</pre>
+</dd>
+<dt>Nginx:</dt>
+<dd>
+<pre class="prettyprint">pagespeed OptionCookiesDurationMs 12345</pre>
+</dd>
+</dl>
+<p>
+The request must specify the token in a query parameter,
+for example:
+<pre>
+<a href="http://modpagespeed.com/rewrite_css.html?PageSpeedStickyQueryParameters=example_token&PageSpeedFilters=+remove_comments">http://modpagespeed.com/rewrite_css.html?PageSpeedStickyQueryParameters=example_token&PageSpeedFilters=+remove_comments</a></pre>
+<p>
+A request with the proper sticky query parameter token will cause the server to
+respond with a <code>Set-Cookie</code> in the response.
+Any request not containing the correct token will not receive the
+<code>Set-Cookie</code> response. Future responses with the received cookie will
+also enable the options set in the query parameter with the sticky query
+parameter. In this case, the <code>remove-comments</code> filter would be
+enabled.
+</p>
+
+<h3 id="ModPagespeed">Enabling and disabling PageSpeed</h3>
+
+<p>Query parameters:</p>
+<pre class="prettyprint">
+  PageSpeed=off
+  PageSpeed=on
+</pre>
+<p>Request &amp; Response headers:</p>
+<pre class="prettyprint">
+  PageSpeed: off
+  PageSpeed: on
+</pre>
+<p>
+The first line disables PageSpeed rewriting, the second line enables it.
+</p>
+
+<h3 id="ModPagespeedFilters">Specifying the filters applied</h3>
+
+<p>Query parameters:</p>
+<pre class="prettyprint">
+  PageSpeedFilters=<i>comma-separated list of names</i>
+</pre>
+<p>Request &amp; Response headers:</p>
+<pre class="prettyprint">
+  PageSpeedFilters: <i>comma-separated list of names</i>
+</pre>
+
+<p>
+This specifies the set of filters to apply to the page. The list of settings
+includes all filter names and a few shortcut names:
+</p>
+
+<ul>
+  <li><code>core</code> sets the rewrite level (per
+        <code><a href="config_filters.html#level>ModPagespeedRewriteLevel"
+                 >RewriteLevel</a></code>)
+        to <code>CoreFilters</code>. This enables the core set of filters.</li>
+  <li><code>testing</code> enables all filters that are in the
+        <code>TestingCoreFilters</code> level but are not in the
+        <code>CoreFilters</code> level - this is not the same as setting the
+        level to <code>TestingCoreFilters</code> because that includes all
+        core filters, but the same effect can be achieved by specifying
+        both: <code>core,testing</code>.</li>
+  <li><code>rewrite_images</code> enables the following filters:
+        <code>inline_images</code>, <code>recompress_images</code>, and
+        <code>resize_images</code>.</li>
+  <li><code>extend_cache</code> enables the following filters:
+        <code>extend_cache_css</code>, <code>extend_cache_images</code>, and
+        <code>extend_cache_scripts</code>.</li>
+  <li><code>rewrite_javascript</code> enables the following filters:
+        <code>rewrite_javascript_external</code> and
+        <code>rewrite_javascript_inline</code>.</li>
+</ul>
+
+<p>
+When any filter is specified without a "<code>+</code>" or
+"<code>-</code>", any filters not explicitly enabled are
+disabled. Filters and shortcuts can be explicitly disabled by
+preceding the name by a minus sign (&apos;-&apos;), which is useful
+after using a shortcut. For example,
+&quot;<code>core,-combine_css</code>&quot; enables all the core
+filters
+<em>except</em> <code>combine_css</code>.
+</p>
+
+<p>
+If all names are prefixed with "<code>+</code>" or "<code>-</code>" then the
+filter set is incrementally adjusted from the current system settings based on
+the configuration files.  For example, in a server
+with <code>RewriteLevel</code> set to <code>CoreFilters</code>, the query-string
+</p>
+<pre class="prettyprint">
+  ?PageSpeedFilters=+lazyload_images,-inline_images
+</pre>
+<p>
+will leave all the core filters enabled, but will add lazyload_images
+and disable inline images.
+</p>
+
+<h3 id="ModPagespeedFilters">Controlling inlining limits</h3>
+
+<p>Query parameters:</p>
+<pre class="prettyprint">
+  PageSpeedCssFlattenMaxBytes=<i>value</i>
+  PageSpeedCssImageInlineMaxBytes=<i>value</i>
+  PageSpeedCssInlineMaxBytes=<i>value</i>
+  PageSpeedImageInlineMaxBytes=<i>value</i>
+  PageSpeedJsInlineMaxBytes=<i>value</i>
+</pre>
+<p>Request &amp; Response headers:</p>
+<pre class="prettyprint">
+  PageSpeedCssFlattenMaxBytes: <i>value</i>
+  PageSpeedCssImageInlineMaxBytes: <i>value</i>
+  PageSpeedCssInlineMaxBytes: <i>value</i>
+  PageSpeedImageInlineMaxBytes: <i>value</i>
+  PageSpeedJsInlineMaxBytes: <i>value</i>
+</pre>
+
+<p>
+These specify the limits for the following inlining options:
+</p>
+
+<ul>
+  <li><code>PageSpeedCssFlattenMaxBytes</code> sets the maximum size of CSS
+        files that will be flattened.</li>
+  <li><code>PageSpeedCssImageInlineMaxBytes</code> sets the maximum
+        size of images inside CSS. For inline CSS in HTML files, the
+        value used is the smaller of this value
+        or <code>PageSpeedImageInlineMaxBytes</code>.
+  <li><code>PageSpeedCssInlineMaxBytes</code> sets the maximum size of CSS
+        files that will be inlined.</li>
+  <li><code>PageSpeedImageInlineMaxBytes</code> sets the maximum size of
+        image files that will be inlined.</li>
+  <li><code>PageSpeedJsInlineMaxBytes</code> sets the maximum size of
+        JavaScript files that will be inlined.</li>
+</ul>
+
+<p>
+Here is an example that combines many of the above query parameters to enable
+all the core filters <em>except</em> the cache extension filters, and sets the
+JavaScript inlining limit to a high value so that most JavaScript files will
+be inlined:
+</p>
+<pre>
+  http://..../index.html?PageSpeedFilters=core,-extend_cache&amp;PageSpeedJsInlineMaxBytes=102400
+</pre>
+
+<h3 id="Client-Options">Client options in queries and headers</h3>
+  <p>
+  This is an experimental option, its name and values are subject to change.
+  This option allows the client to customize the optimizations applied to a
+  request and can be used in a header or query parameter.
+  </p>
+
+  <p>As a query parameter:</p>
+<pre class="prettyprint">
+  X-PSA-Client-Options=<i>client-options</i>
+</pre>
+<p>As a Request or Response header:</p>
+<pre class="prettyprint">
+  X-PSA-Client-Options: <i>client-options</i>
+</pre>
+
+<p>
+The format of client-options is
+</p>
+<pre>
+  name1=value1,name2=value2, …
+</pre>
+
+<p>
+The order of the name-value pairs does not matter. The supported options are:
+</p>
+
+<pre>
+  v=1
+</pre>
+<p>Version of the header. '1' is the only supported version for now.</p>
+<pre>
+  <code>m=integer-value</code>
+</pre>
+<p> Mode. Valid values are</p>
+  <ul>
+  <li> <code>0</code>, the client prefers that the server operates in its
+   default mode. </li>
+  <li> <code>1</code>, the client prefers that no image is transformed. </li>
+  <li> <code>2</code>, the client prefers that no resource is transformed.
+  This is equivalent to "?PageSpeedFilters=" in the request URL </li>
+  </ul>
+
+<pre>
+  <code>iqp=integer-value</code>
+</pre>
+<p> Image quality preference. Valid values are </p>
+  <ul>
+  <li> <code>0</code>, the client prefers that the server uses its own default
+  image quality. </li>
+  <li> <code>1</code>, the client prefers low image quality. </li>
+  <li> <code>2</code>, the client prefers medium image quality. </li>
+  <li> <code>3</code>, the client prefers high image quality. </li>
+  </ul>
+
+<h3 id="restrict-request-options">Restrict per-request configuration</h3>
+  <p class="note">
+    <strong>Note: New feature as of 1.9.32.1</strong>
+  </p>
+  <p>
+  Interpretation of PageSpeed query parameters and headers can be restricted to
+  requests specifying a request option override token.
+  The token is specified in the server configuration file and disallows
+  request option overriding when the request does not specify the correct token.
+  This option can be used to reduce the attack surface of denial of service
+  attacks.
+  </p>
+  <dl>
+  <dt>Apache:</dt>
+  <dd>
+  <pre class="prettyprint">ModPagespeedRequestOptionOverride example_token</pre>
+  </dd>
+  <dt>Nginx:</dt>
+  <dd>
+  <pre class="prettyprint">pagespeed RequestOptionOverride example_token</pre>
+  </dd>
+  </dl>
+  <p>
+  This feature provides a mechanism to restrict the ability for filters and
+  options to be specified in query parameters and request headers.
+  To enable it, an override token must be specified in the configuration file,
+  and requests must specify the same token for filters and options to be
+  applied.
+  Query parameters, except for <code>PageSpeed=on</code>,
+  <code>PageSpeed=off</code>, or  <code>PageSpeed=noscript</code> will then only
+  be interpreted when accompanied by the correct
+  <code>RequestOptionOverride</code> token. For example, the rewrite_css filter
+  would be used in this example.
+  </p>
+  <p>
+  The request must specify the token in a query parameter or header,
+  for example:
+  <pre>
+  <a href="http://modpagespeed.com/rewrite_css.html?PageSpeed=on&PageSpeedFilters=rewrite_css&PageSpeedRequestOptionOverride=example_token">http://modpagespeed.com/rewrite_css.html?PageSpeed=on&PageSpeedFilters=rewrite_css&PageSpeedRequestOptionOverride=example_token</a></pre>
+  <p>
+  Any request not containing the correct <code>RequestOptionOverride</code>
+  token or not containing a <code>RequestOptionOverride</code> token will ignore
+  all other PageSpeed filters and options specified.
+  </p>
+  <p class="note">
+    <strong>
+    Note: even if applied, PageSpeed=on/off/noscript still takes effect.
+    </strong>
+  </p>
+</h3>
+
+<h3 id="noop">Noop query-parameter</h3>
+<p class="note">
+  <strong>Note: New feature as of 1.10.33.0</strong>
+</p>
+<p>
+To help bust browser caches, especially with experiments, any
+PageSpeed URL can accept the
+<code>PageSpeedNoop</code> query-paramter with an integer value.  This
+query-parameter will be ignored by PageSpeed and stripped from the
+URL early in the processing flow.  The origin will not see the <code>Noop</code>
+parameter, and PageSpeed's server-caches will not be affected.  However, it
+will prevent your browser from using a cached value.
+</p>
+
+<p>Examples:</p>
+<pre class="prettyprint"
+     >http://images.example.com/foo.png?PageSpeedNoop=571
+http://www.example.com/index.html?q=foo&PageSpeedNoop=99438
+</pre>
+
+<h2 id="Configuring-mod_pagespeed_examples">
+  Configuring mod_pagespeed_examples</h2>
+<p class="note"><strong>Note: Apache-only</strong></p>
+
+<p>
+mod_pagespeed ships with a directory of sample HTML, JavaScript,
+Image, and CSS files to demonstrate the rewrite passes that it
+executes.  These also form the basis of an installation smoke-test to
+ensure that the configured system is operating correctly.  Assuming
+the files are installed in /var/www/mod_pagespeed_example, the
+following configuration file fragment will enable them to be served
+using reasonable caching headers.
+</p>
+<pre class="prettyprint lang-sh">
+    # These caching headers are set up for the mod_pagespeed example, and
+    # also serve as a demonstration of good values to set for the entire
+    # site, if it is to be optimized by mod_pagespeed.
+
+    &lt;Directory /var/www/mod_pagespeed_example&gt;
+      # To enable to show that mod_pagespeed to rewrites web pages, we must
+      # turn off Etags for HTML files and eliminate caching altogether.
+      # mod_pagespeed should rewrite HTML files each time they are served.
+      # The first time mod_pagespeed sees an HTML file, it may not optimize
+      # it fully.  It will optimize better after the second view.  Caching
+      # defeats this behavior.
+      &lt;FilesMatch "\.(html|htm)$"&gt;
+        Header unset Etag
+        Header set Cache-control "max-age=0, no-cache"
+      &lt;/FilesMatch&gt;
+
+      # Images, styles, and JavaScript are all cache-extended for
+      # a year by rewriting URLs to include a content hash..  mod_pagespeed,
+      # can only do this if the resources are cacheable in the first place.
+      # The origin caching policy, set here to 10 minutes, dictates how
+      # frequently mod_pagespeed must re-read the content files and recompute
+      # the content-hash.  As long as the content doesn't actually change,
+      # the content-hash will remain the same, and the resources stored
+      # in browser caches will stay relevant.
+      &lt;FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
+        Header unset Etag
+        Header set Cache-control "public, max-age=600"
+      &lt;/FilesMatch&gt;
+    &lt;/Directory&gt;
+</pre>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

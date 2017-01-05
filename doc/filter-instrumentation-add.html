@@ -1,0 +1,196 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Instrumentation</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Add Instrumentation</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Add Instrumentation' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters add_instrumentation</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters add_instrumentation;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+The 'Add Instrumentation' filter injects two small blocks of JavaScript
+into every HTML page.  These blocks measure the time the client spends
+loading and rendering the page, and report that measurement back to the
+server.
+</p>
+
+<h2>Operation</h2>
+<p>An empty HTML file passed through the add_instrumentation filter will
+come out like this (the inserted whitespace is for documentation
+readability):
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;script type='text/javascript'&gt;
+      window.mod_pagespeed_start = Number(new Date());
+  &lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;script type='text/javascript'&gt;
+      function g(){
+        new Image().src = '/mod_pagespeed_beacon?ets=load:'
+          + (Number(new Date())-window.mod_pagespeed_start);
+      };
+      var f = window.addEventListener;
+      if (f) {
+        f('load',g,false);
+      } else {
+        f=window.attachEvent;
+        if (f) {
+          f('onload',g);
+        }
+      }
+    &lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/add_instrumentation.html?ModPagespeed=on&amp;ModPagespeedFilters=add_instrumentation">example</a>.
+</p>
+
+<h2>Methodology</h2>
+<p>
+The first script tag is inserted at the beginning of the document's
+<code>&lt;head&gt;</code>.  It simply records the current time in a global
+variable.  This is placed as early in the document as possible in order to
+best approximate the beginning of the page load.
+</p>
+<p>
+The second script tag is inserted at the end of the document's
+<code>&lt;body&gt;</code>, so as to minimally interfere with page rendering.
+It registers a listener for the page's onLoad event; this listener computes
+the total time since the first script tag ran,  and sends the result back
+to the server asynchronously by using a fake Image object.  This technique
+should work on most modern browsers.
+[1].
+</p>
+<p>
+The add_instrumentation filter sends a beacon after the page <code>onload</code>
+handler is called. The user might navigate to a new URL before this. If you
+enable the following directive, the beacon is sent as part of an
+<code>onbeforeunload</code> handler, for pages where navigation happens before
+the <code>onload</code> event.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedReportUnloadTime on</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ReportUnloadTime on;</pre>
+</dl>
+By default, the target of the asynchronous callback is the relative URL
+<code>"/mod_pagespeed_beacon"</code> (Apache)
+or <code>"/ngx_pagespeed_beacon"</code> (Nginx).  PageSpeed handles these
+results itself and simply returns <code>"204 No Content"</code> which should
+cause minimal disruption for the client.  It also records the number of
+callbacks, and the total of their onLoad times, in the statistics <code>
+"page_load_count"</code> and <code>"total_page_load_ms"</code>.  These are
+visible on the PageSpeed statistics page (which, by default, is only viewable
+from the server's localhost).  You can divide
+<code>total_page_load_ms</code> by <code>page_load_count</code> to get the
+average onLoad time for your site.
+</p>
+<p id="beacon_url">
+You can change the location of the beacon to a different path (or even a
+different server) using the <code>BeaconUrl</code> directive.  For example:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedBeaconUrl "/my/path/to/beacon"
+</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed BeaconUrl "/my/path/to/beacon";</pre>
+</dl>
+<p>
+Or, if you want to set up your own beacon server somewhere else, you can use:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedBeaconUrl "http://my.other.server/my_beacon"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed BeaconUrl "http://my.other.server/my_beacon";</pre>
+</dl>
+<p>
+If you want to set an https beacon URL that is different from the http beacon
+URL (for example a different machine as shown below, or a non-default port), you
+can do so by separating the http and https URLs with a space.  You don't need to
+do this if the beacon URLs only differ in protocol (http versus https):
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedBeaconUrl "http://insecure.server/my_beacon https://secure.server/my_beacon"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed BeaconUrl "http://insecure.server/my_beacon https://secure.server/my_beacon";</pre>
+</dl>
+<p>
+Note that the BeaconUrl used to require that custom beacon URLs end
+with <code>"?ets="</code>. Appending the query param to the custom URL is no
+longer required and should be removed if present.
+</p>
+<p>
+If you want more detailed information about client load time (e.g. averages for
+different pages and different browsers, median times, historical behavior, etc.)
+you can get this information from your webserver logs.  Every beacon load will
+be in your access.log along with the timestamp, referer, IP address, and
+user-agent&mdash;which tell you when, where, and by whom the onLoad measurement
+was taken.  There are some existing tools to collect and analyze these data; one
+such example is
+<a href="http://code.google.com/p/jiffy-web">Jiffy</a>.
+</p>
+
+<h2>Requirements</h2>
+<p>
+The "Add Instrumentation" filter requires the "Add Head" filter, and will
+enable it automatically.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter could break pages if they include JavaScript which depends on
+knowing the first child of the <code>&lt;head&gt;</code> or the last child
+of the <code>&lt;body&gt;</code>.
+</p>
+<p>
+The injected JavaScript is very lightweight, and should cause only a very tiny
+(though nonzero) amount of extra load on the client.
+</p>
+<p>
+If you already have a client-side latency measurement system in place (such as
+Jiffy, Episodes, or Boomerang), you probably don't need this filter.
+</p>
+<p>
+Note that the data reported by this filter is only approximate and does not
+include time the client spends resolving your domain, opening a connection, and
+waiting for the first few bytes of HTML.
+</p>
+
+<h2>References</h2>
+<ol>
+  <li>Zakas, Nicholas C., <u>High Performance JavaScript</u>. O'Reilly, 2010, p133.
+</ol>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

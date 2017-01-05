@@ -1,0 +1,399 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>October 2013 mod_pagespeed Security Update.</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>October 2013 mod_pagespeed Security Update.</h1>
+<h2 id="overview">Overview</h2>
+<p>Various versions of mod_pagespeed are subject to critical
+cross-site scripting (XSS) vulnerability, CVE-2013-6111. This permits a hostile
+third party to execute JavaScript in users' browsers in context of the domain
+running mod_pagespeed, which could permit theft of users' cookies or data
+on the site. </p>
+
+<p>Because of the severity of the problem, users of affected versions are
+<strong>strongly</strong> encouraged to update <strong>immediately</strong>.
+</p>
+
+<p>To be notified of further security updates subscribe to the
+<a href="mailing-lists#announcements">announcements mailing list</a>.
+
+<h2 id="affected">Affected versions</h2>
+<ul>
+  <li>Versions earlier than 1.0.</li>
+  <li>1.0.22.7 (fixed in 1.0.22.8).</li>
+  <li>All 1.1 versions</li>
+  <li>1.2.24.1 (fixed in 1.2.24.2)</li>
+  <li>1.3.25.1 &ndash; 1.3.25.4 (fixed in 1.3.25.5)</li>
+  <li>1.4.26.1 &ndash; 1.4.26.4 (fixed in 1.4.26.5)</li>
+  <li>1.5.27.1 &ndash; 1.5.27.3 (fixed in 1.5.27.4)</li>
+  <li>1.6.29.1 &ndash; 1.6.29.6 (fixed in 1.6.29.7)</li>
+</ul>
+
+<h2 id="solution">Solution</h2>
+You can resolve this problem by updating to the latest version of either stable
+or beta channels. If for some reason you are unable to update to a new version,
+patched versions to resolve the vulnerability are also available for releases
+1.0 as well as 1.2 through 1.6.
+
+<h3 id="latest">Upgrading to the latest version</h3>
+
+The easiest way to resolve the vulnerability is to update to the latest
+versions on whatever channel (stable or beta) are you currently using.
+
+<p>If you installed the .rpm package, you can update with:
+<pre>
+sudo yum update
+sudo /etc/init.d/httpd restart
+</pre>
+
+<p>If you installed the .deb package, you can update with:
+<pre>
+sudo apt-get update
+sudo apt-get upgrade
+sudo /etc/init.d/apache2 restart
+</pre>
+
+It is also possible to <a href="https://developers.google.com/speed/pagespeed/module/build_mod_pagespeed_from_source">
+build from source. </a>
+
+<h3 id="10">Updating while keeping version 1.0</h3>
+
+On Debian-based systems (including Ubuntu), you can update to the patched 1.0
+version by running:
+<pre>
+sudo apt-get update
+sudo apt-get install mod-pagespeed-stable=1.0.22.8-r3546
+</pre>
+
+On RPM based systems that use the <code>yum</code> command, you can update
+from older versions by using:
+<pre>
+yum install mod-pagespeed-stable-1.0.22.8
+</pre>
+<p>Note that this command will not switch you to a lower version number
+(for example, it will not switch from a 1.2 version with the vulnerability to
+a fixed version of 1.0); it is recommended that you resolve this security
+vulnerability by upgrading to the patched release of whatever version you are
+currently using, or the latest beta or stable version.</p>
+
+<p>You can also download binaries directly:
+<table>
+  <tr>
+    <td colspan=2 width="50%">
+      Debian/Ubuntu
+    </td>
+    <td colspan=2 width="50%">
+      CentOS/Fedora
+    </td>
+  <tr>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.0.22.8-r3546_i386.deb">
+      32-bit .deb
+      </a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.0.22.8-r3546_i386.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.0.22.8-r3546_amd64.deb">
+      64-bit .deb</a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.0.22.8-r3546_amd64.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/i386/mod-pagespeed-stable-1.0.22.8-3546.i386.rpm">
+      32-bit .rpm</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/x86_64/mod-pagespeed-stable-1.0.22.8-3546.x86_64.rpm">
+      64-bit .rpm</a>
+    </td>
+  </tr>
+</table>
+
+
+<h3 id="12">Updating while keeping version 1.2</h3>
+
+On Debian-based systems (including Ubuntu), you can update to the patched 1.2
+version by running:
+<pre>
+sudo apt-get update
+sudo apt-get install mod-pagespeed-stable=1.2.24.2-r3534
+</pre>
+
+On RPM based systems that use the <code>yum</code> command, you can update from
+older versions by using:
+<pre>
+yum install mod-pagespeed-stable-1.2.24.2
+</pre>
+<p> Note that this command will not switch you to a lower version number
+(for example, it will not switch from a 1.3 version with the vulnerability to
+a fixed version of 1.2); it is recommended that you resolve this security
+vulnerability by upgrading to the patched release of whatever version you are
+currently using, or the latest beta or stable version.</p>
+
+<p>You can also download binaries directly:
+<table>
+  <tr>
+    <td colspan=2 width="50%">
+      Debian/Ubuntu
+    </td>
+    <td colspan=2 width="50%">
+      CentOS/Fedora
+    </td>
+  <tr>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.2.24.2-r3534_i386.deb">
+      32-bit .deb
+      </a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.2.24.2-r3534_i386.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.2.24.2-r3534_amd64.deb">
+      64-bit .deb</a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.2.24.2-r3534_amd64.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/i386/mod-pagespeed-stable-1.2.24.2-3534.i386.rpm">
+      32-bit .rpm</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/x86_64/mod-pagespeed-stable-1.2.24.2-3534.x86_64.rpm">
+      64-bit .rpm</a>
+    </td>
+  </tr>
+</table>
+
+
+<h3 id="13">Updating while keeping version 1.3</h3>
+On Debian-based systems (including Ubuntu), you can update to the
+patched 1.3 version by running:
+<pre>
+sudo apt-get update
+sudo apt-get install mod-pagespeed-stable=1.3.25.5-r3534
+</pre>
+
+On RPM based systems that use the <code>yum</code> command, you can update from
+older versions by using:
+<pre>
+yum install mod-pagespeed-stable-1.3.25.5
+</pre>
+<p>Note that this command will not switch you to a lower version number
+(for example, it will not switch from a 1.4 version with the vulnerability to
+a fixed version of 1.3); it is recommended that you resolve this security
+vulnerability by upgrading to the patched release of whatever version you are
+currently using, or the latest beta or stable version.</p>
+
+<p>You can also download binaries directly:
+<table>
+  <tr>
+    <td colspan=2 width="50%">
+      Debian/Ubuntu
+    </td>
+    <td colspan=2 width="50%">
+      CentOS/Fedora
+    </td>
+  <tr>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.3.25.5-r3534_i386.deb">
+      32-bit .deb
+      </a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.3.25.5-r3534_i386.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.3.25.5-r3534_amd64.deb">
+      64-bit .deb</a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.3.25.5-r3534_amd64.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/i386/mod-pagespeed-stable-1.3.25.5-3534.i386.rpm">
+      32-bit .rpm</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/x86_64/mod-pagespeed-stable-1.3.25.5-3534.x86_64.rpm">
+      64-bit .rpm</a>
+    </td>
+  </tr>
+</table>
+
+<h3 id="14">Updating while keeping version 1.4</h3>
+As of October 2013, 1.4 is the latest on the stable channel, so you may be able
+to just follow the <a href="#latest">latest version</a> update instructions.
+
+<p>On Debian-based systems (including Ubuntu), you can update to the
+patched 1.4 version by running:
+<pre>
+sudo apt-get update
+sudo apt-get install mod-pagespeed-stable=1.4.26.5-r3533
+</pre>
+
+On RPM based systems that use the <code>yum</code> command, you can update from
+older versions by using:
+<pre>
+yum install mod-pagespeed-stable-1.4.26.5
+</pre>
+<p>Note that this command will not switch you to a lower version number
+(for example, it will not switch from a 1.5 version with the vulnerability to
+a fixed version of 1.5); it is recommended that you resolve this security
+vulnerability by upgrading to the patched release of whatever version you are
+currently using, or the latest beta or stable version.</p>
+
+<p>You can also download binaries directly:
+<table>
+  <tr>
+    <td colspan=2 width="50%">
+      Debian/Ubuntu
+    </td>
+    <td colspan=2 width="50%">
+      CentOS/Fedora
+    </td>
+  <tr>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.4.26.5-r3533_i386.deb">
+      32-bit .deb
+      </a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.4.26.5-r3533_i386.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.4.26.5-r3533_amd64.deb">
+      64-bit .deb</a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-stable/mod-pagespeed-stable_1.4.26.5-r3533_amd64.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/i386/mod-pagespeed-stable-1.4.26.5-3533.i386.rpm">
+      32-bit .rpm</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/x86_64/mod-pagespeed-stable-1.4.26.5-3533.x86_64.rpm">
+      64-bit .rpm</a>
+    </td>
+  </tr>
+</table>
+
+
+<h3 id="15">Updating while keeping version 1.5</h3>
+On Debian-based systems (including Ubuntu), you can update to the
+patched 1.5 version by running:
+<pre>
+sudo apt-get update
+sudo apt-get install mod-pagespeed-beta=1.5.27.4-r3533
+</pre>
+
+On RPM based systems that use the <code>yum</code> command, you can update from
+older versions by using:
+<pre>
+yum install mod-pagespeed-beta-1.5.27.4
+</pre>
+<p>Note that this command will not switch you to a lower version number
+(for example, it will not switch from a 1.6 version with the vulnerability to
+a fixed version of 1.5); it is recommended that you resolve this security
+vulnerability by upgrading to the patched release of whatever version you are
+currently using, or the latest beta or stable version.</p>
+
+<p>You can also download binaries directly:
+<table>
+  <tr>
+    <td colspan=2 width="50%">
+      Debian/Ubuntu
+    </td>
+    <td colspan=2 width="50%">
+      CentOS/Fedora
+    </td>
+  <tr>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-beta/mod-pagespeed-beta_1.5.27.4-r3533_i386.deb">
+      32-bit .deb
+      </a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-beta/mod-pagespeed-beta_1.5.27.4-r3533_i386.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-beta/mod-pagespeed-beta_1.5.27.4-r3533_amd64.deb">
+      64-bit .deb</a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-beta/mod-pagespeed-beta_1.5.27.4-r3533_amd64.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/i386/mod-pagespeed-beta-1.5.27.4-3533.i386.rpm">
+      32-bit .rpm</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/x86_64/mod-pagespeed-beta-1.5.27.4-3533.x86_64.rpm">
+      64-bit .rpm</a>
+    </td>
+  </tr>
+</table>
+
+
+<h3 id="16">Updating while keeping version 1.6</h3>
+As of October 2013, 1.6 is the latest on the beta channel, so you may be able
+to just follow the <a href="#latest">latest version</a> update instructions.
+
+<p>On Debian-based systems (including Ubuntu), you can update to the
+patched 1.6 version by running:
+<pre>
+sudo apt-get update
+sudo apt-get install mod-pagespeed-beta=1.6.29.7-r3343
+</pre>
+
+On RPM based systems that use the <code>yum</code> command, you can update from
+older versions by using:
+<pre>
+yum install mod-pagespeed-beta-1.6.29.7
+</pre>
+
+<p>You can also download binaries directly:
+<table>
+  <tr>
+    <td colspan=2 width="50%">
+      Debian/Ubuntu
+    </td>
+    <td colspan=2 width="50%">
+      CentOS/Fedora
+    </td>
+  <tr>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-beta/mod-pagespeed-beta_1.6.29.7-r3343_i386.deb">
+      32-bit .deb
+      </a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-beta/mod-pagespeed-beta_1.6.29.7-r3343_i386.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-beta/mod-pagespeed-beta_1.6.29.7-r3343_amd64.deb">
+      64-bit .deb</a>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/deb/pool/main/m/mod-pagespeed-beta/mod-pagespeed-beta_1.6.29.7-r3343_amd64.deb.asc">
+      [Signature]</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/i386/mod-pagespeed-beta-1.6.29.7-3343.i386.rpm">
+      32-bit .rpm</a>
+    </td>
+    <td>
+      <a href="https://dl.google.com/dl/linux/mod-pagespeed/rpm/stable/x86_64/mod-pagespeed-beta-1.6.29.7-3343.x86_64.rpm">
+      64-bit .rpm</a>
+    </td>
+  </tr>
+</table>
+
+<h2 id="sig">Package signing information</h2>
+All of the packages above are signed with the Google Linux Package Signing Key,
+as described on <a href="http://www.google.com/linuxrepositories/">
+http://www.google.com/linuxrepositories/</a>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

@@ -1,0 +1,110 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Remove Comments</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Remove Comments</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Remove Comments' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters remove_comments</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters remove_comments;</pre>
+</dl>
+<p>
+in the configuration file.  To retain comments that have semantic reason to be
+delivered to the browser, you may specify one more wildcard patterns
+using <code>RetainComment</code> directives.  For example:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRetainComment " google_ad_section*"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RetainComment " google_ad_section*";</pre>
+</dl>
+</p>
+
+<h2>Description</h2>
+<p>
+The <code>remove_comments</code> filter eliminates HTML comments,
+which are often used to document the code or to comment out
+experiments.  Note that this directive applies only to HTML files.
+CSS comments are eliminated with the
+<code>rewrite_css</code> filter, and Javascript comments are
+eliminated with the <code>rewrite_javascript</code> filter.
+</p>
+<p>
+The filter reduces the transfer size of HTML files by removing most HTML
+comments. Depending on the HTML file, this filter can significantly reduce the
+number of bytes transmitted on the network.  Also note that
+the <code>RetainComment</code> directive currently only applies to HTML files --
+the wildcard pattern is not currently used for retaining CSS or Javascript
+comments.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+&lt;body&gt;
+&lt;!-- Display the site logo here --&gt;
+&lt;img src="logo.png"&gt;
+&lt;!-- Now show the page contents --&gt;
+&lt;div&gt;Some content here&lt;/div&gt;
+&lt;!-- Apply IE-specific CSS --&gt;
+&lt;!-- [if IE ]&gt;
+&lt;link href="iecss.css" rel="stylesheet" type="text/css"&gt;
+&lt;![endif]--&gt;
+&lt;!-- google_ad_section_end  -- retained due to RetainComment directive --&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then PageSpeed, with the above directives specified, will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+&lt;body&gt;
+&lt;img src="logo.png"&gt;
+&lt;div&gt;Some content here&lt;/div&gt;
+&lt;!-- [if IE ]&gt;
+&lt;link href="iecss.css" rel="stylesheet" type="text/css"&gt;
+&lt;![endif]--&gt;
+&lt;!-- google_ad_section_end  -- retained due to RetainComment directive --&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/remove_comments.html?ModPagespeed=on&amp;ModPagespeedFilters=remove_comments">example</a>.
+</p>
+
+<h2>Notes</h2>
+<p>
+The "Remove Comments" filter is aware of
+<a href="http://msdn.microsoft.com/en-us/library/ms537512(VS.85).aspx">Internet Explorer conditional comments</a> and does not remove them.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is low risk for most web pages. Some web pages use comments to
+embed data or JavaScript, in order to reduce the parse time of the HTML
+document. Such pages sould disable this filter, as it will remove the
+comments containing the data or JavaScript that is needed by these web
+pages.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

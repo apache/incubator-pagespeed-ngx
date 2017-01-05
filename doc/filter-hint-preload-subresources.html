@@ -1,0 +1,104 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hint Resource Preloading</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Hint Resource Preloading</h1>
+
+<p class="note"><strong>Note: New feature as of 1.12.34.1.</strong></p>
+<h2>Configuration</h2>
+<p>
+  The 'Hint Resource Preloading' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters hint_preload_subresources</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters hint_preload_subresources;</pre>
+</dl>
+<p>
+  in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+  'Hint Resource Preloading' uses <a href="http://w3c.github.io/preload">
+  resource preloading</a> HTTP headers to inform browsers of CSS and JavaScript
+  resources early in page processing, to permit them to fetch them earlier
+  than would otherwise be possible.
+</p>
+
+<h2>Operation</h2>
+<p>
+  The 'Hint Resource Preloading' filter operates by inserting HTTP headers based
+  on content observed in the HTML page (and CSS loaded from it) on earlier
+  visits; it does not alter the HTML.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint lang-html">
+&lt;link rel="stylesheet" type="text/css" href="styles/all_styles.css"&gt;
+&lt;img src="bigimage.jpeg"&gt;
+&lt;script src="script.js" type="text/javascript"&gt;&lt;/script&gt;
+</pre>
+Where <code>all_styles.css</code> contains:
+<pre class="prettyprint lang-html">
+@import url("basic.css");
+@import url("fancy.css");
+@import url("print.css") print;
+</pre>
+
+<p>
+  Then PageSpeed will add the following HTTP headers to the page:
+</p>
+<pre class="prettyprint">
+link: &lt;/styles_all_styles.css&gt;; rel=preload; as=style; nopush
+link: &lt;/basic.css&gt;; rel=preload; as=style; nopush
+link: &lt;/fancy.css&gt;; rel=preload; as=style; nopush
+link: &lt;/script.js&gt;; rel=preload; as=script; nopush
+</pre>
+
+<h3>Example</h3>
+<p>
+  You can see the filter in action at <code>www.modpagespeed.com</code> on this
+  <a href="http://www.modpagespeed.com/hint_preload_subresources.html?PageSpeed=on&amp;PageSpeedFilters=hint_preload_subresources">example</a>.
+</p>
+
+<h2>Limitations</h2>
+<p>This filter only discovers resources specified in the HTML.
+Additionally it can follow one level of <code>@import</code> inclusion from
+<code>&lt;link&gt;</code>ed stylesheets to find additional stylesheets to hint.
+Resources loaded by scripts and further inside CSS will not be hinted for
+preloading. The filter itself does not look inside <code>&lt;style&gt;</code>
+blocks, but the default-enabled <a href="filter-css-inline-import">
+inline_import_to_link</a> filter can make some of their contents accessible.</p>
+
+<p>The filter cannot understand complex media queries, so it will handle them
+conservatively, assuming the resource isn't needed. </p>
+
+<p>When optimizations done by other filters expire, hints for optimizing those
+resources will not be generated (as it is unknown whether they'll get
+re-optimized at the point the HTTP headers are generated). </p>
+
+<h2>Risks</h2>
+<p> This filter is considered low risk. Since it only adds HTTP headers it is
+extremely unlikely to affect page correctness, as HTTP headers are generally
+invisible to web page operation, though a script using
+<code>XMLHttpRequest</code> to request a rewritten page would be able to
+observe them. </p>
+
+<p> However, the addition of extra headers can be counterproductive if the
+resources they hint are already easy to discover from the browser's parser,
+especially in HTTP/1, which lacks header compression. </p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

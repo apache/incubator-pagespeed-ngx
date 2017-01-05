@@ -1,0 +1,148 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Outline JavaScript</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Outline JavaScript</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Outline JavaScript' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters outline_javascript</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters outline_javascript;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+This filter is an <strong>experimental</strong> filter which takes inline
+JavaScript and puts it in an external resource.
+</p>
+
+<h2>Operation</h2>
+<p>
+The 'Outline JavaScript' filter outlines all JavaScript that is larger
+than a minimum threshold in bytes.
+The threshold can be set by adding/changing the line:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedJsOutlineMinBytes 3000</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed JsOutlineMinBytes 3000;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;script type="text/javascript"&gt;
+      ...
+    &lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;script type="text/javascript" src="_.pagespeed.jo.tXBSxcB8mn.js"&gt;&lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+And the new JavaScript file (<code>_.pagespeed.jo.tXBSxcB8mn.js</code>) will be:
+<pre class="prettyprint">
+   ...
+</pre>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/outline_javascript.html?ModPagespeed=on&amp;ModPagespeedFilters=outline_javascript">example</a>.
+</p>
+
+<h2>Pros and Cons</h2>
+<p>
+This could be advantageous if:
+</p>
+<ol>
+  <li>The JavaScript does not change much but the HTML does,
+      then we can cache the JavaScript.</li>
+  <li>when many web pages share the same inlined JavaScript, it will
+      be outlined to a consistent name and thus will be cached more.</li>
+  <li>The inline JavaScript is very long, in which case, outlining it
+      will cause it to be loaded in parallel with the HTML doc.</li>
+</ol>
+<p>
+However, for some websites it will be dis-advantageous because it will:
+</p>
+<ol>
+  <li>create an extra HTTP request and</li>
+  <li>tie up one of the connections to this domain, which could have been
+      used to fetch the actually cacheable external resources.</li>
+</ol>
+
+<h2>Requirements</h2>
+<p>
+Outline filters can currently only run on single-server environments
+because the resource can only be fetched from a server after that server
+has rewritten the HTML page. If a different server rewrote the HTML page,
+then this sever will not have the information needed to create the resource.
+This could be by a network database shared between servers.
+</p>
+<p>
+The 'Outline JavaScript' filter may need to <em>"absolutify"</em> relative
+URLs, if it is outlined to a different directory than the original HTML.
+</p>
+<p>
+The 'Outline JavaScript' filter will maintain the order of the script
+blocks, as script order can be significant.
+</p>
+
+<h2>Risks</h2>
+<p>
+The 'Outline JavaScript' filter is considered low risk.  However, JavaScript
+can be written that walks the DOM looking for <code>&lt;script&gt;</code> tags
+with certain syntax. Such JavaScript may behave differently on a page
+which has changed <code>&lt;script&gt;</code> tags in this way.
+</p>
+<p>
+Additionally, JavaScript can construct requests in arbitrarily complex
+ways, so the filter may not be able to <em>absolutify</em> all relative URL
+references, which could cause incorrect sub-resource requests.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

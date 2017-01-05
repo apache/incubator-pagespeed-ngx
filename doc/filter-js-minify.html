@@ -1,0 +1,187 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Minify JavaScript</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Minify JavaScript</h1>
+<h2>Configuration</h2>
+<p>
+The 'Minify JavaScript' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters rewrite_javascript</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters rewrite_javascript;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+<p class="note"><strong>Note: New feature as of 1.9.32.1</strong></p>
+<p>
+  <code>rewrite_javascript</code> is equivalent to enabling both
+  <code>rewrite_javascript_inline</code> and
+  <code>rewrite_javascript_external</code>.  The former rewrites only
+  inline scripts, and the latter rewrites only external ones.
+</p>
+
+<h3 id="new-minifier">New Minification Parser</h3>
+<p>
+  We introduced a new minification parser in version 1.8.31.2 that
+  improves on some of the shortcomings of the previous parser
+  (for example, correct tokenizing of regular expressions). As of 1.10.33.0,
+  the new parser is used by default, but you can revert back to the old
+  parser with this configuration flag:
+</p>
+<dl>
+  <dt>Apache<dd><pre class="prettyprint"
+     >ModPagespeedUseExperimentalJsMinifier off</pre>
+  <dt>Nginx<dd><pre class="prettyprint"
+     >pagespeed UseExperimentalJsMinifier off;</pre>
+</dl>
+<p>
+  Before 1.10.33.0, the old minification parser was
+  used by default. You can enable the new minification parser with:
+</p>
+<dl>
+  <dt>Apache<dd><pre class="prettyprint"
+     >ModPagespeedUseExperimentalJsMinifier on</pre>
+  <dt>Nginx<dd><pre class="prettyprint"
+     >pagespeed UseExperimentalJsMinifier on;</pre>
+</dl>
+<p>
+  If you have configured any custom javascript libraries
+  for <a href="filter-canonicalize-js">canonicalization</a> you'll have to
+  regenerate your signatures with both <code>--use_experimental_minifier</code>
+  (for the new minifier) and <code>--nouse_experimental_minifier</code>
+  (for the old minifier) flags.
+</p>
+<h2>Description</h2>
+<p>
+This filter minifies JavaScript code, using an algorithm similar to that in
+Douglas Crockford's popular
+<a href="http://www.crockford.com/javascript/jsmin.html">JSMin</a> program.
+At present, the filter strips all
+comments and most whitespace.  The filter works only on JavaScript found in
+<code>&lt;script&gt;</code> blocks (either as the target of the
+<code>src</code> attribute, or within the body of the block).
+</p>
+<p>
+Minification can drastically reduce the byte count in common JavaScript code.
+This filter can be used to avoid the extra step of minifying Java code by hand
+when constructing and maintaining a site.
+</p>
+<p>
+This <a href="/speed/docs/best-practices/payload#MinifyJS">practice</a>
+reduces the payload size.
+</p>
+
+<h2>Operation</h2>
+<p>
+The 'Minify JavaScript' filter removes unnecessary bytes on the wire. While it's
+great to put comments, tabs and whitespace in code to improve readability and
+maintenance, these are bytes that take up space on the wire and that a browser's
+JavaScript parser has to parse unnecessarily.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;script&gt;
+      // This comment will be removed
+      document.write("Howdy");
+      state = 1
+    &lt;/script&gt;
+    &lt;script src="extScript.js" type="text/javascript"&gt;
+    &lt;/script&gt;
+    &lt;script src="extScript1.js"&gt;
+    /* Note that the contents of a script block aren't altered
+       if a src is specified.  It is assumed the code will be
+       using the script block contents as data. */
+    document.write("Internal script; state = " + state);
+    state = 42
+  &lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+With the following in <code>extScript.js</code>:
+<pre class="prettyprint">
+  /* Inject state into document */
+  document.write("External " + state);
+  state += 1;  // Then update it.
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;script&gt;document.write("Howdy");state=1&lt;/script&gt;
+    &lt;script src=".../extScript.js.pagespeed.jm.HASH.js"&gt;&lt;/script&gt;
+    &lt;script src=".../extScript1.js.pagespeed.jm.HASH.js" type="text/javascript"&gt;
+    /* Note that the contents of a script block aren't altered
+       if a src is specified.  It is assumed the code will be
+       using the script block contents as data. */
+    document.write("Internal script; state = " + state);
+    state = 42
+  &lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+And the rewritten file <code>extScript.js.pagespeed.jm.HASH.js</code> will
+contain:
+<pre class="prettyprint">
+document.write("External "+state);state+=1;
+</pre>
+</p>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/rewrite_javascript.html?ModPagespeed=on&amp;ModPagespeedFilters=rewrite_javascript">example</a>.
+</p>
+
+<h2>Requirements</h2>
+<p>
+Only JavaScript code referenced by <code>&lt;script&gt;</code> tags is
+rewritten. Code fragments that occur elsewhere (for example event handler
+declarations in CSS) are not altered.
+</p>
+
+<h2>Risks</h2>
+<p>
+Some JavaScript code depends upon the formatting of scripts in the page.  For
+example, scripts exist that store data in JavaScript comments, then walk the
+DOM, retrieve the source code for the script, and read the data from the
+comments.  This will not work in conjunction with any minification tool.
+Authors are encouraged instead to store data either in the body of a
+script with a <code>src</code> (as shown in the example above), in hidden
+<code>&lt;div&gt;</code> or <code>&lt;span&gt;</code> elements in the
+page itself, or best of all in JavaScript string constants.
+</p>
+
+<p>
+  This filter is sensitive to <a href="restricting_urls#aris"><code
+  >AvoidRenamingIntrospectiveJavascript</code></a>. For example, a
+  JavaScript file that calls
+  <code>document.getElementsByTagName('script')</code> will not be rewritten.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

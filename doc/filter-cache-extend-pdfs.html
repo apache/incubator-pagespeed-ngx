@@ -1,0 +1,64 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Extend Cache PDFs</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Extend Cache PDFs</h1><h2>Configuration</h2>
+<p>
+The 'Extend Cache PDFs' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters extend_cache_pdfs</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters extend_cache_pdfs;</pre>
+</dl>
+in the configuration file.
+
+<h2>Description</h2>
+<p>
+'Extend Cache PDFs' is a version of <a href="filter-cache-extend">Extend
+Cache</a> that acts on PDFs.  Unlike 'Extend Cache' it applies not only to
+resources but also to hyperlinks.  For example, while 'Extend Cache' would not
+apply to <code>&lt;a href=&quot;example.jpg&quot;&gt;</code>, 'Extend Cache
+PDFs' would apply to <code>&lt;a href=&quot;example.pdf&quot;&gt;</code>.
+</p>
+
+<h2>Operation</h2>
+<p>
+<a href="filter-cache-extend#operation">Extend Cache: Operation</a> describes
+the standard operation of cache extension in PageSpeed.  This filter identifies
+PDF URLs by their ".pdf" extension and marks them as eligible for cache
+extension.
+</p>
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> for
+cache-extending PDFs
+<a
+href="http://www.modpagespeed.com/extend_cache_pdfs.html?ModPagespeed=on&amp;ModPagespeedFilters=extend_cache_pdfs"
+>in HTML</a>.
+</p>
+
+<h2>Limitations</h2>
+<p>
+In addition to the <a href="filter-cache-extend#limitations">limitations of
+Extend Cache</a>, this filter is limited by its reliance on file extensions for
+identifying potential PDF URLs.  PDF resources with URLs ending in something
+other than ".pdf" won't be considered for cache extension.
+</p>
+<h2>Risks</h2>
+<p>
+This filter has the same risks as <a href="filter-cache-extend#risks">Extend
+Cache</a>.
+</p>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

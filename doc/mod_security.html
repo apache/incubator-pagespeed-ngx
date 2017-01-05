@@ -1,0 +1,62 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Security Considerations for PageSpeed</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Security Considerations for PageSpeed</h1>
+
+
+<p>
+Any change to a website has the possibility of introducing new security holes.
+Pagespeed is not an exception to this rule.  This document covers specific
+security concerns to keep in mind when using PageSpeed.
+</p>
+
+<h2 id="untrusted_content">Untrusted Content</h2>
+<p>
+Any time you reference untrusted content on your website, you are at risk of
+security attack.  This is most clear for JavaScript which will have access to
+your domain's cookies because of the Same Origin Policy. It can also be true
+for CSS, which can contain JavaScript references (ex. the IE behavior
+property described in this
+<a href="http://www.w3.org/TR/1999/WD-becss-19990804#behavior">W3C reference</a>
+and at this <a href="http://reference.sitepoint.com/css/behavior">reference</a>
+by SitePoint&reg;. Even images in certain situations can be used in attacks
+(ex: <a href="http://hackaday.com/2008/08/04/the-gifar-image-vulnerability/">
+GIFAR attack</a>).
+</p>
+<p class="caution">
+<strong>Caution:</strong>
+Do not reference untrusted content on your website. If you do store
+user content or other untrusted content, keep it on a separate cookie-less
+domain and do <strong>NOT</strong> tell PageSpeed to rewrite from that
+domain to your main cookied domain.
+</p>
+
+<h2 id="private_content">Private Content</h2>
+<p>
+PageSpeed rewrites and, effectively, proxies resources referenced in
+the main HTML document. It respects public caching headers, so if a resource
+is not explicitly marked public cacheable, PageSpeed will not rewrite
+nor re-serve it. However, PageSpeed will re-serve resources which
+<strong>ARE</strong> publicly cacheable.
+If you serve private content as publicly cacheable,
+PageSpeed will proxy it to any who requests a specific URL. Note that any
+public proxy in the Internet can do the same thing.
+</p>
+<p class="caution">
+<strong>Caution:</strong>
+Explicitly mark private content as not publicly cacheable.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

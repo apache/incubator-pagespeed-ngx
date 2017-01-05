@@ -1,0 +1,113 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Optimizing For Bandwidth</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Optimizing For Bandwidth</h1>    <p>
+      PageSpeed's default <code>RewriteLevel</code> of
+      <a href="config_filters#level">CoreFilters</a>
+      is designed to reduce latency, incurring a small risk of page breakage.
+      A related goal, bandwidth reduction, can be achieved with close to zero
+      risk of web-site breakage:</p>
+    <dl>
+      <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedRewriteLevel OptimizeForBandwidth</pre>
+      <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed RewriteLevel OptimizeForBandwidth;</pre>
+    </dl>
+    <p>
+      This option is suitable for use in a root configuration at a
+      hosting service, CDN, or multi-site setup, in conjunction with
+      <a href="configuration#virtual-hosts">InheritVhostConfig</a>.
+      In this mode, PageSpeed does not alter HTML at all.  It compresses
+      and transcodes images <a href="system#ipro">in place</a>, and minifies
+      JavaScript and CSS. By avoiding changes to URL syntax and to HTML, the
+      potential problem of user-written JavaScript encountering unexpected
+      DOM elements is elimimated.  There is still latency benefit due to the
+      reduced size of resources, as well as substantial bandwidth reduction.
+    </p>
+    <h2 id="savings">Bandwidth Savings</h2>
+    <p>
+      The bandwidth savings resulting from this option are, of course,
+      dependent on the source site.  Our tests with the default
+      settings for OptimizeForBandwidth indicate an average bandwidth
+      reduction of roughly 37% over the content of 1000 large web sites with
+      a client that is capable of displaying webp images, and 25% improvement
+      with older clients.
+    </p>
+    <h2 id="adding_options">Adding Additional Options</h2>
+    <p>
+      Additional latency optimizations that modify HTML can be layered on
+      top of <code>OptimizeForBandwidth</code> by enabling additional
+      filters, and altering the <a href="config_filters#preserveurls">Preserve
+        URL settings</a> for CSS, images, or JavaScript.  For example, to set
+      up a shared hosting server with OptimizeForBandwidth in the root, but
+      where individual sites have added
+      <a href="filter-js-inline">inline_javascript</a>,
+      <a href="filter-lazyload-images">lazyload_images</a> and
+      <a href="filter-prioritize-critical-css">prioritize_critical_css</a>,
+      or simply turned on <a href="config_filters#level">CoreFilters</a>,
+      the following pagespeed.conf fragment may be used:
+    </p>
+    <dl>
+      <dt>Apache:</dt>
+      <dd>
+        <pre>
+ModPagespeedInheritVHostConfig on
+ModPagespeedRewriteLevel OptimizeForBandwidth
+&lt;VirtualHost *:80&gt;
+  ServerName prioritize_above_the_fold.example.com
+  ModPagespeedEnableFilters inline_javascript,prioritize_critical_css,inline_preview_images
+&lt;/VirtualHost&gt;
+&lt;VirtualHost *:80&gt;
+  ServerName preserve_css_urls_off.example.com
+  ModPagespeedCssPreserveURLs off
+&lt;/Directory&gt;
+&lt;VirtualHost *:80&gt;
+  ServerName core.example.com
+  ModPagespeedRewriteLevel CoreFilters
+&lt;/Directory&gt;</pre>
+      </dd>
+      <dt>Nginx:</dt>
+      <dd>
+        <pre>
+pagespeed RewriteLevel OptimizeForBandwidth;
+server {
+  server_name prioritize_above_the_fold.example.com
+  pagespeed EnableFilters inline_javascript,prioritize_critical_css,inline_preview_images
+}
+server {
+  server_name preserve_css_urls_off.example.com
+  pagespeed CssPreserveURLs off
+}
+server {
+  server_name core.example.com
+  pagespeed RewriteLevel CoreFilters
+}</pre>
+      </dd>
+    </dl>
+    <p>
+      In version 1.9.32.1 and later, <a href="system#ipro">In Place
+      Resource Optimization</a> is enabled by default.  In earlier versions,
+      turning on OptimizeForBandwidth automatically enables In Place
+      Resource Optimization to optimize the resources without needing
+      to change their URLs.  In these earlier versions, when a VirtualHost
+      overrides the <code>RewriteLevel</code> to <code>CoreFilers</code>, that
+      turns off In Place Resource Optimization, but it can be re-enabled
+      explicitly:</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedInPlaceResourceOptimization on</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed InPlaceResourceOptimization on;</pre>
+</dl>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

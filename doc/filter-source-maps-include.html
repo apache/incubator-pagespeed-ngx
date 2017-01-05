@@ -1,0 +1,122 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Include JavaScript Source Maps</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Include JavaScript Source Maps</h1>
+<h2>Configuration</h2>
+<p>
+  The 'Include JavaScript Source Maps' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters include_js_source_maps</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters include_js_source_maps;</pre>
+</dl>
+<p>
+  in the configuration file. If you are using a version before 1.10.33.0,
+  you must also enable the
+  <a href="filter-js-minify">new JavaScript minifier</a>:
+</p>
+<dl>
+  <dt>Apache<dd><pre class="prettyprint"
+     >ModPagespeedUseExperimentalJsMinifier on</pre>
+  <dt>Nginx<dd><pre class="prettyprint"
+     >pagespeed UseExperimentalJsMinifier on;</pre>
+</dl>
+
+<h2>Description</h2>
+<p>
+  Source maps are files that tell browsers how to map between a minified
+  JavaScript file and the original, readable version so that you can see the
+  readable version while debugging minified production code. For more
+  information on source maps in general, see Ryan Seddon's
+  <a href="http://www.html5rocks.com/en/tutorials/developertools/sourcemaps/">
+  Introduction to JavaScript Source Maps</a> or the
+  <a href="https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-_2gc6fAH0KY0k/edit">
+  specification proposal</a>.
+</p>
+<p>
+  This filter constructs a source map from the minified JavaScript to your
+  original JavaScript files and adds a comment specifying the URL for this
+  source map.
+</p>
+
+<h2>Example</h2>
+<p>
+  For example, if the original JavaScript file looks like this:
+</p>
+<pre class="prettyprint">
+console.log('External script start');
+
+// Browser/window data to report
+var data = { 'User-Agent': navigator.userAgent,
+             'Platform': navigator.platform,
+             'Date': window.Date,
+             'Dimensions': window.outerHeight + 'x' + window.outerWidth
+           };
+
+// Construct HTML list for data.
+var dl = document.createElement('dl');
+for (key in data) {
+  var dt = document.createElement('dt');
+  dt.innerText = key;
+
+  var dd = document.createElement('dd');
+  dd.innerText = data[key];
+
+  dl.appendChild(dt);
+  dl.appendChild(dd);
+}
+
+// Add list to page.
+var content = document.getElementById('content');
+content.appendChild(dl);
+
+console.log('External script finish');
+</pre>
+<p>
+  then the rewritten JavaScript would look like this:
+</p>
+<pre class="prettyprint">
+console.log('External script start');var data={'User-Agent':navigator.userAgent,'Platform':navigator.platform,'Date':window.Date,'Dimensions':window.outerHeight+'x'+window.outerWidth};var dl=document.createElement('dl');for(key in data){var dt=document.createElement('dt');dt.innerText=key;var dd=document.createElement('dd');dd.innerText=data[key];dl.appendChild(dt);dl.appendChild(dd);}var content=document.getElementById('content');content.appendChild(dl);console.log('External script finish');
+//# sourceMappingURL=http://example.com/script.js.pagespeed.sm.0JT2VEfKJs.map
+</pre>
+<p>
+  and the source map would look like this:
+</p>
+<pre class="prettyprint">
+)]}'
+{"mappings":"AAAA,OAAO,CAAC,GAAG,CAAC,uBAAuB,CAAC,CAGpC,GAAG,CAAC,IAAK,CAAE,CAAE,YAAY,CAAE,SAAS,CAAC,SAAS,CACjC,UAAU,CAAE,SAAS,CAAC,QAAQ,CAC9B,MAAM,CAAE,MAAM,CAAC,IAAI,CACnB,YAAY,CAAE,MAAM,CAAC,WAAY,CAAE,GAAI,CAAE,MAAM,CAAC,UAClD,CAAC,CAGZ,GAAG,CAAC,EAAG,CAAE,QAAQ,CAAC,aAAa,CAAC,IAAI,CAAC,CACrC,GAAI,CAAC,GAAG,CAAC,EAAE,CAAC,IAAI,CAAE,CAChB,GAAG,CAAC,EAAG,CAAE,QAAQ,CAAC,aAAa,CAAC,IAAI,CAAC,CACrC,EAAE,CAAC,SAAU,CAAE,GAAG,CAElB,GAAG,CAAC,EAAG,CAAE,QAAQ,CAAC,aAAa,CAAC,IAAI,CAAC,CACrC,EAAE,CAAC,SAAU,CAAE,IAAI,CAAC,GAAG,CAAC,CAExB,EAAE,CAAC,WAAW,CAAC,EAAE,CAAC,CAClB,EAAE,CAAC,WAAW,CAAC,EAAE,CAAC,CACpB,CAGA,GAAG,CAAC,OAAQ,CAAE,QAAQ,CAAC,cAAc,CAAC,SAAS,CAAC,CAChD,OAAO,CAAC,WAAW,CAAC,EAAE,CAAC,CAEvB,OAAO,CAAC,GAAG,CAAC,wBAAwB,CAAC","names":[],"sources":["http://example.com/script.js?PageSpeed=off"],"version":3}
+</pre>
+
+<h2>Limitations</h2>
+<ul>
+  <li>Source maps cannot be developed for inline JavaScript (because there
+    is no URL for the original JavaScript).</li>
+  <li>If your resources already have source maps, we ignore them and the
+    source map we add goes back to the URL you specify in HTML.
+    (<a href="https://github.com/pagespeed/mod_pagespeed/issues/930"
+        >Issue 930</a>)</li>
+</ul>
+
+<h2>Risks</h2>
+<p>
+  This filter should not have any effect for visitors to your site.
+  For developers, the biggest risk is that source maps are incorrect or out
+  of date, in which case the browser will show you a completely incorrect
+  location when debugging JavaScript. Clearing the cache or turning off
+  source maps should fix this problem.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

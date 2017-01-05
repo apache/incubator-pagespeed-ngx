@@ -1,0 +1,152 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Make Google Analytics Asynchronous</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Make Google Analytics Asynchronous</h1>
+
+
+<h2>Configuration</h2>
+<p>
+  The 'Make Google Analytics Asynchronous' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters make_google_analytics_async</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters make_google_analytics_async;</pre>
+</dl>
+  in the configuration file.
+</p>
+
+
+<h2>Description</h2>
+<p>
+  The filter rewrites pages that load the
+  <a href="http://www.google.com/analytics/">Google Analytics</a>
+  tracking code synchronously to load it asynchronously instead.
+  Loading Google Analytics asynchronously has the advantage that it
+  will not block resources that load later in the page.
+</p>
+<p>
+  Currently, the filter only changes the loading mechanism. To get the
+  full benefit of the asynchronous load, you should move the loading of
+  the tracking code to the bottom of the <code>&lt;head&gt;</code> of
+  the page. That allows beacons to be sent earlier during the page load --
+  and avoids missing them if a user navigates away from a page quickly.
+  For more information on how to manually upgrade, see
+  <a href="/analytics/devguides/collection/gajs/asyncMigrationExamples#migrationInstructions">Migrating to Async Tracking</a>
+</p>
+
+
+<h2>Operation</h2>
+<p>
+  The filter looks for a Google Analytics snippet such as the following:
+</p>
+<pre class="prettyprint">
+&lt;script type="text/javascript"&gt;
+  var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+  document.write(unescape("%3Cscript src=" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+&lt;/script&gt;
+&lt;script type="text/javascript"&gt;
+  try {
+    var pageTracker = _gat._getTracker("UA-XXXXX-X");
+    pageTracker._trackPageview();
+  } catch(err) {}
+&lt;/script&gt;
+</pre>
+<p>
+  and rewrites such snippets in-place to:
+</p>
+<pre class="prettyprint">
+&lt;script type='text/javascript'&gt;
+  var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+  <strong>GLUE_SCRIPT</strong>
+  var ga = document.createElement('script');
+  ga.type = 'text/javascript'; ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' :
+            'http://www') + '.google-analytics.com/ga.js';
+  var s = document.getElementsByTagName('script')[0];
+  s.parentNode.insertBefore(ga, s);
+&lt;/script&gt;
+&lt;script type="text/javascript"&gt;
+  try {
+    var pageTracker = _modpagespeed_getRewriteTracker("UA-XXXXX-X");
+    pageTracker._trackPageview();
+  } catch(err) {}
+&lt;/script&gt;
+</pre>
+<p>
+  where <strong><code>GLUE_SCRIPT</code></strong> is JavaScript that
+  defines the <code>_modpagespeed_getRewriteTracker</code> function to
+  return an object that maps all the methods of the synchronous API to
+  the asynchronous API.
+</p>
+
+<p>
+  Additionally, the filter will replace loads in the following format:
+</p>
+<pre class="prettyprint">
+&lt;script src="http://www.google-analytics.com/ga.js" type="text/javascript"&gt;&lt;/script&gt;
+</pre>
+<p>
+  The rewrite is known to not work when calls are made to Google
+  Analytics methods that return values. To avoid this issue, the
+  filter searches for these methods and abandons the rewrite if
+  they are found.
+</p>
+
+
+<h3>Example</h3>
+<p>
+  You can see the filter in action at <code>www.modpagespeed.com</code> on this
+  <a href="http://www.modpagespeed.com/make_google_analytics_async.html?ModPagespeed=on&amp;ModPagespeedFilters=make_google_analytics_async">example</a>.
+</p>
+
+
+<h2>Requirements</h2>
+<p>
+  In order for the filter to trigger, the Google Analytics snippets
+  must be in the same format as shown above. The filter only performs
+  simple string matches to find the Google Analytics snippets.
+</p>
+
+<p>
+  Also, once a synchronous load is matched, the rest of the page is scanned for
+  any Google Analytics calls that return values. It only performs the rewrite
+  once it has reached the end of the page. That means the filter depends on how
+  the web page is buffered by the server.  Specifically, if the snippet is not
+  in the last flush window, it will not be rewritten.
+</p>
+
+
+<h2>Risks</h2>
+<p>
+  This filter is considered high risk.
+</p>
+<p>
+  The <code>make_google_analytics_async</code> filter is experimental
+  and has not had extensive real-world testing. One case where a rewrite
+  would cause errors is if the filter misses calls to Google Analytics
+  methods that return values. If such methods are found, the rewrite is
+  skipped. However, the disqualifying methods will be missed if they
+  <ul style="margin-bottom: .5em">
+    <li>come before the load,</li>
+    <li>are in attributes such as "onclick",</li>
+    <li>or if they are in external resources.</li>
+  </ul>
+  Those cases are expected to be rare.
+</p>
+
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

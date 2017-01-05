@@ -1,0 +1,168 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sprite Images</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Sprite Images</h1>
+
+
+<h2>Configuration</h2>
+<p>
+The 'Sprite Images' filter requires the 'Rewrite CSS' filter;
+these filters are enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters rewrite_css,sprite_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters rewrite_css,sprite_images;</pre>
+</dl>
+<p>
+in the configuration file.
+<h2>Description</h2>
+<p>
+The 'Sprite Images' filter detects GIF and PNG images used as backgrounds in
+CSS.  It attempts to combine all such images referenced from a CSS file
+into a single large image.  The individual CSS backgrounds are then rewritten to
+point to the single large image, with background positioning declarations so
+that the page appears as it was before.  This process is
+called <a href="http://www.alistapart.com/articles/sprites">CSS Spriting</a>.
+This filter is intended to avoid the cumbersome process of managing the sprited
+image and corresponding declarations rather than as a general-purpose optimizer.
+</p>
+<h2>Benefits</h2>
+<p>
+CSS Spriting can benefit page speed in several ways.  First, if many small
+images are combined into one large image, the browser will require fewer server
+connections, which can increase parallelism.  Second, bytes are saved from the
+overhead of each individual request (both the HTTP headers and the image
+headers); depending on how well the large PNG compresses, this can end up saving
+a substantial amount of bandwidth.  Finally, in some browsers it is faster to
+decode one large image than several small ones.
+</p>
+<h2>Example</h2>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;Sprite Images&lt;/title&gt;
+      &lt;style type="text/css"&gt;
+        #bg_Cuppa {
+            background-image:url('images/Cuppa.png');
+            background-repeat:no-repeat;
+            width:65px;
+            height:70px;
+        }
+        #bg_BikeCrashIcn {
+            width:100px;
+            height:100px;
+            background:transparent url('images/BikeCrashIcn.png') 0 0 no-repeat
+        }
+      &lt;style type="text/css"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div id="bg_Cuppa"&gt;&lt;/div&gt;
+    &lt;div id="bg_BikeCrashIcn"&gt;&lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then <code>sprite_images</code> will rewrite the css into something like this:
+</p>
+<pre class="prettyprint">
+        #bg_Cuppa{
+            background-image:url(<b>images/Cuppa.png+BikeCrashIcn.png.pagespeed.is.Y-XqNDe-in.png</b>);
+            background-repeat:no-repeat;
+            width:65px;
+            height:70px;
+            <b>background-position:0px 0px</b>
+        }
+        #bg_BikeCrashIcn{
+            width:100px;
+            height:100px;
+            background:transparent url(<b>images/Cuppa.png+BikeCrashIcn.png.pagespeed.is.Y-XqNDe-in.png</b>) <b>0px -70px</b> no-repeat;
+        }
+</pre>
+<p>
+You can see the filter in action at <a href="http://www.modpagespeed.com/sprite_images.html?ModPagespeed=on&ModPagespeedFilters=rewrite_css,sprite_images"><code>www.modpagespeed.com</code></a>.
+</p>
+
+<h2>Limitations</h2>
+<p>
+The Sprite Images filter is still experimental, and currently has a number of
+limitations:
+<ul>
+<li><strong>Only PNG and GIF images</strong> are supported; JPG will come in a
+future release.</li>
+<li><strong>Only CSS backgrounds</strong> are supported; <code>&lt;img&gt;</code> tags will come in a future release.</li>
+<li>A background image can't be safely sprited if the HTML element is larger
+than the background image (since this would allow the combined image's extra
+pixels to show around the edges).  Accordingly, the CSS must have
+<strong>explicit width and height</strong> in the same declaration as the
+background URL, and the width and height must be smaller than or equal to those
+of the image.</li>
+<li>The CSS must <strong>not include any background-position declarations
+without background-url declarations</strong>.  Such a naked background-position
+declaration could apply to any background-image, and since we don't know which
+one, it isn't safe to do any spriting.</li>
+<li>The Sprite Images filter currently arranges images in a vertical strip,
+which might not be the most efficient arrangement.  More advanced layouts
+will come in a future release.</li>
+</ul>
+</p>
+
+<h2>Risks</h2>
+<p>
+Automatically spriting images is low risk.  However, there are some potential
+problems to be aware of:
+</p>
+<p>
+<em>Browser caching effectiveness could be degraded.</em>  If the pages on your
+site have a high (but not complete) overlap of background images, a visitor
+browsing your site will normally have many of these images cached much of the
+time.  After turning on the Sprite Images filter, the user may have to download
+a new (slightly different) sprite for each different page.  Expect improvement
+on this front in a future release.
+</p>
+
+<p>
+<em>Your server load could increase.</em>  The image processing required to
+combine many small images into one large one could have a memory or CPU impact
+on your server.  PageSpeed is designed to minimize this impact,
+but you should keep an eye on it after turning on any image processing filter.
+</p>
+
+<p>
+<em>Your server could be exposed to a new attack vector</em> if you host
+user-submitted images.  Processing hostile images on the server could be
+insecure.  We recommend that user-submitted images be filtered before
+spriting.
+</p>
+
+<p>
+<em>Your CSS file could get bigger</em> since the URL of the combined image is
+longer than the URL of each individual image.  However, if your CSS is served
+compressed (and it definitely ought to be!), this should not make much
+difference, since the extra bytes will be highly compressible.
+</p>
+
+<p>
+<em>Your pages could take more memory</em> to display on the client, since the
+decompressed bitmap of the large image will have more pixels than the sum of the
+small images.  This could negatively impact the experience on memory-constrained
+mobile devices.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

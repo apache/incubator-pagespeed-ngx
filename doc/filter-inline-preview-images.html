@@ -1,0 +1,136 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inline Preview Images</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Inline Preview Images</h1>
+
+
+<h2>Configuration</h2>
+<p>
+The 'Inline Preview Images' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters inline_preview_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters inline_preview_images;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+The 'Resize Mobile Images' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters resize_mobile_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters resize_mobile_images;</pre>
+</dl>
+in the configuration file.
+
+<h2>Description</h2>
+<p>
+The 'Inline Preview Images' filter generates low quality versions of the
+images that are inlined in the HTML page. Users experience faster rendering of
+the page and the low quality images are replaced by high quality versions after
+an onload event is triggered. The filter works on images found in
+<code>&lt;img&gt;</code> tags.
+</p>
+<p>
+The 'Resize Mobile Images' filter works like Inline Preview Images, but is
+applied only for mobile browsers, and shrinks the size in pixels of the
+placeholder images on mobile devices to better fit the device screen size.  If
+Inline Preview Images is activated and Resize Mobile Images is not,
+full-resolution preview images will be served to both desktop and mobile
+browsers.
+</p>
+<p class="note"><strong>Note:</strong> <code>inline_preview_images</code>
+ and <code>resize_mobile_images</code> should be used together
+ with <code>insert_image_dimensions</code> to avoid reflow as the images load.
+</p>
+
+<h2>Operation</h2>
+The 'Inline Preview Images' filter changes the <code>src</code> attribute of
+<code>&lt;img&gt;</code> elements to <code>data-pagespeed-high-res-src</code>
+based on a few parameters which are described in next section. It generates low
+quality versions of the images and replaces the <code>src</code> attribute with
+these. The low quality images are replaced by high quality versions after an
+onload event is triggered.
+
+<h2 id="params">Parameters that affect optimization</h2>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMaxInlinedPreviewImagesIndex IndexNumber</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MaxInlinedPreviewImagesIndex IndexNumber;</pre>
+</dl>
+<p>
+The first <code>IndexNumber</code> images on the page are replaced by low
+quality images. Negative numbers will result in
+<strong>all</strong> images being rewritten. Zero means no image will be
+rewritten. The default value of this parameter is -1. Refer to the Risks section
+for trade offs on setting this value.
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMinImageSizeLowResolutionBytes MinBytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MinImageSizeLowResolutionBytes MinBytes;</pre>
+</dl>
+<p>
+<code>MinBytes</code>, a positive integer, is the minimum size in bytes of
+any image for which a low quality image is generated. No images will be
+rewritten for zero and negative values.
+</p>
+<p id="beacons">
+'Inline Preview Images' injects JavaScript that uses a
+<a href="faq#beacons">beacon</a> to report back to the server the images that
+are visible in the client's initial viewport (<em>above the fold</em>).
+It takes a few accesses of a page for the data to be reported back and
+processed but eventually the above-the-fold images will be known and will be
+replaced with low quality versions while all others will be handled normally;
+until then images are replaced as described above.
+</p>
+<p>
+The use of beacons can be disabled using the
+<a href="config_filters#beacons">ModPagespeedCriticalImagesBeaconEnabled</a>
+directive. If they are disabled, 'Inline Preview Images' will not inject the
+JavaScript and images will be replaced with low quality versions as described
+above.
+</p>
+
+<h3>Example</h3>
+<p>
+You can see the Inline Preview Images filter in action
+at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/inline_preview_images.html?ModPagespeed=on&amp;ModPagespeedFilters=inline_preview_images">example</a>.
+You can also see this
+<a href="http://www.modpagespeed.com/resize_mobile_images.html?ModPagespeed=on&ModPagespeedFilters=resize_mobile_images,insert_image_dimensions">example</a>
+of the Resize Mobile Images filter.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered moderately risky. The main risk is that the HTML
+becomes bloated due to the embedded low quality image data.
+<code>MaxInlinedPreviewImagesIndex</code> should be chosen appropriately;
+otherwise, if images below the fold are inlined, there is no user perceivable
+gain, but the page takes longer to load due to the extra bytes in the HTML.
+</p>
+<p>
+Note that <code>MaxInlinedPreviewImagesIndex</code>
+and <code>MinImageSizeLowResolutionBytes</code> should not be used to disable
+inlining of preview images (for example by setting either parameter to
+0). Instead, the <code>inline_preview_images</code>
+and <code>resize_mobile_images</code> filters themselves should be disabled.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

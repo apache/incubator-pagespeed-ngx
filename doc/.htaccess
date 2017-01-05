@@ -1,0 +1,16 @@
+# Turn on server side include processing for the header inclusion.
+AddOutputFilter INCLUDES .html
+Options +Includes
+Options +FollowSymLinks
+
+# Make /foo.html available at /foo
+RewriteEngine on
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule !.*\.html$ %{REQUEST_FILENAME}.html [L]
+
+# Turn on mod_pagespeed to optimize our docs.
+ModPagespeed on
+ModPagespeedRewriteLevel CoreFilters
+ModPagespeedEnableFilters collapse_whitespace
+ModPagespeedEnableFilters remove_comments
+ModPagespeedInPlaceResourceOptimization on

@@ -1,0 +1,73 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pedantic</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Pedantic</h1>
+<h2>Configuration</h2>
+<p>
+The 'Pedantic' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters pedantic</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters pedantic;</pre>
+</dl>
+<p>
+in the configuration file.
+
+<h2>Description</h2>
+<p>
+The 'Pedantic' filter is used to make PageSpeed more HTML4 compliant.  Some
+filters remove type attributes in style and script tags, which are
+required for HTML4 validation checks but not HTML5.  This filter adds default
+types to script and style tags. Note that it will increase HTML size and thus
+possibly increase latency so use it only if you require HTML4 validation.
+</p>
+
+<h2>Operation</h2>
+<p>
+There are two cases where a <code>type</code> attribute can be added.  First, if
+a <code>&lt;style&gt;</code> tag does not have a <code>type</code> attribute
+then a <code>type="text/css"</code> attribute will be added to
+the <code>style</code> tag. Second, if a <code>&lt;script&gt;</code> tag does
+not have a <code>type</code> attribute then
+a <code>type="text/javascript"</code> attribute will be added to
+the <code>script</code> tag.
+</p>
+<p>
+The expected method of using the pedantic filter is via a query parameter
+such as: '<code>?ModPagespeedFilters=+pedantic</code>'.
+</p>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on
+this <a
+href="http://www.modpagespeed.com/pedantic.html?ModPagespeed=on&amp;ModPagespeedFilters=pedantic"
+>example</a>.
+</p>
+
+<h2>Requirements</h2>
+<p>
+The 'Pedantic' filter will not alter a page with an HTML5 DOCTYPE.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered medium risk.  It is safe for most pages, but could
+possibly break scripts by adding <code>text/javascript</code> to a tag if the
+default mime type is something other than <code>text/javascript</code>.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>
+
+

@@ -1,0 +1,281 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageSpeed URL Control</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>PageSpeed URL Control</h1>
+<h2 id="disallow">Restricting Rewriting Via Wildcards:  Allow and Disallow</h2>
+
+<p>By default, all HTML files served by your server and all resources (CSS,
+images, JavaScript) found in HTML files whose origin matches the HTML file, or
+whose origin is authorized via <a href="domains#auth_domains">Domain</a>, will
+be rewritten.  However, this can be restricted by using wildcards, using the
+directives:</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedAllow wildcard_spec
+ModPagespeedDisallow wildcard_spec</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed Allow wildcard_spec;
+pagespeed Disallow wildcard_spec;</pre>
+</dl>
+
+<p>These directives are evaluated in sequence for each resource, to determine
+whether the resource should be consider for rewriting.  This is best
+considered with an example.</p>
+
+<h3>Example 1: Excluding JavaScript files that cannot be rewritten</h3>
+
+<p>Some JavaScript files are sensitive to their own names as they
+traverse the DOM.  Therefore any rewriting on these files is invalid.
+We cannot cache-extend them or minifiy them.  When such files are
+identified, we can exclude from the rewriting process via:</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedDisallow "*/jquery-ui-1.8.2.custom.min.js"
+ModPagespeedDisallow "*/js_tinyMCE.js"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed Disallow "*/jquery-ui-1.8.2.custom.min.js";
+pagespeed Disallow "*/js_tinyMCE.js";</pre>
+</dl>
+
+<h3>Example2: Specifying explicitly which types of files can be rewritten</h3>
+
+<p>By default, every resource referenced by HTML from authorized domains is
+rewritten, as if there was an implicit</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedAllow "*"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed Allow "*";</pre>
+</dl>
+
+<p>at the beginning of every configuration.  To change the default to
+be exclusive, issue</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedDisallow "*"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed Disallow "*";</pre>
+</dl>
+
+<p>and then follow it with which files you want to include.  For example:</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedDisallow "*"
+ModPagespeedAllow "http://*example.com/*.html"
+ModPagespeedAllow "http://*example.com/*/images/*.png"
+ModPagespeedAllow "http://*example.com/*/styles/*.css"
+ModPagespeedDisallow "*/images/captcha/*"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed Disallow "*";
+pagespeed Allow "http://*example.com/*.html";
+pagespeed Allow "http://*example.com/*/images/*.png";
+pagespeed Allow "http://*example.com/*/styles/*.css";
+pagespeed Disallow "*/images/captcha/*";</pre>
+</dl>
+
+<p>The <em>later</em> directives take priority over the earlier ones, so
+the Captcha images will not be rewritten.</p>
+
+<p class="note">
+<strong>Note:</strong> Wildcards include <code>*</code> which matches
+any 0 or more characters, and <code>?</code>, which matches exactly
+one character.  Unlike Unix shells, the <code>/</code> directory
+separator is not special, and can be matched by either <code>*</code>
+or <code>?</code>.  The resources are always expanded into their absolute
+form before expanding.
+</p>
+
+<p class="note">
+<strong>Note:</strong> The wildcard will be matched against the full URL
+including any query parameters.  For example, if you want to match URL
+<code>http://example.com/index.jsp?test=xyz</code> you could use</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedAllow "*.jsp*"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed Allow "*.jsp*";</pre>
+</dl>
+
+<p>If you were to omit the trailing <code>*</code>, then URLs with query-params
+would not match.</p>
+
+<p>
+These directives can be used
+in <a href="configuration#htaccess">location-specific configuration
+sections</a>.
+</p>
+
+<p class="note">
+<strong>Note:</strong> The names in wildcards are <strong>not</strong> evaluated
+with respect to the <a href="configuration#htaccess">location specific
+configuration</a>; the wildcards are evaluated against the fully expanded URL.
+So if you want to match <code>js_tinyMCE.js</code> you must prefix it with its
+full path, including <code>http://</code> and domain, or use a wildcard, as
+shown above.
+</p>
+
+<h2 id="cross_paths">Restricting PageSpeed from combining resources across
+paths</h2>
+<p>By default, filters that combine multiple resources together are allowed to
+combine multiple resources across paths.  This works well much of the time, but
+if there are <a href="configuration#htaccess">location-specific access
+controls</a> or path-specific cookies associated with JavaScript files, then you
+may need to turn off this feature.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedCombineAcrossPaths off</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed CombineAcrossPaths off;</pre>
+</dl>
+
+<p>
+This directive can be used in
+<a href="configuration#htaccess">location-specific configuration sections</a>.
+</p>
+
+<h2 id="aris">Restricting PageSpeed from rewriting URLs of introspective
+JavaScript</h2>
+
+<p>
+Filters that change URLs of JavaScript files are at times incompatible with
+JavaScript code that does string-manipulation on its own URL.  To avoid problems
+with introspective JavaScript files, PageSpeed can be configured to skip
+URL-rewriting for such files.  PageSpeed uses simple heuristics to determine
+whether a JavaScript file is introspective.
+</p>
+
+<p>
+This affects filters
+<a href="filter-js-minify"
+   ><code>rewrite_javascript</code></a>,
+<a href="filter-js-combine"
+   ><code>combine_javascript</code></a>,
+<a href="filter-js-inline"
+   ><code>inline_javascript</code></a>,
+<a href="filter-cache-extend"
+   ><code>extend_cache</code></a>, and
+<a href="filter-cache-extend"
+   ><code>extend_cache_scripts</code></a>.
+</p>
+
+<p>
+This feature is on by default, but for many sites these heuristics are too
+conservative and prevent optimizations that would actually be safe.  To turn
+it off:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedAvoidRenamingIntrospectiveJavascript off</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed AvoidRenamingIntrospectiveJavascript off;</pre>
+</dl>
+
+<p>
+This directive can be used in
+<a href="configuration#htaccess">location-specific configuration sections</a>.
+</p>
+
+<h2 id="segment_length"
+    >Limiting the maximum generated URL segment length</h2>
+
+<p>The maximum URL size is generally limited to about 2k characters
+due to Internet Explorer: See
+<a href="http://support.microsoft.com/kb/208427/EN-US">
+  http://support.microsoft.com/kb/208427/EN-US</a>.
+Nginx doesn't apepar to have a limit here but Apache servers by default impose a
+further limitation of about 250 characters per URL segment (text between
+slashes).  When running under Apache PageSpeed circumvents this limitation, but
+if you employ proxy servers in your path you may need to re-impose it by
+overriding the setting here.  The default setting is 1024.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMaxSegmentLength 250</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MaxSegmentLength 250;</pre>
+</dl>
+
+<p>
+This directive can be used in
+<a href="configuration#htaccess">location-specific configuration sections</a>.
+</p>
+
+<h2 id="content_length"
+    >Limiting the maximum size of a resource to optimize</h2>
+
+<p>A resource with large content takes a long time and a large amount of memory
+to process.  You can specify the maximum length (in bytes) of the content for
+PageSpeed to optimize.  A setting of -1 means content of all lengths will be
+optimized, but risks server out-of-memory crashes.</p>
+
+<p>Prior to 1.12.34.1 the default was -1 (unlimited), but in versions
+1.12.34.1 and later the default is 16MB.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMaxCacheableContentLength 16777216</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MaxCacheableContentLength 16777216;</pre>
+</dl>
+
+<p>
+This directive can be used in
+<code>&lt;VirtualHost&gt;</code> scope (Apache) or <code>server</code> blocks
+(Nginx).
+</p>
+
+<h2 id="url_signatures">Signing pagespeed resource URLs</h2>
+
+<p class="note"><strong>Note: New feature as of 1.9.32.1</strong></p>
+
+<p>PageSpeed can be set to automatically cryptographically sign and verify
+resource URLs.  Turning on resource signing will cause any resource requested
+without the proper signature to return <code>404 Not Found</code>
+or <code>403 Forbidden</code> depending upon the <code>InPlaceResourceOptimization</code> setting.
+This option can be used to reduce the attack surface for denial of service attacks.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedUrlSigningKey signature_key_string</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed UrlSigningKey signature_key_string;</pre>
+</dl>
+
+<p>Resource signing can also be turned on, but not enforced, which may be
+used for the transition period of moving a site from unsigned resourced to
+signed resources. In this mode, signed URLs are generated and accepted, as
+well as URLs with no signature and URLs with invalid signatures.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedAcceptInvalidSignatures true</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed AcceptInvalidSignatures true;</pre>
+</dl>
+
+<p>
+This directive can be used in
+<code>&lt;VirtualHost&gt;</code> scope (Apache) or <code>server</code> blocks
+(Nginx).
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

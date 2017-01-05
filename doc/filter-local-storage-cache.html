@@ -1,0 +1,130 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Local Storage Cache</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Local Storage Cache</h1>
+
+<h2>Configuration</h2>
+
+<p>
+The 'Local Storage Cache' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters local_storage_cache</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters local_storage_cache;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+
+<p>
+This filter saves inlined resources to the browser's local storage (an HTML5
+feature) on the first view of a page, and loads them from local storage on
+subsequent views rather than sending them (inline) again.
+</p>
+
+<p>
+This benefits first views by inlining resources <em>and</em> benefits repeat
+views by caching these resources - normally inlining would hurt repeat views
+because inlined resources need to be sent every time since they're not in the
+browser's cache.
+</p>
+
+<h2>Operation</h2>
+
+<p>
+This filter does the following:
+<ul>
+<li>It adds JavaScript utility functions to the rewritten HTML's
+  <code>head</code> section.</li>
+<li>For each inlined CSS or image resource that the browser doesn't yet have
+  in local storage, it inlines the resource and tags it with new special
+  attributes.</li>
+<li>For each inlined CSS or image resource that the browser does have in local
+  storage, it replaces the resource with a JavaScript snippet that loads the
+  resource from local storage.</li>
+<li>Finally, it adds an <code>onload</code> handler that processes each
+  tagged inlined resource.
+</ul>
+</p>
+
+<p>
+The filter determines which resources are in local storage by inspecting a
+browser cookie set by the last step's <code>onload</code> handler. The cookie's
+name is <code>_GPSLSC</code> and its value is a list of hashes of the URLs of
+resources stored in local storage.
+</p>
+
+<p>
+Inlined JavaScript is not saved in local storage because it's not possible to
+reliably load it from local storage and execute it such that the behavior is
+the same as when it is inlined.
+</p>
+
+<p>
+The attributes added to inlined resources are:
+</p>
+<ul>
+<li><code>data-pagespeed-lsc-expiry</code>: when the resource expires. If the
+  resource is accessed after its expiry it won't be used and will be removed
+  from the cookie.</li>
+<li><code>data-pagespeed-lsc-hash</code>: a hash of the resource's URL (before
+  inlining). This is used to represent the resource in a short form and is saved
+  in the cookie.</li>
+<li><code>data-pagespeed-lsc-url</code>: the resource's URL. This is used by the
+  JavaScript snippet to request the resource directly if the resource's hash is
+  in the cookie but the resource isn't found in local storage.</li>
+</ul>
+
+<h3>Online Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/local_storage_cache.html?ModPagespeed=on&amp;ModPagespeedFilters=local_storage_cache,inline_css,inline_images">example</a>.
+</p>
+
+<h2>Requirements</h2>
+<p>
+The <a href="filter-css-inline">Inline CSS</a> and/or <a
+href="filter-js-inline">Inline JavaScript</a> filters must be enabled for this
+filter to have any effect.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered moderate-to-high risk: it adds a payload overhead
+of extra JavaScript, it adds a payload overhead of extra attributes on each
+inlined resource, and it adds the execution overhead of its <code>onload</code>
+handler.
+</p>
+<p>
+This filter is experimental. Its performance benefit has not been extensively
+tested and we are seeking feedback on its usefulness and benefits. It can
+only speed up repeat views of a page or uses of saved resources by other pages,
+it cannot speed up first views.
+</p>
+<p>
+This filter sets a cookie for the domain of the page being rewritten.
+</p>
+
+<p class="note"><strong>Note:</strong>
+This filter requires the browser to support local storage, an HTML5 feature not
+implemented by all browsers, in particular older browsers. Browsers that don't
+support local storage will work as if this filter wasn't enabled: although the
+payload and <code>onload</code> overheads will be incurred, the cookie will
+never be set so no benefits will be obtained.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

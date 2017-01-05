@@ -1,0 +1,139 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageSpeed Filters</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>PageSpeed Filters</h1>
+
+<p>
+PageSpeed improves web page latency by changing the resources on that
+web page to implement web performance
+<a href="/speed/docs/best-practices/rules_intro">best practices</a>.  Each sort
+of change that PageSpeed makes is embodied in a <em>filter</em>.  The filters
+are run in a pre-defined order, but can be enabled and disabled in the server
+<a href="configuration">configuration file</a>.
+</p>
+<p>
+Some filters simply alter HTML content, such as removing excess
+whitespace, attributes, or attribute values that will be ignored.
+</p>
+<p>
+Other filters change references to CSS, JavaScript, or images to point
+to more optimized versions, because they:
+</p>
+<ul>
+  <li>are smaller,</li>
+  <li>combine multiple files into one, and</li>
+  <li>extend the cache lifetime</li>
+</ul>
+
+<h2>Categories of filters</h2>
+<p>
+Filters are of many categories that fit under performance best practices.
+The current set of filters fits in these categories as follows:
+</p>
+<a href="/speed/docs/best-practices/caching">
+  <h3>Optimize Caching</h3>
+</a>
+<ul>
+  <li><a href="filter-canonicalize-js">Canonicalize JavaScript Libraries</a>
+  <li><a href="filter-cache-extend">Extend Cache</a></li>
+  <li><a href="filter-cache-extend-pdfs">Extend Cache PDFs</a></li>
+  <li><a href="filter-local-storage-cache">Local Storage Cache</a></li>
+  <li><a href="filter-css-outline">Outline CSS</a></li>
+  <li><a href="filter-js-outline">Outline JavaScript</a></li>
+</ul>
+
+<a href="/speed/docs/best-practices/rtt">
+  <h3>Minimize Round Trip Times</h3>
+</a>
+<ul>
+  <li><a href="filter-css-combine">Combine CSS</a></li>
+  <li><a href="filter-flatten-css-imports">Flatten CSS @imports</a></li>
+  <li><a href="filter-css-inline">Inline CSS</a></li>
+  <li><a href="filter-css-inline-google-fonts">Inline Google Fonts API CSS</a></li>
+  <li><a href="filter-js-combine">Combine JavaScript</a></li>
+  <li><a href="filter-js-inline">Inline JavaScript</a></li>
+  <li><a href="filter-css-above-scripts">Move CSS Above Scripts</a></li>
+  <li><a href="domains#shard">Configuration file directive to
+      shard domains</a></li>
+  <li><a href="filter-image-sprite">Sprite Images</a></li>
+  <li><a href="filter-insert-dns-prefetch">Pre-Resolve DNS</a></li>
+</ul>
+
+<a href="/speed/docs/best-practices/request">
+  <h3>Minimize Request Overhead</h3>
+</a>
+<ul>
+  <li><a href="filter-domain-rewrite">Rewrite Domains</a></li>
+  <li><a href="domains#mapping_rewrite">Configuration
+      file directive to map domains</a></li>
+</ul>
+
+<a href="/speed/docs/best-practices/payload">
+  <h3>Minimize Payload Size</h3>
+</a>
+<ul>
+  <li><a href="filter-whitespace-collapse">Collapse Whitespace</a></li>
+  <li><a href="filter-head-combine">Combine Heads</a></li>
+  <li><a href="filter-attribute-elide">Elide Attributes</a></li>
+  <li><a href="filter-js-minify">Minify JavaScript</a></li>
+  <li><a href="filter-image-optimize">Optimize Images</a></li>
+  <li><a href="filter-prioritize-critical-css">Prioritize Critical CSS</a></li>
+  <li><a href="filter-dedup-inlined-images">Deduplicate Inlined Images</a></li>
+  <li><a href="filter-comment-remove">Remove Comments</a></li>
+  <li><a href="filter-quote-remove">Remove Quotes</a></li>
+  <li><a href="filter-css-rewrite">Rewrite CSS</a></li>
+  <li><a href="filter-rewrite-style-attributes"
+      >Rewrite Style Attributes</a></li>
+  <li><a href="filter-trim-urls">Trim URLs</a></li>
+</ul>
+
+<a href="/speed/docs/best-practices/rendering">
+  <h3>Optimize Browser Rendering</h3></a>
+<ul>
+  <li><a href="filter-convert-meta-tags">Convert Meta Tags</a></li>
+  <li><a href="filter-js-defer">Defer Javascript</a></li>
+  <li><a href="filter-hint-preload-subresources"
+      >Hint Resource Preloading</a></li>
+  <li><a href="filter-inline-preview-images">Inline Preview Images</a></li>
+  <li><a href="filter-lazyload-images">Lazily Load Images</a></li>
+  <li><a href="filter-image-responsive">Make Images Responsive</a></li>
+  <li><a href="filter-css-to-head">Move CSS to Head</a></li>
+  <li><a href="filter-image-optimize">Optimize Images</a></li>
+  <li><a href="reference-image-optimize#progressive"
+      >Convert JPEG to Progressive</a></li>
+  <li><a href="filter-rewrite-style-attributes"
+      >Rewrite Style Attributes</a></li>
+</ul>
+
+<h3>Other</h3>
+<ul>
+  <li><a href="filter-head-add">Add Head</a></li>
+  <li><a href="filter-instrumentation-add">Add Instrumentation</a></li>
+  <li><a href="filter-source-maps-include"
+      >Include JavaScript Source Maps</a></li>
+  <li><a href="filter-css-inline-import">Inline @import to Link</a></li>
+  <li><a href="filter-insert-ga">Insert Google Analytics Snippet</a></li>
+  <li><a href="filter-make-show-ads-async"
+      >Make Google AdSense Async</a></li>
+  <li><a href="filter-make-google-analytics-async"
+      >Make Google Analytics Async</a></li>
+  <li><a href="filter-pedantic">Pedantic</a></li>
+  <li><a href="module-run-experiment">Run Experiment</a></li>
+</ul>
+
+<p>
+In some cases, a filter such as 'Optimize Images' helps both minimize request overhead and optimize browser rendering.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

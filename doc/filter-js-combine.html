@@ -1,0 +1,128 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Combine JavaScript</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Combine JavaScript</h1>
+
+
+
+
+<h2>Configuration</h2>
+<p>
+The 'Combine JavaScript' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters combine_javascript</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters combine_javascript;</pre>
+</dl>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+'Combine JavaScript' seeks to reduce the number of HTTP requests made by a
+browser during page refresh by replacing multiple distinct JavaScript files with
+a single one.
+</p>
+<p>
+This <a href="/speed/docs/best-practices/rtt#CombineExternalJS">practice</a>
+reduces the number of round-trip times.
+</p>
+
+<h2>Example</h2>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/combine_javascript.html?ModPagespeed=on&ModPagespeedFilters=combine_javascript">example</a>.
+</p>
+
+<h2>Parameters that affect JS combining</h2>
+
+<h3 id="MaxCombinedJsBytes">MaxCombinedJsBytes</h3>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMaxCombinedJsBytes MaxBytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MaxCombinedJsBytes MaxBytes;</pre>
+</dl>
+<p>
+<code>MaxBytes</code> is the maximum uncompressed size in bytes of the combined
+JavaScript files.  JavaScript files larger than <code>MaxBytes</code> will be
+kept intact; other JavaScript files will be combined into one or more files,
+each being no more than <code>MaxBytes</code> in size. The current default value
+for <code>MaxBytes</code> is 92160 (90K).
+</p>
+
+<h2>Limitations</h2>
+<p>The JavaScript Combine filter operates within the scope of a "flush window".
+Specifically, large, or dynamically generated HTML files may be
+"flushed" by the resource generator before they are complete.  When the
+filter encounters a flush, it will emit all script combinations seen
+up to the point of the flush.  After the flush, it will begin collecting
+a new script combination.
+</p>
+<p>This filter currently cannot combine across inline scripts, and
+IE conditional comments.
+</p>
+<p>This filter generates URLs that are essentially the concatenation
+of the URLs of all the Javascript files being combined.  The maximum URL size
+is generally limited to about 2k characters due to IE:
+See <a href="http://support.microsoft.com/kb/208427/EN-US"
+>http://support.microsoft.com/kb/208427/EN-US</a>.  Apache servers by
+default impose a further limitation of about 250 characters per URL segment
+(text between slashes).  PageSpeed circumvents this limitation when it runs
+under Apache, but if you employ proxy servers in your path you may need to
+re-impose it by overriding the setting here.  The default setting is 1024.</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMaxSegmentLength 250</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MaxSegmentLength 250;</pre>
+</dl>
+<h2>Requirements</h2>
+<p>
+By default, the filter will combine together script files from different
+paths, placing the combined element at the lowest level common to both
+origins.  In some cases, this may be undesirable.  You can turn off the
+behavior with:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedCombineAcrossPaths off</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed CombineAcrossPaths off;</pre>
+</dl>
+<h2>Risks</h2>
+<p>
+This filter is considered moderate risk. However, JavaScript can be written that
+walks the DOM looking for <code>&lt;script&gt;</code> entries with certain
+syntax.  Such JavaScript may behave differently on a page which has modified
+script locations and structure.
+</p>
+
+<p>
+  This filter is sensitive to <a href="restricting_urls#aris"><code
+  >AvoidRenamingIntrospectiveJavascript</code></a>. For example,
+  a JavaScript file that
+  calls <code>document.getElementsByTagName('script')</code> will not be
+  combined with other JavaScript files.
+</p>
+
+<p>
+This filter employs the Javascript 'eval' expression to evaluate each
+&lt;script&gt; tag at its proper location in the DOM, but getting the aggregated
+script content in one HTTP fetch.  The effects of this are likely to differ
+between browsers, and haven't yet been thoroughly measured.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

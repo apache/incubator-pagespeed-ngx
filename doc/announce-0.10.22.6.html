@@ -1,0 +1,49 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>mod_pagespeed 0.10.22.6 Security Update.</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>mod_pagespeed 0.10.22.6 Security Update.</h1>
+<h2 id="overview">Overview</h2>
+mod_pagespeed 0.10.22.6 is a security update that fixes two critical issues
+that affect earlier versions:
+<ul>
+<li><a href="CVE-2012-4001">CVE-2012-4001</a>, a problem with validation of
+own host name.
+</li>
+<li><a href="CVE-2012-4360">CVE-2012-4360</a>, a cross-site scripting
+  attack, which affects versions starting from 0.10.19.1.
+</li>
+</ul>
+
+<p> The effect of the first problem is that it is possible to confuse
+mod_pagespeed about its own host name, and to trick it into fetching resources
+from other machines. This could be an issue if the HTTP server has access to
+machines that are not otherwise publicly visible.
+
+<p> The second problem would permit a hostile third party to execute JavaScript
+in users' browsers in context of the domain running mod_pagespeed, which
+could permit interception of users' cookies or data on the site.
+
+<p> Because of the severity of the two problems, users are <strong>strongly
+</strong> encouraged to update immediately.
+</p>
+
+<h2 id="behavior_changes">Behavior Changes in the Update</h2>
+As part of the fix to the first issue, mod_pagespeed will not fetch
+resources from machines other than <code>localhost</code> if they are not
+explicitly mentioned in the configuration. This means that if you need
+resources on the server's domain to be handled by some other system, you'll
+need to explicitly use <code>ModPagespeedMapOriginDomain</code> or
+<code>ModPagespeedDomain</code> to authorize that.
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

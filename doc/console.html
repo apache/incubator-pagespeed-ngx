@@ -1,0 +1,204 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageSpeed Console</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>PageSpeed Console</h1>
+<h2 id="about">About the Console</h2>
+<p>
+  The PageSpeed Console reports various problems your installation has that can
+  lead to sub-optimal performance. The console graphs metrics for these
+  problems over time so that you can see the result of your changes
+  improving or degrading your performance. You can view it by enabling it and
+  then visiting <code>/pagespeed_admin/console</code> from your server. The
+  console works by saving snapshots of the statistics reported by
+  PageSpeed and then using the Google Chart Tools API to graph those
+  statistics over time.
+<h2 id="configuring">Configuring the Console</h2>
+<p>
+  The PageSpeed Console is configured with several directives in the
+  configuration file. See
+  <a href="install#module">PageSpeed Installation and Configuration</a>
+  for details about this file. Each of these directives is explained here.
+</p>
+<ul>
+  <li>
+    <code><a href="admin#statistics">Statistics</a></code>
+    must be enabled to report statistics.</li>
+  <li>
+    <code>StatisticsLogging</code> must be enabled so that graphs of
+    statistics over time can be drawn in the console.</li>
+  <li>
+    <code>LogDir</code> must be set so that we have a directory to store
+    statistic logs.</li>
+  <li>
+    In order to access the console, you must set a handler appropriately.
+    For example, to make the console only accessible from localhost:
+    <dl>
+      <dt>Apache:<dd><pre>
+ModPagespeedStatistics on
+ModPagespeedStatisticsLogging on
+ModPagespeedLogDir /var/log/pagespeed
+&lt;Location /pagespeed_admin&gt;
+  Order allow,deny
+  Allow from localhost
+  Allow from 127.0.0.1
+  SetHandler pagespeed_admin
+&lt;/Location&gt;</pre>
+      <dt>Nginx:<dd><pre>
+pagespeed Statistics on;
+pagespeed StatisticsLogging on;
+pagespeed LogDir /var/log/pagespeed;
+pagespeed AdminPath /pagespeed_admin;
+
+location ~ ^/pagespeed_admin {
+  allow 127.0.0.1;
+  deny all;
+}</pre>
+    </dl>
+  </li>
+</ul>
+<p>
+  Additionally these optional parameters may be configured:
+</p>
+<ul>
+  <li>
+    <code>StatisticsLoggingIntervalMs</code> may be set to indicate how often
+    to log statistics snapshots (in milliseconds).</li>
+  <li>
+    <code>StatisticsLoggingMaxFileSizeKb</code> may be set to indicate the
+    maximum size for the logfile (in kilobytes).</li>
+</ul>
+<p>
+  For example, to log once a minute with a maximum log size of 1 MB:
+</p>
+<dl>
+  <dt>Apache:<dd><pre>
+ModPagespeedStatisticsLoggingIntervalMs 60000
+ModPagespeedStatisticsLoggingMaxFileSizeKb 1024</pre>
+  <dt>Nginx:<dd><pre>
+pagespeed StatisticsLoggingIntervalMs 60000;
+pagespeed StatisticsLoggingMaxFileSizeKb 1024;</pre>
+</dl>
+
+<h2 id="access">Accessing the Console</h2>
+<p>
+  The console can be accessed by browsing to
+  <code>http://your.example.com/pagespeed_admin/console</code>. Access to
+  this page can be controlled using standard access directives.
+</p>
+<p>
+  Note that if you would like to access the console from machines other
+  than your server, you will need to allow access to
+  <code>/pagespeed_admin</code>.
+</p>
+
+<!-- TODO(sligocki): Add section for features, like zooming in, etc. once we
+     add them. -->
+
+<h2 id="graphs">Graphed metrics</h2>
+The PageSpeed console displays graphs for these metrics:
+<ul>
+  <li id="fetch-failure">
+    <b>Resources not loaded because of fetch failures</b>:
+    Images, CSS or JavaScript could not be loaded because backend HTTP fetch
+    failed. <b>Remedy</b>: You may have to reconfigure your server to allow
+    outgoing connections or to have access to DNS.</li>
+
+  <li id="not-authorized">
+    <b>Resources not rewritten because domain wasn't authorized</b>:
+    Resources could not be rewritten because they were on a different domain
+    than the HTML and that domain was not explicitly authorized.
+    <b>Remedy</b>: Add <a href="domains#auth_domains">Domain</a>
+    authorizations for all domains you control.</li>
+
+  <li id="cache-control">
+    <b>Resources not rewritten because of restrictive Cache-Control headers</b>:
+    Resources could not be rewritten because they had restrictive Cache-Control
+    headers explicitly set (for example: <code>Cache-Control: private</code>,
+    <code>Cache-Control: max-age=0</code> or
+    <code>Cache-Control: no-transform</code>).
+    <b>Remedy</b>: Reconfigure your server to serve these resources with
+    public caching headers (or no Cache-Control headers at all). For example,
+    <code>Header set Cache-Control "max-age=600"</code> in Apache config.</li>
+
+  <li id="cache-miss">
+    <b>Cache misses</b>:
+    Resources were not rewritten because they were not found in cache.
+    This is expected while your cache warms up, soon after you install, however
+    if it continues to be high, your cache is probably too small.
+    <b>Remedy</b>: Increase the
+    <a href="system#file_cache">FileCacheSizeKb</a> to be about 5 times
+    as large as your website content (to store all of the original
+    resources and various versions of rewritten resources).</li>
+
+  <li id="cache-expired">
+    <b>Cache lookups that were expired</b>:
+    Although these resources were found in cache, they were not rewritten
+    because they were older than their max-age.
+    <b>Remedy</b>: (A) Enable
+    <a href="domains#ModPagespeedLoadFromFile">LoadFromFile</a> to tell
+    the server to load the files straight from disk rather than through
+    HTTP. (B) Reconfigure your server to serve resources with longer TTL.
+    For example, <code>Header set Cache-Control "max-age=3600"</code> to set
+    one hour TTL in Apache config.</li>
+
+  <li id="css-error">
+    <b>CSS files not rewritten because of parse errors</b>:
+    CSS files could not be rewritten because our parser found syntax errors
+    that it could not recover from. <b>Remedy</b>: Fix CSS files to use
+    proper syntax. You can use the stand-alone
+    <a href="build_mod_pagespeed_from_source#debug-css">css_minify_main</a>
+    to find what part of the CSS file has parse errors. We have had some
+    problems in the past with valid CSS3 or proprietary CSS extensions
+    causing CSS parsing errors. If you find that your valid CSS is failing to
+    parse, let us know on our <a href="mailing-lists#discussion">discussion
+    group</a> so we can fix the parser.</li>
+
+  <li id="js-error">
+    <b>JavaScript minification failures</b>:
+    JavaScript files could not be minified because our parser found some
+    syntax problem that it could not recover from. This is very uncommon.
+    <b>Remedy</b>: As with CSS, fix the JavaScript files that had problems.</li>
+
+  <li id="image-error">
+    <b>Image rewrite failures</b>:
+    Image files were not rewritten for various reasons:<ul>
+      <li><code>image_norewrites_high_resolution</code>: Image was too large.
+        Currently we only rewrite images below 8 Megapixels.
+        <b>Remedy</b>: Resize original images to a reasonable size.</li>
+      <li><code>image_rewrites_dropped_decode_failure</code>: Image could not
+        be parsed by our code. <b>Remedy</b>: Fix malformed images.</li>
+      <li><code>image_rewrites_dropped_due_to_load</code>: Image was not
+        rewritten because your system was already busy rewriting other images.
+        This generally can happen when you first install PageSpeed
+        while the cache warms up. <b>Remedy</b>: If image rewrites continue
+        to be dropped after a day or so, you may need to
+        <a href="#cache-miss">increase your cache size</a> or increase the
+        <a href="reference-image-optimize#ImageMaxRewritesAtOnce">
+          ImageMaxRewritesAtOnce</a>.</li>
+      <li><code>image_rewrites_dropped_mime_type_unknown</code>: Image could
+        not be rewritten because we do not recognize its MIME-type. For
+        example, we do not parse <code>image/x-icon</code> or
+        <code>image/svg+xml</code>. <b>Remedy</b>: Convert your images to a
+        type that we understand (gif, png, jpg, webp) or perhaps just fix
+        a broken server config that is serving images with a bogus
+        <code>Content-Type</code> header.</li>
+      <li><code>image_rewrites_dropped_server_write_fail</code>: Unexpected
+        server error while rewriting images. If you get a significant number
+        of these write to our <a href="mailing-lists#discussion">discussion
+        group</a> so we can investigate.</li>
+    </ul>
+  </li>
+</ul>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

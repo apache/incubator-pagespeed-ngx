@@ -1,0 +1,103 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Trim URLs</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Trim URLs</h1>
+<h2>Configuration</h2>
+<p>
+The 'Trim URLs' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters trim_urls</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters trim_urls;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+This filter trims URLs by resolving them by making them relative to the base
+URL for the page.  E.g. on <code>http://www.example.com/</code>,
+<code>"http://www.example.com/foo"</code> would be shortened to
+<code>"foo"</code>.  The filter works only on URLs that are the values
+specified by <code>src</code> or <code>href</code> attributes.
+It also trims image URLs in CSS if
+<a href="filter-css-rewrite"><code>rewrite_css</code></a> is enabled.
+</p>
+<p>
+The filter reduces the transfer size of HTML files by shortening most of the
+URLs. Depending on the HTML file, this filter can significantly reduce the
+number of bytes transmitted on the network.
+</p>
+
+<h2>Operation</h2>
+<p>
+The 'Trim URLs' filter removes unnecessary bytes on the wire. While it's
+useful for development to fully specify your URLs so that links don't break when
+things move around, these are bytes that are sent unnecessarily on the wire.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;base href="http://www.example.com/"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;a href="http://www.example.com/bar"&gt;Link with long URL&lt;/a&gt;
+    &lt;img src="http://www.othersite.example.org/image.jpg"&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then PageSpeed will rewrite it to:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;base href="http://www.example.com/"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;a href="bar"&gt;Link with long URL&lt;/a&gt;
+    &lt;img src="//www.othersite.example.org/image.jpg"&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/trim_urls.html?ModPagespeed=on&amp;ModPagespeedFilters=trim_urls">example</a>.
+</p>
+
+<h2>Requirements</h2>
+<p>
+Only URLs referenced by <code>href</code> and <code>src</code> attributes and,
+if <a href="filter-css-rewrite"><code>rewrite_css</code></a> is enabled,
+URLs in CSS files are rewritten. URLs that occur elsewhere are not altered.
+</p>
+
+<h2>Risks</h2>
+<p>
+  Trimming URLs is considered medium risk. It can cause problems if it uses
+  the wrong base URL. This can happen, for example, if you serve HTML that
+  will be pasted verbatim into other HTML pages. If URLs are trimmed on the
+  first page, they will be incorrect for the page they are inserted into.
+  For this reason, it is off by default.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

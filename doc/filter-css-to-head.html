@@ -1,0 +1,124 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Move CSS to Head</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Move CSS to Head</h1>
+
+
+<h2>Configuration</h2>
+<p>
+  The 'Move CSS to head' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters move_css_to_head</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters move_css_to_head;</pre>
+</dl>
+<p>
+  in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+  'Move CSS to head' seeks to reduce the number of times the browser must
+  re-flow the document by ensuring that the CSS styles are all parsed in
+  the head, before any body elements are introduced.
+</p>
+<p>
+  This is based on the
+  <a href="/speed/docs/best-practices/rendering#PutCSSInHead">
+    best practice for optimizing browser rendering.
+  </a>
+</p>
+
+<h2>Operation</h2>
+<p>
+  The 'Move CSS to head' filter operates only on  CSS
+  <code>&lt;link</code> and <code>&lt;style&gt;</code> tags found after the
+  <code>&lt;/head&gt;</code> and moves these links back into the
+  <code>&lt;head&gt;</code> ... <code>&lt;/head&gt;</code> section.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;script src="script.js" type="text/javascript"&gt;&lt;/script&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+    &lt;style type="text/css"&gt;
+      .foo { color: red; }
+    &lt;/style&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/all_styles.css"&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+  Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;style type="text/css"&gt;
+      .foo { color: red; }
+    &lt;/style&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/all_styles.css"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;script src="script.js" type="text/javascript"&gt;&lt;/script&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<p>
+  In some browsers, the original version will flash quickly as the
+  browser will render the "Hello, world!" text before it sees the style
+  tags providing definitions for the CSS classes.  This transformation
+  will eliminate that flash, but the end result will be the same.
+</p>
+
+<h3>Example</h3>
+<p>
+  You can see the filter in action at <code>www.modpagespeed.com</code> on this
+  <a href="http://www.modpagespeed.com/move_css_to_head.html?ModPagespeed=on&amp;ModPagespeedFilters=move_css_to_head">example</a>.
+</p>
+
+<h2>Limitations</h2>
+<p>
+  This filter operates within the scope of a "flush window". Specifically,
+  large, or dynamically generated HTML files may be "flushed" by the
+  resource generator before they are complete. If the filter
+  encounters a flush after the end of the <code>&lt;head&gt;</code> section,
+  subsequently encountered CSS elements will not be moved into the
+  <code>&lt;head&gt;</code> section.
+</p>
+
+<h2>Risks</h2>
+<p>
+  This filter is considered low risk. However, JavaScript that is
+  executed before a CSS element will see a different view of the DOM in
+  the presence of this rewriter:  the CSS element will now be in the head.
+  If there is such JavaScript embedded in the middle of a page then this
+  rewriter may change its behavior.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

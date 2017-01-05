@@ -1,0 +1,145 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Make Show Ads Asynchronous</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Make Show Ads Asynchronous</h1>
+
+<p class="note"><strong>Note: New feature as of 1.10.33.0.</strong></p>
+<h2>Configuration</h2>
+<p>
+  The 'Make Show Ads Asynchronous' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters make_show_ads_async</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters make_show_ads_async;</pre>
+</dl>
+  in the configuration file.
+</p>
+
+
+<h2>Description</h2>
+<p>
+  The filter rewrites pages that load
+  <a href="https://www.google.com/adsense">Google AdSense</a> ads with the
+  synchronous <code>show_ads.js</code> snippet to load them with the
+  asynchronous <code>adsbygoogle.js</code> instead.
+  Loading AdSense asynchronously
+  helps keep ads
+  from <a href="http://googledevelopers.blogspot.com/2013/07/an-async-script-for-adsense-tagging.html">delaying
+  the rest of the page content</a>.
+</p>
+
+<h2>Operation</h2>
+<p>
+  The filter looks for a Google AdSense snippet such as the following:
+</p>
+<pre class="prettyprint">
+&lt;div style="border: 2px solid blue;"&gt;
+  &lt;script&gt;
+    google_ad_client = "ca-google";
+    google_ad_width = 728;
+    google_ad_height = 90;
+    google_ad_format = "728x90";
+    google_adtest = "on";
+    google_ad_type = "text";
+  &lt;/script&gt;
+  &lt;script type="text/javascript"
+    src="http://pagead2.googlesyndication.com/pagead/show_ads.js"&gt;
+  &lt;/script&gt;
+&lt;/div&gt;
+&lt;div style="border: 2px solid blue;"&gt;
+  &lt;script&gt;
+    google_ad_client = "ca-google";
+    google_ad_width = 728;
+    google_ad_height = 90;
+    google_ad_format = "728x90";
+    google_adtest = "on";
+    google_ad_type = "text";
+  &lt;/script&gt;
+  &lt;script type="text/javascript"
+    src="http://pagead2.googlesyndication.com/pagead/show_ads.js"&gt;
+  &lt;/script&gt;
+&lt;/div&gt;
+</pre>
+<p>
+  and rewrites such snippets in-place to:
+</p>
+<pre class="prettyprint">
+&lt;div style="border: 2px solid blue;"&gt;
+  &lt;script async
+    src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"&gt;
+  &lt;/script&gt;
+  &lt;ins
+    class="adsbygoogle"
+    style="display:inline-block;width:728px;height:90px"
+    data-ad-client="ca-google"
+    data-ad-format="728x90"
+    data-ad-type="text"
+    data-adtest="on"&gt;
+  &lt;/ins&gt;
+  &lt;script&gt;(adsbygoogle = window.adsbygoogle ||  []).push({})
+  &lt;/script&gt;
+&lt;/div&gt;
+&lt;div style="border: 2px solid blue;"&gt;
+  &lt;ins
+    class="adsbygoogle"
+    style="display:inline-block;width:728px;height:90px"
+    data-ad-client="ca-google"
+    data-ad-format="728x90"
+    data-ad-type="text"
+    data-adtest="on"&gt;
+  &lt;/ins&gt;
+  &lt;script&gt;(adsbygoogle = window.adsbygoogle || []).push({})
+  &lt;/script&gt;
+&lt;/div&gt;
+</pre>
+
+<h3>Example</h3>
+<p>
+  You can see the filter in action at <code>www.modpagespeed.com</code> on this
+  <a href="http://www.modpagespeed.com/make_show_ads_async.html?ModPagespeed=on&amp;ModPagespeedFilters=make_show_ads_async">example</a>.
+</p>
+
+
+<h2>Requirements</h2>
+<p>
+  This filter requires that ads specify a specific width and height
+  with <code>google_ad_width</code> and <code>google_ad_height</code>.
+</p>
+<p>
+  If <code>google_ad_output</code> is specified it must be set
+  to <code>html</code>.  Alternate outputs like <code>js</code>
+  or <code>json_html</code> are not supported by <code>adsbygoogle.js</code>.
+</p>
+<p>
+  Ad snippets that don't meet these requirements won't be rewritten.  Other ad
+  blocks on the same page will still be rewritten, loading
+  both <code>show_ads.js</code> and <code>adsbygoogle.js</code>.  To avoid this,
+  we recommend not enabling this filter for pages that have a mixture of
+  eligible and ineligible ad blocks.
+</p>
+
+<h2>Risks</h2>
+<p>
+  This filter is considered high risk.
+</p>
+<p>
+  The <code>make_show_ads_async</code> filter is experimental and has not had
+  extensive real-world testing.  It manipulates JavaScript, which is always
+  risky, and if errors keep ads from displaying that could mean lost revenue for
+  your site.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

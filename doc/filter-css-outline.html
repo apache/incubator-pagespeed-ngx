@@ -1,0 +1,163 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Outline CSS</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Outline CSS</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Outline CSS' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters outline_css</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters outline_css;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+This filter is an <strong>experimental</strong> filter which takes inline
+CSS and puts it in an external resource.
+</p>
+
+<h2>Operation</h2>
+<p>
+The 'Outline CSS' filter outlines all CSS that is larger than a minimum byte
+threshold. The threshold can be set by adding/changing the line:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedCssOutlineMinBytes 3000</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed CssOutlineMinBytes 3000;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;style type="text/css"&gt;
+      .yellow {background-color: yellow;}
+      .blue {color: blue;}
+      .big { font-size: 8em; }
+      .bold { font-weight: bold; }
+      ...
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;link rel="stylesheet" type="text/css" href="of.HASH.css"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+And a new CSS file (<code>of.HASH.css</code>) will be:
+</p>
+<pre class="prettyprint">
+  .yellow {background-color: yellow;}
+  .blue {color: blue;}
+  .big { font-size: 8em; }
+   .bold { font-weight: bold; }
+   ...
+</pre>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/outline_css.html?ModPagespeed=on&amp;ModPagespeedFilters=outline_css">example</a>.
+</p>
+
+<h2>Pros and Cons</h2>
+<p>
+This could be advantageous if:
+</p>
+<ol>
+  <li>The CSS does not change much but the HTML does, then we can cache the
+      CSS.</li>
+  <li>One has many websites with the same inlined CSS, it will be outlined
+      to a consistent name and thus will be cached more or</li>
+  <li>The inline CSS is very long, in which case, outlining it will cause it
+      to be loaded in parallel with the HTML doc.</li>
+</ol>
+<p>
+However, for some websites it will be dis-advantageous because it will:
+</p>
+<ol>
+  <li>Create an extra HTTP request.</li>
+  <li>Tie up one of the connections this domain, which could have been used to
+      fetch the actually cacheable external resources.</li>
+</ol>
+
+<h2>Requirements</h2>
+<p>
+Outline filters can currently only run on single-server environments
+because the resource can only be fetched from a server after that server
+has rewritten the HTML page. If a different server rewrote the HTML page,
+then this sever will not have the information needed to create the resource.
+This could be by a network database shared between servers.
+</p>
+<p>
+The Outline CSS filter may need to <em>"absolutify"</em> relative URLs, if
+it is outlined to a different directory than the original HTML.
+</p>
+<p>
+The Outline CSS filter will maintain the order of the CSS contents, as
+class order can be significant.
+</p>
+
+<h2>Risks</h2>
+<p>
+The 'Outline CSS' filter is considered low risk.  However, JavaScript can be
+written that walks the DOM looking for <code>&lt;link&gt;</code> or
+<code>&lt;style&gt;</code> tags with certain syntax. Such JavaScript
+may behave differently on a page which has added
+<code>&lt;link&gt;</code> or removed <code>&lt;style&gt;</code> tags
+in this way.
+</p>
+<p>
+Additionally we have reproduced an obscure difference that sometimes occurs
+on WebKit-based browsers (such as Safari, Chrome and the Android browser).
+As of January 2011, WebKit does not delay JavaScript evaluation for
+external CSS loading (See
+<a href="https://webkit.org/b/24898">https://webkit.org/b/24898</a>).
+So some CSS attributes, when outlined, can cause slightly different
+rendering depending on whether or not the CSS file is loaded before or
+after the JavaScript is executed.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

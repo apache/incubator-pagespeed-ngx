@@ -1,0 +1,143 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Responsive Images</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Responsive Images</h1>
+<p class="note"><strong>Note: New filter as of 1.10.33.0</strong></p>
+
+<h2>Configuration</h2>
+<p>
+  The 'Responsive Images' filter requires the 'Resize Images' filter;
+  these filters are enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters responsive_images,resize_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters responsive_images,resize_images;</pre>
+</dl>
+<p>
+  in the configuration file. An additional zoom feature can be enabled by
+  specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters responsive_images_zoom</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters responsive_images_zoom;</pre>
+</dl>
+<p id="pagespeed_no_transform">
+  The 'Responsive Images' filter won't optimize an image if it has
+  the <code>data-pagespeed-no-transform</code>
+  or <code>pagespeed_no_transform</code> attribute. Usage:
+</p>
+<pre class="prettyprint">
+  &lt;img src="example.png" data-pagespeed-no-transform&gt;
+</pre>
+
+<h2>Description</h2>
+<p>
+  This filter makes images responsive by adding <code>srcset</code> attributes
+  which provide multiple versions for different pixel density screens.
+</p>
+<p>
+  If <code>responsive_images_zoom</code> is enabled, it also extends the
+  default srcset functionality by loading higher resolution images when the
+  user zooms in.
+</p>
+<p>
+  In order to take advantage of this filter, the original image must
+  explicitly specify <code>height</code> and <code>width</code> attributes
+  and src must be a high enough resolution image (at least 2x larger than
+  these height and width values).
+</p>
+
+<h2>Example</h2>
+<p>
+  For example, if the original HTML looks like this:
+</p>
+<pre class="prettyprint">
+&lt;img src="foo.png" width="100" height="100"&gt;
+</pre>
+<p>
+  and <code>foo.png</code> is 1000x1000, then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;img src="100x100xfoo.png.pagespeed.ic.HASH1.png" width="100" height="100"
+     srcset="150x150xfoo.png.pagespeed.ic.HASH2.png 1.5x,200x200xfoo.png.pagespeed.ic.HASH3.png 2x,300x300xfoo.png.pagespeed.ic.HASH4.png 3x, foo.png 10x"&gt;
+</pre>
+<p>
+  Which will load the normal 100x100 image on standard displays,
+  higher-resolution 150x150, 200x200 or 300x300 image on 1.5x, 2x, or 3x
+  displays, or the full original 1000x1000 image when users zoom in enough.
+</p>
+<p>
+  If <code>foo.png</code> is 200x200, no 3x or higher version will be added to
+  srcset.
+  If <code>foo.png</code> is only 100x100, no srcset will be added at all.
+</p>
+
+<h3>Online Example</h3>
+<p>
+  You can see the filter in action at <a href="http://www.modpagespeed.com/responsive_images.html?PageSpeed=on&amp;PageSpeedFilters=responsive_images,responsive_images_zoom,rewrite_images,inline_images,resize_images,insert_image_dimensions"><code>www.modpagespeed.com</code></a>.
+</p>
+
+<h2>Limitations</h2>
+<ul>
+  <li>Before 1.12.34.1, PageSpeed would not optimize images referenced in
+    existing <code>srcset</code> attributes.</li>
+  <li>Images must have explicit <code>height</code> and <code>width</code>
+    attributes and src must refer to a higher resolution image.</li>
+  <li>PageSpeed does not mix inline images with <code>srcset</code>s. If the
+    largest size image is inlinable, we just inline that. Otherwise we do not
+    inline any of the images and use a <code>srcset</code> instead.</li>
+  <li>The Responsive Images filter is not compatible with the
+    <a href="filter-local-storage-cache">Local Storage Cache filter</a>.
+    Images modified by the Responsive Images filter will not be stored in
+    Local Storage.</li>
+  <li>PageSpeed's default memory limits keep it from processing images larger
+    than 8 million pixels (8MP).  If you have images larger than this, it won't
+    be able to resize them to generate the lower resolution versions.  See
+    <a href="reference-image-optimize#ImageResolutionLimitBytes"
+    >ImageResolutionLimitBytes</a> for more details on increasing this limit or
+    resizing source images to be under the limit.</li>
+</ul>
+
+<h2>Risks</h2>
+<p>
+  This filter will increase cache usage by 4x for all images which have
+  explicit <code>width</code> and <code>height</code> attributes.
+  (This is true even if the original image is only 1x.) If this pushes
+  your cache over the <a href=system#file_cache><code>FileCacheSize</code></a>,
+  then you may experience cache churn which makes PageSpeed much less effective.
+</p>
+<p>
+  This filter has the same risks inherent in the 'Resize Images' filter.
+  See <a href="filter-image-optimize#Risks">Optimize Images - Risks</a>
+  for more information.
+</p>
+<p>
+  This filter adds a <code>srcset</code> attribute to images. This will break
+  any JavaScript which changes images by modifying their <code>src</code>
+  attribute. On high-density displays, modifying the <code>src</code> attribute
+  will not actually change the image. As a work-around, you can add a
+  <a href="#pagespeed_no_transform"><code>data-pagespeed-no-transform</code></a>
+  attribute to any <code>&lt;img&gt;</code> tag to prevent PageSpeed from adding
+  a <code>srcset</code>.
+</p>
+<p>
+  If using <code>responsive_images_zoom</code>, the JavaScript used to
+  implement that feature may conflict with other JS on the page.
+</p>
+
+</div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

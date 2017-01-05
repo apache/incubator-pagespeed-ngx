@@ -1,0 +1,93 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inline @import to Link</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Inline @import to Link</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Inline @import to Link' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters inline_import_to_link</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters inline_import_to_link;</pre>
+</dl>
+in the configuration file.
+</p>
+<h2>Description</h2>
+<p>
+The "Inline @import to Link" filter converts a <code>&lt;style&gt;</code> tag
+consisting of only <code>@import</code> statements into the corresponding
+<code>&lt;link&gt;</code> tags. This conversion does not itself result in any
+significant optimization, rather its value lies in that it enables optimization
+of the linked-to CSS files by later filters, in particular the combine_css,
+rewrite_css, inline_css, and extend_cache filters.
+</p>
+<h2>Operation</h2>
+<p>
+This filter inspects the contents of all <code>&lt;style&gt;</code> tags and
+converts the tag if all the following conditions are met:</p>
+<ul>
+<li>Either the <code>&lt;style&gt;</code> tag has no <code>type</code>
+  attribute or the <code>type</code> attribute has the value
+  &quot;text/css&quot;.</li>
+<li>The contents comprise one or more valid <code>@import</code> statements,
+ and no other statements.</li>
+<li>None of the imported URLs are empty.</li>
+<li>The <code>&lt;style&gt;</code> tag has neither an <code>href</code> nor a
+  <code>rel</code> attribute (which would make it invalid anyway).</li>
+<li>If the <code>&lt;style&gt;</code> tag has a <code>media</code> attribute
+  and the <code>@import</code> statement specifies media after the URL, then
+  the media types listed must be the same. They do not have to be in the same
+  order, and blank media types are ignored.</li>
+</ul>
+<p>
+If all these conditions are met, the <code>&lt;style&gt;</code> tag and its
+contents are replaced with a <code>&lt;link&gt;</code> tag for each
+<code>@import</code>, with:</p>
+<ul>
+<li>Attributes from the <code>&lt;style&gt;</code> tag copied to the
+  <code>&lt;link&gt;</code> tag.</li>
+<li>An <code>href</code> attribute with value of the imported URL.</li>
+<li>A <code>rel</code> attribute with value of &quot;stylesheet&quot;.</li>
+<li>If the <code>&lt;style&gt;</code> tag did not have a <code>media</code>
+  attribute but the <code>@import</code> specified media after the URL, then
+  a <code>media</code> attribute with value of the media specified after the
+  URL.</li>
+</ul>
+<p>
+For example, if the <code>&lt;style&gt;</code> tag looks like this:
+</p>
+<pre class="prettyprint">
+&lt;style type=&quot;text/css&quot; media=&quot;screen&quot;>@import url(http://www.example.com/style.css);&lt;/style&gt;
+</pre>
+<p>
+Then PageSpeed will convert it to:
+<pre class="prettyprint">
+&lt;link type=&quot;text/css&quot; media=&quot;screen&quot; rel=&quot;stylesheet&quot; href=&quot;http://www.example.com/style.css&quot;/&gt;
+</pre>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/inline_import_to_link.html?ModPagespeed=on&amp;ModPagespeedFilters=inline_import_to_link">example</a>.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered minimal risk.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

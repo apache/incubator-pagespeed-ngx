@@ -1,0 +1,584 @@
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimize Images</title>
+  <link rel="stylesheet" href="doc.css">
+</head>
+<body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Optimize Images</h1>
+<h2>Introduction</h2>
+<p>
+The PageSpeed Modules optimize your images to minimize their size and thus
+reduce their load time. They remove non-visible image information and apply
+high-efficiency compression techniques. This can result in a data saving of
+50% or more.
+</p>
+<p>
+Using PageSpeed Modules, you can focus on the content of your site, knowing
+your visitors will receive images in the best format and dimensions for their
+device and browser while using minimum bandwidth.
+</p>
+
+<h2>Optimization methods</h2>
+<p>
+PageSpeed Modules can optimize most common image formats, including GIF, PNG,
+and JPEG, and convert them to PNG, JPEG, or WebP. GIF, PNG, and JPEG are
+supported by all browsers. WebP is a modern image format that can compress
+images <a href="https://developers.google.com/speed/webp/">over 25%</a>
+more than older formats, and is currently supported by many browsers,
+including Google Chrome, Android 4.0+, and Opera. PageSpeed-optimized images
+are converted to the best format supported by the target browser, i.e.,
+to WebP if it is supported, or PNG or JPEG if not.
+</p>
+<p>
+PageSpeed can also maximize compression based on image content. Lossy formats
+compress images far better than lossless formats, but sometimes introduce
+visible and undesirable "compression noise". PageSpeed examines the content
+of images to see whether they are sensitive to compression noise and, if so,
+converts to PNG or the lossless mode of WebP; if not, it converts to JPEG or
+the lossy mode of WebP.
+</p>
+
+<h2>In-place optimization vs. tag rewriting</h2>
+<p>
+PageSpeed is capable of doing all this without changing your HTML or CSS, known
+as In-Place Resource Optimization (IPRO). However, if you allow PageSpeed to
+modify your HTML and CSS, it can do even more. For example, PageSpeed can
+shrink images to their actual rendered dimensions, thereby using fewer pixels
+and offering additional byte savings. It can also inline small images into HTML
+or CSS to avoid additional round trips to your server for fetching the images.
+</p>
+<p>
+This table shows some examples of how PageSpeed can modify your HTML.
+</p>
+<table>
+  <tr>
+    <th colspan="2">Example 1</th>
+  </tr>
+  <tr>
+    <td>Before optimization</td>
+    <td><code>
+      &lt;img src="images/Image1.gif"/&gt
+    </code></td>
+  </tr>
+  <tr>
+    <td>After optimization</td>
+    <td><code>
+      &lt;img src="images/xImage1.gif.pagespeed.ic.GSLMcHP-fl.png"/&gt
+    </code></td>
+  </tr>
+  <tr>
+    <td>Explanation</td>
+    <td>Image converted from GIF to PNG format and
+       <a href="filter-cache-extend">cache-extended</a>.
+    </td>
+  </tr>
+  <tr>
+    <th colspan="2">Example 2</th>
+  </tr>
+  <tr>
+    <td>Before optimization</td>
+    <td><code>
+      &lt;img src="images/Image2.png" width="256" height="192"/&gt
+    </code></td>
+  </tr>
+  <tr>
+    <td>After optimization</td>
+    <td><code>
+      &lt;img src= "images/256x192xImage2.png.pagespeed.ic.ryODdDEGKc.png"
+      width="256" height="192"/&gt
+    </code></td>
+  </tr>
+  <tr>
+    <td>Explanation</td>
+    <td>Image resized to 256 x 192 pixels, recompressed to PNG, and
+      cache-extended.
+    </td>
+  </tr>
+  <tr>
+    <th colspan="2">Example 3</th>
+  </tr>
+  <tr>
+    <td>Before optimization</td>
+    <td><code>
+      &lt;img src="images/Image3.jpg" width="65" height="70"/&gt
+    </code></td>
+  </tr>
+  <tr>
+    <td>After optimization</td>
+    <td><code>
+      &lt;img src="data:image/jpeg;base64,...Base64 data"/&gt
+    </code></td>
+  </tr>
+  <tr>
+    <td>Explanation</td>
+    <td>Image resized and then inlined into HTML as Base64 data. Because the
+      inlined data has the desired dimensions, width and height are no longer
+      needed.
+    </td>
+  </tr>
+</table>
+
+<p>
+<b>Tip</b>: There are multiple ways to tell PageSpeed Modules not to modify
+certain images.
+<ul>
+  <li>
+    To avoid modifying a group of images, e.g., images under
+    a certain folder or images named after a pattern, you can use the
+    <a href="restricting_urls">Disallow</a> option.
+  </li>
+  <li>
+    To avoid modifying the contents of an image, you can add a
+    <code>Cache-Control: no-transform</code> response header to the image.
+    This header can be overridden by the
+    <a href="configuration#notransform">DisableRewriteOnNoTransform</a>
+    option.
+  </li>
+  <li>
+    To avoid modifying an <code>img</code> tag, you can use the
+    <code>data-pagespeed-no-transform</code> attribute, i.e.,<br>
+    <code>&lt;img src="do-not-modify.png" data-pagespeed-no-transform/&gt
+    </code>.
+  </li>
+</ul>
+</p>
+
+<h2>Image formats</h2>
+<p>
+PageSpeed Modules support the most common image formats used on the web.
+</p>
+<table>
+  <tr>
+    <td>
+      <a href="https://en.wikipedia.org/wiki/GIF">GIF</a>
+    </td>
+    <td>
+      A legacy but still popular image format. GIF is a lossless format,
+      so the compressed image is visually identical to the original. It
+      supports both single frame (still image) and multiple frames (animation).
+      Despite its popularity, GIF often has poor compression performance,
+      so PageSpeed converts GIF images to other (better) formats, unless the
+      images are tiny.
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://en.wikipedia.org/wiki/Portable_Network_Graphics">PNG</a>
+    </td>
+    <td>
+      A more recent lossless format designed as a successor to GIF for
+      single-frame images.
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://en.wikipedia.org/wiki/JPEG">JPEG</a>
+    </td>
+    <td>
+      A lossy format where the compression process removes image detail
+      that is difficult for the human eye to see. How much data to remove
+      depends on the quality level. JPEG has two modes, baseline and
+      progressive. Progressive mode can be used to render the image
+      incrementally and has a higher compression ratio for large images.
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <a href="https://en.wikipedia.org/wiki/WebP">WebP</a>
+    </td>
+    <td>
+      A cutting-edge image format. While it is not yet supported in all
+      browsers, it is becoming
+      <a href="https://developers.google.com/speed/webp/faq">increasingly
+      available</a>.
+      In addition to superior compression performance, it includes features
+      of all other formats: lossy mode, lossless mode, transparency,
+      and animation. WebP has added support for these features over time,
+      so your visitor’s browser may support all, a subset, or none of these
+      features. PageSpeed automatically detects the features which your
+      visitor’s browser supports and only uses the supported features in
+      optimization.
+    </td>
+  </tr>
+</table>
+
+<h2 id="filters">Filters</h2>
+<p>
+PageSpeed Modules provide specific filters so you can control exactly how
+your images are optimized. For each visitor, PageSpeed Modules choose the best
+format and mode from the ones you allowed and the ones supported by the
+visitor’s browser.
+<p>
+</p>
+To simplify configuration, PageSpeed Modules provide
+<a href="reference-image-optimize#rewrite_images">rewrite_images</a>,
+a filter group that consists of the most common image optimizations.
+It allows recompression, transcoding to optimal formats, reduction of image
+dimensions, and inlining of small images into HTML or CSS. If you want to make
+more detailed adjustments, you can also enable or disable the individual
+filters:
+</p>
+
+<ul>
+  <li>To PNG format:
+    <a href="reference-image-optimize#convert_gif_to_png">convert_gif_to_png</a>,
+    <a href="reference-image-optimize#recompress_png">recompress_png</a>.
+  </li>
+  <li>To JPEG format:
+    <a href="reference-image-optimize#convert_png_to_jpeg">convert_png_to_jpeg</a>,
+    <a href="reference-image-optimize#convert_jpeg_to_progressive">
+convert_jpeg_to_progressive</a>,
+    <a href="reference-image-optimize#recompress_jpeg">recompress_jpeg</a>.
+  </li>
+  <li>To WebP format:
+    <a href="reference-image-optimize#convert_jpeg_to_webp">convert_jpeg_to_webp</a>,
+    <a href="reference-image-optimize#convert_to_webp_lossless">
+    convert_to_webp_lossless</a>,
+    <a href="reference-image-optimize#convert_to_webp_animated">
+    convert_to_webp_animated</a>,
+    <a href="reference-image-optimize#recompress_webp">recompress_webp</a>.
+  </li>
+  <li>General:
+    <a href="reference-image-optimize#inline_images">inline_images</a>,
+    <a href="reference-image-optimize#resize_images">resize_images</a>.
+  </li>
+</ul>
+
+<p>
+You can use any combination of the filter group and individual filters for
+your site. In each case, images are optimized only to the formats that are
+supported by your visitor’s browser, and images are replaced only when the
+optimized one is smaller than the original.
+</p>
+
+<h2 id="image-quality">Image quality</h2>
+<p>
+For images that are sensitive to compression noise, PageSpeed Modules always
+use lossless compression; for other images, PageSpeed Modules use the more
+aggressive lossy methods. For the lossy formats you can specify up to three
+quality levels, indicated by specific situations:
+</p>
+<ul>
+<li>
+When the user indicates a
+<a href="https://support.google.com/chrome/answer/2392284">
+preference for reduced data usage</a>.
+</li>
+<li>
+When the user visits your site from a mobile device. Mobile devices usually
+have a high device pixel ratio, so compression noise is less visible.
+In addition, mobile devices are more likely to use an expensive data channel.
+</li>
+<li>
+For all other cases, e.g., when the user visits your site from a desktop or
+tablet.
+</li>
+</ul>
+
+<p>
+If your visitors have high transfer costs, slow connection speeds, or for
+other reasons, they may prefer reduced data usage. Some browsers, including
+<a href="https://developer.chrome.com/multidevice/data-compression">Chrome</a>,
+<a href="https://developers.google.com/web/updates/2016/02/save-data">Opera</a>,
+and <a href="https://developers.google.com/web/updates/2016/02/save-data">
+Yandex</a>, let visitors choose to send a
+<a href="http://httpwg.org/http-extensions/client-hints.html#the-save-data-hint">
+Save-Data</a> header when they request pages. You can honor their preference by
+allowing lower image quality for such requests.
+</p>
+<p>
+The image quality levels can be specified using various parameters, listed here
+in order of precedence.
+</p>
+
+<ol>
+<li>
+Format-specific qualities for save-data:
+<a href="reference-image-optimize#JpegQualityForSaveData">
+JpegQualityForSaveData</a> and
+<a href="reference-image-optimize#WebpQualityForSaveData">
+WebpQualityForSaveData</a>.
+</li>
+<li>
+Format-specific qualities for mobile:
+<a href="reference-image-optimize#JpegRecompressionQualityForSmallScreens">
+JpegRecompressionQualityForSmallScreens</a>,
+<a href="reference-image-optimize#WebpRecompressionQualityForSmallScreens">
+WebpRecompressionQualityForSmallScreens</a>, and
+<a href="reference-image-optimize#WebpAnimatedRecompressionQuality">
+WebpAnimatedRecompressionQuality</a>.
+</li>
+<li>
+Format-specific qualities for all other cases:
+<a href="reference-image-optimize#JpegRecompressionQuality">
+JpegRecompressionQuality</a>,
+<a href="reference-image-optimize#WebpRecompressionQuality">
+WebpRecompressionQuality</a>, and
+<a href="reference-image-optimize#WebpAnimatedRecompressionQuality">
+WebpAnimatedRecompressionQuality</a>.
+</li>
+<li>
+Format-generic quality for all other cases:
+<a href="reference-image-optimize#ImageRecompressionQuality">
+ImageRecompressionQuality</a>.
+</li>
+</ol>
+
+<p>
+Each parameter has a range of 0 - 100, representing lowest to
+highest quality. They can also be set to -1, indicating that the
+parameter should be ignored and the parameters of the lower precedences should
+be used. If all of the quality parameters are set to -1, images will
+not be optimized to any lossy format.
+</p>
+<p>
+<b>Tip</b>: If you do not want to recompress lossy-format images or convert
+images to lossy formats, it is best to disable any filter that would
+<a href="#filters">optimize to JPEG or WebP</a>. Setting all
+of the qualities to -1 wastes CPU to achieve the same result.
+</p>
+
+<h2>Image dimensions</h2>
+<p>
+PageSpeed Modules can shrink an image to its actual display dimensions based
+on the design of the page, the visitor’s device, and the visitor’s actions,
+to ensure the best user experience without wasting pixels.
+<p>
+You can use the
+<a href="reference-image-optimize#resize_images">resize_images</a> filter to
+shrink the image to the dimensions specified by the <code>width=</code> and
+<code>height=</code> attributes in the <code>&lt;img&gt;</code> tag or by the
+inline <code>style=</code> attribute.
+</p>
+<p>
+If you cannot use the
+<a href="reference-image-optimize#resize_images">resize_images</a> filter,
+you can use the
+<a href="reference-image-optimize#resize_rendered_image_dimensions">
+resize_rendered_image_dimensions</a>
+filter to shrink the images to their rendered dimensions. In this case,
+PageSpeed injects JavaScript into your HTML that will report the rendered
+dimensions to the server, known as "beaconing". After receiving a few beacons,
+PageSpeed identifies the dimensions, and shrinks the images.
+</p>
+<p>
+You can use the
+<a href="filter-image-responsive#configuration">responsive_images</a>
+filter to ensure your visitor sees full-resolution images, whether they are
+using a retina-based or regular device. Sending full resolution images to all
+devices is challenging because different devices may use a different number of
+pixels (known as device pixels) for displaying a region of the page
+(measured by CSS pixels). For example, a region of 100x100 CSS pixels in a
+page is displayed using 100x100 device pixels on an iPhone 3, 200x200 device
+pixels on an iPhone 6, and 300x300 device pixels on an iPhone 6+. For the best
+visual effect using the least bandwidth, you can resize your image to 100x100
+for iPhone 3, to 200x200 for iPhone 6, and to 300x300 for iPhone 6+. Using this
+filter, PageSpeed generates images at all of these dimensions, and then
+modifies the <code>&lt;img&gt;</code> tags so your visitor’s browser uses the
+best size.
+</p>
+<p>
+Taking the <a href="filter-image-responsive#configuration">responsive_images</a>
+filter one step further, you can use the
+<a href="filter-image-responsive#configuration">responsive_images_zoom</a>
+filter to send images of higher resolutions when your visitor zooms in. Using
+this filter, PageSpeed injects JavaScript into your HTML that checks the zoom
+level of the page and fetches a higher-resolution image if necessary. On the
+back end, PageSpeed resizes the image to the proper resolutions.
+</p>
+
+<h2>Inline images</h2>
+<p>
+In addition to making the images smaller, PageSpeed Modules can help your page
+load faster by inlining images or previews into your HTML or CSS.
+</p>
+<p>
+PageSpeed can inline small images directly into the HTML or CSS, reducing
+server requests. This is enabled by the
+<a href="reference-image-optimize#inline_images">inline_images</a> filter,
+and is controlled by the
+<a href="reference-image-optimize#ImageInlineMaxBytes">ImageInlineMaxBytes</a>
+and <a href="reference-image-optimize#CssImageInlineMaxBytes">
+CssImageInlineMaxBytes</a> options.
+</p>
+<p>
+As well as inlining small images, PageSpeed can inline a reduced-quality
+version of large images into the HTML or CSS and, after the page is loaded,
+replace the low-quality image with the original. See
+<a href="reference-image-optimize#inline_preview">Inline Preview Images</a>
+for details.
+</p>
+
+<h2 id="srcsets">Srcsets</h2>
+<p class="note"><strong>Note: New feature as of 1.12.34.1.</strong></p>
+
+<p>
+In addition to optimizing image <code>src</code> attributes, as of 1.12.34.1
+PageSpeed will now also optimize images referenced in <code>srcset</code>s.
+This includes all PageSpeed image optimizations except resizing.
+</p>
+
+<p>
+PageSpeed can also automatically insert <code>srcset</code> attributes.  See the
+the <a href="filter-image-responsive#configuration">responsive_images</a>
+filter for configuration instructions.
+</p>
+
+<h2>Other controls</h2>
+<p>
+PageSpeed Modules provide controls to make sure that your server is stable,
+your proxy/CDN (if any) is fully utilized, and your images are delivered to
+the user in the format you want.
+</p>
+<p>
+Image optimization is an expensive process. To ensure the stability of your
+server, you can use
+<a href="reference-image-optimize#ImageResolutionLimitBytes">
+ImageResolutionLimitBytes</a>
+to limit the maximum dimensions of images to optimize, and
+<a href="reference-image-optimize#ImageMaxRewritesAtOnce">
+ImageMaxRewritesAtOnce</a>
+to limit the maximum number of images that are concurrently optimized.
+</p>
+<p>
+To ensure that your proxy/CDN can handle the optimized images correctly,
+you can use <a href="reference-image-optimize#AllowVaryOn">AllowVaryOn</a>
+to tell PageSpeed which request headers can be used to control image
+optimization. You can also use
+<a href="reference-image-optimize#NoTransformOptimizedImages">NoTransformOptimizedImages</a>
+to instruct proxies not to further compress the images.
+</p>
+<p>
+The
+<a href="reference-image-optimize#serve_webp_urls">
+ServeRewrittenWebpUrlsToAnyAgent</a>
+option can be used to tell PageSpeed how to respond to a request asking for a
+WebP image when the browser does not appear to support WebP. In this case,
+PageSpeed will normally return the image as a PNG or JPEG (whichever is most
+appropriate). If <code>ServeRewrittenWebpUrlsToAnyAgent</code> is enabled,
+PageSpeed will instead return the WebP unconditionally. Returning the image
+depending on the headers ensures that your visitor sees the image correctly.
+Returning the image unconditionally in WebP format is useful if you want to
+serve WebP but your CDN or proxy removes headers from the request.
+</p>
+<p>
+You can also ask PageSpeed to insert the image dimensions into
+<code>&lt;img&gt;</code> tags so the browser can compute the layout of the
+page before downloading the images. See
+<a href="reference-image-optimize#insert_image_dimensions">
+insert_image_dimensions</a>
+filter for more information.
+</p>
+
+<h2 id="Risks">Risks</h2>
+<p>
+Image optimization is not perfect, and its use can have some downsides. Here
+are some potential issues and suggested solutions.
+</p>
+
+<table>
+  <tr>
+    <td>
+      <p><em>
+        Image optimization is both CPU- and memory-intensive.
+      </em></p>
+      <p>
+        You will probably see your server load increase while images are being
+        rewritten, particularly immediately after server start. If the load
+        increases too much, you can alleviate it by setting
+        <a href="reference-image-optimize#ImageMaxRewritesAtOnce">
+        ImageMaxRewritesAtOnce</a> and
+        <a href="reference-image-optimize#ImageResolutionLimitBytes">
+        ImageResolutionLimitBytes</a>.
+        After the images have been optimized once, they will be cached for
+        future use.
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <p><em>
+        Reducing the dimension of an image or compressing it to a lossy format
+        causes some image details to be lost.
+      </em></p>
+      <p>
+        This is sometimes noticeable, though usually not; you should inspect
+        the optimized images to ensure their quality is acceptable.
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <p><em>
+        PageSpeed removes metadata, such as copyright information.
+      </em></p>
+      <p>
+        If you want keep a specific image's metadata, add
+        <code>data-pagespeed-no-transform</code> attribute. PageSpeed does not
+        remove watermarks.
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <p><em>
+        It is possible to craft an image that, after re-compression, looks
+        like HTML to certain browsers.
+      </em></p>
+      <p>
+        While PageSpeed adds proper content-type headers and headers that
+        forbid content-type sniffing, some ancient browsers can still be
+        tricked into rendering them as HTML. If you have user-submitted images,
+        you should filter them before using them in your site.
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <p><em>
+        Your beacons may need a new attribute.
+      </em></p>
+      <p>
+        If you use images as beacons to monitor page activity, you should add
+        <code>data-pagespeed-no-transform</code> attribute to them. Otherwise,
+        PageSpeed may optimize the images and the activity will not be reported
+        to you.
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <p><em>
+        Images may incur stretching distortion if you ask PageSpeed Modules to
+        insert image dimensions.
+      </em></p>
+      <p>
+        If you use <code>insert_image_dimensions</code> on pages where your
+        CSS modifies image sizes, the images may appear distorted. Again,
+        inspect compressed images for render dimensions.
+      </p>
+    </td>
+  </tr>
+  <tr>
+    <td>
+      <p><em>
+        Color profiles are removed by PageSpeed.
+      </em></p>
+      <p>
+        If your images contain color profiles, they are removed to save data.
+        This is usually not a problem since most images with a color profile
+        render indistinguishably when the color profile is removed.
+      </p>
+    </td>
+  </tr>
+</table>
+
+</div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

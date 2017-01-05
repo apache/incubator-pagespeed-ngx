@@ -1,0 +1,4525 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageSpeed Release Notes</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>PageSpeed Release Notes</h1>
+  <h2 id="release_1.12.34.2-beta">Release 1.12.34.2-beta</h2>
+  <p>
+    This nginx-only bug-fix release was made December 15, 2016.  It allows the
+    precompiled PSOL library to be used with nginx's <code>--with-debug</code>.
+  </p>
+  <p>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting Nginx</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1333">
+          Issue 1333</a></strong>
+      Release 1.12.34.1 not compatible with <code>--with-debug</code>
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/80c4b7e97ba90b0280255fc3967f02e02239653c"
+          ><code><small>80c4b7e9</small></code></a>)
+    </li>
+  </ul>
+
+  <h2 id="release_1.12.34.1-beta">Release 1.12.34.1-beta</h2>
+  <p>This release was made December 7, 2016.</p>
+
+  <h3 class="hide-from-toc">New Features</h3>
+  <dl>
+    <dt><a href="system#redis">Redis Support</a></dt>
+    <dd>
+      Support for Redis Cache and Redis Cluster as external caches.
+    </dd>
+    <dt><a href="filter-hint-preload-subresources"
+           >Add preload hints</a></dt>
+    <dd>
+      This is a new filter, off by default, that looks for declaratively
+      included stylesheets and javascript to figure out the page's dependencies,
+      and inserts <a href="http://w3c.github.io/preload">preload headers</a> so
+      the browser can start loading them immediately.
+    </dd>
+    <dt><a href="filter-image-optimize#srcsets">Optimize Srcsets</a></dt>
+    <dd>
+      PageSpeed now optimizes images referenced in <code>srcset</code>
+      attributes.
+    </dd>
+    <dt><a href="system#s-maxage">Set <code>s-maxage</code></a></dt>
+    <dd>
+      To prevent CDNs and other shared caches from caching the unoptimized
+      version of resources for a long time, PageSpeed now
+      adds <code>s-maxage=10</code> to the cache-control headers for unoptimized
+      resources that we intend to optimize <a href="system#ipro">in-place</a>.
+    </dd>
+    <dt><a href="filter-css-combine#permit-ids-for-css-combining">Allow
+        combining stylesheets with IDs</a></dt>
+    <dd>
+      PageSpeed would previously refuse to combine stylesheets with IDs, which
+      interacted poorly with WordPress and other content management systems
+      putting IDs on all their CSS files.  Setting
+      <code>PermitIdsForCssCombining</code> wildcards allows you to indicate to
+      PageSpeed which IDs on CSS files are ok to ignore.
+    </dd>
+    <dt><a href="config_filters#FinderPropertiesCacheExpirationTimeMs">
+        <code>FinderPropertiesCacheExpirationTimeMs</code></a></dt>
+    <dd>
+      Configures the length of time the <a
+      href="filter-prioritize-critical-css">prioritize_critical_css</a> beacons
+      are valid.
+    </dd>
+    <dt><a href="configuration#add-resource-header">
+        <code>AddResourceHeader</code></a></dt>
+    <dd>
+      Allows setting headers on optimized resources for <a
+      href="https://en.wikipedia.org/wiki/Cross-origin_resource_sharing"
+      >CORS</a> support.
+    </dd>
+    <dt><a href="system#shm_checkpointing"
+        >Shared Memory Cache Checkpointing</a></dt>
+    <dd>
+      The shared memory metadata cache now checkpoints to disk every few minutes
+      instead of writing all changes through as they happen.  In our testing
+      this improved performance on workloads that require many metadata writes
+      by 21%.
+    </dd>
+
+  </dl>
+
+  <h3 class="hide-from-toc">Deprecations</h3>
+  <dl>
+    <dt><a href="configuration#virtual-hosts"
+           >Support for disabling <code>InheritVHostConfig</code></a></dt>
+    <dd>
+      For historical reasons, mod_pagespeed on Apache doesn't respect the global
+      PageSpeed configuration when interpreting VHost configuration.  Since
+      1.1 in 2012, however, it has shipped with a default configuration file
+      that fixed this by setting <code>InheritVHostConfig</code> to "on".  For
+      the minority of installations that don't use the default configuration
+      file, or explicitly set <code>InheritVHostConfig</code> to "off",
+      PageSpeed will now log an error on startup warning that the setting will
+      soon change.  With the next major version
+      release <code>InheritVHostConfig</code> will be forced to "on".
+    </dd>
+    <dt>Centos 5 Support</dt>
+    <dd>
+      CentOS 5, released in 2007, goes end-of-life at the end
+      of <a
+      href="https://wiki.centos.org/FAQ/General#head-fe8a0be91ee3e7dea812e8694491e1dde5b75e6d"
+      >March 2017</a>.  The 1.12 rpm packages are for CentOS 6 and later, and
+      will fail to install on CentOS 5.  The stable release track, 1.11,
+      continues to support CentOS 5.
+    </dd>
+  </dl>
+
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting both Nginx and Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1127">
+          Issue 1127</a></strong>
+      Don't accumulate waveforms that won't be displayed</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1263">
+          Issue 1263</a></strong>
+      Minimal <a href="https://www.ampproject.org/">AMP</a> support: don't
+      invalidate AMP</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1321">
+          Issue 1321</a></strong>
+      <a href="system#ipro">IPRO</a> can change the content types of JavaScript
+      resources</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1337">
+          Issue 1337</a></strong>
+      Multiple instances of the <a href="system#file_cache">cache cleaner</a>
+      can run simultaneously on large caches</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1350">
+          Issue 1350</a></strong>
+      <a href="filter-domain-rewrite">rewrite_domains</a> doesn't apply to
+      <a href="configuration#pagespeed_static">static assets</a></li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1373">
+          Issue 1373</a></strong>
+      <a href="configuration#respectvary">RespectVary</a> ignored when
+      cache-extending</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1386">
+          Issue 1386</a></strong>
+      <a href="domains#ModPagespeedLoadFromFile">LoadFromFile</a> crashes on
+      resources too big for memory</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1405">
+          Issue 1405</a></strong>
+      Unexpected tag &lt;head/&gt; inside pages</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1409">
+          Issue 1409</a></strong>
+      <a href="system#ipro">IPRO</a> Records Resources of Unoptimizable Content
+      Types</li>
+  </ul>
+
+  <h2 id="release_1.11.33.5-stable">Release 1.11.33.5-stable</h2>
+  <p>
+    This bug-fix release was made November 14, 2016. It is a clone
+    of the <a href="#release_1.11.33.5-beta">1.11.33.5-beta</a> release and
+    rebuilds the <code>.deb</code> packages to fix auto-updating for Ubuntu
+    16.10.
+  </p>
+  <p>
+    This release is only applicable to Debian and Ubuntu;
+    release <a href="release_1.11.33.4-stable">1.11.33.4</a> is
+    still the most up-to-date stable release for RedHat, CentOS, PSOL, and
+    ngx_pagespeed.
+  </p>
+
+  <h2 id="release_1.11.33.5-beta">Release 1.11.33.5-beta</h2>
+  <p>
+    This bug-fix release was made November 14, 2016.  It rebuilds
+    the <code>.deb</code> packages to fix auto-updating for Ubuntu 16.10.
+  </p>
+  <p>
+    This release is only applicable to Debian and Ubuntu;
+    release <a href="release_1.11.33.4-beta">1.11.33.4</a> is
+    still the most up-to-date beta release for RedHat, CentOS, PSOL, and
+    ngx_pagespeed.
+  </p>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1428">
+          Issue 1428</a></strong>
+      Auto-updating broken with new <code>.deb</code> systems
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/36d4a38005b9c355d376b9866b71ede0a96be744"
+          ><code><small>36d4a38</small></code></a>)
+    </li>
+  </ul>
+
+  <h2 id="release_1.11.33.4-stable">Release 1.11.33.4-stable</h2>
+  <p>
+    This release was made October 3, 2016. It is a clone of
+    the <a href="#release_1.11.33.4-beta">1.11.33.4-beta</a> release.
+  </p>
+  <p>
+    In addition to being the latest stable release for Apache, this is the first
+    stable release for Nginx.
+  </p>
+
+  <h2 id="release_1.11.33.4-beta">Release 1.11.33.4-beta</h2>
+  <p>This bug-fix release was made September 15, 2016.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1392">
+          Issue 1392</a></strong>
+          and <strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1393">
+          Issue 1393</a></strong>
+      All existing preload hints are stripped
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/95ef580465d9ac9dbbe95d0e3c8ae4fd1292aac6"
+          ><code><small>95ef580</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1396">
+          Issue 1396</a></strong>
+      Can't build from source because Chromium svn is gone
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/3f47828ca7eeb0611b5f2226016631edc42d1e90"
+          ><code><small>3f47828</small></code></a>,
+      <a href="https://github.com/pagespeed/ngx_pagespeed/commit/269ed10ed56230d7b83bdb81e6b7cc1deaf3227f"
+          ><code><small>269ed10</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1397">
+          Issue 1397</a></strong>
+      ImageMaxRewritesAtOnce of -1 should allow unlimited image rewrites
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/18d5549d7be6f857e2deb3285a67f6f3cd3f40ef"
+          ><code><small>18d5549</small></code></a>)
+    </li>
+  </ul>
+
+  <h2 id="release_1.11.33.3-beta">Release 1.11.33.3-beta</h2>
+  <p>This bug-fix release was made August 16, 2016.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1149">
+          Issue 1149</a></strong>
+      PageSpeed output resources cannot be cached in Google Cloud
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/f56391f87eea004ed8f7a8f8288162d8d7f26e8c"
+          ><code><small>f56391</small></code></a>)
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/9711b52270ff23293180820b2e4f4fb3befc3c01"
+          ><code><small>9711b5</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1192">
+          Issue 1192</a></strong>
+      Cache-purging does not work for in-place resource optimization
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/d1972f66f65a20624826362d7e2838dc91f59c95"
+          ><code><small>d1972f</small></code></a>)
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/07a6647b6544d91da93630484f2cbff196bc0f70"
+          ><code><small>07a664</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/674">
+          Issue 674</a></strong>
+      Serf spin causes 100% CPU usage
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/921fd719a1c762daae9aaa28d8b87e6c27497731"
+          ><code><small>921fd7</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1022">
+          Issue 1022</a></strong>
+      image-inline: don't inline shortcut images
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/203865af81afe5ee6c18f555a4d4ebfb2f0da607"
+          ><code><small>203865</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1324">
+          Issue 1324</a></strong>
+      Support UrlValuedAttribute with CSS
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/59a198284e82bccb303d7e27705bcd3dbd22eda3"
+          ><code><small>59a1982</small></code></a>)
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/787239d42940c53a78bc3646c689c8e399eebc2e"
+          ><code><small>787239</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1054">
+          Issue 1054</a></strong>
+      defer_js loads javascript twice
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/e2aa6f4f75442770c373e6ce3694dbbb5a9313c3"
+          ><code><small>e2aa6f</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1327">
+          Issue 1327</a></strong>
+      Remove rel=preload hints which wastefully download unused resources when using PageSpeed
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/dbde98953a796e16fee3fa9afe8c3af444d9e242"
+          ><code><small>dbde98</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1305">
+          Issue 1305</a></strong>
+      ImageMaxRewritesAtOnce ignored (but displays correct configured value in admin interface)
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/19cf3bb60b2aadff90ec588aab780e72daf0b581"
+          ><code><small>19cf3b</small></code></a>)
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/e0a3bf223a6ea4914c1d34944f94c8aef8ef0db7"
+          ><code><small>e0a3bf</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1220">
+          Issue 1311</a></strong>
+      ngx_pagespeed crashes on start if there is no http block in config
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/ff8969770d2914a4ffa8473b019ad743e1a84652"
+          ><code><small>ff8969</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1338">
+          Issue 1338</a></strong>
+      Recognize dc.js as a synonym for ga.js
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/1ff43e196a7d0b1c9b27387ae0beef6e374cea51"
+          ><code><small>1ff43e</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1307">
+          Issue 1307</a></strong>
+      Don't mangle files that start with the gzip magic bytes
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/6dfe527c0f6f30bdf438de61e2cff1eb33817b0b"
+          ><code><small>6dfe52</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1294">
+          Issue 1294</a></strong>
+      PageSpeed URL control wildcards don't work properly
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/0654743c1fdbf5b85a62a4dc1d19a1c06a20afd8"
+          ><code><small>065474</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1348">
+          Issue 1348</a></strong>
+      Insert dns-prefetch for safari
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/d05a8b6e75eb5fc7ee7105abedf6189af7308896"
+          ><code><small>d05a8b</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1222">
+          Issue 1222</a></strong>
+      Pagespeed eats CSS font-face declarations when defined in imported files
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/8fca3b9d3b606cbd83ae34f09c9564be16831862"
+          ><code><small>8fca3b</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1343">
+          Issue 1343</a></strong>
+      allow people to turn off cache cleaning
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/ccea83faf5be53690e3865d06d2cbbb97bf0c05d"
+          ><code><small>ccea83</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1371">
+          Issue 1371</a></strong>
+      PageSpeed can serve gzipped content without Content-Encoding header via IPRO
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/0bd84a160119f6e2dc04ec22e6b09907e875cdb9"
+          ><code><small>0bd84a</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1190">
+          Issue 1190</a></strong>
+      Adding ?PageSpeedFilters=+debug to URL enables other filters
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/2a3b1278dfe0482ab59df663f40e65c3f5432441"
+          ><code><small>2a3b12</small></code></a>)
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/2af2035bbd8979744aaf5a7fbd24c3192933f186"
+          ><code><small>2af203</small></code></a>)
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1369">
+          Issue 1369</a></strong>
+      dedup_inline_images filter is broken for images that don't already have an id
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/c1827bb0be7fb9b4696baa97c978012b8e869dc9"
+          ><code><small>c1827b</small></code></a>)
+    </li>
+  </ul>
+
+  <h2 id="release_1.11.33.2-stable">Release 1.11.33.2-stable</h2>
+  <p>
+    This release was made May 12, 2016. It is a clone of the
+    1.11.33.2-beta release.
+  </p>
+
+  <h2 id="release_1.11.33.2-beta">Release 1.11.33.2-beta</h2>
+  <p>This security update release was made May 12, 2016.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://www.openssl.org/news/secadv/20160503.txt">
+          https://www.openssl.org/news/secadv/20160503.txt</a></strong>
+    </li>
+  </ul>
+
+  <h2 id="release_1.11.33.1-stable">Release 1.11.33.1-stable</h2>
+  <p>This bug-fix release was made May 2nd, 2016. It is a clone of the
+      1.11.33.1-beta release.
+  </p>
+  <p>This release depends on glibc &gt;= 2.14 and will no longer run on Debian
+      Wheezy, (7.0) which is also no longer officially supported by the Debian
+      security team.
+  </p>
+
+  <h2 id="release_1.11.33.1-beta">Release 1.11.33.1-beta</h2>
+  <p>This bug-fix release was made May 2nd, 2016.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1288">
+          Issue 1288</a></strong>
+      Experiment reporting broken with ga.js
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/65067523faf34833cfda8ae5c5e10b5f7ba5497f"
+          ><code><small>650675</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1219">
+          Issue 1298</a></strong>
+      Experiment injection for GA tracker always sets variation 1
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/a2b10e49318ea9d8e2ecf26e2c562bc427a06e99"
+          ><code><small>a2b10e4</small></code></a>)</li>
+  </ul>
+
+  <h2 id="release_1.11.33.0-beta">Release 1.11.33.0-beta</h2>
+  <p>This release was made March 30, 2016.</p>
+
+  <p>
+    This release targets users on mobile devices and low-bandwidth networks by
+    adding Save-Data support.  Save-Data is a new Client Hint that allows site
+    visitors to indicate that they
+    would <a href="https://developers.google.com/web/updates/2016/02/save-data"
+    >prefer lower-quality resources in order to save data</a>. Sites are most
+    likely to see requests to save data today from visitors who have turned
+    on <a href="https://developer.chrome.com/multidevice/data-compression">Data
+    Saver mode</a> in Chrome or the equivalents in Opera and Yandex Browser,
+    often because they're on slow or expensive connections.  Now, with 1.11,
+    when such a user comes to your site asking it to save data, mod_pagespeed
+    will <a
+    href="https://developers.google.com/speed/pagespeed/module/filter-image-optimize#image-quality"
+    >compress images to a lower quality level</a> than it would typically,
+    decreasing their size further at the cost of slightly more image distortion.
+  </p>
+
+  <h3 class="hide-from-toc">New Features</h3>
+  <dl>
+    <dt><a href="filter-image-optimize#image-quality">Save-Data Support</a></dt>
+    <dd>Serve more thoroughly compressed images to browsers that request lowered
+        data usage via client hints.</dd>
+  </dl>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting both Nginx and Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/973">
+          Issue 973</a></strong>
+      Strip subresource hints
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/d0bae68"
+          ><code><small>d0bae68</small></code></a>,
+       <a href="https://github.com/pagespeed/ngx_pagespeed/commit/08e284f"
+          ><code><small>08e284f</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1214">
+          Issue 1214</a></strong>
+      PageSpeed console blank
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/2bd239d"
+          ><code><small>2bd239d</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1276">
+          Issue 1276</a></strong>
+      CSS Parser has off-by-one heap read
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/0bc4ce7"
+          ><code><small>0bc4ce7</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1277">
+          Issue 1277</a></strong>
+      Google Fonts CSS inlining broken
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/e3aa7b7"
+          ><code><small>e3aa7b7</small></code></a>)</li>
+  </ul>
+
+  <h4 class="hide-from-toc">Issues Affecting Nginx</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1064">
+          Issue 1064</a></strong>
+      Multiple Vary headers emitted (partial fix,
+      <a href="https://github.com/pagespeed/ngx_pagespeed/commit/b081bb7"
+          ><code><small>b081bb7</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1151">
+          Issue 1151</a></strong>
+      Unclear message on ParseUrl failure
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/6634754"
+          ><code><small>6634754</small></code></a>)</li>
+  </ul>
+
+  <h2 id="release_1.10.33.7-beta">Release 1.10.33.7-beta</h2>
+  <p>This security update release was made March 28, 2016.  It resolves the
+    same issues as the <a href="#release_1.9.32.14-stable">1.9.32.14</a> stable
+    release, and has the same patch.
+  </p>
+
+  <h2 id="release_1.9.32.14-stable">Release 1.9.32.14-stable</h2>
+  <p>This security update release was made March 28, 2016.</p>
+
+  <p>
+    All previously released versions of PageSpeed are vulnerable
+    to <a href="announce-sec-update-201603">CVE-2016-3626</a>.  This permits a
+    hostile third party to trick PageSpeed into making arbitrary HTTP requests
+    on arbitrary ports and re-hosting the response, allowing cross site
+    scripting.  If the machine running PageSpeed has access to services that are
+    not otherwise available, this can reveal those resources.
+  </p>
+  <p>
+    Users are <b>strongly</b> encouraged to update immediately.  If this isn't
+    possible, a <a href="announce-sec-update-201603#workaround">workaround</a>
+    is available.
+  </p>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting both Nginx and Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="announce-sec-update-201603"
+          >announce-sec-update-201603</a></strong>
+        Fetching and XSS vulnerability. (
+        <a href="https://github.com/pagespeed/mod_pagespeed/commit/52e184b"
+          ><code><small>52e184b</small></code></a>)</li>
+  </ul>
+
+  <h2 id="release_1.10.33.6-beta">Release 1.10.33.6-beta</h2>
+  <p>This bug-fix release was made March 3, 2016, and is Nginx-only</p>
+  <p>
+    Several nginx-specific bug-fixes were accidentally ommitted from
+    the <a href="#release_1.10.33.5-beta">1.10.33.5</a> ngx_pagespeed release.
+    This release contains those fixes, plus an additional nginx-specific memory
+    safety fix.
+  </p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting Nginx</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1081">
+          Issue 1081</a></strong>
+      Crashes on custom 404s for .pagespeed. resources
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/1964ef"
+          ><code><small>1964ef</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1096">
+          Issue 1096</a></strong>
+      IPRO check-fails on some connection errors
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/b88e06"
+          ><code><small>b88e06</small></code></a>,
+      <a href="https://github.com/pagespeed/ngx_pagespeed/commit/60c1f4"
+          ><code><small>60c1f4</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1138">
+          Issue 1120</a></strong>
+      Fix shutdown when ngx_pagespeed is completely disabled.
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/f60c754"
+          ><code><small>f60c754</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1138">
+          Issue 1138</a></strong>
+      IPRO responses sometimes forward a bad cache control value
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/85d0db2"
+          ><code><small>85d0db2</small></code></a>)</li>
+  </ul>
+
+  <h2 id="release_1.10.33.5-beta">Release 1.10.33.5-beta</h2>
+  <p>This bug-fix release was made February 16, 2016</p>
+  <p>
+    This bug-fix release fixes several bugs in both ngx_pagespeed and
+    mod_pagespeed. The release allows ngx_pagespeed to be built as a dynamic
+    module, for compatibility with nginx version 1.9.11.
+  </p>
+  <p>
+    <b>Update 2016-03-02</b>: This release accidentally ommited fixes
+    for ngx_pagespeed issues
+    <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1081">1081</a>,
+    <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1096">1096</a>,
+    and
+    <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1099">1099</a>.
+    Release <a href="#release_1.10.33.6-beta">1.10.33.6</a> includes these
+    fixes.
+  </p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting both Nginx and Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1080">
+          Issue 1080</a></strong>
+      inline_google_font_css uses .ttf instead of .woff for IE11
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/f3639e"
+          ><code><small>f3639e</small></code></a>,
+      <a href="https://github.com/pagespeed/ngx_pagespeed/commit/0a60e0"
+          ><code><small>1964ef</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1252">
+          Issue 1252</a></strong>
+      Images may be rewritten multiple times when requested simultaneously via
+      IPRO
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/62d24f"
+          ><code><small>62d24f</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1253">
+          Issue 1253</a></strong>
+      Tests can flake because of best effort locking
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/c368ef"
+          ><code><small>c368ef</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1254">
+          Issue 1254</a></strong>
+      Fallback value not decompressed when necessary
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/bcf63ac"
+          ><code><small>bcf63ac</small></code></a>,
+      <a href="https://github.com/pagespeed/mod_pagespeed/commit/d3851dd"
+          ><code><small>d3851dd</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1261">
+          Issue 1261</a></strong>
+      CSS minification incorrectly transforms 0% to 0
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/7c30b7"
+          ><code><small>7c30b7</small></code></a>)</li>
+  </ul>
+  <h4 class="hide-from-toc">Issues Affecting Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1229">
+          Issue 1229</a></strong>
+      pagespeed default config fails to load on 2.4 unless mod_access_compat
+      is loaded
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/02e8f7"
+          ><code><small>02e8f7</small></code></a>)</li>
+  </ul>
+  <h4 class="hide-from-toc">Issues Affecting Nginx</h4>
+  <ul>
+    <li><strike><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1081">
+          Issue 1081</a></strong>
+      Crashes on custom 404s for .pagespeed. resources</strike>
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/1964ef"
+          ><code><small>1964ef</small></code></a>)</li>
+    <li><strike><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1096">
+          Issue 1096</a></strong>
+      IPRO check-fails on some connection errors</strike>
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/b88e06"
+          ><code><small>b88e06</small></code></a>,
+      <a href="https://github.com/pagespeed/ngx_pagespeed/commit/60c1f4"
+          ><code><small>60c1f4</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1099">
+          Issue 1099</a></strong>
+      Duplicate Location headers after 302 redirects
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/059dd2"
+          ><code><small>059dd2</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1110">
+          Issue 1110</a></strong>
+      Can't build with nginx 1.9.11+
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/daa603"
+          ><code><small>daa603</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1115">
+          Issue 1115</a></strong>
+      Can't build as a dynamic module.
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/fbde0a"
+          ><code><small>fbde0a</small></code></a>)</li>
+  </ul>
+
+  <h2 id="release_1.10.33.4-beta">Release 1.10.33.4-beta</h2>
+  <p>This security update release was made February 3rd, 2016.  It resolves the
+    same issues as the <a href="#release_1.9.32.13-stable">1.9.32.13</a> stable
+    release, and has the same patches.
+  </p>
+
+  <h2 id="release_1.9.32.13-stable">Release 1.9.32.13-stable</h2>
+  <p>This security update release was made February 3rd, 2016.</p>
+
+  <p>
+    All previously released versions of PageSpeed are vulnerable to
+    HTTPS-fetching vulnerability CVE-2016-2092.  This permits a hostile third
+    party who can man-in-the-middle the connection between PageSpeed and an
+    HTTPS server to substitute arbitrary content in responses.  PageSpeed is not
+    vulnerable in its default configuration, but several filters and options
+    can enable this vulnerability.  See <a href="announce-sec-update-201601">our
+    CVE-2016-2092 announcement</a> for more details and workarounds.
+  </p>
+  <p>
+    LibPNG has been updated to 1.2.56.  Previous versions had an out-of-bounds
+    read (<a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-8540"
+    >CVE-2015-8540</a>) which a hostile third party could trigger if they were
+    in a position to supply images for PageSpeed to optimize.
+  </p>
+  <p>
+    The latest version of Chrome for iOS (M48) switched to
+    the <a href="http://blog.chromium.org/2016/01/a-faster-more-stable-chrome-on-ios.html"
+    >WKWebView</a> for rendering, dropping support for WebP images.  Prior
+    versions of PageSpeed will send WebP to Chrome on iOS, giving broken images
+    to these users.  While this isn't a security vulnerability, this is a
+    serious enough breakage that we're including it in this security release.
+  </p>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting both Nginx and Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="announce-sec-update-201601"
+          >announce-sec-update-201601</a></strong>
+        HTTPS fetching vulnerability. (
+        <a href="https://github.com/pagespeed/mod_pagespeed/commit/4af5e65"
+          ><code><small>4af5e65</small></code></a>)</li>
+    <li><strong>
+        <a href="http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-8540">
+          CVE-2015-8540</a></strong>
+      LibPNG out-of-bounds read in <code>png_check_keyword()</code>.
+       (<a href="https://github.com/pagespeed/mod_pagespeed/commit/79aaa94"
+           ><code><small>79aaa94</small></code></a>)</li>
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1139">
+          Issue 1139</a></strong>
+      Link SSL library correctly.
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/5b8253"
+          ><code><small>5b8253</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1256">
+          Issue 1256</a></strong>
+      Don't send WebP to Chrome on iOS
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/23947d"
+          ><code><small>23947d</small></code></a>)</li>
+  </ul>
+
+  <h4 class="hide-from-toc">Issues Affecting Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1248">
+          Issue 1248</a></strong>
+      Crash on very long urls
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/befa494"
+          ><code><small>befa494</small></code></a>)</li>
+  </ul>
+
+  <h2 id="release_1.10.33.2-beta">Release 1.10.33.2-beta</h2>
+  <p>This bug-fix release was made December 21st, 2015.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting both Nginx and Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1083">
+          Issue 1083</a></strong>
+      Newline in Content-Type meta tag breaks the page
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/08cbf9"
+          ><code><small>08cbf9</small></code></a>)</li>
+   <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1215">
+          Issue 1215</a></strong>
+      Missing CSS files with OptimizeForBandwith + combine_css
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/55e0962"
+          ><code><small>55e0962</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1222">
+          Issue 1222</a></strong>
+      rel=canonical links added for resources optimized with
+      InPlaceResourceOptimization
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/61f4e96"
+          ><code><small>61f4e96</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1226">
+          Issue 1226</a></strong>
+      Nested rewrites get inconsistent request properties
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/024eb91"
+          ><code><small>024eb91</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1227">
+          Issue 1227</a></strong>
+      Can't build PSOL
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/4b6a08"
+          ><code><small>4b6a08</small></code></a>)</li>
+  </ul>
+  <h4 class="hide-from-toc">Issues Affecting Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1224">
+          Issue 1224</a></strong>
+      Serf depends on APR 1.3
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/f3edc3b"
+          ><code><small>f3edc3b</small></code></a>)</li>
+  </ul>
+  <h4 class="hide-from-toc">Issues Affecting Nginx</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/808">
+          Issue 808</a></strong>
+      Noisy thread info printed on startup.
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/37e1c3"
+          ><code><small>37e1c3</small></code></a>,
+       <a href="https://github.com/pagespeed/mod_pagespeed/commit/b6a955"
+          ><code><small>b6a955</small></code></a>)
+    </li>
+  </ul>
+
+  <h2 id="release_1.10.33.1-beta">Release 1.10.33.1-beta</h2>
+  <p>This bug-fix release was made December 16th, 2015.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1218">
+          Issue 1218</a></strong>
+      WebP served to UAs that don't support it
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/e398794668f487f55db5c74baba286c708f7e0ee"
+          ><code><small>e39879</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1219">
+          Issue 1219</a></strong>
+      Crash in gzip header handling
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/0f772622b8f315884f5f9dc79b3e0b58d8ee31cf"
+          ><code><small>0f7726</small></code></a>)</li>
+  </ul>
+
+  <h2 id="release_1.10.33.0-beta">Release 1.10.33.0-beta</h2>
+  <p>This release was made December 14th, 2015.</p>
+
+  <p>
+    With the 1.10 release we have several high-impact features to share.  We're
+    most excited about <a href="filter-image-responsive/">Responsive Image
+    Support</a>, which delivers high resolution images to high pixel-density
+    screens by automatically generating html5 <code>srcset</code>
+    attributes for images.  Other big changes
+    include <a href="system#gzip_cache">Caching Gzip Output</a>, which lets us
+    run gzip at the most aggressive encoding
+    level, <a href="config_filters#remote-configuration">Remote Config</a>,
+    which lets you load additional configuration over the network, and
+    converting <a href="reference-image-optimize#convert_to_webp_animated/"
+    >Animated GIF to WebP</a>, which reduces the size of animated GIFs by 65%.
+  </p>
+
+  <h3 class="hide-from-toc">New Automatically Enabled Features</h3>
+  <dl>
+    <dt><a href="system#gzip_cache">Cache Gzip Output</a></dt>
+    <dd>Compress rewritten resources at the highest compression setting and
+        store them compressed in cache.</dd>
+
+    <dt><a href="filter-insert-ga">Insert Universal Analytics</code></a></dt>
+    <dd>If enabled, the Insert Google Analytics filter will now insert Universal
+        Analytics (<code>analytics.js</code>) instead of the legacy
+        <code>ga.js</code>.  This should have no impact on reporting, and gives
+        you access to the
+        <a href="https://support.google.com/analytics/answer/2790010?hl=en"
+        >benefits of Universal Analytics</a>.</dd>
+
+    <dt><a href="https_support#https_fetch">
+        Fetch resources over HTTPS</a></dt>
+    <dd>HTTPS fetching is now enabled in the default configuration.</dd>
+
+    <dt><a href="filter-js-minify#new-minifier">
+        Switch to new JS Minifier</a></dt>
+    <dd>The JavaScript minifier introduced in 1.8 is now the default.</dd>
+
+    <dt><a href="experiment#noop">
+        Add PageSpeedNoop Query Parameter</a></dt>
+    <dd>Add query parameter for cache busting.</dd>
+
+    <dt>HTML5-compliant attribute names</dt>
+    <dd>HTML5 requires all custom attributes to be prefixed
+        with <code>data-</code>, and with this release PageSpeed
+        generates <code>data-pagespeed-foo</code>
+        attributes.  Old-style <code>pagespeed_foo</code> attributes are still
+        accepted.</dd>
+  </dl>
+
+  <h3 class="hide-from-toc">New Opt-In Features</h3>
+  <dl>
+    <dt><a href="config_filters#remote-configuration">
+        Remote Configuration</a></dt>
+    <dd>Fetch additional configuration directives over HTTPS.</dd>
+
+    <dt><a href="filter-image-responsive">
+        Responsive Image Support</a></dt>
+    <dd>Make images responsive by adding <code>srcset</code> attributes for
+        different pixel densities.</dd>
+
+    <dt><a href="reference-image-optimize#convert_to_webp_animated">
+        Animated WebP</a></dt>
+    <dd>Convert animated GIF to animated WebP for browsers that can
+        render it.</dd>
+
+    <dt><a href="filter-make-show-ads-async">
+        Make <code>showads.js</code> Asynchronous</a></dt>
+    <dd>Convert the blocking <code>showads.js</code> snippet into the
+        asynchronous <code>adsbygoogle.js</code> snippet.</dd>
+
+    <dt><a href="https_support#h2_configuration_nginx">
+        HTTP/2-specific configuration in ngx_pagespeed</a></dt>
+    <dd>Allow configuring filters and sharding differently depending on whether
+        the browser connection is HTTP/2.</dd>
+
+    <dt><a href="downstream-caching#script-variables">
+        Request-specific downstream caching configuration</a></dt>
+    <dd>Allow script variables in the downstream caching configuration. (Nginx
+        only)</dd>
+
+    <dt><a href="module-run-experiment#content-experiments">Content
+        Experiments</a></dt>
+    <dd>Allow PageSpeed experiments to log data to a Google Analytics Content
+        Experiment.</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting both Nginx and Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/931">
+          Issue 931</a></strong>
+      Do not serve source map on hash mismatch.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/979">
+          Issue 979</a></strong>
+      Allow spaces between filter names in <code>PageSpeedFilters</code>
+      header.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1085">
+          Issue 1085</a></strong>
+      Don't update <code>Last-Modified</code> when cache-extending.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1092">
+          Issue 1092</a></strong>
+      Parsing complex CSS can fail, leaving cache in an inconsistent state.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1109">
+          Issue 1109</a></strong>
+      Can't set <code>MessageBufferSize</code> to 0.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1116">
+          Issue 1116</a></strong>
+      Support gcc 4.6.3 when building from source.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1131">
+          Issue 1131</a></strong>
+      When building from source, respect the CXX variable.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1149">
+          Issue 1149</a></strong>
+      WebP transcoding doesn't work with MapProxyDomain+IPRO.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/pull/1150">
+          Issue 1150</a></strong>
+      BoringSSL won't compile under gcc5.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1154">
+          Issue 1154</a></strong>
+      Spin in serf.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1160">
+          Issue 1160</a></strong>
+      Don't serve WebP to Firefox on Android
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1164">
+          Issue 1164</a></strong>
+      Do not abbreviate 0s in CSS files as 0.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1173">
+          Issue 1173</a></strong>
+      <code>Disallow</code> should apply to defer_javascript.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1182">
+          Issue 1182</a></strong>
+      Don't try to resize images with invalid desired dimensions.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1183">
+          Issue 1183</a></strong>
+      Race condition in the shared memory cache between delete and write.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1184">
+          Issue 1184</a></strong>
+      Include canonical links for images and pdfs we rewrite.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1185">
+          Issue 1185</a></strong>
+      Improve CSS parser's handling of new constructs.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1186">
+          Issue 1186</a></strong>
+      Remove <code>/wp-admin</code> from our url blacklist.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1187">
+          Issue 1187</a></strong>
+      Prioritize Critical CSS writes a mixture of optimized and unoptimized
+      content.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1188">
+          Issue 1188</a></strong>
+      Location headers not rewritten when proxying redirects.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1189">
+          Issue 1189</a></strong>
+      Race in FileCache.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1193">
+          Issue 1193</a></strong>
+      File reading tracks line numbers.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1202">
+          Issue 1202</a></strong>
+      Improve resource usage for on-the-fly optimizations.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1203">
+          Issue 1203</a></strong>
+      File cache entries are read in 10k chunks.
+    </li>
+  </ul>
+
+  <h4 class="hide-from-toc">Apache-specific Issues</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1077">
+          Issue 1077</a></strong>
+      Purging fails if the top-level configuration has PageSpeed as off.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1088">
+          Issue 1088</a></strong>
+        Allow server owners to <a href="admin#limiting-handlers">block access to
+        handlers</a> such that they can't be re-enabled
+        in <code>.htaccess</code>.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1179">
+          Issue 1179</a></strong>
+      Compilation issue in ApacheFetch under 32-bit.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1191">
+          Issue 1191</a></strong>
+      IPRO recorder crashes on corrupt brigades with multiple EOS buckets.
+    </li>
+  </ul>
+
+  <h4 class="hide-from-toc">Nginx-specific Issues</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/957">
+          Issue 957</a></strong>
+      Fix handling of header-only requests.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1015">
+          Issue 1015</a></strong>
+      <code>MapProxyDomain</code> does not work with
+      <code>InPlaceResourceOptimization</code>.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/1021">
+          Issue 1021</a></strong>
+      Fix interaction with ngx_brotli.
+    </li>
+  </ul>
+
+  <h2 id="release_1.9.32.11-stable">Release 1.9.32.11-stable</h2>
+  <p>
+    This release was made December 9, 2015. It is a clone of the
+    1.9.32.11-beta release.
+  </p>
+
+  <h2 id="release_1.9.32.11-beta">Release 1.9.32.11-beta</h2>
+  <p>This security update release was made December 9, 2015.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://www.openssl.org/news/secadv/20151203.txt">
+          https://www.openssl.org/news/secadv/20151203.txt</a></strong>
+      Update BoringSSL to pull in OpenSSL changes.
+    </li>
+  </ul>
+
+  <h2 id="release_1.9.32.10-stable">Release 1.9.32.10-stable</h2>
+  <p>This bug-fix release was made October 27th, 2015. It is a clone of the
+  1.9.32.10-beta release.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting both Nginx and Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/972">
+          Issue 972</a></strong>
+      <code>LoadFromFile</code> logs errors on 404s
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/3d44cc7bdaf3e4250a9d0c1f201d76c4de1de857"
+          ><code><small>3d44cc</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/992">
+          Issue 992</a></strong>
+      Segfault in https fetching
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/b4f4ae9b264c6973ff2835920ab32ade1981dd42"
+          ><code><small>b4f4ae9</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1039">
+          Issue 1039</a></strong>
+      Noisy <code>leaked_rewrite_drivers</code> on destruction message
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/58aaa4235de5829232f327436a706fdeb494e5dd"
+          ><code><small>58aaa4</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1040">
+          Issue 1040</a></strong>
+      <code>inline_google_font_css</code> no longer works in Chrome
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/01045a9d333e4b6e0ef2c3a04826a3d15f9c277b"
+          ><code><small>01045a</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1043">
+          Issue 1043</a></strong>
+      Source maps set <code>?PageSpeed=off</code> for <code>.pagespeed.</code>
+      sources
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/9d6d08782d4289b6d71fee3bf5406cf65e3e0c0b"
+          ><code><small>9d6d08</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1050">
+          Issue 1050</a></strong>
+      <code>X-Sendfile</code> messages should not be cached
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/a49af6bdabe5bfea5e6bc496102590b8c7728ed4"
+          ><code><small>a49af6</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1060">
+          Issue 1060</a></strong>
+      Spurious <code>DownstreamCacheRebeaconingKey</code> Warning
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/0f2a6fccb8f1a6cc32086df7cfd348d0ef69a9d9"
+          ><code><small>0f2a6f</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1068">
+          Issue 1068</a></strong>
+      Empty resources should not be cached.
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/741a86580dd6bf5b2a2f4bb24fca6d3bae919152"
+          ><code><small>741a86</small></code></a>,
+       <a href="https://github.com/pagespeed/mod_pagespeed/commit/3ac0192ab8e383ddcd8f77ead391482a75accb48"
+          ><code><small>3ac019</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1070">
+          Issue 1070</a></strong>
+      Opera Mini should not be sent <code>lazyload_images</code> JS
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/0a90bb158d7e93e4076b93e12e973393c1930fdc"
+          ><code><small>0a90bb</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1078">
+          Issue 1078</a></strong>
+      Image rewriting dcheck-fails on images with invalid dimensions
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/166151ff0ab4bddd42c9a6ce4211c1c5832e780f"
+          ><code><small>166151</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1087">
+          Issue 1087</a></strong>
+      Critical images js doesn't play well with <code>display</code>
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/f01252e8ebea981610f3bbe969eec2b9a11235ed"
+          ><code><small>f01252</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1106">
+          Issue 1106</a></strong>
+      <code>If-Modified-Since</code> not working with IPRO
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/9ba2502d1750005b4d7dc4bb13379b6e4aa87edc"
+          ><code><small>9ba250</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1109">
+          Issue 1109</a></strong>
+      Can't set <code>MessageBufferSize</code> to 0
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/16e9f43edf38c74057b3cd45ed96c4040c59d688"
+          ><code><small>16e9f4</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1116">
+          Issue 1116</a></strong>
+      Won't compile with <code>gcc</code> 4.6.3
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/3f917696279fe103d313b3afc1bfe13543c5510f"
+          ><code><small>3f9176</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1152">
+          Issue 1152</a></strong>
+      boringssl build fails on suse tumbleweed/archlinux
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/4cbc9320342dc1314db31eb9514da39058c6c6c7"
+          ><code><small>4cbc93</small></code></a>)</li>
+  </ul>
+
+  <h4 class="hide-from-toc">Apache-specific Issues</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1048">
+          Issue 1048</a></strong>
+      Apache stuck indefinitely waiting for PSOL
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/84a9deaf9c4df13ae707f44d06f577321de46e8c"
+          ><code><small>84a9de</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1081">
+          Issue 1081</a></strong>
+      Invalid cache entries on aborted requests
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/7a3fab0d5d517f2dd8808f906f75c50ec2c58f87"
+          ><code><small>7a3fab</small></code></a>)</li>
+  </ul>
+
+  <h4 class="hide-from-toc">Nginx-specific Issues</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/864">
+          Issue 864</a></strong>
+      <code>Server</code> header dropped
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/a9c292d8dc056aad8cf4c9fd57cf2dd8277ac627"
+          ><code><small>a9c292</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/888">
+          Issue 888</a></strong>
+      Check-fails on invalid urls instead of declining them.
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/9da85bb9d5a4a11ca082628edb4f0c6635497364"
+          ><code><small>9da85b</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/913">
+          Issue 913</a></strong>
+      Incorrect <code>Date</code> header on 32-bit
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/7355f2e2079aa04546e74aa78c9c6faa20c72c92"
+          ><code><small>7355f2</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/948">
+          Issue 948</a></strong>
+      Fails to build with nginx 1.7.11 and <code>--with-threads</code>
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/a81cc997a96844c9ab77c4c2bb805df455033e28"
+          ><code><small>a81cc9</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/956">
+          Issue 956</a></strong>
+      DCheck failure if pagespeed is off and no file cache path is
+      configured
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/c925b48400af18abaf73fb86dd723642efb29112"
+          ><code><small>c925b4</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/965">
+          Issue 965</a></strong>
+      PageSpeed returning partial web pages
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/b9ca5d865d02ff8e889d1cf710006a23081d3705"
+          ><code><small>b9ca5d</small></code></a>)</li>
+  </ul>
+
+  <h2 id="release_1.9.32.10-beta">Release 1.9.32.10-beta</h2>
+  <p>This bug-fix release was made October 8th, 2015.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1048">
+          Issue 1048</a></strong>
+      Apache stuck indefinitely waiting for PSOL
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/84a9deaf9c4df13ae707f44d06f577321de46e8c"
+          ><code><small>84a9de</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1152">
+          Issue 1152</a></strong>
+      boringssl build fails on suse tumbleweed/archlinux
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/4cbc9320342dc1314db31eb9514da39058c6c6c7"
+          ><code><small>4cbc93</small></code></a>)</li>
+  </ul>
+
+  <h2 id="release_1.9.32.6-beta">Release 1.9.32.6-beta</h2>
+  <p>This bug-fix release was made July 29, 2015.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <h4 class="hide-from-toc">Issues Affecting both Nginx and Apache</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/972">
+          Issue 972</a></strong>
+      <code>LoadFromFile</code> logs errors on 404s
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/3d44cc7bdaf3e4250a9d0c1f201d76c4de1de857"
+          ><code><small>3d44cc</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/992">
+          Issue 992</a></strong>
+      Segfault in https fetching
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/b4f4ae9b264c6973ff2835920ab32ade1981dd42"
+          ><code><small>b4f4ae9</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1039">
+          Issue 1039</a></strong>
+      Noisy <code>leaked_rewrite_drivers</code> on destruction message
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/58aaa4235de5829232f327436a706fdeb494e5dd"
+          ><code><small>58aaa4</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1040">
+          Issue 1040</a></strong>
+      <code>inline_google_font_css</code> no longer works in Chrome
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/01045a9d333e4b6e0ef2c3a04826a3d15f9c277b"
+          ><code><small>01045a</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1043">
+          Issue 1043</a></strong>
+      Source maps set <code>?PageSpeed=off</code> for <code>.pagespeed.</code>
+      sources
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/9d6d08782d4289b6d71fee3bf5406cf65e3e0c0b"
+          ><code><small>9d6d08</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1050">
+          Issue 1050</a></strong>
+      <code>X-Sendfile</code> messages should not be cached
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/a49af6bdabe5bfea5e6bc496102590b8c7728ed4"
+          ><code><small>a49af6</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1060">
+          Issue 1060</a></strong>
+      Spurious <code>DownstreamCacheRebeaconingKey</code> Warning
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/0f2a6fccb8f1a6cc32086df7cfd348d0ef69a9d9"
+          ><code><small>0f2a6f</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1068">
+          Issue 1068</a></strong>
+      Empty resources should not be cached.
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/741a86580dd6bf5b2a2f4bb24fca6d3bae919152"
+          ><code><small>741a86</small></code></a>,
+       <a href="https://github.com/pagespeed/mod_pagespeed/commit/3ac0192ab8e383ddcd8f77ead391482a75accb48"
+          ><code><small>3ac019</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1070">
+          Issue 1070</a></strong>
+      Opera Mini should not be sent <code>lazyload_images</code> JS
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/0a90bb158d7e93e4076b93e12e973393c1930fdc"
+          ><code><small>0a90bb</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1078">
+          Issue 1078</a></strong>
+      Image rewriting dcheck-fails on images with invalid dimensions
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/166151ff0ab4bddd42c9a6ce4211c1c5832e780f"
+          ><code><small>166151</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1087">
+          Issue 1087</a></strong>
+      Critical images js doesn't play well with <code>display</code>
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/f01252e8ebea981610f3bbe969eec2b9a11235ed"
+          ><code><small>f01252</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1106">
+          Issue 1106</a></strong>
+      <code>If-Modified-Since</code> not working with IPRO
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/9ba2502d1750005b4d7dc4bb13379b6e4aa87edc"
+          ><code><small>9ba250</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1109">
+          Issue 1109</a></strong>
+      Can't set <code>MessageBufferSize</code> to 0
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/16e9f43edf38c74057b3cd45ed96c4040c59d688"
+          ><code><small>16e9f4</small></code></a>)</li>
+     <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1116">
+          Issue 1116</a></strong>
+      Won't compile with <code>gcc</code> 4.6.3
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/3f917696279fe103d313b3afc1bfe13543c5510f"
+          ><code><small>3f9176</small></code></a>)</li>
+  </ul>
+
+  <h4 class="hide-from-toc">Apache-specific Issues</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1048">
+          Issue 1048</a></strong>
+      Apache stuck indefinitely waiting for PSOL
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/e59644fc50c257f1360194a895286886c87481b8"
+          ><code><small>e59644</small></code></a>,
+       <a href="https://github.com/pagespeed/mod_pagespeed/commit/c001a83e015bec5a5a1316e4399349abd02ea7e6"
+          ><code><small>c001a8</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1081">
+          Issue 1081</a></strong>
+      Invalid cache entries on aborted requests
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/7a3fab0d5d517f2dd8808f906f75c50ec2c58f87"
+          ><code><small>7a3fab</small></code></a>)</li>
+  </ul>
+
+  <h4 class="hide-from-toc">Nginx-specific Issues</h4>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/864">
+          Issue 864</a></strong>
+      <code>Server</code> header dropped
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/a9c292d8dc056aad8cf4c9fd57cf2dd8277ac627"
+          ><code><small>a9c292</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/888">
+          Issue 888</a></strong>
+      Check-fails on invalid urls instead of declining them.
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/9da85bb9d5a4a11ca082628edb4f0c6635497364"
+          ><code><small>9da85b</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/913">
+          Issue 913</a></strong>
+      Incorrect <code>Date</code> header on 32-bit
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/7355f2e2079aa04546e74aa78c9c6faa20c72c92"
+          ><code><small>7355f2</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/948">
+          Issue 948</a></strong>
+      Fails to build with nginx 1.7.11 and <code>--with-threads</code>
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/a81cc997a96844c9ab77c4c2bb805df455033e28"
+          ><code><small>a81cc9</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/956">
+          Issue 956</a></strong>
+      DCheck failure if pagespeed is off and no file cache path is
+      configured
+      (<a href="https://github.com/pagespeed/mod_pagespeed/commit/c925b48400af18abaf73fb86dd723642efb29112"
+          ><code><small>c925b4</small></code></a>)</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/965">
+          Issue 965</a></strong>
+      PageSpeed returning partial web pages
+      (<a href="https://github.com/pagespeed/ngx_pagespeed/commit/b9ca5d865d02ff8e889d1cf710006a23081d3705"
+          ><code><small>b9ca5d</small></code></a>)</li>
+  </ul>
+
+
+  <h2 id="release_1.9.32.4-stable">Release 1.9.32.4-stable</h2>
+  <p>
+    This release was made Jun 17, 2015. It is a clone of the
+    1.9.32.4-beta release.
+  </p>
+
+  <h2 id="release_1.9.32.4-beta">Release 1.9.32.4-beta</h2>
+  <p>This security update release was made June 17, 2015.</p>
+
+  <p>
+    In versions between 1.7 and 1.9.32.3, PageSpeed was built with a version of
+    OpenSSL that was vulnerable to the issues detailed in
+    the <a href="http://openssl.org/news/secadv_20150611.txt">June 11, 2015
+    security advisory</a>.  We have updated our crypto library to fix these
+    issues. PageSpeed now builds with Google’s BoringSSL, an OpenSSL fork which
+    includes this fix, and is expected to be more stable in future.
+  </p>
+  <p>
+    In versions between 1.8.31.2 and 1.9.32.3 it was possible to cause a crash
+    by requesting JavaScript source maps when source mapping had been turned
+    off.
+  </p>
+  <p>
+    We recommend that all users upgrade. If this is not possible, however, the
+    following workarounds are available:
+    <ul>
+      <li>The OpenSSL vulnerability only applies if you have
+          <a href="https_support"><code>FetchHttps</code></a> enabled and have
+          configured PageSpeed to fetch HTTPS content over the open internet.
+          Disabling <code>FetchHttps</code> will prevent these crashes, but will
+          also disable PageSpeed's optimizations for any content that must be
+          fetched over HTTPS.</li>
+      <li>Set a <code>Request Option Override</code> token, and explicitly
+          enable <a href="/filter-source-maps-include"
+          ><code>include_js_source_maps</code></a>. This
+          makes it impossible for attackers to disable source maps and cause
+          these crashes.</li>
+      </ul>
+  </p>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1094">
+          Issue 1094</a></strong>
+      Source map can be requested with option disabled.
+    </li>
+    <li><strong>
+        <a href="http://openssl.org/news/secadv_20150611.txt">
+          OpenSSL Security Advisory [11 Jun 2015]</a></strong>
+      Replace OpenSSL with BoringSSL.
+    </li>
+  </ul>
+
+  <h2 id="release_1.9.32.3-stable">Release 1.9.32.3-stable</h2>
+  <p>
+    This release was made January 14, 2015. It is a clone of the
+    1.9.32.3-beta release.
+  </p>
+
+  <h2 id="release_1.9.32.3-beta">Release 1.9.32.3-beta</h2>
+  <p>This bug-fix release was made January 5th, 2015.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/1025">
+          Issue 1025</a></strong>
+      Purge cache UI has problems in admin console.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/1028">
+          Issue 1028</a></strong>
+      Malformed CSS file can cause a hang in CSS parser.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/832">
+          ngx_pagespeed Issue 832</a></strong>
+      Don't log to stderr/stdout: gzip enabling code.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/839">
+          ngx_pagespeed Issue 839</a></strong>
+      ngx_pagespeed 1.9.32.2 doesn't compile with Tengine.</li>
+  </ul>
+
+  <h2 id="release_1.8.31.6-stable">Release 1.8.31.6-stable</h2>
+  <p>This bug-fix release was made January 5th, 2015.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/1028">
+          Issue 1028</a></strong>
+      Malformed CSS file can cause a hang in CSS parser.</li>
+  </ul>
+
+  <h2 id="release_1.9.32.2-beta">Release 1.9.32.2-beta</h2>
+  <p>This security update release was made October 27, 2014.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/978">
+          Issue 978</a></strong>
+      Blacklist Windows Browser for transcoding to webp.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/982">
+          Issue 982</a></strong>
+      Defer javascript not working in IE9 or IE11.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/989">
+          Issue 989</a></strong>
+      IPRO with LoadFromFile on a resource that is already fully optimized
+      serves <code>cc:max-age=300</code>.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/992">
+          Issue 992</a></strong>
+      Malformed CSS can lead to unbounded stack depth.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1004">
+          Issue 1004</a></strong>
+      Disable SSLv3 and SSLv2 support in serf fetcher.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1012">
+          Issue 1012</a></strong>
+      JS error in rendered_image_dimensions filter when the same image appears
+      multiple times on a page.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/808">
+          ngx_pagespeed Issue 808</a></strong>
+      ngx_pagespeed prints <code>Log: [info] No threading detected. Own threads:
+      1 Rewrite, 1 Expensive Rewrite.</code> on startup.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/813">
+          ngx_pagespeed Issue 813</a></strong>
+      Segmentation fault when ngx_pagespeed is built with gcc 4.1.2
+    </li>
+  </ul>
+
+  <h2 id="release_1.8.31.5-stable">Release 1.8.31.5-stable</h2>
+  <p>This security update release was made October 20, 2014.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/992">
+          Issue 992</a></strong>
+      Malformed CSS can lead to unbounded stack depth.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/1004">
+          Issue 1004</a></strong>
+      Disable SSLv3 and SSLv2 support in serf fetcher.
+    </li>
+  </ul>
+
+  <h2 id="release_1.9.32.1-beta">Release 1.9.32.1-beta</h2>
+  <p>This release was made September 16, 2014.</p>
+  <h3 class="hide-from-toc">New Features</h3>
+  <dl>
+    <dt><a href="domains#LoadFromFileScriptVariables">
+        Support nginx script variables in <code>LoadFromFile</code></a></dt>
+    <dd>Allows configuration like <code>LoadFromFile "http://$host/"
+       "$document_root"</code></dd>
+
+    <dt><a href="system#native-fetcher-keep-alive">
+        Support HTTP Persistent Connections</a></dt>
+    <dd>When using the native fetcher for Nginx, advertise <code>Connection:
+        Keep-Alive</code> and keep active connections around for reuse.</a></dt>
+
+    <dt><a href="config_filters#debug">
+        Improved <code>debug</code> filter support</a></dt>
+
+    <dd>Many more filters now support debug logging, emitting explanatory
+        comments inline when the <code>debug</code> filter is enabled.</dd>
+
+    <dt><a href="system#ipro">
+        Enabled <code>InPlaceResourceOptimization</code> by default</a></dt>
+    <dd>In Place Resource Optimization is now enabled by default.</dd>
+
+    <dt><a href="system#purge_cache">
+        Purge individual URLs from cache</a></dt>
+    <dd>Allows cache entries to be purged by PageSpeed administrators.</dd>
+
+    <dt><a href="admin#config">
+        Improved PageSpeed admin site</a></dt>
+    <dd>Admin page improved to show more information, provide graphs, and
+        perform cache-purging operations.</dd>
+    <dt><a href="experiment#StickyQueryParams">&quot;Sticky&quot; Query
+        Parameters</a></dt>
+    <dd>Set query parameters in cookies for persisting options across queries.
+    </dd>
+
+    <dt><a href="restricting_urls#url_signatures">
+        Signing resource URLs</a></dt>
+    <dd>Optionally cryptographically sign and verify resource URLs.</dd>
+
+    <dt><a href="experiment#restrict-request-options">Restrict query
+        params</a></dt>
+    <dd>Optionally restrict interpretation of query parameters.</dd>
+  </dl>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/786">
+          Issue 786</a></strong>
+      serf_url_async_fetcher.cc error messages using IP instead of domain name.
+    </li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/794">
+          Issue 794</a></strong>
+      Colorize warnings and errors in message_history page.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/813">
+          Issue 813</a></strong>
+      Disable beaconing for bots.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/850">
+          Issue 850</a></strong>
+      dedup_inlined_images breaks site combined with lazyload_images and
+      defer_javascript.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/853">
+          Issue 853</a></strong>
+      Provide separate filters rewrite_javascript_external and
+      rewrite_javascript_inline.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/909">
+          Issue 909</a></strong>
+      Strict mode detection is too conservative.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/965">
+          Issue 965</a></strong>
+      Don't relocate scoped style tags.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/967">
+          Issue 967</a></strong>
+      Don't relocate scoped style tags in prioritize_critical_css.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/969">
+          Issue 969</a></strong>
+      Don't send inline WebP to Chrome/36 on iOS. See issue for workaround fix
+      for both nginx and Apache.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/984">
+          Issue 984</a></strong>
+      Fix handling of experiment spec, so that options are applied when using
+      the default filters.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/984">
+          Issue 985</a></strong>
+      Re-add query params when we get a redirection response.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/mod_pagespeed/issues/985">
+          Issue 986</a></strong>
+      Default flattening limit is too low.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/238">
+          ngx_pagespeed Issue 238</a></strong>
+      Automatically enable gzip compression in Nginx.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/712">
+          ngx_pagespeed Issue 712</a></strong>
+      <code>.pagespeed</code> resources served with chunked encoding on
+      Nginx.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/719">
+          ngx_pagespeed Issue 719</a></strong>
+      IPRO with LoadFromFile gives null responses for unknown file
+      extensions.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/725">
+          ngx_pagespeed Issue 725</a></strong>
+      Duplicate <code>Location</code> headers when proxying with Nginx.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/pull/731">
+          ngx_pagespeed Issue 731</a></strong>
+      Support setting <tt>NumRewriteThreads</tt>
+      and <tt>NumExpensiveRewriteThreads</tt> in Nginx.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/739">
+          ngx_pagespeed Issue 739</a></strong>
+      Nginx compilation error with GCC 4.9.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/757">
+          ngx_pagespeed Issue 757</a></strong>
+      Support POST responses for HTML.</li>
+  </ul>
+
+  <h2 id="release_1.8.31.4-stable">Release 1.8.31.4-stable</h2>
+  <p>
+    This release was made August 5, 2014. It is a clone of the
+    1.8.31.4-beta release.
+  </p>
+
+  <h2 id="release_1.8.31.4-beta">Release 1.8.31.4-beta</h2>
+  <p>This security update release was made June 17th, 2014.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li>Update OpenSSL version to include fixes for a
+        <a href="openssl-1.0.1h-fixes.html">man-in-the-middle attack</a>.</li>
+  </ul>
+
+  <h2 id="release_1.7.30.5-stable">Release 1.7.30.5-stable</h2>
+  <p>This security update release was made June 17th, 2014.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li>Update OpenSSL version to include fixes for a
+        <a href="openssl-1.0.1h-fixes.html">man-in-the-middle attack</a>.</li>
+  </ul>
+
+  <h2 id="release_1.8.31.3-beta">Release 1.8.31.3-beta</h2>
+  <p>This bug-fix release was made May 30th, 2014.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/941">
+          Issue 941</a></strong>
+      Pagespeed optimized resource sending incorrect Content-Length header.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/945">
+          Issue 945</a></strong>
+      mod_pagespeed cache directory is unwritable by default.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/947">
+          Issue 947</a></strong>
+      Do not serve source JavaScript when a rewritten source map is requested.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/pull/701">
+          ngx_pagespeed Pull 701</a></strong>
+      Allow admin paths to be set at server scope.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/705">
+          ngx_pagespeed Issue 705</a></strong>
+      StaticAssetPrefix not working.</li>
+  </ul>
+
+  <h2 id="release_1.8.31.2-beta">Release 1.8.31.2-beta</h2>
+  <p>This release was made on May 6th, 2014.</p>
+  <h3 class="hide-from-toc">New Features</h3>
+  <dl>
+    <dt><a href="optimize-for-bandwidth">
+        New rewrite level <code>OptimizeForBandwidth</code></a></dt>
+    <dd>Safe rewrite level in which HTML is not altered, but CSS, JS, and
+    images are rewritten in place to conserve bandwidth.</dd>
+
+    <dt><a href="admin">
+        New admin pages</a></dt>
+    <dd>Admin consoles at <code>pagespeed_admin</code>
+    and <code>pagespeed_global_admin</code> simplify system configuration.</dd>
+
+    <dt><a href="filter-source-maps-include">
+        JavaScript source map support</a></dt>
+    <dd>New filter <code>include_js_source_maps</code> allows debugging of
+    PageSpeed-minified code.</dd>
+
+    <dt><a href="reference-image-optimize#convert_png_to_jpeg">
+        Image classification</a></dt>
+    <dd>PageSpeed now uses a classification algorithm to decide when to convert
+    a lossless image (png or gif) to a lossy format (jpeg or lossy WebP).</dd>
+
+    <dt><a href="reference-image-optimize#convert_jpeg_to_webp">
+        WebP conversion on by default</a></dt>
+    <dd>The <code>convert_jpeg_to_webp</code> filter is now on by default as a
+    core rewriter and as part of <code>rewrite_images</code>.</dd>
+
+    <dt><a href="reference-image-optimize#serve_webp_urls">
+        Serve WebP URLs to any browser</a></dt>
+    <dd>Enable users with older browsers to view <code>.webp</code> URLs, making
+    it easier for visitors to share image links.</dd>
+
+    <dt><a href="domains#inline_without_auth">
+        Inline resources without explicit authorization</a></dt>
+    <dd>Permits inlining of CSS and JavaScript from domains that are not
+    directly authorized for rewriting (for example because they belong to a
+    third party).</dd>
+
+    <dt><a href="downstream-caching#beaconing">
+        Downstream cache rebeaconing support</a></dt>
+    <dd>Allows filters that depend on beaconing (such as lazy loading and
+        inlining of images) to interact correctly with downstream caches such as
+        Varnish.</dd>
+
+    <dt><a href="system#in_place_optimize_for_browser">
+        Browser-dependent in-place optimization</a></dt>
+    <dd>Enabling <code>in_place_optimize_for_browser</code> permits
+    browser-dependent CSS and image optimizations such as WebP conversion.</dd>
+
+    <dt><a href="configuration#pagespeed_static">
+        Configurable location for static assets</a></dt>
+    <dd>New option <code>StaticAssetPrefix</code> specifies the path to
+    PageSpeed-specific static assets.</dd>
+
+    <dt><a href="system#cache-fragment">
+        Cache sharing among domains</a></dt>
+    <dd>New option <code>CacheFragment</code> allows multiple domains to share a
+    portion of the cache, enabling them to share common resources.</dd>
+
+    <dt><a href="module-run-experiment">
+        Ability to set options in experiment specs</a></dt>
+    <dd>Experiment specifications can now include a comma-separated list of
+    option settings similar to those in query parameters.</dd>
+
+    <dt><a href="domains#mapping_origin">
+        Optional <code>Host:</code> header in <code>MapOriginDomain</code></a></dt>
+    <dd>The <code>MapOriginDomain</code> directive can now include
+    a <code>Host:</code> header to be used by PageSpeed when fetching
+    resources.</dd>
+
+    <dt><a href="https_support#https_fetch">
+        Fetch HTTPS resources in ngx_pagespeed</a></dt>
+    <dd>Support secure resource fetching using HTTPS in the nginx web server
+    (supported in mod_pagespeed since version 1.7).</dd>
+
+    <dt><a href="filter-lazyload-images#lazyload-after-onload">
+        <code>LazyloadImagesAfterOnload</code> on by default</a></dt>
+    <dd>After onload, load all images even if some are not yet visible.</dd>
+  </dl>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/106">
+          Issue 106</a></strong>
+          Inline js files even if they contain <code>&lt;/script&gt;</code>.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/452">
+          Issue 452</a></strong>
+          Can't run experiments except on filters and some thresholds.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/570">
+          Issue 570</a></strong>
+          Document <code>RewriteDeadlineMs</code>.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/586">
+          Issue 586</a></strong>
+          Track image rewriting time
+          in <code>mod_pagespeed_variables</code>.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/692">
+          Issue 692</a></strong>
+          Fixed-case paths broken in domain-mapping directives.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/752">
+          Issue 752</a></strong>
+          Issue downstream cache purges only for GET requests.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/812">
+          Issue 812</a></strong>
+          SerfThreadFn might compile with the wrong calling convention and crash
+          on shutdown.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/813">
+          Issue 813</a></strong>
+          Disable beaconing for bots.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/817">
+          Issue 817</a></strong>
+          WebP transcoding should trigger off <code>Accept:</code> headers and
+          issue <code>Vary: Accept.</code></li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/831">
+          Issue 831</a></strong>
+          Spriting replaces transparent color with arbitrary color.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/832">
+          Issue 832</a></strong>
+          DCHECK failure on <code>static_rewriter</code> test.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/840">
+          Issue 840</a></strong>
+          Deadlock when rewriting resources.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/845">
+          Issue 845</a></strong>
+          etag should not be issued for mismatching content.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/846">
+          Issue 846</a></strong>
+          PageSpeed's cache lookup needs to become <code>Vary: Accept</code>
+          aware, at least for WebP.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/855">
+          Issue 855</a></strong>
+          Deadlock when using apache threads with in-place rewriting, a threaded
+          mpm, and memcached.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/856">
+          Issue 856</a></strong>
+          Improve error message reporting when shared memory segment creation
+          fails.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/858">
+          Issue 858</a></strong>
+          Remove insignificant message: &ldquo;Default shared memory cache:
+          Cache named pagespeed_default_shm already exists&rdquo;.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/863">
+          Issue 863</a></strong>
+          Cache-Control: no-transform has no effect if combined with other
+          values.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/865">
+          Issue 865</a></strong>
+          ImplicitCacheTtlMs directive doesn't work in IPRO mode.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/871">
+          Issue 871</a></strong>
+          Apply in-place optimization on first request
+          if <code>InPlaceRewriteDeadlineMs</code> is -1
+          and <code>LoadFromFile</code> is enabled.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/881">
+          Issue 881</a></strong>
+          Changing JS files can make combining/minification produce reference
+          errors.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/882">
+          Issue 882</a></strong>
+          Run <code>combine_javascript</code>
+          before <code>rewrite_javascript</code>, and have it do the
+          minification inline.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/883">
+          Issue 883</a></strong>
+          Employ image classification to make better decisions about lossy
+          conversion.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/885">
+          Issue 885</a></strong>
+          Enabling memcached causes &ldquo;Waiting for property cache&rdquo;
+          messages and server spinning.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/907">
+          Issue 907</a></strong>
+          Sharedmem &ldquo;Unable to insert object of size&rdquo; message needs to be
+          demoted and indicate the cache key.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/915">
+          Issue 915</a></strong>
+          Link error on &ldquo;html_minifier_main&rdquo; using GCC 4.9.0 + [Gold]
+          Linker.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/918">
+          Issue 918</a></strong>
+          &lt;style scoped&gt; is translated to &lt;link rel=&quot;stylesheet&quot;
+          scoped&gt; however there is no browser support for the latter.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/921">
+          Issue 921</a></strong>
+          Downstream Caches - PURGE request has a double slash.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/927">
+          Issue 927</a></strong>
+          defer_javascript errors in Safari 4.x and 5.0, user scripts fail.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/928">
+          Issue 928</a></strong>
+          Allow user defined attributes to override spec-defined ones.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/937">
+          Issue 937</a></strong>
+          Increase beacon frequency until there's enough data, then decrease it.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/938">
+          Issue 938</a></strong>
+          Check for image criticality at image onload to fix carousel display.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/537">
+          ngx_pagespeed Issue 537</a></strong>
+          Client times out on 304 requests.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/pull/560">
+          ngx_pagespeed Pull 560</a></strong>
+          Unbreak /ngx_pagespeed_messages.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/577">
+          ngx_pagespeed Issue 577</a></strong>
+          Wrong date HTTP header after HTML rewrite.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/pull/590">
+          ngx_pagespeed Pull 590</a></strong>
+          Add proxy support to native fetcher.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/pull/621">
+          ngx_pagespeed Pull 621</a></strong>
+          Don't call chown() unless necessary.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/625">
+          ngx_pagespeed Issue 625</a></strong>
+          CHECK failure on DNS timeout.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/652">
+          ngx_pagespeed Issue 652</a></strong>
+          DownstreamCachePurgeLocationPrefix removes cache headers for
+          <code>.pagespeed.</code> resources.</li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/686">
+          ngx_pagespeed Issue 686</a></strong>
+          DCHECK failed: !src.IsKeySaved().</li>
+  </ul>
+
+  <h2 id="release_1.7.30.4-stable">Release 1.7.30.4-stable</h2>
+  <p>
+    This release was made March 24, 2014. It is a clone of the
+    1.7.30.4-beta release.
+  </p>
+
+  <h2 id="release_1.7.30.4-beta">Release 1.7.30.4-beta</h2>
+  <p>This bug-fix release was made March 13, 2014.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/441">
+          Issue 441</a></strong>
+      Filter "make_google_analytics_async" turns benign call to deprecated
+      method into a functional error.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/781">
+          Issue 781</a></strong>
+      Images are inlined into CSS styles in IE7 if Firefox renders them
+      first.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/874">
+          Issue 874</a></strong>
+      Warning messages in log for "ModPagespeed:noscript?".</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/880">
+          Issue 880</a></strong>
+      Combining minified JS files can produce invalid results when deadline
+      exceeded.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/885">
+          Issue 885</a></strong>
+      Enabling memcached causes "Waiting for property cache" messages and
+      server spinning.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/896">
+          Issue 896</a></strong>
+      IPRO on reverse proxy can capture gzipped content and serve it to users
+      without content-encoding:gzip.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/898">
+          Issue 898</a></strong>
+      IPRO does not correctly handle resources which failed to fetch.</li>
+  </ul>
+
+  <h2 id="release_1.7.30.3-beta">Release 1.7.30.3-beta</h2>
+  <p>This bug-fix release was made January 16, 2014.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/867">
+          Issue 867</a></strong>
+      Data URLs in CSS become blank after rewriting.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/596">
+          ngx_pagespeed Issue 596</a></strong>
+      Data URLs in CSS and JavaScript are broken after upgrading ngx_pagespeed
+      from 1.6 to 1.7.30.2.</li>
+  </ul>
+
+  <h2 id="release_1.7.30.2-beta">Release 1.7.30.2-beta</h2>
+  <p>This bug-fix release was made January 7, 2014.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/627">
+          Issue 627</a></strong>
+      Quoting of ModPagespeed:noscript insertion broken in some browsers.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/831">
+          Issue 831</a></strong>
+      Spriting replaces transparent color with arbitrary color.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/840">
+          Issue 840</a></strong>
+      Deadlock when rewriting resources.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/856">
+          Issue 856</a></strong>
+      Improve error message reporting when shared memory segment creation
+      fails.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/857">
+          Issue 857</a></strong>
+      Avoid insertions (e.g., beacon) at midpoint of the document which ought
+      to be at the end of it.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/858">
+          Issue 858</a></strong>
+      Remove insignificant message: Default shared memory cache: Cache named
+      pagespeed_default_shm already exists.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/860">
+          Issue 860</a></strong>
+      GoogleFontCssInlineFilter doesn't handle protocol-relative URLs
+      correctly.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/861">
+          Issue 861</a></strong>
+      PSOL sample application has dcheck-failure in the demo program.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/862">
+          Issue 862</a></strong>
+      mod_pagespeed may have deadlock in property cache fetch in IPRO non-proxy
+      mode if memcached is used.</li>
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/578">
+          ngx_pagespeed Issue 578</a></strong>
+      Nginx Resolver API changes break the ngx_pagespeed build.</li>
+  </ul>
+
+  <h2 id="release_1.6.29.7-stable">Release 1.6.29.7-stable</h2>
+  <p>
+    This release was made November 13th, 2013. It is a clone of the
+    1.6.29.7-beta release.
+  </p>
+
+  <h2 id="release_1.7.30.1-beta">Release 1.7.30.1-beta</h2>
+  <p>This release was made on November 7th, 2013.</p>
+  <h3 class="hide-from-toc">New Features</h3>
+  <dl>
+    <dt><a href="system#default_shm_cache">
+        Default shared memory metadata cache</a></dt>
+    <dd>Create an on-by-default memory cache shared by all server processes.
+    </dd>
+
+    <dt><a href="https_support#https_fetch">
+        Fetch HTTPS resources for Apache server</a></dt>
+    <dd>Support secure resource fetching using HTTPS for Apache server.</dd>
+
+    <dt><a href="https_support#fetch_from_mod_spdy">
+        Fetch HTTPS resources using mod_spdy for Apache server</a></dt>
+    <dd>Support faster HTTPS resource fetching, if you also use mod_spdy version
+        0.9.4.1 or higher.</dd>
+
+    <dt><a href="filter-css-inline-google-fonts">
+        Inline Google Fonts API CSS</a></dt>
+    <dd>Reduce the number of blocking round trips required to start rendering
+        a web page using the Google Fonts API.</dd>
+
+    <dt><a href="configuration#preserve-url-relativity">
+        Preserve URL relativity</a></dt>
+    <dd>Specify whether to preserve the relative URLs or convert them to
+        absolute URLs.</dd>
+
+    <dt><a href="domains#url-valued-attributes">
+        Optimize multiple URL-valued attributes</a></dt>
+    <dd>Support optimizing more than one URL-valued attribute per element.</dd>
+
+    <dt><a href="system#implicit_cache_ttl">
+        Implicit cache-lifetime for resources</a></dt>
+    <dd>Specify the cache lifetime for resources that do not have “Expires”
+        or “Cache-Control” headers.</dd>
+
+    <dt><a href="system#ipro_deadline">
+        Maximum time for inplace resource rewriting</a></dt>
+    <dd>Specify the maximum time to wait for a resource to be rewritten.
+        If the rewriting completes within this time, the rewritten resource
+        will be served, otherwise the original resource will be served and
+        rewriting will continue in the background.</dd>
+
+    <dt><a href="filter-css-combine#MaxCombinedCssBytes">
+        Maximum size of the combined CSS</a></dt>
+    <dd>Specify the maximum size that CSS files may be combined to.</dd>
+
+    <dt><a href="reference-image-optimize#ImageResolutionLimitBytes">
+        Maximum size of images that will be optimized</a></dt>
+    <dd>Specify the maximum size of decompressed images that PageSpeed will
+        try to optimize.</dd>
+
+    <dt><a href="reference-image-optimize#ProgressiveJpegMinBytes">
+        Minimum size of JPEG images that will be compressed in progressive
+        format</a></dt>
+    <dd>Specify the size threshold that determines when to use progressive
+        format for compressing images to JPEG. Progressive JPEG is more
+        effective for compressing large images, while non-progressive JPEG
+        works better for smaller ones.</dd>
+
+    <dt><a href="reference-image-optimize#resize_rendered_image_dimensions">
+        Resize images to rendered dimensions</a></dt>
+    <dd>Resize images to, or close to, the actual dimensions that they will
+        be displayed. The rendered dimension may be smaller than that specified
+        by the width and height attributes.</dd>
+
+    <dt><a href="filter-image-optimize">
+        Better image compression and resizing</a></dt>
+    <dd>Use more optimized image resizing technique and remove OpenCV. Replace
+        libjpeg with the more efficient libjpeg-turbo.</dd>
+
+    <dt>Configuration defaults updated</dt>
+    <dd>Starting in this release, we combine JavaScript and convert PNG images
+        to JPEG by default.
+      <ul>
+        <li>Default <a href="filter-js-combine">
+            combine_javascript</a> to on (was off).</li>
+        <li>Default <a href="reference-image-optimize#convert_png_to_jpeg">
+            convert_png_to_jpeg</a> to on (was off).</li>
+      </ul>
+    </dd>
+
+    <dt><a href="system#ipro">In-Place Resource Optimization</a> for Nginx</dt>
+    <dd>ngx_pagespeed can now optimize resources accessed directly from
+      their original URLs, not just those rewritten with the PageSpeed URL
+      format. This can be useful for optimizing resources referenced from other
+      sites and from JavaScript.</dd>
+  </dl>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/198">
+          Issue 198</a></strong>
+          Optimize handling of multiple references to the same image on a page
+          at different sizes.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/376">
+          Issue 376</a></strong>
+          Image resizing should utilize width/height information in CSS classes.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/423">
+          Issue 423</a></strong>
+          Support fetching resources over HTTPS.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/466">
+          Issue 466</a></strong>
+          Provide a way to optimize all resource attributes in a tag.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/503">
+          Issue 503</a></strong>
+          Preserve URL relativeness.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/664">
+          Issue 664</a></strong>
+          Strip Connection and other hop-by-hop headers when saving input
+          resource.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/755">
+          Issue 755</a></strong>
+          Memory leak with 'graceful' restart relating to shared memory
+          starting in 1.4.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/756">
+          Issue 756</a></strong>
+          ModifyCachingHeaders should not touch Cache-Control headers if
+          downstream-caching is enabled.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/757">
+          Issue 757</a></strong>
+          Make maximum image size configurable.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/758">
+          Issue 758</a></strong>
+          Add configurability for DisableRewriteOnNoTransform and system test.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/759">
+          Issue 759</a></strong>
+          Cleanup race in SchedulerBlockingFunction::Block() and ::Cancel().
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/773">
+          Issue 773</a></strong>
+          Repeat image inlined at low resolution when local_storage_cache is
+          enabled.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/799">
+          Issue 799</a></strong>
+          Console slow when logfile is large.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/803">
+          Issue 803</a></strong>
+          Metadata cache will reminder not-optimizable for 5 minutes after
+          rate-limiting drops a fetch.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/809">
+          Issue 809</a></strong>
+          mod_pagespeed disables mod_headers/mod_expires when proxying content
+          with cache-control set.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/42">
+          ngx_pagespeed Issue 42</a></strong>
+          Added in-place resource optimization.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/356">
+          ngx_pagespeed Issue 356</a></strong>
+          Support setting options in response headers.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/367">
+          ngx_pagespeed Issue 367</a></strong>
+          Fix intermittent crash on reload.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/433">
+          ngx_pagespeed Issue 433</a></strong>
+          Unable to compile with gcc 4.8.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/447">
+          ngx_pagespeed Issue 447</a></strong>
+          Log message to the correct vhost-specific log file.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/463">
+          ngx_pagespeed Issue 463</a></strong>
+          Native fetcher crashes when running out of file descriptors.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/522">
+          ngx_pagespeed Issue 522</a></strong>
+          Fix use-after-free in logging.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/532">
+          ngx_pagespeed Issue 532</a></strong>
+          Added script to turn apache-format pagespeed_libraries.conf
+          into nginx-format.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/539">
+          ngx_pagespeed Issue 539</a></strong>
+          File cache and logdir are created and given appropriate permissions.
+    </li>
+  </ul>
+
+  <h2 id="release_Oct_2013_Sec">mod_pagespeed October 2013 Security Update</h2>
+  <p> mod_pagespeed releases 1.6.29.7-beta, 1.5.27.4-beta, 1.4.26.5-stable,
+  1.3.25.5-stable, 1.2.24.2-stable, 1.0.22.8-stable fix
+  <a href="announce-sec-update-201310">critical cross-site scripting (XSS)
+  vulnerability</a>.</p>
+
+  <h2 id="release_1.6.29.7-beta">ngx_pagespeed Release 1.6.29.7-beta</h2>
+  <p> ngx_pagespeed release 1.6.29.7-beta fixes
+  <a href="announce-ngx-sec-update-201310">critical cross-site scripting (XSS)
+  vulnerability</a>.</p>
+
+  <h2 id="release_1.4.26.4-stable">Release 1.4.26.4-stable</h2>
+  <p>This release was made August 7th, 2013. It contains one
+     additional bug fix compared to version
+    <a href="#release_1.4.26.3-stable">1.4.26.3-stable</a>,
+    but is otherwise identical.</p>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/683">Issue
+          683</a></strong> Pagespeed strips cache-control:no-store, etc. headers.
+    </li>
+  </ul>
+
+  <h2 id="release_1.6.29.5-beta">Release 1.6.29.5-beta</h2>
+  <p>This bug-fix release was made July 25, 2013.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/748">
+          Issue 748</a></strong>
+      RewriteRandomDropPercentage cause duplicate image srcs to be blank.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/751">
+          Issue 751</a></strong>
+      Leaked ASM symbol names cause segmentation faults on Apache.</li>
+  </ul>
+
+  <h2 id="release_1.6.29.4-beta">Release 1.6.29.4-beta</h2>
+  <p>This bug-fix release was made July 11, 2013.</p>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/742">
+          Issue 742</a></strong>
+      Broken default pagespeed.conf in 1.6.29.3.</li>
+  </ul>
+
+  <h2 id="release_1.6.29.3-beta">Release 1.6.29.3-beta</h2>
+  <p>This release was made July 10, 2013.</p>
+  <h3 class="hide-from-toc">New Features</h3>
+  <dl>
+    <dt><a href="console">PageSpeed Console</a></dt>
+    <dd>The PageSpeed Console monitors your installation's performance and
+      links to general information on how to improve the performance.</dd>
+
+    <dt><a href="downstream-caching">Supporting downstream caches</a></dt>
+    <dd>Experimental feature for supporting caching proxy servers to allow
+      HTML to be cached in these servers.</dd>
+
+    <dt><a href="filter-dedup-inlined-images">dedup_inlined_images</a></dt>
+    <dd>Filter that removes redundant inlined images and replaces them with
+      JavaScript that loads all subsequent uses from the first.</dd>
+
+    <dt><a href="config_filters#RewriteRandomDropPercentage">
+        Randomly drop expensive rewrites</a></dt>
+    <dd>To reduce processing load, PageSpeed can be configured to
+      optimize the most frequently fetched resources, leaving infrequently
+      fetched resources alone. This is accomplished by randomly dropping
+      expensive (CSS and image) rewrites. Frequently fetched resources will
+      have a higher probability of being rewritten than infrequently fetched
+      resources. Over time, frequently accessed resources will be optimized
+      and cached so a page will be fully optimized. Infrequently accessed
+      pages will be left unoptimized or partially optimized, saving CPU time
+      and cache space.</dd>
+
+    <dt><a href="configuration#notransform">DisableRewriteOnNoTransform</a></dt>
+    <dd>Default on, but may be turned off to allow PageSpeed to rewrite
+      resources even if they have a <code>Cache-Control: no-transform</code>
+      header.</dd>
+
+    <dt>Configuration defaults updated</dt>
+    <dd>Starting in this release, we enable lossy image compression by default
+      and update several other default configurations values. Updates:
+      <ul>
+        <li>Default <a href="restricting_urls#aris">
+            AvoidRenamingIntrospectiveJavascript</a> to on (was off).</li>
+        <li>Default <a href="reference-image-optimize#ImageInlineMaxBytes">
+            ImageInlineMaxBytes</a> to 3072 (was 2048).</li>
+        <li>Default <a href="reference-image-optimize#CssImageInlineMaxBytes">
+            CssImageInlineMaxBytes</a> to 0 (was 2048).</li>
+        <li>Default <a href="filter-inline-preview-images#params">
+            MaxInlinedPreviewImagesIndex</a> to -1 = unlimited (was 5).</li>
+        <li>Default <a href="filter-inline-preview-images#params">
+            MinImageSizeLowResolutionBytes</a> to 3072 (was 1024).</li>
+        <li>Default
+            <a href="reference-image-optimize#ImageRecompressionQuality">
+            ImageRecompressionQuality</a> to 85 (was -1 = lossless).</li>
+        <li>Default <a href=
+            "reference-image-optimize#JpegRecompressionQualityForSmallScreens">
+            JpegRecompressionQualityForSmallScreens</a> to 70
+            (was -1 = lossless).</li>
+        <li>Default <a href="reference-image-optimize#WebpRecompressionQuality">
+            WebpRecompressionQuality</a> to 80 (was -1 = lossless).</li>
+        <li>Default <a href=
+            "reference-image-optimize#WebpRecompressionQualityForSmallScreens">
+            WebpRecompressionQualityForSmallScreens</a> to 70
+            (was -1 = lossless).</li>
+      </ul>
+    </dd>
+  </dl>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/199">
+          Issue 199</a></strong>
+      Multiple references to the same small images all get inlined.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/644">
+          Issue 644</a></strong>
+      Improve lazyload behavior.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/675">
+          Issue 675</a></strong>
+      rewrite_javascript breaks Wordpress /wp-admin/ pages with certain
+      common WP plugins.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/683">
+          Issue 683</a></strong>
+      Don't strip Cache-Control:no-store, etc. headers.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/684">
+          Issue 684</a></strong>
+      elide_attributes should not remove type=text as wordpress uses it in
+      CSS.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/690">
+          Issue 690</a></strong>
+      Add originating page URL query-param to beacon URL.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/700">
+          Issue 700</a></strong>
+      Image height tag removed when image is embedded.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/707">
+          Issue 707</a></strong>
+      PageSpeed lost img tag src value when too busy.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/709">
+          Issue 709</a></strong>
+      combine_javascript will kill defer_javascript's pagespeed_no_defer
+      attribute.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/712">
+          Issue 712</a></strong>
+      JS Canonical Library Map is replicated per vhost and per
+      htaccess-subdir.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/719">
+          Issue 719</a></strong>
+      Support random dropping of expensive rewrites.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/721">
+          Issue 721</a></strong>
+      New default values for PSOL options.</li>
+    <li><strong>
+        <a href="http://github.com/pagespeed/mod_pagespeed/issues/722">
+          Issue 722</a></strong>
+      rewrite_css should not apply to files with an @import in the middle.</li>
+
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/379">
+          ngx_pagespeed Issue 379</a></strong>
+      Less noise on ngx_pagespeed startup.</li>
+
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/421">
+          ngx_pagespeed Issue 421</a></strong>
+      Rewrite non-HEAD non-GET requests.</li>
+
+    <li><strong>
+        <a href="https://github.com/pagespeed/ngx_pagespeed/issues/427">
+          ngx_pagespeed Issue 427</a></strong>
+      Support <a href="system#rate_limit_background_fetches"
+          >RateLimitBackgroundFetches</a>.</li>
+  </ul>
+
+  <h2 id="release_1.4.26.3-stable">Release 1.4.26.3-stable</h2>
+  <p>This release was made June 5th, 2013. It contains one
+     additional bug fix compared to version
+    <a href="#release_1.4.26.2-beta">1.4.26.2-beta</a>,
+    but is otherwise identical.</p>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong><a
+        href="https://github.com/pagespeed/mod_pagespeed/issues/710">Issue
+          710</a></strong> Error message "Index of processing disabled slot
+          out of range" in log file.
+    </li>
+  </ul>
+
+  <h2 id="release_1.5.27.3-beta">Release 1.5.27.3-beta</h2>
+  <p>This release was made May 16th, 2013, and is Nginx-only.</p>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <dl>
+    <dt>Nginx
+    <dd><ul>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/70">Issue
+          70</a></strong> The pagespeed resources were missing etags.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/284">Issue
+          284</a></strong> Default <code>FileCacheInodeLimit</code> to 500000
+          and <code>AvoidRenamingIntrospectiveJavascript</code>
+          to <code>on</code> as in mod_pagespeed.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/321">Issue
+          321</a></strong>
+          The <code>Connection</code>, <code>Vary</code>,
+          <code>Keep-Alive</code>, <code>Transfer-Encoding</code>,
+          and <code>Server</code> headers would sometimes be duplicated.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/323">Issue
+          323</a></strong> Beacons were being served without cache-control
+          headers.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/330">Issue
+          330</a></strong> Responses for html would occasionally be cut short.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/337">Issue
+          337</a></strong> Some pagespeed resources not gzipped.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/366">Issue
+          366</a></strong> Precompiled binaries incompatible with CentOS 5.
+    </li>
+    <li><strong><a
+        href="https://github.com/pagespeed/ngx_pagespeed/issues/371">Issue
+          371</a></strong> Responses for static resources would occasionally be
+          cut short.
+    </li>
+    </ul>
+    </dd>
+  </dl>
+
+  <h2 id="release_1.5.27.2-beta">Release 1.5.27.2-beta</h2>
+  <p>This release was made May 6th, 2013 for Apache and April 29th, 2013
+    for Nginx.</p>
+  <h3 class="hide-from-toc">Highlights</h3>
+  <p>
+    We have modified or added filters to do in-browser analysis of your pages
+    and report the results back to PageSpeed, allowing it to further optimize
+    the pages for subsequent visitors.
+  </p>
+  <p>
+    The new prioritize_critical_css filter instruments your pages to determine
+    the CSS rules actually used to render them and inlines just those rules;
+    this permits the browser to style the page without fetching external
+    resources, which is especially important for mobile browsing where it can
+    take hundreds of milliseconds to establish a fresh connection.
+  </p>
+  <p>
+    The inline_images, inline_preview_images, and lazyload_images filters now
+    instrument the page to determine the images that are above the fold so as
+    to optimize just them, thereby displaying what the user sees faster.
+  </p>
+  <p>
+    Support for
+    <a href="https://developers.google.com/speed/pagespeed/ngx">Nginx</a>.
+  </p>
+  <h3 class="hide-from-toc">New Features</h3>
+  <ul>
+    <li>The
+      <a href="filter-lazyload-images">lazyload_images</a>
+      filter now uses
+      <a href="filter-lazyload-images#beacons">beacons</a>
+      to determine the above-the-fold images.
+    </li>
+    <li>The
+      <a href="filter-inline-preview-images">inline_preview_images</a>
+      filter now uses
+      <a href="filter-inline-preview-images#beacons">beacons</a>
+      to determine the above-the-fold images.
+    </li>
+    <li>
+      The
+      <a href="reference-image-optimize#inline_images">inline_images</a>
+      filter now uses
+      <a href="filter-image-optimize#inline_beacons">beacons</a>
+      to determine the above-the-fold images; as this is a core filter, beacons
+      will now be used if your RewriteLevel is CoreFilters and you have not
+      <a href="faq#control_beacons">explicitly disabled this filter and/or
+        beacons</a>.
+    </li>
+    <li>
+      <a href="config_filters#beacons">Beacon handling</a>
+      has changed so that by default they are now handled automatically -
+      Apache no longer requires a Location directive although one can be used
+      to <a href="faq#disable_handler">disable beaconing</a>.
+    </li>
+  </ul>
+  <h3 class="hide-from-toc">New Filters</h3>
+  <dl>
+    <dt>
+      <a href="filter-prioritize-critical-css">prioritize_critical_css</a>
+    </dt>
+    <dd>
+      Inline only the CSS used by the page.
+    </dd>
+  </dl>
+  <h3 class="hide-from-toc">New Configuration Options</h3>
+  <ul>
+    <li>
+      <a href="config_filters#beacons">CriticalImagesBeaconEnabled</a>
+    </li>
+    <li>
+      <a href="reference-image-optimize#JpegNumProgressiveScans"
+         >ImageJpegNumProgressiveScans</a>
+    </li>
+    <li>
+      <a href="reference-image-optimize#JpegNumProgressiveScansForSmallScreens"
+         >ImageJpegNumProgressiveScansForSmallScreens</a>
+    </li>
+    <li>
+      <a href="reference-image-optimize#WebpRecompressionQuality"
+         >WebpRecompressionQuality</a>
+    </li>
+    <li>
+      <a href="reference-image-optimize#WebpRecompressionQualityForSmallScreens"
+         >WebpRecompressionQualityForSmallScreens</a>
+    </li>
+  </ul>
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/109">Issue
+          109</a></strong> Make it easy to install on cPanel EasyInstall.
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/508">Issue
+          508</a></strong> Large numbers get rewritten to scientific notation.
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/672">Issue
+          672</a></strong> Disable setting more than one thread for memcached.
+    </li>
+  </ul>
+
+  <h2 id="release_1.3.25.4-stable">Release 1.3.25.4-stable</h2>
+  <p>
+    This release was made May 3rd, 2013. It is a clone of the
+    <a href="#release_1.3.25.4-beta">1.3.25.4-beta release.</a>
+  </p>
+
+  <h2 id="release_1.4.26.2-beta">Release 1.4.26.2-beta</h2>
+  <p>This release was made April 4th, 2013. It fixes a bug that caused
+  the <code>convert_meta_tags</code> filter to incorrectly propagate
+  XHTML mimetypes from some <code>&lt;meta http-equiv&gt;</code> elements
+  to HTTP headers.
+  </p>
+
+  <h2 id="release_1.4.26.1-beta">Release 1.4.26.1-beta</h2>
+  <p>This release was made April 3rd, 2013.</p>
+
+  <h3 class="hide-from-toc">New Features</h3>
+  <dl>
+    <dt>
+      <a href="system#ipro">In-Place Resource Optimization</a>
+    </dt>
+    <dd>PageSpeed can now optimize resources accessed directly from
+      their original URLs, not just those rewritten with the PageSpeed URL
+      format. This can be useful for optimizing resources referenced from other
+      sites and from JavaScript.</dd>
+
+    <dt>
+      <a href="config_filters#preserveurls">Preserve URLs</a>
+    </dt>
+    <dd>
+      Prevents PageSpeed from rewriting URLs in HTML files and instead
+      relies on <a href="system#ipro">In-Place Resource Optimization</a> for
+      resource optimization. This can be useful when it is necessary to be
+      conservative about altering the pages that PageSpeed serves, such as
+      in a forward proxy.
+    </dd>
+
+    <dt>
+      <a href="system#shm_cache">Shared Memory Metadata Cache</a>
+    </dt>
+    <dd>An in-memory cache that shares metadata entries between Apache
+      processes on the same server. This can provide significant performance
+      benefits.</dd>
+
+    <dt>
+      <a href="experiment#Client-Options">Client Options Header</a>
+    </dt>
+    <dd>Support for a new request header that can be used to configure
+      image optimizations.</dd>
+
+  <h3 class="hide-from-toc">Issues Resolved</h3>
+  <ul>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/213">Issue
+          213</a></strong> Fetches for same-domain resources failing with
+          reference to 224.0.0.0 or 127.0.0.1
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/572">Issue
+          572</a></strong> Optimize images referenced from JS
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/609">Issue
+          609</a></strong> ModPagespeedMapProxyDomain does not proxy
+          non-optimized resources
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/615">Issue
+          615</a></strong> Rewriting domains does not work with
+          ModPagespeedMapProxyDomain
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/629">Issue
+          629</a></strong> insert_image_dimensions on <link>-elements causing
+          invalid document
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/630">Issue
+          630</a></strong> CSS parser incorrectly parses "1.em" as "1em"
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/649">Issue
+          649</a></strong> defer_javascript and defer_iframes not turned on for
+          Mobile
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/650">Issue
+          650</a></strong> Images inlined for CSS inlines in HTML even when
+          CssImageInlineMaxBytes is zero
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/652">Issue
+          652</a></strong> Last-Modified header should not be stripped with ...
+    </li>
+    <li><strong><a
+        href="http://github.com/pagespeed/mod_pagespeed/issues/656">Issue
+          656</a></strong> Compile with GCC 4.7
+    </li>
+  </ul>
+
+<h2 id="release_1.3.25.4-beta">Release 1.3.25.4-beta</h2>
+<p>
+This release was made March 20, 2013. It is a bug fix release.
+</p>
+<h3 class="hide-from-toc">Issues Resolved</h3>
+<ul>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/648">Issue
+    648</a></strong>
+    Combine_css and combine_javascript loses subdirectories occasionally
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/641">Issue
+    641</a></strong>
+    Lazyload Images Defect on Blackberry Browser w/ OS <= 5
+  </li>
+</ul>
+
+<h2 id="release_1.2.24.1-stable">Release 1.2.24.1-stable</h2>
+<p>
+This release was made March 14, 2013.
+It is a clone of the <a href="#release_1.2.24.1-beta">1.2.24.1-beta release.</a>
+</p>
+
+<h2 id="release_1.3.25.3-beta">Release 1.3.25.3-beta</h2>
+<p>
+This release was made February 26, 2013. It fixes a bug in
+1.3.25.2 and 1.3.25.1 that caused excessive log messages to
+be generated on SSL connections.
+</p>
+
+<h2 id="release_1.3.25.2-beta">Release 1.3.25.2-beta</h2>
+<p>
+This release was made February 19, 2013. It fixes a bug in
+1.3.25.1 that caused disk caches to not get cleaned.
+</p>
+
+<h2 id="release_1.3.25.1-beta">Release 1.3.25.1-beta</h2>
+<p>
+This release was made February 15, 2013.
+</p>
+
+<h3 class="hide-from-toc">New Features</h3>
+<dl>
+  <dt><a href="reference-image-optimize#convert_to_webp_lossless">
+      Lossless &amp; transparent WebP support.</a></dt>
+  <dd>PageSpeed can now take advantage of support for lossless &amp;
+      transparent WebP images in some newer browsers,
+      <a href="/speed/webp/docs/webp_lossless_alpha_study#results">which can
+      provide smaller file sizes than PNG.</a></dd>
+
+  <dt><a href="config_filters#add_options_to_urls">Embedding configuration into
+      resource URLs.</a></dt>
+  <dd>You can now configure PageSpeed to embed image &amp; CSS optimization
+      settings in resource URLs. This is useful in multi-server setups where
+      perfectly replicating configuration information may be infeasible.</dd>
+
+  <dt><a href="domains#MapProxyDomain">Better CDN support in MapProxyDomain.
+      </a></dt>
+  <dd>You can now optionally provide a third argument to
+      <a href="domains#MapProxyDomain">ModPagespeedMapProxyDomain</a> in order
+      to use a domains of a separate hosting site for optimized resources
+      being proxied.</dd>
+
+  <dt><a href="filter-lazyload-images">IE6/IE7 support in lazy load images</a>
+  </dt>
+  <dd>The lazy load images filter now also applies for visitors using
+      Internet Explorer versions 6 and 7.</dd>
+
+  <dt><a href="system#shm_lock_manager">Shared memory named locks are now on by
+      default.</a></dt>
+  <dd>This reduces file system load when resources are being optimized.</dd>
+</dl>
+
+<h3 class="hide-from-toc">New Filters</h3>
+<dl>
+  <dt><a href="reference-image-optimize#convert_to_webp_lossless">
+    convert_to_webp_lossless</a>
+  </dt>
+  <dd>Re-compresses GIF and PNG images to lossless WebP.</dd>
+</dl>
+
+<h3 class="hide-from-toc">Changes to Configuration Options</h3>
+<ul>
+<li>
+  <a href="config_filters#add_options_to_urls">ModPagespeedAddOptionsToUrls</a>
+  added
+</li>
+<li>
+  3-argument version of
+  <a href="domains#MapProxyDomain">ModPagespeedMapProxyDomain</a> added
+</li>
+<li>
+  <a href="filter-instrumentation-add#beacon_url">ModPagespeedBeaconUrl</a>
+  arguments no longer required to end in <code>?ets=</code>
+</li>
+</ul>
+
+<h3 class="hide-from-toc">Issues Resolved</h3>
+<ul>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/322">Issue
+    322</a></strong>
+    We should not rewrite &lt;img src=... width=1 height=1&gt; to 1x1
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/563">Issue
+    563</a></strong>
+    Use shared-memory locks by default
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/581">Issue
+    581</a></strong>
+    lazyload_images should be enabled for IE6/IE7
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/582">Issue
+    582</a></strong>
+    CSS returns 403 Forbidden with some proxy configurations
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/587">Issue
+    587</a></strong>
+    Pagespeed should respect Cache-Control: no-transform
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/591">Issue
+    591</a></strong>
+    File cache cleaner improperly removing lock files
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/599">Issue
+    599</a></strong>
+    Support ModPagespeedMapProxyDomain to CDN
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/600">Issue
+    600</a></strong>
+    Proxied resources aren't combined with local resources
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/601">Issue
+    601</a></strong>
+    InitializeNested in CssHierarchy initializes a StringPiece with too wide
+    a scope
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/608">Issue
+    608</a></strong>
+    ModPagespeed=off with no filecachepath causes problems with .pagespeed.
+    resources
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/610">Issue
+    610</a></strong>
+    Crash with some proxy configurations
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/614">Issue
+    614</a></strong>
+    CSS: minify 0.25 -> .25
+  </li>
+
+</ul>
+
+<h2 id="release_1.2.24.1-beta">Release 1.2.24.1-beta</h2>
+<p>
+This release was made December 14, 2012.
+</p>
+
+<h3 class="hide-from-toc">New Features</h3>
+<dl>
+  <dt><a href="domains#MapProxyDomain">Proxying and optimizing resources from
+      trusted domains</a></dt>
+  <dd>It is now possible to proxy and optimize resources whose origin is a
+    trusted domain but isn&rsquo;t itself running PageSpeed.</dd>
+  <dt><a href="reference-image-optimize#pagespeed_no_transform">pagespeed_no_transform
+      attribute for images</a></dt>
+  <dd>The 'Optimize Images' filter won't optimize an image (though it might
+    still cache extend it) if it has the pagespeed_no_transform attribute.</dd>
+  <dt><a href="reference-image-optimize#progressive">convert_jpeg_to_progressive</a>
+    is now a core filter</dt>
+  <dd>The convert_jpeg_to_progressive filter is now enabled by default when
+    ModPagespeedRewriteLevel is CoreFilters.</dd>
+  <dt><a href="build_from_source#js-minify">Standalone JS Minification</a></dt>
+  <dd>A command-line JavaScript minifier is now installed when you install
+    PageSpeed. This generates the same minified code as PageSpeed
+    itself.</dd>
+  <dt><a href="config_filters#checking-filter-config">Show configuration from
+      /mod_pagespeed_statistics</a></dt>
+  <dd>The /mod_pagespeed_statistics page (if enabled) now has a Configuration
+    link that shows the filters enabled on the virtual host.</dd>
+  <dt>Better handling of CSS</dt>
+  <dd>The CSS parser now treats sections it doesn't understand as unparseable
+    sections, which are left unoptimized but no longer completely stop the
+    parser. Among other things this allows files containing such sections to
+    be combined per
+    <a href="http://github.com/pagespeed/mod_pagespeed/issues/565">issue
+      565</a> as described below.</dd>
+</dl>
+
+<h3 class="hide-from-toc">New Filters</h3>
+<dl>
+  <dt><a href="filter-insert-dns-prefetch">insert_dns_prefetch</a></dt>
+  <dd>Reduce DNS lookup time by pre-resolving at the browser.</dd>
+  <dt><a href="filter-canonicalize-js">canonicalize_javascript_libraries</a></dt>
+  <dd>Identifies popular JavaScript libraries that can be replaced with ones
+    hosted by a JavaScript library hosting service.</dd>
+</dl>
+
+<h3 class="hide-from-toc">New Configuration Options</h3>
+<pre class="prettyprint">
+  <a href="experiment#ModPagespeedFilters">ModPagespeedCssFlattenMaxBytes</a>
+  <a href="config_filters#enabling">ModPagespeedForbidFilters</a>
+  <a href="config_filters#forbidding">ModPagespeedForbidAllDisabledFilters</a>
+  <a href="system#memcached">ModPagespeedMemcachedTimeoutUs</a>
+  <a href="system#rewrite_deadline">ModPagespeedRewriteDeadlinePerFlushMs</a>
+  <a href="restricting_urls#content_length">ModPagespeedMaxCacheableContentLength</a>
+</pre>
+
+<h3 class="hide-from-toc">Issues Resolved</h3>
+<ul>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/199">Issue
+    199</a></strong>
+    multiple references to the same small images all get inlined
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/259">Issue
+    259</a></strong>
+    Provide a way to turn off query-params
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/349">Issue
+    349</a></strong>
+    Serf internal error 20014 in sporadic bursts
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/367">Issue
+    367</a></strong>
+    PageSpeed strips custom HTML headers
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/501">Issue
+    501</a></strong>
+    Add ability to set maximum size of a resource for PageSpeed to optimize
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/516">Issue
+    516</a></strong>
+    add attribute-based mechanism to disable rewriting a resource
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/533">Issue
+    533</a></strong>
+    Look at response-headers in addition to request-headers/query-params for
+    ModPagespeed=* options
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/557">Issue
+    557</a></strong>
+    Add feature to proxy resources whose origin servers don't run PageSpeed
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/565">Issue
+    565</a></strong>
+    css_combine overly pessimistic (should combine even if CSS cannot be fully
+    parsed)
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/571">Issue
+    571</a></strong>
+    Add option to set rewrite deadline from config
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/573">Issue
+    573</a></strong>
+    local storage cache doesn't work
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/574">Issue
+    574</a></strong>
+    CSS compress removes quotes and backslashes
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/575">Issue
+    575</a></strong>
+    CSS selector broken by removing quote
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/585">Issue
+    585</a></strong>
+    convert_jpeg_to_progressive should be added to core-filter-set
+  </li>
+</ul>
+
+<h2 id="release_1.1.23.2-stable">Release 1.1.23.2-stable</h2>
+<p>
+This release was made December 5, 2012.
+It is a clone of the 1.1.23.2-beta release.
+</p>
+
+<h2 id="release_1.1.23.2-beta">Release 1.1.23.2-beta</h2>
+<p>
+This release was made November 15, 2012.
+</p>
+<h3 class="hide-from-toc">Issues Resolved</h3>
+<ul>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/567">Issue
+    567</a></strong>
+    [error] "Shutting down PageSpeed child" after binary upgrade
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/568">Issue
+    568</a></strong>
+    Cache Flush reported excessively
+  </li>
+  <li>
+    Excessive logging when image type is not detected
+  </li>
+  <li>
+  Fix Lintian warning when installing deb package
+  </li>
+</ul>
+
+<h2 id="release_1.1.23.1-beta">Release 1.1.23.1-beta</h2>
+<p>
+This release was made November 12, 2012.
+</p>
+<h3 class="hide-from-toc">New Features</h3>
+<dl>
+  <dt><a href="system#memcached">memcached support</a>
+    <dd>PageSpeed now includes support for using <a
+    href="http://memcached.org/">memcached</a> as an alternative to the
+    file-based cache. Using memcached allows multiple servers to share optimized
+    resources, reducing server load and improving resource utilization.
+  <dt><a href="https_support#spdy_configuration">SPDY configuration support</a>
+    <dd>PageSpeed can now be conditionally configured to behave differently
+    when accessed through SPDY.
+  <dt>CSS3 support
+    <dd>Parsing of @media tags is now supported, and handling of unsupported @
+    tags no longer causes parsing to fail.
+  <dt><a href="configuration#virtual-hosts-and-stats">Per-Vhost statistics</a>
+    <dd>PageSpeed_statistics can now provide statistics on a per-vhost
+    basis, through the ModPagespeedUsePerVHostStatistics option.
+  <dt>Expanded default filter set
+    <dd><a href="filter-flatten-css-imports">flatten_css_imports</a> and <a
+    href="filter-css-rewrite">fallback_rewrite_css_urls</a> are now enabled in
+    <a href="config_filters">CoreFilters</a>.
+  <dt><a href="build_from_source#debug-css">Standalone CSS parser</a>
+    <dd>In situations where PageSpeed is unable to minify a CSS resource,
+    the new standalone CSS parser can be used to debug why the CSS file could
+    not parsed.
+</dl>
+
+<h3 class="hide-from-toc">New Filters</h3>
+<dl>
+  <dt><a href="filter-cache-extend-pdfs">extend_cache_pdfs</a>
+    <dd>Extends the cache lifetime of PDFs. This is beneficial when using a CDN,
+    as the CDN can now serve PDFs without having to check the freshness of the
+    content with the origin, while still remaining responsive to PDF updates.
+  <dt><a href="filter-css-rewrite">fallback_rewrite_css_urls</a>
+    <dd>Enables rewriting of URLs in CSS files if the CSS cannot successfully be
+    parsed. This filter is in the CoreFilters set.
+  <dt><a href="filter-pedantic">pedantic</a>
+    <dd>This filter makes PageSpeed more HTML4 compliant by adding type
+    attributes to style and script tags. This filter is not needed in most
+    cases, as adding those attributes has no effect, but it can be enabled to
+    fix errors reported by HTML validators.
+  <dt>Enhanced image rewrite filter control
+    <dd>Finer-grained control for <a href="filter-image-optimize">image rewrite
+    optimizations</a> is now provided. Individual filters are now exposed for
+    metadata removal and image conversion.
+</dl>
+
+<h3 class="hide-from-toc">New Configuration Options</h3>
+<pre class="prettyprint">
+  <a href="experiment#ModPagespeedFilters">ModPagespeedCssFlattenMaxBytes</a>
+  <a href="config_filters#custom-fetch-headers">ModPagespeedCustomFetchHeader</a>
+  <a href="https_support#spdy_configuration">&lt;ModPagespeedIf&gt;</a>
+  <a href="reference-image-optimize#ImageRecompressionQuality">
+    ModPagespeedImageRecompressionQuality</a>
+  <a href="reference-image-optimize#ImageRecompressionQuality">
+    ModPagespeedWebpRecompressionQuality</a>
+  <a href="domains#ModPagespeedLoadFromFile">ModPagespeedLoadFromFileMatch</a>
+  <a href="system#memcached">ModPagespeedMemcachedServers</a>
+  <a href="system#memcached">ModPagespeedMemcachedThreads</a>
+  <a href="system#file_cache">ModPagespeedFileCacheInodeLimit</a>
+  <a href="configuration#virtual-hosts">ModPagespeedInhertVHostConfig</a>
+  <a href="configuration#virtual-hosts-and-stats">ModPagespeedUsePerVHostStatistics</a>
+  <a href="https_support#RespectXForwardedProto">ModPagespeedRespectXForwardedProto</a>
+</pre>
+
+<h3 class="hide-from-toc">Issues Resolved</h3>
+<ul>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/177">Issue
+    177</a></strong>
+    mod_pagespeed_beacon returns 404 with VirtualHost
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/335">Issue
+    335</a></strong>
+    Fetching sharded resource from original domain
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/373">Issue
+    373</a></strong>
+    Default locations for cache/generated files should respect the FHS
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/377">Issue
+    377</a></strong>
+    Add wildcard support to ModPagespeedLoadFromFile
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/392">Issue
+    392</a></strong>
+    Lazyily Load Images on Webkit Browsers and the Image Input Element
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/411">Issue
+    411</a></strong>
+    first 3 histograms under /mod_pagespeed_statistics are empty
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/416">Issue
+    416</a></strong>
+    outline_css does not inherit CDN rewrite rules from
+    ModPagespeedMapRewriteDomain
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/426">Issue
+    426</a></strong>
+    Unicode value 0x0 is not valid for interchange
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/430">Issue
+    430</a></strong>
+    Per VHOST mod_pagespeed_statistics
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/434">Issue
+    434</a></strong>
+    Provide a pagespeed.conf option to append a custom Header (key-&gt;value)
+    to the Serf fetcher
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/439">Issue
+    439</a></strong>
+    Use mimetype rather than doctype for HTML decisions
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/448">Issue
+    448</a></strong>
+    mod_pagespeed_message uses wrong timezone
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/449">Issue
+    449</a></strong>
+    Do not strip image dimensions when an inlined image is enlarged
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/450">Issue
+    450</a></strong>
+    disable sharding when running under SPDY in general, mod_spdy in
+    particular
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/454">Issue
+    454</a></strong>
+    mod_pagespeed_ap24.so: cannot open shared object file: No such file or
+    directory
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/457">Issue
+    457</a></strong>
+    Resource regeneration doesn't respect custom options
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/461">Issue
+    461</a></strong>
+    LoadFromFile blacklist support
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/462">Issue
+    462</a></strong>
+    file cache should enforce a maximum inode count.
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/463">Issue
+    463</a></strong>
+    collapse_whitespace missing whitespace removal in one location
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/475">Issue
+    475</a></strong>
+    Add memcached support as an alternative to the file-based cache.
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/477">Issue
+    477</a></strong>
+    Blacklist Android Chrome for webp conversion
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/480">Issue
+    480</a></strong>
+    defer_javascript should turn off for requests with header XMLHttpRequest
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/488">Issue
+    488</a></strong>
+    LoadFromFile + memcached -&gt; meta-data cache timestamp problems
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/490">Issue
+    490</a></strong>
+    Make css_flatten_imports a core filter
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/491">Issue
+    491</a></strong>
+    inline_import_to_link should handle multiple @import statements
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/493">Issue
+    493</a></strong>
+      Is trim_urls in core filter set?
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/494">Issue
+    494</a></strong>
+    pagespeed css fetched by CDN result in cache-control:private,max-age=300
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/495">Issue
+    495</a></strong>
+    VirtualHosts should inherit configuration from root
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/499">Issue
+    499</a></strong>
+    Page load count based on actual HTML rewrites (not beacon count)
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/517">Issue
+    517</a></strong>
+    lazyload_images should respect ModPagespeedDisallow directive
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/523">Issue
+    523</a></strong>
+    Rewrite &lt;link rel="alternative stylesheet"&gt;
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/529">Issue
+    529</a></strong>
+    convert_gif_to_png doc is missing
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/532">Issue
+    532</a></strong>
+    webmin through an apache proxy fails
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/535">Issue
+    535</a></strong>
+    cache size explosion issue due to css in style tags
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/536">Issue
+    536</a></strong>
+    file-cache should count disk usage, not byte-count, when doing garbage
+    collection
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/542">Issue
+    542</a></strong>
+    Site with html in CDATA tag in script tag gets broken by rewrite_javascript
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/546">Issue
+    546</a></strong>
+    Respect X-Forwarded-Proto
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/549">Issue
+    549</a></strong>
+    Make unit tests &amp; system tests work in open-source flow without
+    memcached running.
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/555">Issue
+    555</a></strong>
+    5 configuration settings documented as being settable in .htaccess don't
+    work there.
+</ul>
+
+<h2 id="release_1.0.22.7-stable">Release 1.0.22.7</h2>
+<p>
+This release was made October 11, 2012. It is functionally identical to release
+0.10.22.7.
+</p>
+
+<h2 id="release_0.10.22.7">Release 0.10.22.7</h2>
+<p>
+This release was made September 28, 2012.  It adds
+the <code>pagespeed.conf</code> configuration option <a
+href="domains#fetch_servers"><code
+>ModPagespeedDangerPermitFetchFromUnknownHosts</code></a>.
+</p>
+
+<h2 id="release_0.10.22.6">Release 0.10.22.6</h2>
+<p>
+This release was made September 12, 2012. It is a security update addressing
+two high-priority issues, as further described in
+<a href="announce-0.10.22.6.html">this article</a>.
+</p>
+
+<h2 id="release_0.10.22.4">Release 0.10.22.4</h2>
+<p>
+This release was made Jun 1, 2012. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/133">Issue
+    133</a></strong>
+    Provide easier mechanism to flush server cache
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/152">Issue
+    152</a></strong>
+    Add support and testing for Worker MPM
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/253">Issue
+    253</a></strong>
+    combine_css should scan for syntax errors to avoid combining broken
+        files
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/289">Issue
+    289</a></strong>
+    Problem Compiling ModPagespeed on Arch Linux
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/321">Issue
+    321</a></strong>
+    Hide or obfuscate X-Mod-Pagespeed header
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/334">Issue
+    334</a></strong>
+    PageSpeed uses too many threads -- in proportion to the number
+        of vhosts
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/349">Issue
+    349</a></strong>
+     Serf internal error 20014 in sporadic bursts
+   </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/375">Issue
+    375</a></strong>
+    fails to compile on linux kernel 3.0+
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/380">Issue
+    380</a></strong>
+    Mod PageSpeed 0.10.21.2-1381 fails to retrieve combined objects with error,
+    "Invalid escaped URL segment"
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/386">Issue
+    386</a></strong>
+    Deadline exceeded for rewrite
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/393">Issue
+    393</a></strong>
+    Mod Pagespeed breaks JqueryMobile ajax request
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/405">Issue
+    405</a></strong>
+    ModPagespeedLoadFromFile doesn't set the Content-Type correctly when query
+    params exist
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/409">Issue
+    409</a></strong>
+    add_instrumentation filter breaks JS execution
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/417">Issue
+    417</a></strong>
+    Javascript injected into page by PageSpeed is not minified
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/425">Issue
+    425</a></strong>
+    HTML URL attributes with multi-byte characters may be misinterpreted
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/427">Issue
+    427</a></strong>
+    compress stylesheet url fails to decode when optimized by pagespeed
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/428">Issue
+    428</a></strong>
+    <a href="filter-domain-rewrite#DomainRewriteHyperlinks"
+       >DomainRewriteHyperlinks</a> should not work with Domain Sharding
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/442">Issue
+    442</a></strong>
+    lazyload_images triggers a JavaScript error on Internet Explorer 8
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/444">Issue
+    444</a></strong>
+    Relative URLs are not absolutified in unparseable CSS
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/445">Issue
+    445</a></strong>
+    CSS rewriters don't handle a CSS file having a BOM
+  </li>
+  <li><strong><a
+    href="http://github.com/pagespeed/mod_pagespeed/issues/446">Issue
+    446</a></strong>
+    Handle BOMs in JS better when combining
+  </li>
+</ul>
+<p>
+This release adds some new <code>pagespeed.conf</code> options:
+</p>
+<pre class="prettyprint">
+  <a href="restricting_urls#aris">AvoidRenamingIntrospectiveJavascript</a>
+  <a href="filter-domain-rewrite#DomainRewriteHyperlinks"
+     >DomainRewriteHyperlinks</a>
+  <a href="configuration#XHeaderValue">XHeaderValue</a>
+  <a href="system#purge_options">CacheFlushPollIntervalSec</a>
+  <a href="system#purge_options">CacheFlushFilename</a>
+  <a href="filter-instrumentation-add#methodology">ReportUnloadTime</a>
+  <a href="configuration#ListOutstandingUrlsOnError"
+     >ListOutstandingUrlsOnError</a>
+  <a href="system#tune_thread">NumExpensiveRewriteThreads</a>
+  <a href="system#tune_thread">NumRewriteThreads</a>
+  <a href="filter-insert-ga">AnalyticsID</a>
+</pre>
+<p>
+This release includes the following miscellanea:
+</p>
+<ul>
+  <li>The handling of HTML escapes in element attributes has been made more
+      robust.</li>
+  <li>We are removing "trim_urls" from the Core set to better support Ajax
+      loading of HTML from a different path
+      (<a href="http://github.com/pagespeed/mod_pagespeed/issues/393">Issue
+      393</a>).</li>
+  <li>Improved memory efficiency during HTML parsing and rewriting of large
+      documents. Many improvements to quality and performance of the rewriting
+      engine.</li>
+</ul>
+<h2 id="release_0.10.21.2">Release 0.10.21.2</h2>
+<p>
+This release was made Feb 8, 2012. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/48">Issue
+      48</a></strong>
+    Support for CSS @import
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/108">Issue
+      108</a></strong>
+    Parse CSS3 and common proprietary syntaxes
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/186">Issue
+      186</a></strong>
+    Wysiwyg 2.2 and CKEditor 3.5 on Drupal + PageSpeed breaks
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/196">Issue
+      196</a></strong>
+    InlineCss not parsing @import "url" statements
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/214">Issue
+      214</a></strong>
+    insert_image_dimensions can break an image's aspect ratio
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/332">Issue
+      332</a></strong>
+    LoadFromFile should convert %20 to space in URLs
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/338">Issue
+      338</a></strong>
+    combine_css needs to strip BOM markers before combining
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/340">Issue
+      340</a></strong>
+    terminate called after throwing an instance of 'std::length_error'
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/352">Issue
+      352</a></strong>
+    Lightbox2 + PageSpeed not working
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/354">Issue
+      354</a></strong>
+    CSS filter ignores external CSS links with <code>rel='Stylesheet'</code>
+    instead of <code>rel='stylesheet'</code>
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/355">Issue
+      355</a></strong>
+    DoS under Debian/apache2-mpm-itk
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/356">Issue
+      356</a></strong>
+    Sites with HTTPS users and no HTTPS PageSpeed configuration get log spew
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/367">Issue
+      367</a></strong>
+    PageSpeed strips custom HTML headers
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/368">Issue
+      368</a></strong>
+    Relative URL not handled properly in inlined css
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/372">Issue
+      372</a></strong>
+    meta refresh tags within NOSCRIPT tags get converted to HTTP headers even
+    when javascript is enabled
+  </li>
+</ul>
+
+<h2 id="release_0.10.19.5">Release 0.10.19.5</h2>
+<p>
+This release was made Dec 12, 2011. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/355">Issue
+      355</a></strong>
+    DoS under Debian/apache2-mpm-itk
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/357">Issue
+      357</a></strong>
+    ModPagespeedLoadFromFile should strip query params.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/360">Issue
+      360</a></strong>
+    meta-tag charset breaks opera.
+  </li>
+</ul>
+
+<h2 id="release_0.10.19.3">Release 0.10.19.3</h2>
+<p>
+This release was Nov 29, 2011. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/249">Issue
+      249</a></strong>
+    Rewrite CSS in style tags
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/295">Issue
+      295</a></strong>
+    Incorrectly resolved relative urls in rewritten CSS
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/303">Issue
+      303</a></strong>
+    Trim URLs in CSS that were absolutified
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/324">Issue
+      324</a></strong>
+    Non-caching-related headers are stripped from resources
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/338">Issue
+      338</a></strong>
+    combine_css needs to strip BOM markers before combining
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/344">Issue
+      344</a></strong>
+    combine_javascript not combining javascript when names became too long
+  </li>
+</ul>
+
+<h2 id="release_0.9.18.6">Release 0.9.18.6</h2>
+<p>
+This release was made Aug 4, 2011. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/103">Issue
+      103</a></strong>
+    Pay attention to Vary headers for caching of sub-responses
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/143">Issue
+      143</a></strong>
+    Switch resizing algorithm to CV_INTER_AREA
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/215">Issue
+      215</a></strong>
+    Statistics failing with "cannot lock mutex: Invalid argument"
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/229">Issue
+      229</a></strong>
+    Inline images sent to browsers that don't support inline images
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/241">Issue
+      241</a></strong>
+    Respect Vary headers for resources
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/247">Issue
+      247</a></strong>
+    HtmlElement::AttributeValue returns NULL ambiguity
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/265">Issue
+      265</a></strong>
+    Serf unittest failure outside USA because of redirect
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/300">
+      Issue 300</a></strong>
+    Recurrence of <a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/285">Issue
+      285</a> under X-Mod-Pagespeed:0.9.17.7-716
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/301">Issue
+      301</a></strong>
+    Add WebP support for image compression
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/306">Issue
+      306</a></strong>
+    combine_css emits "&lt;link ...&gt;" without the proper "/" before the
+    "&gt;" with doctype XHTML
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/309">Issue
+      309</a></strong>
+    Preserve CDATA tags on scripts in XHTML
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/311">Issue
+      311</a></strong>
+    rewrite_domains cuts off dynamic parts of image URLs
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/314">Issue
+      314</a></strong>
+    Some user agents don't understand protocol-relative urls in some
+    circumstances
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/316">Issue
+      316</a></strong>
+    Don't include image-in-page dimensions when resizing is off
+  </li>
+</ul>
+
+<h2 id="release_0.9.17.6">Release 0.9.17.6</h2>
+<p>
+This release was made May 16, 2011. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/285">Issue
+      285</a></strong>
+    Removing cache per FAQ causes PageSpeed to re-create "cache" location
+    with root permissions
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/287">Issue
+      287</a></strong>
+    combine_javascript conflict with rewrite_domains
+  </li>
+</ul>
+
+<h2 id="release_0.9.17.3">Release 0.9.17.3</h2>
+<p>
+This release was made May 6, 2011. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/71">Issue
+      71</a></strong>
+    Apache cannot restart if too many mutices from stats remain from unclean
+        exits
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/97">Issue
+      97</a></strong>
+    Keep relative URLs relative after rewrite.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/104">Issue
+      104</a></strong>
+    CSS optimizations are conservative in the presence of extra attributes
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/116">Issue
+      116</a></strong>
+    Need documentation describing how to configure VirtualHost with
+    PageSpeed
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/173">Issue
+      173</a></strong>
+    Rewrite resources when that moves them to a new domain
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/181">Issue
+      181</a></strong>
+    Filters need to check that they do not make URLs that are too long
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/182">Issue
+      182</a></strong>
+    Server-side includes are stripped by remove_comments and rewrite_css
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/194">Issue
+      194</a></strong>
+    conflict with mod_speling
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/237">Issue
+      237</a></strong>
+    need a way to selectively keep some comments
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/238">Issue
+      238</a></strong>
+    outline_javascript generating broken links
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/239">Issue
+      239</a></strong>
+    Add support of GIF files in rewrite_images filter, both from HTML and CSS
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/248">Issue
+      248</a></strong>
+    Inappropriately converting / -&gt; /index.html while mirroring sites with
+    Slurping
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/252">Issue
+      252</a></strong>
+    combine_css on XHTML file with unbalanced tags can strip elements
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/255">Issue
+      255</a></strong>
+    script tags missing from rewritten HTML output after inlined css
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/264">Issue
+      264</a></strong>
+    domain sharding &amp; rewriting should apply to resources that are not
+    cacheable
+  </li>
+</ul>
+
+<h2 id="release_0.9.16.9">Release 0.9.16.9</h2>
+<p>
+This release was made March 16, 2011. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/182">Issue
+      182</a></strong>
+    Server-side includes are stripped by remove_comments and rewrite_css
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/194">Issue
+      194</a></strong>
+    conflict with mod_speling
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/234">Issue
+      234</a></strong>
+    Wrong document URL when mod_rewrite used
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/235">Issue
+      235</a></strong>
+    Invalid command 'ModPagespeedLowercaseHtmlNames'
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/238">Issue
+      238</a></strong>
+    outline_javascript generating broken links
+  </li>
+</ul>
+
+<h2 id="release_0.9.16.3">Release 0.9.16.3</h2>
+<p>
+This release was made March 9, 2011. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/74">Issue
+      74</a></strong>
+    Wrong Hostname in relative path with mod_proxy
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/83">Issue
+      83</a></strong>
+    Add domain sharding
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/87">Issue
+      87</a></strong>
+    Optimize images in css files
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/153">Issue
+      153</a></strong>
+    Treat the entire input file, including tags and attribute names, as case
+    sensitive
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/173">Issue
+      173</a></strong>
+    Rewrite resources when that moves them to a new domain
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/183">Issue
+      183</a></strong>
+    Make !clean!time! Errors into warnings (or infos) and make them more
+    descriptive
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/197">Issue
+      197</a></strong>
+    CSS parser breaks counter()
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/202">Issue
+      202</a></strong>
+    CSS resource fetch failed followed by another error
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/203">Issue
+      203</a></strong>
+    Chunked encoding + Content-Length = broken
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/206">Issue
+      206</a></strong>
+    Retain case of all tag and attribute names by default.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/219">Issue
+      219</a></strong>
+    HandleResponse called on URL which is already erased
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/221">Issue
+      221</a></strong>
+    Bad hostname when mod_proxy is used to make Apache a reverse proxy
+  </li>
+</ul>
+
+<h2 id="release_0.9.15.3">Release 0.9.15.3</h2>
+<p>
+This release was made Jan 28, 2011. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/124">Issue
+      124</a></strong>
+    Error log noise with relative img links.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/161">Issue
+      161</a></strong>
+    Add directive to disable combining CSS files across paths.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/170">Issue
+      170</a></strong>
+    Should not rewrite 404 error pages.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/176">Issue
+      176</a></strong>
+    Increase the URL segment limitation to 1k characters, but allow a user-level
+    override to tighten it.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/179">Issue
+      179</a></strong>
+    Caching headers are not set correctly on some sites.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/192">Issue
+      192</a></strong>
+    Fix problems with trailing junk &amp; queries after resource URLs.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/193">Issue
+      193</a></strong>
+    /mod_pagespeed_beacon returning a 404.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/196">Issue
+      196</a></strong>
+    Don't inline css with <code>@import</code> statements, until we add code to
+    absolutify them.
+  </li>
+</ul>
+
+<h2 id="release_0.9.14.6">Release 0.9.14.6</h2>
+<p>
+This release was made Jan 7, 2011. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/53">Issue
+      53</a></strong>
+    Firebug errors (404s) when mousing over images rewritten with PageSpeed
+    enabled.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/63">Issue
+      63</a></strong>
+    Breaks Gallery2 installation (issues with mod_rewrite)
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/125">Issue
+      125</a></strong>
+    Inline JavaScript breaks XHTML strict validation
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/126">Issue
+      126</a></strong>
+    font: menu not rewritten correctly
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/134">Issue
+      134</a></strong>
+    Reached end of document without finding body is an error, should be a
+    warning or less
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/144">Issue
+      144</a></strong>
+    Have HTML rewriting respect ModPagespeedDisallow
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/145">Issue
+      145</a></strong>
+    Allow ModPagespeed=on when "ModPagespeed off"
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/146">Issue
+      146</a></strong>
+    Add New Directive "ModPagespeedStatistics off"
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/149">Issue
+      149</a></strong>
+    Filters need to check that they do not make URLs that are too long
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/154">Issue
+      154</a></strong>
+    PageSpeed breaks forms in IE 8 with compatibility mode
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/157">Issue
+      157</a></strong>
+    PageSpeed's caching headers break image caching on IE8
+  </li>
+</ul>
+
+<h2 id="release_0.9.11.5">Release 0.9.11.5</h2>
+<p>
+This release was made Dec 7, 2010. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/131">Issue
+      131</a></strong>
+    Invalid command 'ModPagespeedImgMaxRewritesAtOnce'
+  </li>
+</ul>
+
+<h2 id="release_0.9.11.3">Release 0.9.11.3</h2>
+<p>
+This release was made Dec 3, 2010. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/4">Issue
+      4</a></strong>
+    PageSpeed does not handle application/xhtml+xml
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/34">Issue
+      34</a></strong>
+    when the server provides an Expires header, our cache extension may not work
+    everywhere
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/38">Issue
+      38</a></strong>
+    js_tinyMCE breaks when it's name is changed
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/56">Issue
+      56</a></strong>
+    Feature: Moving images to another host name
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/61">Issue
+      61</a></strong>
+    Shorten hash
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/76">Issue
+      76</a></strong>
+    Allow explicit control over CSS concat etc
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/81">Issue
+      81</a></strong>
+    URLs with UTF-8 characters in them cannot be rewritten.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/90">Issue
+      90</a></strong>
+    Support origin mapping
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/99">Issue
+      99</a></strong>
+    Strange Last-Modified Header Response
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/107">Issue
+      107</a></strong>
+    Rewriting images fails to load original image from alternative port
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/112">Issue
+      112</a></strong>
+    Support if-modified-since
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/113">Issue
+      113</a></strong>
+    Logfile error for CSS files
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/114">Issue
+      114</a></strong>
+    query-params in origin URL should have  escaped in rewritten URL
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/115">Issue
+      115</a></strong>
+    Modpagespeed error when access wikimedia
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/117">Issue
+      117</a></strong>
+    Apache servers behind a load balancer on virtual IP cannot find input
+    resources
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/118">Issue
+      118</a></strong>
+    PageSpeed doesn't support Application/ce-html+xml MIME type
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/121">Issue
+      121</a></strong>
+    CSS minification failes when font: shorthand
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/128">Issue
+      128</a></strong>
+    list-style-type: none rejected by CSS parser.
+  </li>
+</ul>
+
+<h2 id="release_0.9.8.1-250">Release 0.9.8.1-250</h2>
+<p>
+This release was made Nov 23, 2010. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/6">Issue
+      6</a></strong>
+    Page speed running on debian with mpm-worker + fcgi causes lots of errors
+    written to apache log
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/24">Issue
+      24</a></strong>
+    Compile failure under g++ 4.5 on opensuse 11.3
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/34">Issue
+      34</a></strong>
+    when the server provides an Expires header, our cache extension may not work
+    everywhere
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/35">Issue
+      35</a></strong>
+    should not add 'public' to Cache-Control
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/43">Issue
+      43</a></strong>
+    Some png images not loading
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/46">Issue
+      46</a></strong>
+    url causes Apache to become unresponsive due to high load.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/52">Issue
+      52</a></strong>
+    Docs incorrectly state that PageSpeed generates uncompressed HTML
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/60">Issue
+      60</a></strong>
+    combine_css breaks background image url due to mis-handling of quotes.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/62">Issue
+      62</a></strong>
+    Apache children segfaulting using Event MPM
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/69">Issue
+      69</a></strong>
+    Compile error Debian Etch / gcc-42
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/79">Issue
+      79</a></strong>
+    Memory corruption
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/82">Issue
+      82</a></strong>
+    Poll success status 0 (111) in image-rich site
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/84">Issue
+      84</a></strong>
+    mod-pagespeed-beta-0.9.0.0-128 incompatible with Trac 0.12
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/85">Issue
+      85</a></strong>
+    Infinite recursion of PageSpeed requesting its own pages
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/89">Issue
+      89</a></strong>
+    source does not exist in sh
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/91">Issue
+      91</a></strong>
+    Broken link on overview.html
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/94">Issue
+      94</a></strong>
+    base URL not respected for image rewriting
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/95">Issue
+      95</a></strong>
+    Mysterious 404s reported in access.log from Serf of the right file at the
+    wrong path.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/98">Issue
+      98</a></strong>
+    CHECK failure on malformed html comment syntax
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/99">Issue
+      99</a></strong>
+    Strange Last-Modified Header Response
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/100">Issue
+      100</a></strong>
+    extend_cache breaks WHMCS site..
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/102">Issue
+      102</a></strong>
+    doc that elide_attributes_filter has specific risks
+  </li>
+</ul>
+
+<h2 id="release_0.9.8.1-215">Release 0.9.8.1-215</h2>
+<p>
+This release was made Nov 16, 2010. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/3">Issue
+      3</a></strong>
+    CSS Not Loading
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/7">Issue
+      7</a></strong>
+    insert_img_dimensions not detecting existing dimensions
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/9">Issue
+      9</a></strong>
+    rfc - generated cache names are too long
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/14">Issue
+      14</a></strong>
+    Invalid url relative to '...'
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/21">Issue
+      21</a></strong>
+    transparency of inlined PNG image
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/25">Issue
+      25</a></strong>
+    Internal Server Error - Not actually an error
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/26">Issue
+      26</a></strong>
+    PNG being scanned as HTML
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/27">Issue
+      27</a></strong>
+    Internal Server Error for 304 - not actually an error
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/33">Issue
+      33</a></strong>
+    Do not warn on "Invalid url relative to..."
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/36">Issue
+      36</a></strong>
+    Data URLs, such as those created by image inlining, clutter the log
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/37">Issue
+      37</a></strong>
+    javascript with name rewriten not found
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/38">Issue
+      38</a></strong>
+    javascripts doesn't work with rewrite_javascript enabled
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/44">Issue
+      44</a></strong>
+    Do not warn on 'Failed to create or read input resource'
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/50">Issue
+      50</a></strong>
+    rewrite_css filter incompatible with CSS3 media queries
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/51">Issue
+      51</a></strong>
+    rewrite_css removes rgba color values
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/64">Issue
+      64</a></strong>
+    Remove 'Failed to load resource' message from rewrite_css filter.
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/66">Issue
+      66</a></strong>
+    rewrite_css removes transform values
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/73">Issue
+      73</a></strong>
+    false warning: end of document without finding body
+  </li>
+</ul>
+
+<h2 id="release_0.9.1.1-171">Release 0.9.1.1-171</h2>
+<p>
+This release was made Nov 8, 2010. It fixes the following issues:
+</p>
+<ul>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/5">Issue
+      5</a></strong>
+    Incorrectly handling not-quoted font-family names with spaces
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/7">Issue
+      7</a></strong>
+    insert_img_dimensions not detecting existing dimensions
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/10">Issue
+      10</a></strong>
+    A whole lot of HTTPD processes
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/11">Issue
+      11</a></strong>
+    After installing module server becomes unusable
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/18">Issue
+      18</a></strong>
+    LogLevel seems to be ignored
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/25">Issue
+      25</a></strong>
+    Misleading server error message
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/30">Issue
+      30</a></strong>
+    Very slow memory leak
+  </li>
+  <li><strong><a
+      href="http://github.com/pagespeed/mod_pagespeed/issues/33">Issue
+      33</a></strong>
+    Do not warn on "Invalid url relative to..."
+  </li>
+</ul>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

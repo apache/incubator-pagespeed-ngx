@@ -1,0 +1,138 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inline CSS</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Inline CSS</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Inline CSS' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters inline_css</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters inline_css;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+<p>When this filter is enabled, you may also enable the following setting:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedCssInlineMaxBytes bytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed CssInlineMaxBytes bytes;</pre>
+</dl>
+<p>
+This is the maximum size in bytes of any CSS file that will be inlined.
+</p>
+<h2>Description</h2>
+<p>
+The "Inline CSS" filter reduces the number of requests made by a web page by
+inserting the contents of small external CSS resources directly into the HTML
+document.  This can reduce the time it takes to display content to the user,
+especially in older browsers.
+</p>
+<h2>Operation</h2>
+<p>
+When the 'Inline CSS' filter is enabled, The contents of small external CSS
+resources are written directly into the HTML document; therefore the browser
+does not request those CSS resources independently.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;link rel="stylesheet" href="small.css"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+And the resource <code>small.css</code> is like this:
+<pre class="prettyprint">
+  .yellow {background-color: yellow;}
+  .blue {color: blue;}
+  .big { font-size: 8em; }
+  .bold { font-weight: bold; }
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;style&gt;
+      .yellow {background-color: yellow;}
+      .blue {color: blue;}
+      .big { font-size: 8em; }
+      .bold { font-weight: bold; }
+    &lt;/style&gt;
+    &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+This eliminates the browser request to <code>small.css</code> by placing its
+contents inline in the HTML document.
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/inline_css.html?ModPagespeed=on&amp;ModPagespeedFilters=inline_css">example</a>.
+</p>
+
+<h2>Note</h2>
+<p>
+CSS may contain URLs that are relative to the location of the CSS
+file.  To avoid breaking such URLs, the 'Inline CSS' filter will attempt to
+rewrite them into absolute URLs when it performs the inlining.
+</p>
+
+<h2>Requirements</h2>
+<p>
+There is a tradeoff here between requests and cacheability: including the CSS
+directly in the HTML avoids making an additional request to the external CSS
+resource, but if the CSS file is large (and doesn't change often), it may be
+better to keep it separate from the HTML so that it can be cached by the
+browser.  Thus, the Inline CSS filter will only inline CSS files below a
+certain size threshold, which can be adjusted using the
+<code>CssInlineMaxBytes</code> directive.
+</p>
+<p>
+It is possible for CSS files to contain small snippets of JavaScript code, at
+least for certain browsers.  To avoid opening up cross-domain scripting
+vulnerabilities, the Inline CSS filter will only inline an external CSS file if
+it is being served from the same domain as the HTML file into which it is to be
+inlined.
+</p>
+
+<h2>Risks</h2>
+<p>
+The 'Inline CSS' filter is low to moderate risk.  It should be safe for most
+pages, but it could potentially break scripts that walk the DOM looking for
+and examining <code>&lt;link&gt;</code> or <code>&lt;style&gt;</code> tags.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

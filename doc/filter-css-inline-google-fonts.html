@@ -1,0 +1,143 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inline Google Fonts API CSS</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Inline Google Fonts API CSS</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Inline Google Fonts API CSS' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters inline_google_font_css</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters inline_google_font_css;</pre>
+</dl>
+<p>
+in the configuration file.  You also need to
+enable <a href="https_support#https_fetch">HTTPS Fetching</a> if your pages load
+fonts over HTTPS:
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedFetchHttps enable</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed FetchHttps enable;</pre>
+</dl>
+
+</p>
+
+<p>As of 1.9.32.6, the size limit for this filter is controlled as follows:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedGoogleFontCssInlineMaxBytes bytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed GoogleFontCssInlineMaxBytes bytes;</pre>
+</dl>
+
+<p>In older versions, the filter used same size limits as the main CSS filter:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedCssInlineMaxBytes bytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed CssInlineMaxBytes bytes;</pre>
+</dl>
+<p>
+This is the maximum size in bytes of any CSS file that will be inlined.
+</p>
+<h2>Description</h2>
+<p>
+The "Inline Google Fonts API CSS" filter reduces the number of requests made by
+a web page that uses the Google Fonts API by inlining the small loader CSS
+into the webpage. Note that because the loader CSS is browser-specific, this
+feature is not currently compatible with downstream caching being on or
+<code>ModifyCachingHeaders</code> being off.
+</p>
+<h2>Operation</h2>
+<p>
+When the 'Inline Google Fonts API CSS' filter is enabled, the contents of the
+small external CSS resources produced to load the fonts are written directly
+into the HTML document; the browser does not need to request those CSS
+resources independently.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html>
+  &lt;head>
+    &lt;title>inline_google_font_css example&lt;/title>
+    &lt;link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Roboto">
+    &lt;style>
+      body {
+        font-family: 'Roboto', sans-serif;
+      }
+    &lt;/style>
+  &lt;/head>
+  &lt;body>
+  The font should be slightly more robotic.
+  &lt;/body>
+&lt;/html>
+</pre>
+<p>
+Then, a visitor using a browser for which woff fonts are preferred may see
+something like:
+</p>
+<pre class="prettyprint">
+&lt;html>
+  &lt;head>
+    &lt;title>inline_google_font_css example&lt;/title>
+    &lt;style>@font-face {
+      font-family: 'Roboto';
+      font-style: normal;
+      font-weight: 400;
+      src: local('Roboto Regular'), local('Roboto-Regular'), url(http://themes.googleusercontent.com/static/fonts/roboto/v9/abcd.woff) format('woff');
+    }
+    &lt;/style>
+    &lt;style>
+      body {
+        font-family: 'Roboto', sans-serif;
+      }
+    &lt;/style>
+  &lt;/head>
+  &lt;body>
+  The font should be slightly more robotic.
+  &lt;/body>
+&lt;/html>
+</pre>
+<p>
+This eliminates the browser request to <code>fonts.googleapis.com</code> and
+potentially the need for the browser to perform a DNS lookup and connect to
+that host entirely.
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/inline_google_font_css.html?PageSpeed=on&PageSpeedFilters=inline_google_font_css">example</a>.
+</p>
+
+<h2>Risks</h2>
+<p>
+You must ensure that you abide by
+<a href="https://developers.google.com/fonts/terms">Google Fonts API Terms of Service</a>.
+Note that enabling this filter will cause some requests to be sent to
+the API from your server (rather than just the visitor), which may be logged
+per the Fonts API Terms of Service.
+</p>
+
+<p>
+The filter is low to moderate risk.  It should be safe for most pages, but it
+could potentially break scripts that walk the DOM looking
+for and examining <code>&lt;link&gt;</code> or <code>&lt;style&gt;</code> tags.
+</p>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

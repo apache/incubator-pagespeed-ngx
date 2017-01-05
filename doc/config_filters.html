@@ -1,0 +1,985 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Configuring PageSpeed Filters</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Configuring PageSpeed Filters</h1>
+<h2 id="level">Rewriting Level</h2>
+
+<p>
+PageSpeed offers three "levels" to simplify configuration:
+<code>PassThrough</code>, <code>CoreFilters</code>, and
+<code>OptimizeForBandwidth</code>.  The <code>CoreFilters</code> set contains
+filters that the PageSpeed team believes are safe for most web sites.  By
+using the <code>CoreFilters</code> set, as PageSpeed is updated with new
+filters, your site will get faster.  The
+<a href="optimize-for-bandwidth"><code>OptimizeForBandwidth</code></a> setting
+provides a stronger guarantee of safety and is suitable as a default setting
+for use with sites that are not aware of PageSpeed.
+</p>
+
+<p>
+To disable the <code>CoreFilters</code>, you can specify
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRewriteLevel PassThrough</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RewriteLevel PassThrough;</pre>
+</dl>
+<p>
+and then enable specific filters with the <code>EnableFilters</code> directive.
+The default level is <code>CoreFilters</code>.  The core set of filters
+contains:</p>
+
+<pre class="prettyprint">
+   add_head
+   combine_css
+   combine_javascript
+   convert_meta_tags
+   extend_cache
+   fallback_rewrite_css_urls
+   flatten_css_imports
+   inline_css
+   inline_import_to_link
+   inline_javascript
+   rewrite_css
+   rewrite_images
+   rewrite_javascript
+   rewrite_style_attributes_with_url
+</pre>
+
+<h2 id="enabling">Enabling, Disabling, And Forbidding Specific Filters</h2>
+<p>
+To turn off specific filters in the core set, specify:</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedDisableFilters filtera,filterb</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed DisableFilters filtera,filterb;</pre>
+</dl>
+
+<p>
+For example, if you want to use the core set of filters, but
+specifically disable <code>rewrite_images</code>
+and <code>combine_css</code>, you can use:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedDisableFilters rewrite_images,combine_css</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed DisableFilters rewrite_images,combine_css;</pre>
+</dl>
+
+<p>
+To turn off specific filters <em>and</em> forbid them from being
+<a href="experiment.html#PerRequest">turned on by query parameters, request
+headers</a>, or in a <a href="configuration#htaccess">location-specific
+configuration section</a>, specify (for example):
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedForbidFilters rewrite_css,rewrite_javascript</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ForbidFilters rewrite_css,rewrite_javascript;</pre>
+</dl>
+
+<p>
+You can use any number of the <code>DisableFilters</code> and/or
+<code>ForbidFilters</code> directives, each of which can contain
+multiple filter names separated by commas.
+<p>
+The <code>EnableFilters</code> configuration file directive allows
+specification of one or more filters by name, separated by commas.
+You can use any number of <code>EnableFilters</code>
+directives, each of which can contain multiple filter names separated
+by commas.  For example:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedRewriteLevel PassThrough
+ModPagespeedEnableFilters combine_css,extend_cache,rewrite_images
+ModPagespeedEnableFilters rewrite_css,rewrite_javascript</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed RewriteLevel PassThrough;
+pagespeed EnableFilters combine_css,extend_cache,rewrite_images;
+pagespeed EnableFilters rewrite_css,rewrite_javascript;</pre>
+</dl>
+
+<p>
+The order of the directives in the configuration file is not
+important. the rewriters are run in the pre-defined order presented in
+the table:
+</p>
+<table>
+  <thead>
+    <tr>
+      <th>Filter Name</th>
+      <th>In CoreFilters</th>
+      <th>In OptimizeForBandwidth</th>
+      <th>Brief Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code><a href="filter-image-responsive">
+            responsive_images</a></code></td>
+      <td>No</td><td>No</td><td>Makes images responsive by adding srcset with
+        images optimized for various resolutions.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-head-add">add_head</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Adds a <code>&lt;head&gt;</code> element to the document if not
+        already present.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-head-combine">combine_heads</a></code></td>
+      <td>No</td><td>No</td><td>
+        Combines multiple <code>&lt;head&gt;</code> elements found in
+        document into one.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-css-inline-import"
+                   >inline_import_to_link</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Inlines &lt;style&gt; tags comprising only CSS @imports by
+        converting them to equivalent &lt;link&gt; tags.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-css-outline">outline_css</a></code></td>
+      <td>No</td><td>No</td><td>Externalize large blocks of CSS into a
+      cacheable file.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-js-outline">outline_javascript</a></code></td>
+      <td>No</td><td>No</td><td>Externalize large blocks of JS into a
+      cacheable file.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-css-above-scripts"
+                   >move_css_above_scripts</a></code></td>
+      <td>No</td><td>No</td><td>
+        Moves CSS elements above <code>&lt;script&gt;</code> tags.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-css-to-head">move_css_to_head</a></code></td>
+      <td>No</td><td>No</td><td>Moves CSS elements into
+      the <code>&lt;head&gt;</code>.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-css-combine">combine_css</a></code></td>
+      <td>Yes</td><td>No</td><td>Combines multiple CSS elements into one.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-css-rewrite">rewrite_css</a></code></td>
+      <td>Yes</td><td>Yes</td><td>
+        Rewrites CSS files to remove excess whitespace and comments, and, if
+        enabled, rewrite or cache-extend images referenced in CSS files.  In
+        OptimizeForBandwidth mode, the minification occurs in-place without
+        changing URLs.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-css-rewrite"
+                   >fallback_rewrite_css_urls</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Rewrites resources referenced in any CSS file that cannot otherwise be
+        parsed and minified.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-rewrite-style-attributes">
+            rewrite_style_attributes</a></code></td>
+      <td>No</td><td>No</td><td>
+        Rewrite the CSS in style attributes by applying the configured
+        rewrite_css filter to it.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-rewrite-style-attributes">
+            rewrite_style_attributes_with_url</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Rewrite the CSS in style attributes if it contains the text 'url('
+        by applying the configured rewrite_css filter to it</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-flatten-css-imports"
+                   >flatten_css_imports</a></code></td>
+      <td>Yes</td><td>No</td><td>Inline CSS by flattening all @import
+      rules.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-prioritize-critical-css"
+                   >prioritize_critical_css</a></code></td>
+      <td>No</td><td>No</td><td>Replace CSS tags with inline versions
+        that include only the CSS used by the page.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-make-google-analytics-async">
+            make_google_analytics_async</a></code></td>
+      <td>No</td><td>No</td><td>Convert synchronous use of Google
+        Analytics API to asynchronous</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-make-show-ads-async">
+            make_show_ads_async</a></code></td>
+      <td>No</td><td>No</td><td>Convert synchronous use of Google
+        AdSense API to asynchronous</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-js-minify">rewrite_javascript</a></code></td>
+      <td>Yes</td><td>Yes</td><td>
+        Rewrites JavaScript files to remove excess whitespace and comments.  In
+        OptimizeForBandwidth mode, the minification occurs in-place without
+        changing URLs.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-js-minify">rewrite_javascript_external</a></code></td>
+      <td>Yes</td><td>Yes</td><td>
+        Implied by rewrite_javascript.  Rewrites JavaScript external files to remove
+        excess whitespace and comments.  In OptimizeForBandwidth mode, the minification
+        occurs in-place without changing URLs.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-js-minify">rewrite_javascript_inline</a></code></td>
+      <td>Yes</td><td>Yes</td><td>
+        Implied by rewrite_javascript.  Rewrites inline JavaScript blocks to remove
+        excess whitespace and comments.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-source-maps-include"
+                   >include_js_source_maps</a></code></td>
+      <td>No</td><td>No</td><td>
+        Adds source maps to rewritten JavaScript files.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-js-combine">combine_javascript</a></code></td>
+      <td>Yes</td><td>No</td><td>Combines multiple script elements
+      into one.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-canonicalize-js"
+                   >canonicalize_javascript_libraries</a></code></td>
+      <td>No</td><td>No</td><td>Redirects JavaScript libraries to a
+      JavaScript hosting service.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-css-inline">inline_css</a></code></td>
+      <td>Yes</td><td>No</td><td>Inlines small CSS files into the HTML
+      document.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-css-inline-google-fonts"
+                   >inline_google_font_css</a></code></td>
+      <td>No</td><td>No</td><td>Inlines small CSS files used by
+        fonts.googleapis.com into the HTML document.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-js-inline">inline_javascript</a></code></td>
+      <td>Yes</td><td>No</td><td>Inlines small JS files into the HTML
+      document.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-local-storage-cache"
+                   >local_storage_cache</a></code></td>
+      <td>No</td><td>No</td><td>Cache inlined resources in HTML5 local
+      storage.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-insert-ga">insert_ga</a></code></td>
+      <td>No</td><td>No</td><td>Adds the Google Analytics snippet to
+      each HTML page.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#rewrite_images"
+                   >rewrite_images</a></code></td>
+      <td>Yes</td><td>No</td><td>Optimizes images, re-encoding them,
+        removing excess pixels, and inlining small images.  In
+        OptimizeForBandwidth mode, the minification occurs in-place
+        without changing URLs.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#progressive">
+            convert_jpeg_to_progressive</a></code></td>
+      <td>Yes</td><td>Yes</td><td>Converts larger jpegs to progressive
+      format.  Implied by recompress images.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#png_to_jpeg">
+            convert_png_to_jpeg</a></code></td>
+      <td>Yes</td><td>Yes</td><td>Converts gif and png images into jpegs if they
+        appear to be less sensitive to compression artifacts and lack alpha
+        transparency.  Implied by recompress images.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#convert_jpeg_to_webp">
+            convert_jpeg_to_webp</a></code></td>
+      <td>Yes</td><td>Yes</td><td> Producess lossy webp rather than jpeg images
+        for browsers that support webp.  Implied by recompress images.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#convert_to_webp_animated">
+            convert_to_webp_animated</a></code></td>
+      <td>No</td><td>No</td><td> Replaces animated gif images with webp images
+        on browsers that support the format.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#convert_to_webp_lossless">
+            convert_to_webp_lossless</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Implied by rewrite_images.  Replaces png and non-animated gif images
+        with webp images on browsers that support the format.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#dimensions"
+                   >insert_image_dimensions</a></code></td>
+      <td>No</td><td>No</td><td>
+        Adds <code>width</code> and <code>height</code> attributes to
+        <code>&lt;img&gt;</code> tags that lack them.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#inline_images">
+            inline_images</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Implied by rewrite_images.  Replaces small images by
+        <code>data:</code> urls.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#recompress_images"
+                   >recompress_images</a></code></td>
+      <td>Yes</td><td>Yes</td><td>
+        Implied by rewrite_images.  Recompresses images, removing excess
+        metadata and transforming gifs into pngs.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#recompress_jpeg"
+                   >recompress_jpeg</a></code></td>
+      <td>Yes</td><td>Yes</td><td>
+        Implied by recompress_images.  Recompresses jpegs, removing excess
+        metadata.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#recompress_png"
+                   >recompress_png</a></code></td>
+      <td>Yes</td><td>Yes</td><td>
+        Implied by recompress_images.  Recompresses pngs, removing excess
+        metadata.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#recompress_webp"
+                   >recompress_webp</a></code></td>
+      <td>Yes</td><td>Yes</td><td>
+        Implied by recompress_images.  Recompresses webps, removing excess
+        metadata.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#convert_gif_to_png"
+                   >convert_gif_to_png</a></code></td>
+      <td>Yes</td><td>Yes</td><td>
+        Implied by recompress_images.  Optimizes gifs to pngs.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#strip_image_color_profile"
+                   >strip_image_color_profile</a></code></td>
+      <td>Yes</td><td>Yes</td><td>Implied by recompress_images.  Strips color
+        profile info from images.</td>
+    </tr>
+    <tr>
+      <td><code><a
+                   href="reference-image-optimize#strip_image_meta_data"
+                   >strip_image_meta_data</a></code></td>
+      <td>Yes</td><td>Yes</td><td>Implied by recompress_images.  Strips EXIF
+        meta data from images.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#jpeg_sampling"
+                   >jpeg_sampling</a></code></td>
+      <td>Yes</td><td>Yes</td><td>Implied by recompress_images. Reduces the
+        color sampling of jpeg images to 4:2:0.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#resize_images"
+                   >resize_images</a></code></td>
+      <td>Yes</td><td>No</td><td>Implied by rewrite_images.  Resizes images
+        when the corresponding <code>&lt;img&gt;</code> tag specifies a
+        smaller <code>width</code> and <code>height</code>.</td>
+    </tr>
+    <tr>
+      <td><code><a href="reference-image-optimize#resize_rendered_image_dimensions"
+                   >resize_rendered_image_dimensions</a></code></td>
+      <td>Yes</td><td>No</td><td>Implied by rewrite_images.  Resizes
+        an image when the rendered dimensions of the image are smaller
+        than the actual image.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-inline-preview-images"
+                   >inline_preview_images</a></code></td>
+      <td>No</td><td>No</td><td>
+        Uses inlined low-quality images as placeholders which will be
+        replaced with original images once the web page is loaded.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-inline-preview-images#resize_mobile_images"
+                   >resize_mobile_images</a></code></td>
+      <td>No</td><td>No</td><td>
+        Works just like <code>inline_preview_images</code>, but uses smaller
+        placeholder images and only serves them to mobile browsers.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-comment-remove">remove_comments</a></code></td>
+      <td>No</td><td>No</td><td>
+        Removes comments in HTML files (but not in inline JavaScript or CSS).
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-whitespace-collapse"
+                   >collapse_whitespace</a></code></td>
+      <td>No</td><td>No</td><td>
+        Removes excess whitespace in HTML files (avoiding
+        <code>&lt;pre&gt;</code>,
+        <code>&lt;script&gt;</code>,
+        <code>&lt;style&gt;</code>, and
+        <code>&lt;textarea&gt;</code>).
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-attribute-elide"
+                   >elide_attributes</a></code></td>
+      <td>No</td><td>No</td><td>
+        Removes attributes which are not significant according to the
+        HTML spec.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-cache-extend">extend_cache</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Extends cache lifetime of CSS, JS, and image resources that have not
+        otherwise been optimized, by signing URLs with a content hash.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-cache-extend">extend_cache_css</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Implied by extend_cache. Extends cache lifetime of otherwise unoptimized
+        CSS resources by signing URLs with a content hash.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-cache-extend">extend_cache_images</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Implied by extend_cache. Extends cache lifetime of otherwise unoptimized
+        images by signing URLs with a content hash.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-cache-extend">extend_cache_scripts</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Implied by extend_cache. Extends cache lifetime of otherwise unoptimized
+        scripts by signing URLs with a content hash.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-cache-extend-pdfs"
+                   >extend_cache_pdfs</a></code></td>
+      <td>No</td><td>No</td><td>
+        Extends cache lifetime of PDFs by signing URLs with a content hash.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-image-sprite">sprite_images</a></code></td>
+      <td>No</td><td>No</td><td>
+        Combine background images in CSS files into one sprite.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-domain-rewrite">rewrite_domains</a></code></td>
+      <td>No</td><td>No</td><td>
+        Rewrites the domains of resources not otherwise touched by
+        PageSpeed, based on <code>MapRewriteDomain</code> and
+        <code>ShardDomain</code> settings in the config file.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-trim-urls">trim_urls</a></code></td>
+      <td>No</td><td>No</td><td>
+        Shortens URLs by making them relative to the base URL.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-pedantic">pedantic</a></code></td>
+      <td>No</td><td>No</td><td>
+        Add default types for &lt;script&gt; and &lt;style&gt; tags if the type
+        attribute is not present and the page is not HTML5. The purpose of
+        this filter is to help ensure that PageSpeed does not break HTML4
+        validation.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-quote-remove">remove_quotes</a></code></td>
+      <td>No</td><td>No</td><td>
+        Removes quotes around HTML attributes that are not lexically required.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-instrumentation-add"
+                   >add_instrumentation</a></code></td>
+      <td>No</td><td>No</td><td>
+        Adds JavaScript to page to measure latency and send back to the server.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-convert-meta-tags"
+                   >convert_meta_tags</a></code></td>
+      <td>Yes</td><td>No</td><td>
+        Adds a response header for each <code>meta</code> tag with an
+        <code>http-equiv</code> attribute.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-js-defer">defer_javascript</a></code></td>
+      <td>No</td><td>No</td><td>
+        Defers the execution of JavaScript in HTML until page load complete.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-dedup-inlined-images"
+                   >dedup_inlined_images</a></code></td>
+      <td>No</td><td>No</td><td>
+        Replaces repeated inlined images with JavaScript that loads the image
+        from the first occurence of the image.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-lazyload-images">lazyload_images</a></code></td>
+      <td>No</td><td>No</td><td>
+        Loads images when they become visible in the client viewport.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-insert-dns-prefetch"
+                   >insert_dns_prefetch</a></code></td>
+      <td>No</td><td>No</td><td>
+        Inserts <code>&lt;link rel="dns-prefetch"
+          href="//www.example.com"&gt;</code> tags to reduce DNS resolution
+        time.</td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-hint-preload-subresources"
+                   >hint_preload_subresources</a></code></td>
+      <td>No</td><td>No</td><td>
+        Inserts <code>Link:&lt;/example.css&gt;; rel=preload</code>
+        headers to permit earlier fetching of important resources.</td>
+    </tr>
+    <tr>
+      <td><code><a href="system#in_place_optimize_for_browser"
+                   >in_place_optimize_for_browser</a></code></td>
+      <td>No</td><td>Yes</td><td>
+        Perform browser-dependent <a href="system#ipro">in-place resource
+        optimizations</a>.</td>.
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="forbidding">Forbidding All Disabled Filters</h2>
+<p>
+You can
+<a href="experiment#PerRequest">enable filters for a specific request</a>
+using either query parameters or request headers, and you can
+<a href="configuration#htaccess">enable filters in sub-directories</a>
+using the <code>EnableFilters</code> directive.
+</p>
+<p>
+In both cases you can enable filters that are disabled or not explicitly
+enabled in the configuration file, however there are situations where
+this is undesirable, such as when a filter has been expressly disabled because
+it breaks a page, or because a filter imposes too great a load on the server.
+</p>
+<p>
+All disabled filters can be forced off with:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedForbidAllDisabledFilters true</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ForbidAllDisabledFilters true;</pre>
+</dl>
+
+<p>
+Note that in this context <em>disabled filters</em> means all filters that
+are not enabled by the <code>RewriteLevel</code> or
+<code>EnableFilters</code> directives.
+</p>
+<p>
+This directive can be used in <a href="configuration#htaccess">location-specific
+configuration sections</a>.
+</p>
+
+<h2 id="checking-filter-config">Checking Which Filters Are Enabled</h2>
+<p>
+If you want to see exactly which filters are enabled on a virtual host, you
+can do so by going to that host's <a href="admin">admin or statistics</a> page.
+</p>
+
+<h2 id="tuning">Tuning the Filters</h2>
+<p>
+Once the rewriters are selected, some of them may also be tuned.  These
+parameters control the inlining and outlining thresholds of various resources.
+</p>
+
+<pre class="prettyprint">
+CssFlattenMaxBytes                       102400 (was 2048 prior to 1.9.32.1)
+CssImageInlineMaxBytes                        0
+CssInlineMaxBytes                          2048
+CssOutlineMinBytes                         3000
+ImageInlineMaxBytes                        3072
+ImageJpegNumProgressiveScans                 -1
+ImageJpegNumProgressiveScansForSmallScreens  -1
+ImageLimitOptimizedPercent                  100
+ImageLimitResizeAreaPercent                 100
+ImageRecompressionQuality                    85
+ImageResolutionLimitBytes              32000000
+JpegRecompressionQuality                     -1
+JpegRecompressionQualityForSmallScreens      70
+WebpRecompressionQuality                     80
+WebpAnimatedRecompressionQuality             70
+WebpRecompressionQualityForSmallScreens      70
+JsInlineMaxBytes                           2048
+JsOutlineMinBytes                          3000
+MaxInlinedPreviewImagesIndex                 -1
+MinImageSizeLowResolutionBytes             3072
+RetainComment                             "[WILDCARD PATTERN]"
+RewriteRandomDropPercentage                   0
+</pre>
+
+<p class="note"><strong>Note:</strong>
+The default settings are reasonable and intuitive, but have not been
+experimentally tuned.
+</p>
+<p>
+These directives can be used
+in <a href="configuration#htaccess">location-specific configuration
+sections</a>.
+</p>
+
+<h2 id="beacons">Controlling the use of beacons</h2>
+<p>
+The <code><a href="filter-lazyload-images">lazyload_images</a></code>,
+<code><a href="filter-inline-preview-images">inline_preview_images</a></code>,
+and <code><a href="reference-image-optimize#inline_images">inline_images</a>
+</code> filters, use a <a href="faq#beacons">beacon</a> to collect information
+about the rewritten page so as to optimize the rewriting process. The beacon
+is a <code>POST</code> request sent back by JavaScript inserted into the page
+by the filter. The use of this beacon is on by default but it can be disabled
+using:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedCriticalImagesBeaconEnabled false</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed CriticalImagesBeaconEnabled false;</pre>
+</dl>
+<p>
+If you disable image beacons but enable filters that use them, the filters will
+work but not as well as when beacons are enabled.
+</p>
+<p>
+This directive can be used in all scopes including
+<a href="configuration#htaccess">location-specific configuration sections</a>.
+</p>
+
+<h3 id="FinderPropertiesCacheExpirationTimeMs">Controlling beacon expiry</h3>
+<strong>Note: New option as of 1.12.34.1</strong>
+<p>
+By default beacon data is considered valid for two hours, but if your site has a
+lot of pages that change rarely and get few hits you might want to raise this
+limit:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedFinderPropertiesCacheExpirationTimeMs TtlInMs</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed FinderPropertiesCacheExpirationTimeMs TtlInMs;</pre>
+</dl>
+
+<h2 id="preserveurls">Preserving URLs in HTML</h2>
+<p>
+PageSpeed filters often modify the URLs of resources in HTML pages.  This is
+generally harmless but it has the potential to break pages whose JavaScript
+expects to read or modify the URLs in the page.
+</p>
+<p>
+image_preserve_urls, css_preserve_urls, and js_preserve_urls
+will suppress URL rewriting actions for the respective resource types.  Those
+filters that require modifications to the URL are disabled by the preserve
+directives.
+</p>
+<p class="note">
+<strong>Note:</strong>
+Even though resource URLs are unchanged that does not mean that they cannot
+still be optimized.  For instance,
+<a href="system#ipro">InPlaceResourceOptimization</a> still works since it does
+not alter URLs.  Turning on in place resource optimization is recommended when
+enabling any of the options to preserve URLs.  In version 1.9.32.1 and later
+in place resource optimization is enabled by default.
+</p>
+<p>
+Enabling image_preserve_urls will <a href="#forbidding">forbid</a>
+the use of the following filters:
+<code><a href="filter-inline-preview-images">inline_preview_images</a></code>,
+<code><a href="filter-lazyload-images">lazyload_images</a></code>,
+<code><a href="filter-cache-extend">extend_cache_images</a></code>,
+<code><a href="filter-image-optimize#inline_images">inline_images</a></code>,
+and <code><a href="filter-image-sprite">sprite_images</a></code>.
+</p>
+<p>
+Enabling css_preserve_urls will <a href="#forbidding">forbid</a> the use
+of the following filters:
+<code><a href="filter-css-combine">combine_css</a></code>,
+<code><a href="filter-cache-extend">extend_cache_css</a></code>,
+<code><a href="filter-css-inline">inline_css</a></code>,
+<code><a href="filter-css-inline-import">inline_import_to_link</a></code>,
+and <code><a href="filter-css-outline">outline_css</a></code>.
+</p>
+<p>
+Enabling js_preserve_urls will <a href="#forbidding">forbid</a> the use
+of the following filters:
+<code><a href="filter-canonicalize-js">canonicalize_javascript_libraries</a></code>,
+<code><a href="filter-js-combine">combine_javascript</a></code>,
+<code><a href="filter-js-defer">defer_javascript</a></code>,
+<code><a href="filter-cache-extend">extend_cache_javascript</a></code>,
+<code><a href="filter-js-inline">inline_javascript</a></code>,
+and <code><a href="filter-js-outline">outline_javascript</a></code>.
+</p>
+
+<h2 id="RewriteRandomDropPercentage">Reducing Load by Randomly Dropping
+Expensive Rewrites</h2>
+To reduce processing load, PageSpeed can be configured to optimize
+the most frequently fetched resources, leaving infrequently fetched
+resources alone.  This is accomplished by randomly dropping expensive
+(CSS and image) rewrites.  Frequently fetched resources will have a higher
+probability of being rewritten than infrequently fetched resources.
+Over time, frequently accessed resources will be optimized and cached so
+a page will be fully optimized. Infrequently accessed pages will be left
+unoptimized or partially optimized, saving CPU time and cache space.
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRewriteRandomDropPercentage Percent</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RewriteRandomDropPercentage Percent;</pre>
+</dl>
+<p>
+This is a load-tuning parameter (integer between 0 and 100 inclusive)
+that controls the percentage of resource rewrites that are randomly
+dropped. Currently only CSS and image rewrites are randomly dropped,
+as they are the CPU intensive rewrite tasks.  A value of 100 means all
+such rewrites are dropped and a value of 0 means no rewrites are
+dropped.  A value of 75 means that 75&#37; of image and CSS rewrites
+(selected at random) are dropped. Do not set this parameter to 100 in
+order prevent optimization of images and CSS files, it is more efficient
+to instead disable the image and/or CSS filters.
+</p>
+<p>
+As an example, if the value is 90 then an image fetched only once will
+be optimized with 10&#37; probability while an image fetched 50 times
+will be optimized with 99.65&#37; probability (1 - 0.9&#94;50).  You
+may need to tune this parameter to find a value that provides the
+right load on your servers and still provides sufficient image and CSS
+optimization.
+</p>
+<p class="note"><strong>Note: Images within CSS files are not randomly dropped
+as this would lead to partially optimized CSS resources.</strong></p>
+
+<h2 id="multi_server">Configuring for Multiple Servers</h2>
+<p>
+When running PageSpeed on multiple servers, it is important that
+each have the same configuration file.  This ensures that when a
+browser requests an image or other resource from one server, it will
+be optimized using the same options that were used to compute the
+optimized resource when HTML was served.  It is helpful to
+use <a href="system.html#memcached">memcached</a> to share cache
+between servers as it improves multi-server performance and
+scalability, but it is still important that the configurations are
+consistent to get the desired behavior when optimized images are
+evicted from cache.
+</p>
+
+<p>
+Note also that <a href="configuration#htaccess">location-specific configuration
+settings</a> should be consistent between the HTML paths and the resource
+paths.</p>
+
+<p id="add_options_to_urls" class="note">
+
+<p>In some sites, the URL path layout or network deployment strategy may
+not allow for consistent configuration between HTML and images.
+PageSpeed offers a workaround for such sites by encoding relevant
+configuration settings for each rewritten resource into the URLs:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">ModPagespeedAddOptionsToUrls on</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">pagespeed AddOptionsToUrls on;</pre>
+</dl>
+
+<p>
+This adds an encoding of the options that are relevant to each rewritten
+resource to the URLs.  While the produced URLs are larger, this provides a
+mechanism to propagate configuration without having to share a configuration
+file.  For example, a site with image recompression on and JPEG compression set
+to 85 would see URLs like
+<code>http://example.com/ximage.jpg.pagespeed.gp+jw+pj+rj+rp+rw+iq=85.ic.HASH.jpg</code>.
+While it is better to have the extra configuration details in the configuration
+file, this option offers a fallback plan when that is not practical.
+</p>
+
+<h2 id="custom-fetch-headers">Custom Fetch Headers</h2>
+
+<p>
+When not using <a href="domains#ModPagespeedLoadFromFile"
+>LoadFromFile</a>, PageSpeed has to make HTTP requests for sub-resources of a
+>page in order to rewrite them.  Consider the following HTML snippet:
+</p>
+<pre class="prettyprint">
+    ...
+    &lt;body&gt;
+      &lt;img src="example.jpg"&gt;
+      ...
+</pre>
+<p>
+If the <a href="filter-image-optimize">rewrite_images</a>
+filter is enabled, PageSpeed needs to fetch <code>example.jpg</code> in order
+to inline, compress, or otherwise optimize it.  If you would like custom
+headers to be sent with all sub-resource fetches like this one, you can use
+the <code>CustomFetchHeader</code> directive:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedCustomFetchHeader CustomHeader CustomHeaderValue
+ModPagespeedCustomFetchHeader AnotherCustomHeader AnotherValue</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed CustomFetchHeader CustomHeader CustomHeaderValue;
+pagespeed CustomFetchHeader AnotherCustomHeader AnotherValue;</pre>
+</dl>
+
+
+<h2 id="unsupported-filters">Unsupported Filters</h2>
+<p>
+The PageSpeed code base contains a number of additional filters whose use is
+unsupported.  Some of these are experimental; note that using experimental
+filters is likely to result in crashes or site breakage.  Others are used for
+debugging specific problems with PageSpeed:
+</p>
+  <table>
+    <thead><tr>
+        <th>Debugging filter name</th>
+        <th>Brief Description</th>
+    </tr></thead>
+    <tr>
+      <td><code>add_base_tag</code></td>
+      <td>
+        Adds a <code>&lt;base&gt;</code> element to the beginning of
+        the <code>&lt;head&gt;</code> that reflects the base url PageSpeed
+        is using to resolve relative url references in the page.</td>
+    </tr>
+    <tr>
+      <td id="debug"><code>debug</code></td>
+      <td>
+        Adds comments to the page describing actions by certain filters, and
+        attempts to serve JavaScript injected by PageSpeed in source form
+        rather than compiled and minified.
+      </td>
+    </tr>
+    <tr>
+      <td><code>deterministic_js</code></td>
+      <td>
+        Attempts to provide deterministic JavaScript behavior on each page, for
+        example by replacing the timer and random number generator with
+        functions that return the same sequence of values on every page load.
+      </td>
+    </tr>
+    <tr>
+      <td><code><a href="filter-strip-scripts">strip_scripts</a></code></td>
+      <td>
+        Removes all script tags from the document.</td>
+    </tr>
+  </table>
+<p class="note">
+<strong>Note: None of the above filters should be used to serve live traffic.</strong>
+</p>
+
+<h2 id="remote-configuration">Remote Configuration</h2>
+<p class="note"><strong>Note: New feature as of 1.10.33.0</strong></p>
+<p>
+PageSpeed filters and configurations can also be specified by an external
+&quot;Remote Configuration&quot; file. The remote configuration will override
+the main configuration file, override <code>.htaccess</code> configurations, and
+be overridden by any query-level parameters.
+<p>
+To specify the <code>RemoteConfigurationUrl</code>:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRemoteConfigurationUrl https://example.com/remote.conf</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RemoteConfigurationUrl https://example.com/remote.conf;</pre>
+</dl>
+<p>
+The syntax for the remote configuration file is similar to that of the
+<code>.htaccess</code> configurations with a few notable exceptions. Directives
+don't  use <code>ModPagespeed</code> as a prefix. Comments are specified by
+<code>#</code> and must be on their own line. Filters and options with
+<code>DirectoryScope</code> or higher may be applied with the remote
+configuration. Any invalid lines in the remote configuration will be skipped, a
+warning will be logged, and the remaining lines will still be parsed. The remote
+configuration terminates with a line beginning with
+<code>EndRemoteConfig</code>, and any lines after this are ignored. If the
+configuration file does not contain a line beginning with
+<code>EndRemoteConfig</code> no configuration will be applied. An example
+configuration for enabling the <code>remove_comments</code> filter is as
+follows.
+<p>
+<pre>
+  # Enable the remove_comments filter.
+  EnableFilter remove_comments
+  EndRemoteConfig
+  # Everything after the previous line will be ignored.
+</pre>
+</p>
+<p>
+The remote configuration file will be fetched on the server's startup,
+and cached for the extent determined by the remote server's
+<code>Cache-Control</code> and <code> Expires</code> headers. For example, if
+the remote configuration hosting server provides the header
+<code>Cache-Control: max-age=3600</code>, the next fetch of the
+remote configuration will happen at the first request after 3600 seconds.
+Failed fetches after successful fetches will continue to serve the stale config.
+The remote configuration should be used in addition to your original
+configuration. The remote configuration is not guaranteed to be fetched and
+applied to every request, so the site should not rely on the remote
+configuration in order to work.
+</p>
+The timeout for the fetching the remote configuration file can also be
+specified. The default timeout is one second. To specify the fetching timeout.
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRemoteConfigurationTimeoutMs 1500</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RemoteConfigurationTimeoutMs 1500;</pre>
+</dl>
+Fetching the remote configuration will block for up to the specified timeout.
+<p class="note"><strong>Note:</strong>
+Remote configurations can not be fetched from the same server that is running
+the instance of pagespeed.
+</p>
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

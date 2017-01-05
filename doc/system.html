@@ -1,0 +1,1302 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageSpeed System Integration</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>PageSpeed System Integration</h1>
+    <h2 id="caching">Configuring Caching</h2>
+    <p>
+      PageSpeed requires publicly cacheable resources to provide
+      maximum benefit.  As discussed in the "Cache Extender" filter, the
+      origin TTL specified in the server configuration file dictates how
+      quickly changes made to the source can propagate to users' browser
+      caches.  However, using PageSpeed, resources referenced statically
+      from HTML files will be served with a one-year cache lifetime, but
+      with a URL that is versioned using a content hash.
+    </p>
+
+    <h2 id="server_cache">Configuring Server-Side Cache for PageSpeed</h2>
+    <p>
+      In order to rewrite resources, PageSpeed must cache them server-side.  A
+      file-system based cache is always employed on each
+      server.  <a href="#memcached">memcached</a> or <a href="#redis">redis</a>
+      may be used as a scalable network-accessible cache in addition to the file
+      cache.  The file cache is always required, since PageSpeed has a few
+      things it needs to store locally.  Finally, a per-process in-memory LRU
+      cache and/or an interprocess shared-memory cache can be configured for
+      rapid access to small objects.
+    </p>
+
+    <h3 id="file_cache">Configuring the File Cache</h3>
+    <p>
+      PageSpeed must be configured with a path where it can write
+      cache files, tuned to limit the amount of disk space consumed.
+      The file cache can be placed on
+      a <a href="http://en.wikipedia.org/wiki/Tmpfs">tmpfs</a>
+      partition or on a physical disk.  The file cache has a built-in
+      LRU mechanism to remove old files, targeting a certain total
+      disk space usage, and a certain interval for the cleanup
+      process.  An example configuration is:
+    </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedFileCachePath            "/var/cache/pagespeed/"
+ModPagespeedFileCacheSizeKb          102400
+ModPagespeedFileCacheCleanIntervalMs 3600000
+ModPagespeedFileCacheInodeLimit      500000</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed FileCachePath              "/var/cache/pagespeed/";
+pagespeed FileCacheSizeKb            102400;
+pagespeed FileCacheCleanIntervalMs   3600000;
+pagespeed FileCacheInodeLimit        500000;</pre>
+</dl>
+    <p>
+      It is important to note that <code>FileCacheSizeKb</code> and
+      <code>FileCacheInodeLimit</code> do not define absolute limits
+      on the cache size and inode count. The cache cleaning process will run at
+      the time interval defined by
+      <code>FileCacheCleanIntervalMs</code>, and will only initiate
+      cleaning if the cache size exceeds
+      <code>FileCacheSizeKb</code> or the cache inode count exceeds
+      <code>FileCacheInodeLimit</code>. When cache cleaning is
+      initiated, the oldest files in the cache will be removed until the cache
+      size is under <code>0.75 * FileCacheSizeKb</code> and the
+      inode count is under <code>0.75 * FileCacheInodeLimit</code>.
+    </p>
+    <p class="warning">
+      <b>Warning:</b> Because the file cache cleaner does not impose a tight
+      bound on disk usage, if your site is large and receives heavy traffic
+      PageSpeed's cache can expand to fill your entire disk.  If this becomes a
+      problem you must either use a sufficiently large disk that this can't
+      happen, or a cache whose size is guaranteed to be bounded.  Bounded caches
+      include keeping your file cache on a PageSpeed-specific
+      partition, <a href="#memcached">memcached</a>,
+      and <a href="#redis">redis</a>.
+    </p>
+    <p>
+      PageSpeed previously reserved another file-path for future use as a shared
+      database in a multi-server environment.  This is no longer in the plan,
+      and <code>GeneratedFilePrefix</code> now generates a deprecation warning.
+    </p>
+    <p>
+      Starting in version 1.12.34.1, it is possible to disable cache cleaning
+      entirely, making PageSpeed ignore the limits set
+      by <code>FileCacheSizeKb</code> and <code>FileCacheInodeLimit</code>.  To
+      do this, set <code>FileCacheCleanIntervalMs</code> to -1:
+    </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedFileCacheCleanIntervalMs -1</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed FileCacheCleanIntervalMs -1;</pre>
+</dl>
+    <p>
+      In versions before 1.12.34.1, using a large number for the interval, like
+      <code>1576800000000</code> (fifty years), has the same effect.
+    </p>
+    <p class="warning">
+      <b>Warning:</b> Without cleaning the cache will grow without bound as
+      PageSpeed continues to store additional resources.  If you disable the
+      built-in cache cleaner you must implement something yourself to ensure
+      that PageSpeed does not consume all available disk space for its cache.
+    </p>
+
+    <h3 id="lru_cache">Configuring the in-memory LRU Cache</h3>
+    <p>
+      To optimize performance, a small in-memory write-through LRU cache can be
+      instantiated in each server process.  Note that in Apache's pre-fork mode
+      this means dozens of processes, so the total memory consumed
+      (<code>LRUCacheKbPerProcess * num_processes</code>) must fit into the
+      capabilities of the host machine.  Nginx typically runs with many fewer
+      processes, so a larger <code>LRUCacheKbPerProcess</code> is appropriate
+      there. The <code>LRUCacheByteLimit</code> is the limit on how large a
+      cache entry the LRU cache will accept.  A sample configuration is:
+    </p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedLRUCacheKbPerProcess   1024
+ModPagespeedLRUCacheByteLimit      16384</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed LRUCacheKbPerProcess     8192;
+pagespeed LRUCacheByteLimit        16384;</pre>
+</dl>
+
+    <h3 id="shm_cache">Configuring the Shared Memory Metadata Cache</h3>
+
+    <p>As part of its operation, PageSpeed stores summaries of how to apply
+    optimizations to web pages as part of a <em>metadata cache</em>.  Metadata
+    entries are small and frequently accessed. They should ideally be stored in
+    local memory and shared across server processes, as opposed to on disk or
+    an <a href="#external_cache">external cache</a>.  That is exactly what the
+    shared memory metadata cache does, and it is the best place to cache your
+    metadata entries.</p>
+
+    <p>Prior to 1.12.34.1, writes to an explicitly configured shared memory
+    metadata cache were in-memory only, and not written to disk. This provided a
+    large performance boost but the contents of the cache were lost upon server
+    restart.</p>
+
+    <p>As of 1.12.34.1, PageSpeed checkpoints the shared memory metadata cache
+    to disk, providing almost all the performance but without the cache being
+    wiped on restart. By default the metadata cache is checkpointed every 5
+    minutes, see <a href="#shm_checkpointing">shared memory checkpointing</a>
+    for more details.</p>
+
+    <p>In all versions, if you enable an <a href="#external_cache">external
+    cache</a>, cache entries are written through to it.</p>
+
+    <p>The shared memory metadata cache is enabled using
+    the <code>CreateSharedMemoryMetadataCache</code> directive.  This directive
+    takes two arguments. The first is the exact string given as the argument
+    to <code>FileCachePath</code> in any virtual host where you want this cache
+    active. The second is the size of the cache in kilobytes. Unlike the LRU
+    cache, this cache is shared among all server processes, so far larger values
+    are possible. For example:
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedCreateSharedMemoryMetadataCache "/var/cache/pagespeed/" 51200
+&lt;VirtualHost www.example.com:80&gt;
+  ModPagespeedFileCachePath "/var/cache/pagespeed/"
+&lt;/VirtualHost&gt;
+&lt;VirtualHost alt.example.com:80&gt;
+  ModPagespeedFileCachePath "/var/cache/pagespeed/"
+&lt;/VirtualHost&gt;</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed CreateSharedMemoryMetadataCache "/var/cache/pagespeed/" 51200;
+server {
+  listen 80;
+  server_name www.example.com;
+  pagespeed FileCachePath "/var/cache/pagespeed/";
+}
+server {
+  listen 80;
+  server_name alt.example.com;
+  pagespeed FileCachePath "/var/cache/pagespeed/";
+}</pre>
+</dl>
+
+    will create a 50-megabyte metadata cache used for both www.example.com and
+    alt.example.com, and shared among all server processes.
+
+    <p>If you are currently using a file cache, you can estimate a good size for
+    this cache by measuring the size of the <code>rname/</code> directory of
+    the on-disk cache, using the <code>du -s -h --apparent-size</code> command,
+    for example:
+<pre class="prettyprint-sh">
+du -s -h --apparent-size /path/to/pagespeed_cache/rname
+</pre>
+
+  then, multiplying the result by 1.75 and converting it to kilobytes.</p>
+
+  <p> You can see how effective this layer of cache is at the
+  <a href="configuration#virtual-hosts-and-stats">global PageSpeed
+  statistics</a> page, where at the bottom of the page every shared
+  memory cache will be listed, including in particular information on its hit
+  rate and how full it is (blocks used). </p>
+
+    <h3 id="default_shm_cache">Default Shared Memory Metadata Cache</h3>
+    <p>
+      Any virtual host that does not have a <a href="#shm_cache">shared memory
+      metadata cache</a> configured
+      with <code>CreateSharedMemoryMetadataCache</code> will share a default
+      one.  In versions 1.12.34.1 and later, snapshots of the shared memory
+      cache are periodically saved to disk via <a href="#shm_checkpointing"
+      >shared memory checkpointing</a>.  Versions prior to 1.12.34.1 did not
+      support snapshotting, and instead wrote all changes through to disk,
+      significantly degrading the write performance of the shared memory cache.
+    </p>
+    <p>
+      You can configure the size of this cache
+      with <code>DefaultSharedMemoryCacheKB</code>, or disable it entirely by
+      setting the size to 0.  The default size is 50MB, and is shared across all
+      server processes.
+    </p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedDefaultSharedMemoryCacheKB 50000</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed DefaultSharedMemoryCacheKB 50000;</pre>
+</dl>
+
+    <p>
+      This directive can only be used at the top level of your configuration.
+    </p>
+
+    <h3 id="shm_checkpointing">Shared Memory Metadata Cache Checkpointing</h3>
+    <p class="note"><strong>Note: New feature as of 1.12.34.1</strong></p>
+    <p>
+      Shared memory caches are fast but have the significant disadvantage that
+      they do not survive a server restart.  The file cache does persist across
+      restarts but performs significantly worse than an in-memory cache.
+      Checkpointing attempts to provide a balance by using the same fast
+      in-memory cache and periodically writing its contents to disk. In practice
+      this can perform almost as well as a straight memory cache, with the
+      significant advantage that it also survives a server restart, as the
+      checkpoint is read into memory at startup.
+    </p>
+    <p>
+      If you're using an <a href="#external_cache">external cache</a>, all
+      writes to the shared memory metadata cache are written out to the external
+      cache so that other servers using the same external cache can avoid
+      redundant optimization.  In this configuration, the checkpoint is not
+      written through to the external cache when it is restored, because this
+      could overwrite the work of other servers.
+    </p>
+    <p>
+      Checkpointing is enabled by default, running every five minutes.  You can
+      adjust this interval by
+      setting <code>ShmMetadataCacheCheckpointIntervalSec</code>, and you can
+      disable checkpointing entirely by setting it to -1.
+    </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedShmMetadataCacheCheckpointIntervalSec 300</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ShmMetadataCacheCheckpointIntervalSec 300;</pre>
+</dl>
+     <p>
+       This directive can only be used at the top level of your configuration.
+     </p>
+     <p>
+       Note that if you disable checkpointing, the shared memory cache will not
+       be written to disk, and all optimizations will be lost on server restart.
+     </p>
+     <p>
+       If you have multiple file caches enabled, PageSpeed has to pick one to
+       use for snapshots for the default shared memory cache.  It resolves this
+       by taking the file cache path that comes first alphabetically and putting
+       all snapshots there.
+     </p>
+
+    <h3 id="external_cache">External Caches</h3>
+
+    <p>
+      PageSpeed supports two different external
+      caches, <a href="#memcached">memcached</a> and <a href="#redis">redis</a>.
+      The main reasons to use an external cache are:
+    </p>
+    <ul>
+      <li>You want to run multiple PageSpeed servers without
+          duplicating optimizations.
+      <li>You want to allocate more memory to PageSpeed's cache than a single
+          machine an provide.
+    </ul>
+    <p>
+      You can configure different external caches for different virtual hosts,
+      but you can't use both memcached and redis for the same virtual host.
+    </p>
+
+
+    <h4 id="memcached">Configuring memcached</h3>
+    <p>
+      To enable <a href="http://memcached.org/">memcached</a>, specify the list
+      of memcached servers with a comma-separated list of hosts and ports.  If
+      the port is omitted, the default memcached port of 11211 is assumed.
+      PageSpeed's memcached integration by uses a background thread for
+      communicating with the memcached servers.  This allows PageSpeed to batch
+      multiple Get requests into a single MultiGet request to memcached, which
+      improves performance and reduces network round trips.
+    </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMemcachedServers "host1:port1,host2:port2,host3:port3"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MemcachedServers "host1:port1,host2:port2,host3:port3";</pre>
+</dl>
+    <p class="note">
+      To start memcached with 1Gb of memory, use <code>memcached -p PORT -m 1024
+      -u WEBSERVER_USERNAME</code>.  The default size of 64Mb might be too low
+      for large sites.  See <a
+        href="https://github.com/memcached/memcached/wiki/ConfiguringServer">the
+      wiki</a> for detailed memcached configuration help.  Be aware that
+      configuring scalable caching requires tuning and iteration.  You must be
+      sure that the user-id running the server has permission to access
+      memcached.  For example, on CentOS, you may need to run memcached
+      with:
+      <dl>
+        <dt>Apache:<dd><pre class="prettyprint"
+           >memcached -p PORT -m MEMORY_IN_MEGABYTES -u apache</pre>
+        <dt>Nginx:<dd><pre class="prettyprint"
+           >memcached -p PORT -m MEMORY_IN_MEGABYTES -u nginx</pre>
+      </dl>
+      If SELinux is enabled, then you must also grant permission for the
+      server to access the memcached port.  Failure to do this results in
+      'permission denied' warnings in the error logs and will prevent
+      PageSpeed from optimizing resources.
+    </p>
+
+    <p>
+      When you use memcached with PageSpeed, many vital memcached statistics can
+      be found
+      at
+      <dl>
+        <dt>Apache:<dd><pre
+           >http://localhost/mod_pagespeed_statistics?memcached</pre>
+        <dt>Nginx:<dd><pre
+           >http://localhost/ngx_pagespeed_statistics?memcached</pre>
+      </dl>
+      These statistics are taken both from the PageSpeed perspective,
+      aggregating all memcacheds as viewed from a single server...
+    </p>
+<pre class="prettyprint">
+memcached_deletes:                            0
+memcached_hits:                           81651
+memcached_inserts:                       161605
+memcached_misses:                        118782
+</pre>
+    <p>
+      ...and also from the perspective of each memcached server, aggregating
+      activity from each memcached client including all PageSpeed instances.
+    </p>
+    <pre class="prettyprint">
+memcached server host1:6765 version 1.4.2 pid 1132 up 343306 seconds
+bytes:                 923977753
+bytes_read:            37710601552
+bytes_written:         141519206300
+cmd_get:               50273185
+cmd_set:               11471631
+connection_structures: 233
+curr_connections:      16
+curr_items:            255329
+evictions:             5258751
+get_hits:              50273185
+get_misses:            14556369
+limit_maxbytes:        1048576000
+pointer_size:          64
+rusage_system:         1065290000
+rusage_user:           64
+threads:               4
+total_connections:     12235148
+total_items:           11471631
+
+memcached server host2:6765 version 1.4.2 pid 6568 up 343278 seconds
+bytes:                 921246303
+bytes_read:            12962377990
+bytes_written:         57778312362
+cmd_get:               21702123
+cmd_set:               4166384
+connection_structures: 49
+curr_connections:      15
+curr_items:            254144
+evictions:             1329595
+get_hits:              21702123
+get_misses:            4923668
+limit_maxbytes:        1048576000
+pointer_size:          64
+rusage_system:         594360000
+rusage_user:           64
+threads:               4
+total_connections:     4840010
+total_items:           4166384
+</pre>
+
+    <p>
+      By default, PageSpeed uses a half-second (500,000 microsecond) timeout for
+      cache operations.  If the timeout is exceeded more than 4 times in a 30
+      second span, PageSpeed assumes that memcached is not healthy and will stop
+      optimizing resources for 30 seconds before trying again.
+    </p>
+
+    <p>
+      For wide area networks or for alternative implementations and proxies of
+      the memcache protocol such as couchbase or moxi-server it may be necessary
+      to increase the I/O timeout.  Please monitor the statistic
+      'memcache_timeouts' to help tune the timeouts.  Select a new timeout with
+      the <code>MemcachedTimeoutUs</code> directive:
+    </p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMemcachedTimeoutUs timeout_in_microseconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MemcachedTimeoutUs timeout_in_microseconds;</pre>
+</dl>
+
+    <p>
+      For example, to increase the timeout to from half a second to a second,
+      use:
+    </p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMemcachedTimeoutUs 1000000</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MemcachedTimeoutUs 1000000;</pre>
+</dl>
+
+    <h4 id="redis">Configuring Redis</h4>
+    <p class="note"><strong>Note: New feature as of 1.12.34.1</strong></p>
+    <p class="warning"><strong>Warning:</strong> Redis support is experimental
+       and has not yet had substantial real world use.  Before rolling this out
+       in production, be sure to test it well.  If you run into problems, please
+      <a href="https://github.com/pagespeed/mod_pagespeed/issues/new"
+         >let us know</a>.
+    </p>
+    <p>
+      To enable <a href="http://redis.io/">redis</a>, specify a single redis
+      server as <code>host:port</code>.  The port is optional, and defaults to
+      6379.  This host can either be a stand-alone redis server, or a master
+      node from a redis cluster.  If the host is a cluster node, PageSpeed will
+      ask it for the cluster configuration and distribute its reads and writes
+      among the cluster nodes.
+    </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRedisServer "host:port"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RedisServer "host:port";</pre>
+</dl>
+    <p>
+      You can configure how long PageSpeed is willing to wait for a response
+      from Redis before timing out a request, which defaults to 50ms:
+    </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRedisTimeoutUs timeout_in_microseconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RedisTimeoutUs timeout_in_microseconds;</pre>
+</dl>
+    <p>
+      You can also configure how long PageSpeed will wait after an error from
+      Redis before it tries connecting again, which defaults to 1s:
+    </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRedisReconnectionDelayMs timeout_in_milliseconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RedisReconnectionDelayMs timeout_in_milliseconds;</pre>
+</dl>
+
+    <h2 id="flush_cache">Flushing PageSpeed Server-Side Cache</h2>
+    <p>
+      When developing web pages with PageSpeed enabled, it is
+      sometimes convenient to flush the cache of a running server, in
+      order to get the system to reload CSS or JavaScript files that
+      have been updated before the origin cache lifetime expires.
+    </p>
+    <h3 id="flush_cache_legacy">Legacy Flushing Of Entire Cache</h3>
+    <p>
+      By default, the system is configured to support only whole-cache
+      flushes &mdash; we'll call this <em>legacy mode</em>.  As
+      of <strong>version 1.9.32.1</strong>, it can be configured to
+      also allow purging of individual URLs.  The two modes operate
+      differently and you may choose between them for each virtual
+      host.  Legacy mode is on by default, to provide compatibility
+      with existing scripts and other infrastructure that might have
+      been built around it.  In a future release, individual URL
+      purging will become the default.  Subsequent to that, the legacy
+      whole-cache flushing mode will be eliminated.
+
+      You can choose between the two modes with
+      the <code>EnableCachePurge</code> argument.  If set to "on" you
+      will get the new behavior, with individual URL purging, while
+      "off" will give you the legacy behavior.  The default is "off",
+      as if your configuration read:
+    </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableCachePurge off</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableCachePurge off;</pre>
+</dl>
+    <p>
+      In this mode, simply touch the file "cache.flush" in the directory
+      specified as <code>FileCachePath</code> above.  For example:
+    </p>
+<pre class="prettyprint lang-sh">
+  sudo touch /var/cache/pagespeed/cache.flush
+</pre>
+    <p>
+      The system may take up to 5 seconds to take effect (changeable via option
+      <code>CacheFlushPollIntervalSec</code> described
+      <a href="#purge_options">below</a>).
+    </p>
+    <h3 id="purge_cache">Purging individual cache entries or entire cache</h3>
+    <p class="note"><strong>Note: New feature as of 1.9.32.1</strong></p>
+    <p>
+      In this mode, the cache may be purged by sending HTTP requests
+      to the server, using a configurable
+      path. The cache can be purged via
+      an HTTP GET, PURGE, or DELETE, once a handler has been
+      <a href="admin#config">configured</a>. The <a href="admin">admin
+        site</a> makes this easier by providing a graphical interface to
+      initiate purge requests and see what entries have been purged.
+    </p>
+    <p>To enable individual URL cache purging, you must
+      <a href="admin#config">configure the admin site</a>,
+      specify a PurgeMethod, or both.  Plus you must turn on
+      EnableCachePurge:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+                      >ModPagespeedEnableCachePurge on
+ModPagespeedPurgeMethod PURGE &nbsp; &nbsp; <em>(optional)</em></dd></pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableCachePurge on;
+pagespeed PurgeMethod PURGE; &nbsp; &nbsp; <em>(optional)</em></dd></pre>
+</dl>
+    <p>
+      This establishes three methods to purge the cache of a URL, or to
+      purge the entire cache, assuming PageSpeed is running on example.com:
+      <table>
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Purge single URL</th>
+            <th>Purge entire cache</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>HTTP GET</td>
+            <td><code>curl 'http://example.com/pagespeed_admin/cache?purge=path/file.ext'</code></td>
+            <td><code>curl 'http://example.com/pagespeed_admin/cache?purge=*'</code></td>
+          </tr>
+          <tr>
+            <td>HTTP PURGE</td>
+            <td><code>curl --request PURGE 'http://www.example.com/path/file.ext'</code></td>
+            <td><code>curl --request PURGE 'http://www.example.com/*'</code></td>
+          </tr>
+          <tr>
+            <td>Admin GUI</td>
+            <td><img src="images/purge_one_url.png"></td>
+            <td><img src="images/purge_entire_cache.png"></td>
+          </tr>
+        </tbody>
+      </table>
+    </p>
+    <p>
+      The Purge requests for individual URLs made via the GUI are
+      executed via an HTTP GET.  In either case, the URL being purged
+      is specified relative to the ORIGIN of the admin site.  In these
+      examples, <code>path/file.ext</code> is combined
+      with <code>example.com</code> to purge the path
+      <code>http://example.com/path/file.ext</code> from the cache.
+    </p>
+    <p>
+      When the new mode of cache purging is enabled, the purges take
+      place immediately, there is no five second delay.  Note that it
+      is possible to purge the entire cache, or to purge one URL at a
+      time.  It is not possible to purge by regular expression or
+      wildcard.  The URL purging system works by remembering which
+      URLs are purged and validating each URL coming out of cache
+      against them.  There is a limitation to the number of distinct
+      URLs that can be purged.  When that limit is exceeded,
+      everything in the cache older than the oldest remaining purge
+      request will be dropped.  The limitation is high enough that
+      it's not expected to be exceeded often, but is not currently
+      changeable.
+    </p>
+    <h3 id="flush_cache_limitations">Limitations</h3>
+    <p>
+      The following limitations apply to both method the legacy and new methods
+      of cache purging.
+    </p>
+    <p class="caution">
+      <strong>Caution:</strong> In a multi-server system, you must run
+      these commands on every server.  All the cache data from
+      VirtualHosts using that cache directory will be flushed.  This
+      is true even when using memcached: the cache flush information
+      is kept locally on each machine running PageSpeed, not in the
+      cache itself.  This is because of the L1 caches that run locally
+      on each machine, and because memcached does not guarantee
+      persistance.
+    </p>
+    <p class="caution">
+      <strong>Caution:</strong> Flushing or purging the cache does not
+      delete the old files from the directory, the memcached server,
+      or PageSpeed's in-memory cache, but it tells PageSpeed to
+      ignore those files.
+    </p>
+
+    <p class="note">Note: After flushing or purging the cache, the
+      stale files will eventually be replaced with fresh copies or
+      removed by the normal file cache cleaning process
+      (see <code>FileCacheCleanIntervalMs</code> above).
+    </p>
+
+    <p>You can change the polling interval and name of the cache-flush
+      file in the configuration file.  If you set the polling interval to 0, the
+      cache flushing feature will be disabled.  If you specify the cache flush
+      filename as a relative path, PageSpeed will look for that file in
+      the <code>FileCachePath</code> directory.  If you use an absolute path,
+      then the caches associated with multiple virtual hosts can be flushed all
+      at once.
+    </p>
+    <h3 id="purge_options">Cache Flushing and Purging Options</h3>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedCacheFlushFilename alternate_filename
+ModPagespeedCacheFlushPollIntervalSec number_of_seconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed CacheFlushFilename alternate_filename
+pagespeed CacheFlushPollIntervalSec number_of_seconds;</pre>
+</dl>
+
+    <h2 id="downstream_caching">Downstream Caches</h2>
+
+    PageSpeed is designed to work without any caches between it and the user,
+    but it has experimental support for caching proxies.  It works with Varnish,
+    Nginx's proxy_cache with the ngx_cache_purge module, and any other server
+    that accepts purge requests over HTTP, allows fragmenting the cache based on
+    UA regexps, and supports modifying caching headers based on the response's
+    content type.  For details and sample configurations, please see the
+    documentation on <a href="downstream-caching.html">configuring downstream
+    caches</a>.
+
+
+    <h2 id="shm_lock_manager">Configuring Use of Shared Memory for Locks</h2>
+
+    <p>
+      When fetching or rewriting resources PageSpeed uses locks to ensure that
+      no redundant computation or fetching is done. This can use the file-system
+      or shared memory. The system defaults to shared memory locks, but you can
+      control which implementation is used with
+      the <code>SharedMemoryLocks</code> option, passing it <code>on</code>
+      or <code>off</code>.
+    </p>
+
+    <p>
+      Note that if you turn on shared memory locks when shared memory is not
+      available, the system will fall back to file-system locks automatically.
+    </p>
+
+    <p>
+      On multi-server setups, locking being per-host will not adversely affect
+      correctness but might result in multiple servers performing the
+      same computation simultaneously.
+    </p>
+
+    <p>
+      Virtual hosts that specify <code>SharedMemoryLocks on</code> with
+      identical values of <code>FileCachePath</code> will share the same locking
+      domain. Note that these must be identical strings, not just two strings
+      representing the same directory. For example <code>/var/foo</code>
+      and <code>/var/foo/</code> are different instances from a locking point of
+      view.
+    </p>
+
+    <p>
+      This setting's resource consumption is modest (300 kilobytes per instance
+      on 64-bit systems) and it reduces file-system load.
+    </p>
+
+    <h2 id="cache-fragment">Configuring a Cache Fragment</h2>
+
+    <p>
+      By default every site has its own cache.  If you have multiple sites
+      served from the same machine that reference common resources you can
+      improve your cache performance and reduce CPU consumption by setting a
+      shared cache fragment:
+    </p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedCacheFragment some_token</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed CacheFragment some_token;</pre>
+</dl>
+
+    <p>
+      You must set this to the same value on every site that
+      shares a cache.  The fragment may consist of letters, numbers, underscores,
+      and hyphens only.  The physical caching layer also has to be the same for
+      the two sites: either you need a shared <code>FileCachePath</code> or you
+      need to be using the same <code>memcached</code> server.
+    </p>
+
+    <p>
+      Note: you don't have to do this for simple cases
+      like <code>www.example.com</code> and <code>images.example.com</code>.
+      The default cache fragment is the minimal private suffix, in this
+      case <code>example.com</code>, and is determined from
+      the <a href="http://publicsuffix.org/">public suffix list</a>.  If you
+      have <code>www.example.com</code> and <code>images.example.org</code>,
+      however, then they will not share a common minimal private suffix and you
+      should set the <code>CacheFragment</code> for better performance.
+    </p>
+
+    <h2 id="native-fetcher">Native URL fetcher</h2>
+    <p class="note"><strong>Note: Nginx-only</strong></p>
+
+    <p>
+    Often PageSpeed needs to request URLs referenced from other files in order
+    to optimize them. To do this it uses a fetcher. By default ngx_pagespeed
+    uses the same fetcher mod_pagespeed does,
+    <a href="http://serf.apache.org/">serf</a>, but it also has an
+    experimental fetcher that avoids the need for a separate thread by using
+    native Nginx events. In initial testing this fetcher is about 10% faster. To
+    use it, put in your <code>http</code> block:
+    </p>
+
+    <pre>
+pagespeed UseNativeFetcher on;
+resolver 8.8.8.8;</pre>
+
+    <p>
+    Your DNS resolver doesn't have to
+    be <a href="https://developers.google.com/speed/public-dns/">8.8.8.8</a>;
+    any domain name service your server has access to will work. If you don't
+    specify a DNS resolver, PageSpeed will still work but will be limited to
+    fetching only from IP addresses.
+    </p>
+
+    <h2 id="native-fetcher-keep-alive">Persistent Connections with the Native
+        URL Fetcher</h2>
+    <p class="note"><strong>Note: Nginx-only</strong></p>
+    <p class="note"><strong>Note: New feature as of 1.9.32.1</strong></p>
+
+    <p>
+      As of 1.9.32.1 the Native URL Fetcher
+      supports <a
+      href="http://en.wikipedia.org/wiki/HTTP_persistent_connection">persistent
+      HTTP connections</a>.  The fetcher will send the <code>Connection:
+      Keep-Alive</code> header and if the server also sets that header on its
+      response then the connection will be kept open for 60 seconds in case
+      another fetch from the same server is needed. By default a connection will
+      be reused no more than 100 times, but you can use
+      <code>NativeFetcherMaxKeepaliveRequests</code> to change this limit.
+      Keep-Alive support is on by default, and you can disable it by setting the
+      limit to 0:
+    </p>
+    <pre>pagespeed NativeFetcherMaxKeepaliveRequests 0;</pre>
+
+    <h2 id="url_fetcher_timeout">Setting the URL fetcher timeout</h2>
+
+    <p>When PageSpeed attempts to rewrite a resource for the first
+      time, it must fetch it via HTTP.  The default timeout for fetches is 5
+      seconds.  A directive can be applied to change the timeout</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedFetcherTimeoutMs timeout_value_in_milliseconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed FetcherTimeoutMs timeout_value_in_milliseconds;</pre>
+</dl>
+
+    <h2 id="rewrite_deadline">Setting the rewrite deadline per flush window</h2>
+    <p>When PageSpeed attempts to rewrite an uncached (or expired) resource
+    it will wait for up to 10ms per flush window (by default) for it to finish
+    and return the optimized resource if it's available.  If it has not
+    completed within that time the original (unoptimized) resource is returned
+    and the optimizer is moved to the background for future requests. The
+    following directive can be applied to change the deadline. Increasing this
+    value will increase page latency, but might reduce load time (for instance
+    on a bandwidth-constrained link where it's worth waiting for image
+    compression to complete). Note that a value less than zero will
+    cause PageSpeed to wait indefinitely.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRewriteDeadlinePerFlushMs deadline_value_in_milliseconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RewriteDeadlinePerFlushMs deadline_value_in_milliseconds;</pre>
+</dl>
+
+<!--
+    <h2 id="rewrite_cache_min_ttl"
+        >Setting the minimum cache-lifetime for optimizing resources</h2>
+    <p>When PageSpeed fetches a resource via HTTP or HTTPS, it uses
+    the origin cache lifetime, based on the Expires or Cache-Control
+    header, to determine how frequently it should check with the
+    origin for updates.  If the time-to-live is very quick, then
+    optimization might be pointless and PageSpeed will skip it.  The
+    threshold is zero by default, meaning even 1-second resources will
+    be optimized.  To set the threshold, use the configuration file
+    setting:</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMinResourceCacheTimeToRewriteMs minimum_cache_ttl_in_milliseconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MinResourceCacheTimeToRewriteMs minimum_cache_ttl_in_in_milliseconds;</pre>
+</dl>
+-->
+
+    <h2 id="implicit_cache_ttl"
+        >Setting the implicit cache-lifetime for resources</h2>
+    <p>When PageSpeed fetches a resource via HTTP or HTTPS, it
+    examines the Expires and Cache-Control headers to determine how
+    frequently it should update its cache.  When these headers don't
+    specify a timeout, a default timeout of 5 minutes is used.  To
+    override this, specify:</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedImplicitCacheTtlMs implicit_cache_ttl_in_milliseconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ImplicitCacheTtlMs implicit_cache_ttl_in_milliseconds;</pre>
+</dl>
+
+    <h2 id="load_from_file_cache_ttl"
+        >Setting the cache-lifetime for resources loaded from file</h2>
+    <p class="note"><strong>Note: New feature as of 1.9.32.2</strong></p>
+    <p>When PageSpeed <a href="domains#ModPagespeedLoadFromFile">loads a
+    resource from file</a>, the default cache lifetime
+    is set by <code>ImplicitCacheTtlMs</code>, to override this, and set a
+    different cache lifetime for resources loaded from file, specify:</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedLoadFromFileCacheTtlMs implicit_cache_ttl_in_milliseconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed LoadFromFileCacheTtlMs implicit_cache_ttl_in_milliseconds;</pre>
+</dl>
+
+    <h2 id="fetch_with_gzip">Fetching Resources using Gzip</h2>
+
+    <p>This option causes PageSpeed to add <code>Accept-Encoding:gzip</code> to
+      requests for resources.  If the server responding to the request
+      handles this option (e.g. via mod_deflate), this results in reduced
+      bytes transferred over the network.</p>
+
+    <p>By default, PageSpeed attempts to fetch resources without specifying
+      an<code>Accept-Encoding</code> header.  This means the resources will be
+      sent uncompressed.  These requests are often within the LAN, so network
+      bandwidth to transfer the resources may not be a consideration.</p>
+
+    <p>If network bandwidth is a consideration, then PageSpeed can be
+     configured to fetch resources using gzip.  This will lower the network
+     transfer bandwidth considerably, but may increase the CPU usage depending
+     on server configuration.  The primary concern is the time spent by the
+     origin server compressing the resource, rather than the time spent by
+     PageSpeed inflating it.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedFetchWithGzip on
+SetOutputFilter DEFLATE</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed FetchWithGzip on;
+gzip  on;
+gzip_vary on;
+# Turn on gzip for all content types that should benefit from it.
+gzip_types application/ecmascript;
+gzip_types application/javascript;
+gzip_types application/json;
+gzip_types application/pdf;
+gzip_types application/postscript;
+gzip_types application/x-javascript;
+gzip_types image/svg+xml;
+gzip_types text/css;
+gzip_types text/csv;
+# "gzip_types text/html" is assumed.
+gzip_types text/javascript;
+gzip_types text/plain;
+gzip_types text/xml;
+
+gzip_http_version 1.0;
+</pre>
+</dl>
+
+    <p>Another option to minimize network bandwidth is to use
+      <a href="domains#ModPagespeedLoadFromFile">LoadFromFile</a>.
+    </p>
+
+    <p>
+      These directives can <strong>not</strong> be used
+      in <a href="configuration#htaccess">location-specific configuration
+      sections</a>.
+    </p>
+
+    <h2 id="tune_thread">Tuning Threading</h2>
+    <p>
+      PageSpeed uses threads so that resource optimization work does not delay
+      request serving. There are two kinds of threads in use: <em>rewrite</em>
+      threads deal with very short-lived bookkeeping tasks that are generally
+      latency-sensitive, while <em>expensive rewrite</em> threads deal with more
+      computationally expensive tasks that are not in latency-sensitive
+      paths. By default, if you use a single-threaded MPM (such
+      as <code>prefork</code>) one thread of each kind will be used per an
+      Apache process. With a threaded MPM (such as <code>worker</code>,
+      and <code>event</code>) up to 4 threads of each kind will be used.  You
+      can, however, tune the thread count per process if necessary via
+      the <code>NumRewriteThreads</code>
+      and <code>NumExpensiveRewriteThreads</code> options.
+    </p>
+    <p>
+      Note that this is a global setting, and cannot be done in a per virtual
+      host manner.
+    </p>
+
+    <h2 id="image_rewrite_max">Limiting the number of concurrent image
+    optimizations</h2>
+    <p>
+      When optimizing images, PageSpeed can use significant CPU resources.  As
+      the results of the image optimization are cached, this is not ordinarily a
+      concern once the cache is warm.  But when PageSpeed is first installed, or
+      when a corpus of new images is added to the server, PageSpeed needs to
+      avoid having each process consume maximum CPU.  To accomplish this,
+      PageSpeed keeps a server-wide counter of active image optimizations.  It
+      avoids running more than <code>ImageMaxRewritesAtOnce</code> image
+      optimizations in parallel across all processes.  The default value is 8.
+      Override this in the configuration file to change this maximum.
+    </p>
+    <p>
+      This directive can <strong>not</strong> be used
+      in <a href="configuration#htaccess">location-specific configuration
+      sections</a>.
+    </p>
+
+    <h2 id="max_parse_bytes">Limiting the size of HTML parsed</h2>
+    <p>
+      When parsing and rewriting large HTML pages, PageSpeed can use
+      significant memory. This option limits the size of an HTML page that is
+      parsed. Once the size of the HTML exceeds <code>MaxHtmlParseBytes</code>,
+      further parsing is disabled, and a script is inserted that redirects the
+      user to the <code>?ModPagespeed=off</code> version of the page.  The
+      default value is 0, indicating that there is no limit. Override this in
+      the configuration file to change this maximum.
+    </p>
+
+  <h2 id="ipro">In-Place Resource Optimization</h2>
+  <p class="note"><strong>Note: Enabled by default as of 1.9.32.1</strong>
+  </p>
+  <p>Normally PageSpeed rewrites a resource such as an image by finding
+    its URL on your page, fetching and optimizing the data in the background,
+    and then replacing that URL by an optimized pagespeed URL. But what about
+    resources that are loaded by JavaScript code? And what about links to your
+    images from pages outside your domain? In-Place Resource Optimization (IPRO)
+    will optimize the content of a resource that’s requested using the original
+    (non-pagespeed) URL, ensuring you are serving optimized content even when
+    that content isn’t explicitly linked in your html. This should be especially
+    helpful for sites with slide shows that use JavaScript to load images in the
+    background; those images can now be optimized by PageSpeed by adding
+    this command to your configuration file:</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedInPlaceResourceOptimization on</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed InPlaceResourceOptimization on;</pre>
+</dl>
+  <p>
+    Some sites employ JavaScript that is sensitive to the original resource URL
+    syntax and won't work with PageSpeed's altered resource URLs. You can
+    choose to
+    <a href="config_filters#preserveurls">preserve the URLs</a> of your
+    resources; these will still be rewritten by IPRO, but they won't be replaced
+    by a pagespeed URL. This is especially useful as an &quot;optimization is on
+    by default&quot; setting for hosting providers and optimizing forward
+    proxies – cases where site-specific settings to blacklist URLs are
+    impractical.
+  </p>
+    <h3 id="s-maxage">Setting s-maxage on unoptimized resources</h3>
+    <p class="note"><strong>Note: New feature as of 1.12.34.1</strong>
+    </p>
+    <p>
+      When there is a caching proxy between PageSpeed and the user, resources
+      that haven't been optimized yet shouldn't be stored in the proxy cache for
+      the full cache lifetime because this will prevent PageSpeed from
+      optimizing them.  As of 1.12.34.1, PageSpeed marks unoptimized resources
+      with <span style="white-space:nowrap"><code>Cache-Control:
+      s-maxage=10</code></span>, telling shared caches that they should only
+      hold the unoptimized resource for ten seconds.  Browsers will ignore
+      the <code>s-maxage</code> and will hold the resource for whatever cache
+      lifetime you had originally set.
+    </p>
+    <p>
+      The <code>s-maxage</code> value is configurable:
+      <dl>
+        <dt>Apache:<dd><pre class="prettyprint"
+           >ModPagespeedInPlaceSMaxAgeSec 10</pre>
+        <dt>Nginx:<dd><pre class="prettyprint"
+           >pagespeed InPlaceSMaxAgeSec 10;</pre>
+      </dl>
+      To restore the earlier behavior and not insert <code>s-maxage</code>, set
+      <code>InPlaceSMaxAgeSec</code> to -1.
+    </p>
+    <h3 id="in_place_optimize_for_browser">Doing browser-specific in-place optimization</h3>
+    <p>PageSpeed has a number of optimizations that are browser-specific.  For
+    example, <a href="reference-image-optimize#convert_jpeg_to_webp">WebP
+    conversion</a> is performed only for browsers that can display WebP images.
+    Ordinarily PageSpeed accomplishes this by serving different rewritten URLs
+    to different browsers depending upon their capabilities.  For resources that
+    are rewritten in place, this isn't possible; instead, appropriate headers
+    (such as Vary: Accept and Vary: User-Agent) are added to rewritten resources
+    as necessary.  Enable these browser-specific optimizations as follows:</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters in_place_optimize_for_browser</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters in_place_optimize_for_browser;</pre>
+</dl>
+    <p>By default, when <code>in_place_optimize_for_browser</code> is enabled,
+    appropriate <code>Vary:</code> headers are added to resources that are
+    subject to browser-specific optimization.  CSS files are served with
+    a <code>Vary: User-Agent</code> header.  Photographic images that are
+    candidates for WebP conversion are served with <code>Vary: Accept</code> to
+    browsers that include <code>Accept: image/webp</code> in their headers.
+    Note that while the most recent versions of browsers that display WebP
+    images include this header in image requests, older WebP-capable browsers do
+    not &mdash; as a result, a slightly smaller subset of browsers will receive
+    WebP images than would be the case if the URLs were rewritten.</p>
+
+    <p>Internet Explorer has difficulty caching resources
+    with <code>Vary:</code> headers (they are either not cached or require
+    revalidation on every resource access).  As a result, browser-specific
+    in-place resources are instead marked <code>Cache-Control: private</code>
+    when served to all versions of Internet Explorer.</p>
+
+    <p class="caution">
+      <strong>Caution for users of downstream caches such as
+    Varnish:</strong>  Consult the <a href="downstream-caching">documentation on
+    configuring downstream caches</a> to correctly fragment cache keys based on
+    user agent characteristics; this fragmentation should work equally well
+    for <code>in_place_optimize_for_browser</code>.  The <code>Cache-Control:
+    private</code> header sent to Internet Explorer will cause cache entries to
+    be flushed unconditionally.  This behavior should be disabled as
+    follows:</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedPrivateNotVaryForIE off</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed PrivateNotVaryForIE off;</pre>
+</dl>
+
+    <h3 id="ipro_deadline">Setting the inplace resource rewrite deadline</h2>
+    <p>When InPlaceResourceOptimization is enabled, PageSpeed uses a
+    default deadline of 10ms the when optimizing the resource.  If the
+    optimization cannot be completed in 10ms, then the original
+    resource is served to the client, while the optimization continues
+    in the background.  Once cached, the optimized resource will be
+    served for further requests.  Note that a value less than
+    zero will cause PageSpeed to wait indefinitely.</p>
+    <p>Also note that in-place-optimized resources generally take at
+    least two refreshes to optimize regardless of the deadline, due to
+    the current architecture of the server modules.</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedInPlaceRewriteDeadlineMs deadline_value_in_milliseconds</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed InPlaceRewriteDeadlineMs deadline_value_in_milliseconds;</pre>
+</dl>
+
+  <p>
+      This directive can be used
+      in <a href="configuration#htaccess">location-specific configuration
+      sections</a>.
+  </p>
+<!--
+  <p>
+    Furthermore, in-place resource optimization allows more expansive rewriting
+    with <a href="#uncacheable_optimization">optimize uncacheable resources</a>.
+  </p>
+-->
+  <h3>Considerations</h3>
+  <p>Resources optimized by in-place resource optimization are optimized
+    differently from resources found in HTML, JS, and CSS. First, rewritten
+    pagespeed URLs contain a content hash that enables the optimized data to be
+    cached for a year by browser and proxy caches; in-place resources are not
+    cache extended. Second, in-place resources can't be optimized specially for
+    the context in which they occur on the page: images can't be resized to the
+    size they appear on the page, and multiple resources on a page can’t be
+    combined together. Finally, in-place resources that are eligible for
+    browser-specific optimizations (such as conversion to the WebP image format)
+    will be served with the <code>Vary: User-Agent</code> caching header,
+    reducing caching at intermediate proxies.</p>
+  <h3>Risks</h3>
+  <p>In-place resource optimization will add a new cache entry for every
+    unique URL requested. It will also copy each request into memory once. If
+    you have a large site with many uncacheable resources, this could quickly
+    fill up your cache or cause a lot of expensive string copies.</p>
+  <p>In-place optimization will also add a small delay to every server
+    response, this should not be large and we have not been able to measure any
+    noticeable slow-down, but if most of your resources are uncacheable, you may
+    wish to avoid this cost.</p>
+
+    <!--
+    <h2 id="uncacheable_optimization">Optimizing Uncacheable Resources</h2>
+    <p>
+      By default PageSpeed does not optimize resources that are uncacheable
+      or if Cache-Control header is set to private or no-store.
+      For sites where it's more important to optimize for bandwidth than
+      latency, it is desirable to optimize uncacheable resources.
+      By using the combination of flags shown below it is possible to optimize
+      uncacheable resources without storing them in the cache. This works only
+      when <a href="#ipro">in-place resource optimization</a> is enabled.
+    </p>
+    <p class="warning">
+      Note, that this setting can be very CPU intensive for the sites that have
+      a lot of private/uncacheable resources.
+    </p>
+    <p>
+      The flags which are required to be set are:
+    </p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedRewriteUncacheableResources on
+ModPagespeedInPlaceWaitForOptimized on
+ModPagespeedInPlaceResourceOptimization on</pre>
+</dl>
+    <p>
+      The <code>RewriteUncacheableResources</code> directive
+      can <strong>not</strong> be used
+      in <a href="configuration#htaccess">location-specific configuration
+      sections</a>.
+    </p>
+    -->
+
+    <h2 id="rate_limit_background_fetches">Rate Limit Background Fetches</h2>
+    <p>
+       To avoid overloading the origin server, PageSpeed will limit the number
+       of background fetches it makes on a per-domain basis.  As PageSpeed makes
+       fetches it keeps a count of how many ongoing fetches there are for each
+       domain, and if there are too many then additional fetches will only be
+       allowed through if they're for user-facing requests.  Other fetches
+       (background fetches) will be queued up for completion later.  If the
+       queue gets too large, PageSpeed will give up on those background
+       optimizations, leaving them to be reinitiated in response to a later
+       request.  This feature can be disabled by
+       setting <code>RateLimitBackgroundFetches</code> to <code>off</code>:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedRateLimitBackgroundFetches off</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed RateLimitBackgroundFetches off;</pre>
+</dl>
+    </p>
+    <p>
+       This feature depends on <a href="admin#statistics">shared memory
+       statistics</a>, which are also enabled by default.
+    </p>
+
+    <h2 id="gzip_cache">Configuring HTTPCache Compression for PageSpeed</h2>
+    <p>
+    <p class="note"><strong>Note: HTTPCache Compression is a new feature as of
+      1.10.33.0</strong></p>
+      In order to rewrite resources, PageSpeed must cache them server-side.
+      Until 1.10.33.0, these resources had been stored uncompressed.
+      To reduce disk usage, decrease server latency, support higher compression
+      levels, and increase server throughput, the HTTPCache can automatically
+      <a href="https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/optimize-encoding-and-transfer">gzip</a>
+      compressable resources as they are stored in the cache.
+      To configure cache compression, set <code>HttpCacheCompressionLevel</code>
+      to values between <code>-1</code> and <code>9</code>, with <code>0</code>
+      being off, <code>-1</code> being gzip's default compression, and
+      <code>9</code> being maximum compression. The default value is 9, maximum
+      compression.
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedHttpCacheCompressionLevel 9</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed HttpCacheCompressionLevel 9;</pre>
+</dl>
+    </p>
+
+    <h2 id="nginx_script_variables">Scripting ngx_pagespeed</h2>
+    <p class="note"><strong>Note: New feature as of 1.9.32.1</strong></p>
+    <p class="note"><strong>Note: Extended in 1.12.34.1</strong></p>
+    <p class="note"><strong>Note: Nginx-only</strong></p>
+
+    <p>
+      PageSpeed supports
+      Nginx's <a href="http://nginx.org/en/docs/varindex.html">script
+      variables</a> in some directives.  You can use this to
+      adjust these settings on a per-request basis.
+    </p>
+
+    <p>
+      Script support must be enabled at the top level.  To turn it on for a
+      subset of directives, which is the only method supported in 1.11 and
+      earlier, set:
+<pre class="prettyprint">
+http {
+  pagespeed ProcessScriptVariables on;
+  ...
+}</pre>
+    </p>
+
+    <p>
+      This allows scripts in the following directives:
+    </p>
+
+      <table>
+        <tr><th>Setting<th>Script Support Added
+        <tr><td><a href="domains#LoadFromFileScriptVariables"
+                   >LoadFromFile*</a>
+            <td>1.9.32.1</td>
+        <tr><td><a href="downstream-caching#script-variables"
+                   >DownstreamCachePurgeLocationPrefix</a>
+            <td>1.10.33.0
+        <tr><td><a href="downstream-caching#script-variables"
+                   >DownstreamCachePurgeMethod</a>
+            <td>1.10.33.0
+        <tr><td><a href="downstream-caching#script-variables"
+                   >DownstreamCacheRewrittenPercentageThreshold</a>
+            <td>1.10.33.0
+        <tr><td><a href="https_support#h2_configuration_nginx"
+                   >EnableFilters</a>
+            <td>1.10.33.0
+        <tr><td><a href="https_support#h2_configuration_nginx"
+                   >DisableFilters</a>
+            <td>1.10.33.0
+        <tr><td><a href="https_support#h2_configuration_nginx"
+                   >ShardDomain</a>
+            <td>1.10.33.0
+      </table>
+
+    <p>
+      In version 1.12.34.1 and later, you may instead set:
+      <pre class="prettyprint">
+http {
+  pagespeed ProcessScriptVariables all;
+  ...
+}</pre>
+    </p>
+
+    <p>
+      This will allow scripts in all directives, not just the seven specified
+      above.
+    </p>
+
+    <p>
+      Because Nginx uses the <code>$</code>-sign to indicate script variables,
+      when you turn on <code>ProcessScriptVariables</code> you need to make a
+      small change to any script-supporting commands that are
+      using <code>$</code>.  For example, if you had:
+<pre class="prettyprint">
+pagespeed LoadFromFileRuleMatch Disallow \.ssp.css$;</pre>
+      Then you would need to replace <code>$</code>
+      with <code>$ps_dollar</code>:
+<pre class="prettyprint">
+pagespeed LoadFromFileRuleMatch Disallow \.ssp.css$ps_dollar;</pre>
+    </p>
+    <p>
+      If you have a server that you don't want the scripted configuration to
+      apply, specify <code>ClearInheritedScripts</code>.  For example:
+    </p>
+<pre class="prettyprint">
+http {
+  pagespeed ProcessScriptVariables on;
+  pagespeed LoadFromFile "http://$host/static" "$document_root/static";
+  ...
+  server {
+    server_name example.com;
+    root /var/www/ec;
+
+    # PageSpeed will load example.com/static/foo from /var/www/ec/static/foo
+    # directly, without going through the rest of nginx.
+  }
+  server {
+    server_name example.org;
+    root /var/www/eo;
+
+    pagespeed ClearInheritedScripts;
+
+    # This server block won't see that LoadFromFile config at all, so PageSpeed
+    # will load example.org/static/foo by asking nginx for /static/foo over
+    # http.
+  }
+}</pre>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

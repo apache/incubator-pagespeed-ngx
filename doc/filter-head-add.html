@@ -1,0 +1,79 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Add Head</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Add Head</h1>
+
+
+
+<h2>Configuration</h2>
+<p>
+The 'Add Head' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters add_head</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters add_head;</pre>
+</dl>
+<p>
+in the configuration file, but it is also enabled automatically by several
+other filters, including combine_heads, move_css_to_head, and
+add_instrumentation.
+</p>
+
+<h2>Description</h2>
+<p>
+The 'Add Head' filter is very simple: it adds a head to the document if it
+encounters a &lt;body&gt; tag before finding a &lt;head&gt; tag.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<h2>Note</h2>
+<p>
+This filter exists primarily to ensure that other filters have a place
+to insert new tags that needs to be in the head, or that trigger on
+the closing-tag for a head to perform some other action.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered minimal risk.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

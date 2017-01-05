@@ -1,0 +1,90 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Remove Quotes</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Remove Quotes</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Remove Quotes' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters remove_quotes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters remove_quotes;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+The quote removal filter eliminates unnecessary quotation marks
+(either <code>""</code> or <code>''</code>) from HTML attributes.  While
+required by the various HTML specifications, browsers permit their omission when
+the value of an attribute is composed of a certain subset of characters
+(alphanumerics and some punctuation characters).
+</p>
+<p>
+Quote removal produces a modest savings in byte count on most pages.  It may
+also benefit gzip compression by canonicalizing the textual representation of
+name=value pairs.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;img src="BikeCrashIcn.png" align='left' alt="" border="0" width='70' height='30' &gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;img src=BikeCrashIcn.png align=left alt="" border=0 width=70 height=30 &gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/remove_quotes.html?ModPagespeed=on&amp;ModPagespeedFilters=remove_quotes">example</a>.
+</p>
+
+<h2>Requirements</h2>
+<p>
+Only previously-quoted attributes are subject to quote removal.  Quote
+removal occurs after most rewriting passes, so that any alterations to
+attribute values (such as rewritten URLs) will be correctly accounted
+for.  This filter will act as a pass-through when XHTML is detected
+via <code>doctype</code> or <code>content-type</code>.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is low risk.  Space savings from the filter may be small (so the
+cost of running the filter may outweigh its benefits in certain settings).
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

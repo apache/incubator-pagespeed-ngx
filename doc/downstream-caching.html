@@ -1,0 +1,502 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Configuring Downstream Caches</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Configuring Downstream Caches</h1>
+<style>
+.diff-del { color: darkred }
+.diff-add { color: green }
+</style>
+
+<h2 id="standard">Standard Configuration</h2>
+   <p class="warning"><strong>Note: This feature is currently experimental.
+     Options and configuration described here are subject to change in future
+     releases. Please subscribe to the <a href="mailing-lists#announcements"
+     >announcements mailing list</a> to keep yourself informed of updates to
+     this feature.</strong></p>
+
+   <p>
+     By default PageSpeed serves HTML files with <code>Cache-Control: no-cache,
+     max-age=0</code> so that changes to the HTML and its resources are sent
+     fresh on each request.  The HTML can be cached, however, if you:
+     <ul>
+       <li> Set up a <code>PURGE</code> handler in your cache.
+       <li> Tell PageSpeed the url for the <code>PURGE</code> handler.
+       <li> Have the cache set the <code>PS-CapabilityList</code> header
+            so PageSpeed will emit HTML that can be sent to any browser.
+       <li> Have the cache occasionally pass through requests to the origin with
+            the <code>PS-ShouldBeacon</code> header set.
+     </ul>
+   </p>
+
+   <p>
+     For example, if you're running a cache on port 80 that reverse proxies to
+     your site on port 8080, then you'd need to tell PageSpeed to send
+     its <code>PURGE</code> requests to port 80:
+   </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedDownstreamCachePurgeLocationPrefix http://localhost:80</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed DownstreamCachePurgeLocationPrefix http://localhost:80;</pre>
+</dl>
+   <p>
+     You also need to give PageSpeed a key so it can allow the cache to request
+     rebeaconing without allowing external entities to do so:
+   </p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedDownstreamCacheRebeaconingKey "&lt;your-secret-key&gt;"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed DownstreamCacheRebeaconingKey "&lt;your-secret-key&gt;";</pre>
+</dl>
+   <p>
+     These are the only changes you need to make to the PageSpeed configuration
+     file, but before you restart you also need to make some changes to your
+     cache configuration.  These vary by cache; below are configurations for
+     Varnish 3.x, Varnish 4.x, and Nginx's proxy_cache:
+   </p>
+<dl>
+  <dt>Varnish 3.x:<dd><pre class="prettyprint">
+acl purge {
+  # If PageSpeed isn't running on the same server as your cache, list the IP(s)
+  # of the PageSpeed machine(s) here.
+  "127.0.0.1";
+}
+sub vcl_recv {
+  # Tell PageSpeed not to use optimizations specific to this request.
+  set req.http.PS-CapabilityList = "fully general optimizations only";
+
+  # Don't allow external entities to force beaconing.
+  remove req.http.PS-ShouldBeacon;
+
+  # Authenticate the purge request by IP.
+  if (req.request == "PURGE") {
+    if (!client.ip ~ purge) {
+      error 405 "Not allowed.";
+    }
+    return (lookup);
+  }
+}
+
+# Mark HTML as uncacheable.  If we can't send them purge requests they can't
+# cache our html.
+sub vcl_fetch {
+   if (beresp.http.Content-Type ~ "text/html") {
+     remove beresp.http.Cache-Control;
+     set beresp.http.Cache-Control = "no-cache, max-age=0";
+   }
+   return (deliver);
+}
+
+sub vcl_hit {
+  # Make purging happen in response to a PURGE request.  This happens
+  # automatically in Varnish 4.x so we don't need it there.
+  if (req.request == "PURGE") {
+    purge;
+    error 200 "Purged.";
+  }
+
+  # 5% of the time ignore that we got a cache hit and send the request to the
+  # backend anyway for instrumentation.
+  if (std.random(0, 100) < 5) {
+    set req.http.PS-ShouldBeacon = "&lt;your-secret-key&gt;";
+    return (pass);
+  }
+}
+
+sub vcl_miss {
+  # Make purging happen in response to a PURGE request.  This happens
+  # automatically in Varnish 4.x so we don't need it there.
+  if (req.request == "PURGE") {
+    purge;
+    error 200 "Purged.";
+  }
+
+  # Instrument 25% of cache misses.
+  if (std.random(0, 100) < 25) {
+    set req.http.PS-ShouldBeacon = "&lt;your-secret-key&gt;";
+    return (pass);
+  }
+}</pre>
+  <dt>Varnish 4.x:<dd><pre class="prettyprint">
+acl purge {
+  # If PageSpeed isn't running on the same server as your cache, list the IP(s)
+  # of the PageSpeed machine(s) here.
+  "127.0.0.1";
+}
+
+sub vcl_recv {
+  # Tell PageSpeed not to use optimizations specific to this request.
+  set req.http.PS-CapabilityList = "fully general optimizations only";
+
+  # Don't allow external entities to force beaconing.
+  unset req.http.PS-ShouldBeacon;
+
+  # Authenticate the purge request by IP.
+  if (req.method == "PURGE") {
+    if (!client.ip ~ purge) {
+      return (synth(405,"Not allowed."));
+    }
+    return (purge);
+  }
+}
+
+# Mark HTML as uncacheable.  If we can't send them purge requests they can't
+# cache our html.
+sub vcl_backend_response {
+   if (beresp.http.Content-Type ~ "text/html") {
+     unset beresp.http.Cache-Control;
+     set beresp.http.Cache-Control = "no-cache, max-age=0";
+   }
+   return (deliver);
+}
+
+sub vcl_hit {
+  # 5% of the time ignore that we got a cache hit and send the request to the
+  # backend anyway for instrumentation.
+  if (std.random(0, 100) < 5) {
+    set req.http.PS-ShouldBeacon = "&lt;your-secret-key&gt;";
+    return (pass);
+  }
+}
+sub vcl_miss {
+  # Instrument 25% of cache misses.
+  if (std.random(0, 100) < 25) {
+    set req.http.PS-ShouldBeacon = "&lt;your-secret-key&gt;";
+    return (pass);
+  }
+}</pre>
+  <dt>Nginx proxy_cache:<dd><pre class="prettyprint">
+http {
+  # Define a mapping used to mark HTML as uncacheable.
+  map $upstream_http_content_type $new_cache_control_header_val {
+    default $upstream_http_cache_control;
+    "~*text/html" "no-cache, max-age=0";
+  }
+
+  server {
+    # PageSpeed's beacon dependent filters need the cache to let some requests
+    # through to the backend.  This code below depends on the <a href="http://wiki.nginx.org/HttpSetMiscModule">ngx_set_misc</a>
+    # module and randomly passes 5% of traffic to the backend for rebeaconing.
+    set $should_beacon_header_val "";
+    set_random $rand 0 100;
+    if ($rand ~* "^[0-4]$") {
+      set $should_beacon_header_val "&lt;your-secret-key&gt;";
+      set $bypass_cache 1;
+    }
+
+    location / {
+      # existing proxy_pass
+      # existing proxy_cache
+      # existing proxy_cache_key
+
+      # What servers should we accept PURGE requests from?  If PageSpeed isn't
+      # running on the same server as your cache, list the IP(s) of the
+      # PageSpeed machine(s) here.
+      #
+      # This requires rebuilding with the ngx_cache_purge module:
+      #   https://github.com/FRiCKLE/ngx_cache_purge
+      proxy_cache_purge PURGE from 127.0.0.1;
+
+      # Mark HTML as uncacheable.  If we can't send them purge requests they
+      # can't cache our html.  Uses the map defined above.
+      proxy_hide_header Cache-Control;
+      add_header Cache-Control $new_cache_control_header_val;
+
+      # Tell PageSpeed not to use optimizations specific to this request.
+      proxy_set_header PS-CapabilityList "fully general optimizations only";
+
+      # See discussion of rebeaconing above.
+      proxy_cache_bypass $bypass_cache;
+      proxy_hide_header PS-ShouldBeacon;
+      proxy_set_header PS-ShouldBeacon $should_beacon_header_val;
+    }
+  }
+}</pre>
+</dl>
+
+<p>
+  When running with downstream caching all resources referenced from the HTML
+  will be cache-extended as usual, so if you have resources that need to be
+  cached for a short time then they can be stale.  If so,
+  either <code>Disallow</code> those resources, so PageSpeed doesn't inline or
+  cache-extend them, or decrease the cache lifetime on your HTML.
+</p>
+
+<h2 id="additional">Additional Options</h2>
+
+The configuration above should be a good fit for most sites, but PageSpeed's
+downstream caching is highly configurable with many options that allow you to
+tweak it for your particular setup.
+
+<h3 id="beaconing">Beaconing</h3>
+<p>
+  Several filters such as
+  <a href="reference-image-optimize#inline_images">inline_images</a>,
+  <a href="filter-inline-preview-images">inline_preview_images</a>,
+  <a href="filter-lazyload-images">lazyload_images</a> and
+  <a href="filter-prioritize-critical-css">prioritize_critical_css</a>
+  depend extensively on client beacons to determine critical images and
+  CSS. When such filters are enabled, pages periodically have beaconing
+  JavaScript inserted as part of the rewriting process.
+  The <a href="#standard">standard configuration</a> passes through 5% of cache
+  hits to the backend with a <code>PS-ShouldBeacon</code> header set, so that
+  these filters can continue to receive the beacons they need.
+</p>
+<p>
+  If you have a high traffic site, 5% is probably a larger share than you need
+  for PageSpeed to receive sufficient beacons.  In that case you can decrease
+  the percentage of traffic to pass through.  For example, here's how you'd
+  decrease it to 2%:
+</p>
+<dl>
+  <dt>Varnish 3.x or 4.x:<dd><pre>
+<span class=diff-del>-  if (std.random(0, 100) < 5) {</span>
+<span class=diff-add>+  if (std.random(0, 100) < 2) {</span></pre>
+  <dt>Nginx proxy_cache<dd><pre>
+<span class=diff-del>-  if ($rand ~* "^[0-4]$") {</span>
+<span class=diff-add>+  if ($rand ~* "^[01]$") {</span></pre>
+</dl>
+<p>
+  Alternatively, you may be willing to give up the benefit of the
+  beaconing-dependent filters in exchange for never intentionally bypassing the
+  cache.  If so, you should <a href="config_filters#beacons">turn off
+  beaconing</a> and beacon-dependent filters in PageSpeed:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+>ModPagespeedCriticalImagesBeaconEnabled false
+ModPagespeedDisableFilters prioritize_critical_css</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+>pagespeed CriticalImagesBeaconEnabled false;
+pagespeed DisableFilters prioritize_critical_css;</pre>
+</dl>
+<p>
+  Additionally you should remove the proxy config that handles beaconing:
+</p>
+<dl>
+  <dt>Varnish 3.x:<dd><pre><span class="diff-del"
+>-  remove req.http.PS-ShouldBeacon;
+...
+-  if (std.random(0, 100) < 5) {
+-    set req.http.PS-ShouldBeacon = "&lt;your-secret-key&gt;";
+-    return (pass);
+-  }
+...
+-  if (std.random(0, 100) < 25) {
+-    set req.http.PS-ShouldBeacon = "&lt;your-secret-key&gt;";
+-    return (pass);
+-  }</span></pre>
+  <dt>Varnish 4.x:<dd><pre><span class="diff-del"
+>-  unset req.http.PS-ShouldBeacon;
+...
+-  sub vcl_hit {
+-    if (std.random(0, 100) < 5) {
+-      set req.http.PS-ShouldBeacon = "&lt;your-secret-key&gt;";
+-      return (pass);
+-    }
+-  }
+-  sub vcl_miss {
+-    if (std.random(0, 100) < 25) {
+-      set req.http.PS-ShouldBeacon = "&lt;your-secret-key&gt;";
+-      return (pass);
+-    }
+-  }</span></pre>
+  <dt>Nginx proxy_cache<dd><pre><span class="diff-del"
+>-  set $should_beacon_header_val "";
+-  set_random $rand 0 100;
+-  if ($rand ~* "^[0-4]$") {
+-    set $should_beacon_header_val "&lt;your-secret-key&gt;";
+-    set $bypass_cache 1;
+-  }
+...
+-  proxy_cache_bypass $bypass_cache;
+-  proxy_hide_header PS-ShouldBeacon;
+-  proxy_set_header PS-ShouldBeacon $should_beacon_header_val;</span></pre>
+</dl>
+
+
+<h3 id="ps-resource">PageSpeed Resources</h3>
+<p>
+  Because PageSpeed already caches its optimized resources, you may want to
+  exclude them caching by the downstream cache.  If so, you can set:
+
+<dl>
+  <dt>Varnish 3.x and 4.x:<dd><pre><span class="diff-add"
+>+  if (req.url ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+") {
++    return (pass);
++  }</span></pre>
+  <dt>Nginx proxy_cache<dd><pre><span class="diff-add"
+>+  if ($uri ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+") {
++    set $bypass_cache "1";
++  }</span></pre>
+</dl>
+
+<p>
+  If you have enabled <a href="restricting_urls#url_signatures">URL signing</a>,
+  change the <code>10</code> in the regexp to <code>20</code> to account for the
+  additional characters in the hash.
+</p>
+
+<h3 id="ps-capabilitylist">PS-CapabilityList</h3>
+
+<p>
+  Typically PageSpeed will produce different HTML for different browsers.  For
+  example, when responding to a request that has <code>Accept:
+  image/webp</code>, PageSpeed knows the requesting browser supports WebP and so
+  it can send these images, while if the <code>Accept</code> header doesn't
+  mention WebP then it will send JPEG or PNG.  To suppress this behavior,
+  the <a href="#standard">standard configuration</a> above sets a header:
+</p>
+<pre>
+  PS-CapabilityList: fully general optimizations only
+</pre>
+<p>
+  This header can also be used to tell PageSpeed to make specific optimizations.
+  There are five capabilities PageSpeed can take advantage of that aren't
+  supported in all browsers, and it gives them each a code:
+</p>
+<table>
+  <tr><th>Capability<th>Code
+  <tr><td>Inline Images<td><code>ii</code>
+  <tr><td>Lazyload Images<td><code>ll</code>
+  <tr><td>WebP Images<td><code>jw</code>
+  <tr><td>Lossless WebP Images<td><code>ws</code>
+  <tr><td>Animated WebP Images<td><code>wa</code>
+  <tr><td>Defer Javascript<td><code>dj</code>
+</table>
+<p>
+  For example, you could include whether the <code>Accept</code> header
+  includes <code>image/webp</code> in your cache key, and then for the
+  fraction of traffic that claimed webp support send:
+</p>
+<pre>
+  PS-CapabilityList: jw:
+</pre>
+<p>
+  Every page would go through to your origin twice and be cached twice, once
+  processed with WebP support and once without.
+</p>
+<p>
+  You can combine multiple capabilities together with a comma.  For example, if
+  you decided to make a cache fragment for Chrome 30+, which supports all of
+  these, for that fragment you would send:
+</p>
+<pre>
+  PS-CapabilityList: ll,ii,dj,jw,ws:
+</pre>
+<p>
+  For Firefox 4+, which supports all of these but WebP, you would send:
+</p>
+<pre>
+  PS-CapabilityList: ll,ii,dj:
+</pre>
+<p>
+  To use this header properly, however, you have to know which capabilities are
+  supported by which browsers in the version of PageSpeed you're using and craft
+  regular expressions to match exactly those ones.  This is very difficult to do
+  in general because it involves duplicating the code in
+  <a href="https://github.com/pagespeed/mod_pagespeed/blob/latest-stable/pagespeed/kernel/http/user_agent_matcher.cc"><code>user_agent_matcher.cc</code></a>
+  as regexes, but a simple division is:
+  <ul>
+    <li>Chrome 32+: <code>ll,ii,dj,jw,wa,ws</code>
+    <li>Firefox 4+, Safari, IE10 (but not IE11): <code>ll,ii,dj</code>
+    <li>Everything else: <code>fully general optimizations only</code>
+  </ul>
+</p>
+
+<h3 id="purge-get">Purging with GET</h3>
+
+<p>
+  If you're integrating PageSpeed with a cache that doesn't
+  support <code>PURGE</code> requests but does support purging in response to a
+  prefixed <code>GET</code> request, PageSpeed can support that.  You would
+  configure your cache to treat a <code>GET</code> to
+  <code>/purge/foo/bar</code> as a request to purge <code>/foo/bar</code> and
+  configure PageSpeed as:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedDownstreamCachePurgeLocationPrefix http://CACHE-HOST:PORT/purge
+ModPagespeedDownstreamCachePurgeMethod GET</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed DownstreamCachePurgeLocationPrefix http://CACHE-HOST:PORT/purge;
+pagespeed DownstreamCachePurgeMethod GET;</pre>
+</dl>
+
+<h3 id="purge-threshold">Purge Threshold</h3>
+<p>
+  Whenever PageSpeed serves an HTML response that is not fully optimized it
+  continues rewriting in the background.  When it finishes, if the HTML it
+  served was less than 95% optimized, it sends a purge request to the downstream
+  cache.  The next request to come in will bypass the cache and come back to
+  PageSpeed where it can serve out the now more highly optimized page.  If you
+  want to change what point PageSpeed considers the page done and stops
+  optimizing, you can set a different value for this threshold.  For example, to
+  lower it to 80%, so that PageSpeed is satisfied with a page that is only 80%
+  optimized, you would set:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedDownstreamCacheRewrittenPercentageThreshold 80</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed DownstreamCacheRewrittenPercentageThreshold 80;</pre>
+</dl>
+
+<h3 id="script-variables">Script Variables</h3>
+<p class="note"><strong>Note: Nginx-only</strong></p>
+<p class="note"><strong>Note: New feature as of 1.10.33.0</strong></p>
+
+<p>
+  In ngx_pagespeed <code>DownstreamCachePurgeLocationPrefix</code>,
+  <code>DownstreamCachePurgeMethod</code>, and
+  <code>DownstreamCacheRewrittenPercentageThreshold</code> support script
+  variables, so it's possible to set them on a per-request basis.  Turn this on
+  with:
+<pre class="prettyprint">
+http {
+  pagespeed ProcessScriptVariables on;
+  ...
+}</pre>
+  You can then use script variables in arguments for these commands:
+<pre class="prettyprint">
+  pagespeed DownstreamCachePurgeLocationPrefix "$purge_location";
+  pagespeed DownstreamCachePurgeMethod "$cache_purge_method";
+  pagespeed DownstreamCacheRewrittenPercentageThreshold "$rewrite_threshold";</pre>
+</p>
+<p>
+  For more details on script variables, including how to handle dollar signs,
+  see <a href="system#nginx_script_variables">Script Variable Support</a>.
+</p>
+<h2 id="implementation">Implementation Details</h2>
+<p>
+  To support downstream caching PageSpeed sends a purge request to the caching
+  layer whenever it identifies an opportunity for more rewriting to be done on
+  content that was just served. Such opportunities could arise because of, say,
+  the resources now becoming available in the PageSpeed cache or an image
+  compression operation completing. The cache purge forces the next request for
+  the HTML file to come all the way to the backend PageSpeed server and obtain
+  better rewritten content, which is then stored in the cache. This interaction
+  between the PageSpeed server and the downstream caching layer is depicted in
+  the diagram given below.
+</p>
+  <img src="images/downstream_caching.png" >
+<p>
+  In the interaction depicted above, note that the partially optimized HTML will
+  be served from the cache until a purge request gets sent by the PageSpeed
+  server.  It is recommended to set up PageSpeed and the downstream caching
+  layer servers on a one to one basis so that the purges can be sent to the
+  correct downstream server.
+</p>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

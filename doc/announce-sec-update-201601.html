@@ -1,0 +1,104 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>January 2016 PageSpeed Security Update.</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>January 2016 PageSpeed Security Update.</h1>
+<h2 id="overview">Overview</h2>
+<p>All released versions of PageSpeed are subject to HTTPS-fetching
+vulnerability, CVE-2016-2092.  This permits a hostile third party who can
+man-in-the-middle the connection between PageSpeed and an HTTPS server to
+substitute arbitrary content in responses.  This could allow the attacker to
+execute JavaScript in users' browsers in context of the domain running
+PageSpeed, which could permit theft of users' cookies or data on the site.
+</p>
+
+<p>To be notified of further security updates subscribe to the
+<a href="mailing-lists#announcements">announcements mailing list</a>.
+
+<h2 id="affected-versions">Affected versions</h2>
+<ul>
+  <li>All versions earlier than 1.9.</li>
+  <li>Versions 1.9.32.0 &ndash; 1.9.33.12 (fixed in 1.9.32.13).</li>
+  <li>Versions 1.10.33.0 &ndash; 1.10.33.3 (fixed in 1.10.33.4).</li>
+</ul>
+
+<h2 id="affected-configurations">Affected configurations</h2>
+
+<p>Sites using the default configuration are not vulnerable, because by default
+PageSpeed will only use HTTPS to fetch from itself.  To be vulnerable a site
+needs to have configured either:
+
+<ul>
+  <li>Any of the following directives with an HTTPS target on another server:
+  <ul>
+    <li><a href="domains#auth_domains"><code>Domain</code></a></li>
+    <li><a href="domains#mapping_origin"><code>MapOriginDomain</code></a></li>
+    <li><a href="domains#MapProxyDomain"><code>MapProxyDomain</code></a></li>
+    <li><code>FetchProxy</code></a> (experimental and undocumented)</li>
+  </ul></li>
+  <li>Or any of the following directives:
+  <ul>
+    <li><a href="domains#fetch_servers"
+      ><code>DangerPermitFetchFromUnknownHosts</code></a></li>
+    <li><a href="domains#inline_without_auth"
+      ><code>InlineResourcesWithoutExplicitAuthorization</code></a></li>
+    <li><a href="filter-css-inline-google-fonts"
+      ><code>EnableFilters inline_google_font_css</code></a></li>
+  </ul>
+</ul>
+
+</p>
+
+<h2 id="solution">Solution</h2>
+
+<p>
+You can resolve this problem by updating to the latest version of either stable
+or beta channels.
+</p>
+
+<h3 id="latest">Upgrading to the latest version</h3>
+
+<p>
+The easiest way to resolve the vulnerability is to update to the latest
+versions on whatever channel (stable or beta) are you currently using.
+</p>
+
+<p>If you installed the .rpm package, you can update with:
+<pre>
+sudo yum update
+sudo /etc/init.d/httpd restart
+</pre>
+
+<p>If you installed the .deb package, you can update with:
+<pre>
+sudo apt-get update
+sudo apt-get upgrade
+sudo /etc/init.d/apache2 restart
+</pre>
+
+It is also possible to <a href="https://developers.google.com/speed/pagespeed/module/build_mod_pagespeed_from_source">
+build from source. </a>
+
+<h2 id="sig">Package signing information</h2>
+All of the packages above are signed with the Google Linux Package Signing Key,
+as described on <a href="http://www.google.com/linuxrepositories/">
+http://www.google.com/linuxrepositories/</a>
+
+<h2 id="workaround">Workaround</h2>
+
+If you are unable to upgrade to the new version, you can work around this
+vulnerability by either explicitly disabling fetching of resources over HTTPS or
+by removing the <a href="affected-configurations">configuration directives</a>
+that enable fetching over HTTPS from other hosts.
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

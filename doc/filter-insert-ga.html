@@ -1,0 +1,62 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Insert Google Analytics</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Insert Google Analytics</h1>
+
+
+
+<h2>Configuration</h2>
+<p>
+The 'Insert Google Analytics' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedEnableFilters insert_ga
+ModPagespeedAnalyticsID &lt;Analytics ID&gt;</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed EnableFilters insert_ga;
+pagespeed AnalyticsID &lt;Analytics ID&gt;;</pre>
+</dl>
+<p>
+in the configuration file.  As of 1.10.33.0 the default snippet is
+now <code>analytics.js</code>.  To insert <code>ga.js</code> instead, set:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedUseAnalyticsJs false</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed UseAnalyticsJs false;</pre>
+</dl>
+</p>
+
+<h2>Description</h2>
+<p>
+The 'Insert Google Analytics' filter adds the basic Google Analytics javascript
+snippet to each HTML page.  If the page already has a Google Analytics snippet
+inside <code>&lt;head&gt;</code> with the specified ID, then no additional
+snippet will be added.  If another Google Analytics snippet is on the page with
+a <em>different</em> ID, then an additional snippet will be added with the ID
+specified in with <code>AnalyticsID</code>.  In order to avoid any
+strange Google Analytics reporting, make sure that the ID specified in the
+configuration file matches the one used on your site.
+</p>
+<p>
+This filter does <em>not</em> require
+the <code>make_google_analytics_async</code> filter.  The Google Analytics
+snippets inserted by <code>insert_ga</code> are already asynchronous.
+</p>
+<p>
+See <a href="http://modpagespeed.com/insert_ga.html">this example</a> of this
+filter in action.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

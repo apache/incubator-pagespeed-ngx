@@ -1,0 +1,135 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Defer JavaScript</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Defer JavaScript</h1>
+  <h2>Configuration</h2>
+  <p>
+  The 'Defer JavaScript' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters defer_javascript</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters defer_javascript;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p class="warning">
+<strong>Warning:</strong> Defering JavaScript can often dramatically improve the
+rendering speed of a site, but careful evaluation is required to ensure the
+site continues to operate properly.  The limitations are described below.
+</p>
+
+</p>
+<p>
+defer_javascript tries to defer JavaScript execution until page load.
+It defers this by changing the <code>type</code> and <code>src</code>
+attributes of <code>&lt;script&gt;</code> elements on the HTML page to
+<code>data-pagespeed-orig-type</code> and <code>data-pagespeed-orig-src</code>
+respectively.  It also adds a new <code>type</code> attribute whose value is set
+to <code>text/psajs</code>.  A <code>window.onload</code> handler is added to
+the HTML, which executes all the deferred scripts.
+</p>
+<p>
+defer_javascript doesn't defer a <code>script</code> tag if it has
+the <code>data-pagespeed-no-defer</code> attribute (preferred)
+or <code>pagespeed_no_defer</code> attribute (deprecated). This is useful when
+a <code>script</code> tag needs to be executed while loading the page.  For
+example, a <code>script</code> tag may be updating the main content dynamically
+as a slideshow of images in the visible content of the page.  Usage:
+<pre class="prettyprint">
+&lt;script data-pagespeed-no-defer&gt;...&lt;/script&gt;
+</pre>
+</p>
+
+<h3>Example</h3>
+<p>
+The effect of this filter can be observed on modpagespeed.com
+<a href="http://www.modpagespeed.com/defer_javascript.html?ModPagespeed=off"
+>before</a>
+and
+<a href="http://www.modpagespeed.com/defer_javascript.html?ModPagespeed=on&ModPagespeedFilters=defer_javascript">after</a>
+rewriting.
+</p>
+
+<h2>Limitations</h2>
+<p>
+Parent variables accessed from an <code>iframe</code> may be
+<code>undefined</code> when defer_javascript is used.
+</p>
+
+<p>
+All JavaScript code is downloaded and executed serially, whereas without
+defer_javascript the browser tries to download JavaScripts in
+parallel as much as possible.
+</p>
+
+<p>
+Calls to <code>document.write</code> fail in cases where they span multiple
+<code>script</code> tags.
+An example is:
+<pre class="prettyprint">
+&lt;script&gt;document.write('&lt;div&gt;')&lt;/script&gt;
+&lt;span&gt;&lt;/span&gt;
+&lt;script&gt;document.write('&lt;/div&gt;')&lt;/script&gt;
+</pre>
+Without defer_javascript the <code>span</code> would have been
+created inside the <code>div</code>.  With defer_javascript
+the <code>span</code> would have been created outside and after the
+<code>div</code>.
+</p>
+<p>
+Any <code>document.body.appendChild</code> calls will always get appended to
+the bottom of the page.
+</p>
+<h2>Requirements</h2>
+<p>
+defer_javascript is supported for browser versions of chrome 15+,
+safari5+, Firefox3.6+ and IE9+.  For other user agents the filter is turned
+off automatically.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered high risk. JavaScript whose logic depends on the state
+of the DOM may behave differently when defer_javascript is turned
+on.
+</p>
+<p>
+If JavaScript is written to expect user actions before the page is loaded
+completely, such scripts will behave differently with
+defer_javascript. For example, if an <code>alert</code> is placed
+at the start of the page, then with defer_javascript the
+<code>alert</code> would appear only after the page is loaded completely.
+</p>
+<p>
+User actions that trigger events such as <code>onclick</code>
+<code>onkeypress</code> will not be handled until the page is rendered
+completely.
+</p>
+<p>
+Content in the page will reflow if visible elements are inserted in the page by
+JavaScript.
+</p>
+<p>
+The <code>data-pagespeed-no-defer</code> attribute can change the order of script
+execution because those scripts using it are executed inline while those not
+using it are deferred.  This can cause errors if these scripts depend on each other
+in any way.
+</p>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>
+

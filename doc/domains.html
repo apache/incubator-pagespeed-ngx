@@ -1,0 +1,1007 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageSpeed Authorizing and Mapping Domains</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>PageSpeed Authorizing and Mapping Domains</h1>
+<h2 id="auth_domains">Authorizing domains</h2>
+<p>
+In addition to optimizing HTML resources, PageSpeed restricts itself to
+optimizing resources (JavaScript, CSS, images) that are served from domains,
+with optional paths, that must be explicitly listed in the configuration file.
+For example:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedDomain http://example.com
+ModPagespeedDomain cdn.example.com
+ModPagespeedDomain http://styles.example.com/css
+ModPagespeedDomain *.example.org</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed Domain http://example.com;
+pagespeed Domain cdn.example.com;
+pagespeed Domain http://styles.example.com/css;
+pagespeed Domain *.example.org;</pre>
+</dl>
+
+<p>
+PageSpeed will rewrite resources found from these explicitly
+listed domains, although in the case of <code>styles.example.com</code>
+only resources under the <code>css</code> directory will be rewritten.
+Additionally, it will rewrite resources that are
+served from the same domain as the HTML file, or are specified as
+a path relative to the HTML.  When resources are rewritten, their
+domain and path are not changed.  However, the leaf name is changed to
+encode rewriting information that can be used to identify and serve
+the optimized resource.
+</p>
+
+<p>The leading "http://" is optional; bare hostnames will be interpreted
+as referring to HTTP. Wildcards can be used in the domain.</p>
+
+<p>
+These directives can be used
+in <a href="configuration#htaccess">location-specific configuration
+sections</a>.
+</p>
+
+
+<h2 id="mapping_origin">Mapping origin domains</h2>
+
+<p>In order to improve the performance of web pages, PageSpeed
+must examine and modify the content of resources referenced on those
+pages.  To do that, it must fetch those resources using HTTP, using
+the URL reference specified on the HTML page.</p>
+
+<p>In some cases, the URL specified in the HTML file is not the best URL to use
+to fetch the resource. Scenarios where this is a concern include:</p>
+<ol>
+  <li>If the server is behind a load balancer, and it's more efficient to
+    reference the server directly by its IP address, or as 'localhost'.</li>
+  <li>The server has a special DNS configuration</li>
+  <li>The server is behind a firewall preventing outbound connections</li>
+  <li>The server is running in a CDN or proxy, and must go back to the
+    origin server for the resources</li>
+  <li>The server needs to service https requests</li>
+</ol>
+
+<p>In these situations the remedy is to map the origin domain:</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedMapOriginDomain origin_to_fetch_from origin_specified_in_html [host_header]</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed MapOriginDomain origin_to_fetch_from origin_specified_in_html [host_header];</pre>
+</dl>
+
+<p>Wildcards can also be used in the <code>origin_specified_in_html</code>, e.g.
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMapOriginDomain localhost *.example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MapOriginDomain localhost *.example.com;</pre>
+</dl>
+
+<p>The <code>origin_to_fetch_from</code> can include a path after the domain
+name, e.g.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMapOriginDomain localhost/example *.example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MapOriginDomain localhost/example *.example.com;</pre>
+</dl>
+
+<p>When a path is specified, the source domain is mapped to the destination
+domain and the source path is mapped to the concatenation of the path from
+<code>origin_to_fetch_from</code> and the source path. For example, given the
+above mapping, <code>http://www.example.com/index.html</code> will be mapped
+to <code>http://localhost/example/index.html</code>.</p>
+
+<p>The origin_specified_in_html can specify https but the origin_to_fetch_from
+can only specify http, e.g.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMapOriginDomain http://localhost https://www.example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MapOriginDomain http://localhost https://www.example.com;</pre>
+</dl>
+
+<p>This directive lets the server accept https requests for
+<code>www.example.com</code> without requiring a SSL certificate to fetch
+resources - in fact, this is the only way PageSpeed can service https requests
+as currently it cannot use https to fetch resources. For example, given the
+above mapping, and assuming the server is configured for https support,
+PageSpeed will fetch and optimize resources accessed using
+<code>https://www.example.com</code>, fetching the resources from
+<code>http://localhost</code>, which can be the same server process or a
+different server process.
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedMapOriginDomain http://localhost https://www.example.com
+ModPagespeedShardDomain https://www.example.com \
+                        https://example1.cdn.com,https://example2.cdn.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed MapOriginDomain http://localhost https://www.example.com;
+pagespeed ShardDomain https://www.example.com
+                      https://example1.cdn.com,https://example2.cdn.com;</pre>
+</dl>
+
+<p>In this example the https origin domain is mapped to <code>localhost</code>
+<em>and</em> <a href="domains#shard">sharding</a> is used to parallelize
+downloads across hostnames. Note that the shards also specify https.</p>
+
+<p>By specifying a source domain in this directive, you are authorizing
+PageSpeed to rewrite resources found in that domain.  For example, in the
+above directives, '*.example.com' gets authorized for rewrites from HTML files,
+but 'localhost' does not.  See <a href="#auth_domains"><code
+>Domain</code></a>.</p>
+
+<p>When PageSpeed fetches resources from a mapped origin domain, it
+specifies the source domain in the <code>Host:</code> header in the
+request.  You can override the <code>Host:</code> header value with the
+optional third parameter <code>host_header</code>.  See
+<a href="#shared_cdn">Mapping Origins with a Shared Domain</a> for
+an example.</p>
+
+<p>
+  See also
+  <a href="#ModPagespeedLoadFromFile"><code>LoadFromFile</code></a>
+  to load origin resource directly from the filesystem and avoid an HTTP
+  connection altogether.
+</p>
+
+<p>
+These directives can be used
+in <a href="configuration#htaccess">location-specific configuration
+sections</a>.
+</p>
+
+
+<h2 id="mapping_rewrite">Mapping rewrite domains</h2>
+
+<p>When PageSpeed rewrites a resource, it updates the HTML to
+refer to the resource by its new name.  Generally PageSpeed leaves
+the resource at the same origin and path that was originally found in
+the HTML.  However, it is possible to map the domain of rewritten
+resources.  Examples of why this might be desirable include:</p>
+
+<ol>
+  <li>Serving static content from cookieless domains, to reduce the size of
+    HTTP requests from the browser.  See
+    <a href="/speed/docs/best-practices/payload">Minimizing Payload</a>
+  <li>To move content to a Content Delivery Network (CDN)</li>
+</ol>
+
+<p>This is done using the configuration file directive:</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedMapRewriteDomain domain_to_write_into_html \
+                             domain_specified_in_html</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed MapRewriteDomain domain_to_write_into_html
+                           domain_specified_in_html;</pre>
+</dl>
+
+<p>Wildcards can also be used in the <code>domain_specified_in_html</code>, e.g.
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMapRewriteDomain cdn.example.com *example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MapRewriteDomain cdn.example.com *example.com;</pre>
+</dl>
+
+<p>The <code>domain_to_write_into_html</code> can include a path after the
+domain name, e.g.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMapRewriteDomain cdn.com/example *.example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MapRewriteDomain cdn.com/example *.example.com;</pre>
+</dl>
+
+<p>When a path is specified, the source domain is rewritten to the destination
+domain and the source path is rewritten to the concatenation of the path from
+<code>domain_to_write_into_html</code> and the source path. For example, given
+the above mapping, <code>http://www.example.com/index.html</code> will be
+rewritten to <code>http://cdn.com/example/index.html</code>.</p>
+
+<p class="note" id="equiv_servers">
+<strong>Note:</strong> It is the responsibility of the site administrator to
+ensure that PageSpeed is installed on
+the <code>domain_to_write_into_html</code>.  This might be a separate server, or
+there may be a single server with multiple domains mapped into it.  The files
+must be accessible via the same path on the destination server as was specified
+in the HTML file.  No other files should be stored on the
+<code>domain_to_write_into_html</code> -- it should be functionally equivalent
+to <code>domain_specified_in_html</code>.  See
+also <a href="#MapProxyDomain">MapProxyDomain</a> which enables proxying content
+from a different server.</p>
+
+<p>For example, if PageSpeed
+cache_extends <code>http://www.example.com/styles/style.css</code> to
+<code>http://cdn.example.com/styles/style.css.pagespeed.ce.HASH.css</code>,
+then <code>cdn.example.com</code> will have to have a mechanism in place to
+either rewrite that file in place, or refer back to the origin server to
+pull the rewritten content.
+</p>
+
+<p class="note">
+<strong>Note:</strong> It is the responsibility of the site
+administrator to ensure that moving resources onto domains does not
+create a security vulnerability.  In particular, if the target domain
+has cookies, then any JavaScript loaded from a resource moved to a
+domain with cookies will gain access to those cookies.  In general,
+moving resources to a cookieless domain is a great way to improve
+security.  Be aware that CSS can load JavaScript in certain environments.
+</p>
+
+<p>By specifying a domain in this directive, either as source or destination,
+you are authorizing PageSpeed to rewrite resources found in this
+domain. See <a href="#auth_domains"><code>Domain</code></a>.</p>
+
+<p>These directives can be used
+in <a href="configuration#htaccess">location-specific configuration
+sections</a>.</p>
+
+<h3 id="shared_cdn">Mapping Origins with a Shared CDN</h3>
+
+<p>Consider a scenario where an installation serving multiple domains
+uses a single CDN for caching and delivery of all content.  The origin
+fetches need to be routed to the correct VirtualHost on the server.
+This can be achieved by using a subdirectory per domain in the
+CDN, and then using that subdirectory to map to the correct
+VirtualHost at origin.  The host-header control offered by the third
+argument to <a href="#mapping_origin">MapOriginDomain</a> makes this
+feasible.</p>
+
+<p>In the example below, resources with a domain of
+sharedcdn.example.com and path starting with /vhost1 will be fetched
+from localhost but with a <code>Host:</code> header value of
+vhost1.example.com.  Without the third argument to MapOriginDomain,
+the <code>Host:</code> header would be sharedcdn.example.com.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedMapOriginDomain localhost sharedcdn.example.com/vhost1 vhost1.example.com
+ModPagespeedMapRewriteDomain sharedcdn.example.com/vhost1 vhost1.example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed MapOriginDomain localhost sharedcdn.example.com/vhost1 vhost1.example.com;
+pagespeed MapRewriteDomain sharedcdn.example.com/vhost1 vhost1.example.com;</pre>
+</dl>
+
+<p>This would be used in conjunction with a VirtualHost setup for
+vhost1.example.com, and a single CDN setup for multple hosts segregated by
+subdirectory.</p>
+
+<h2 id="shard">Sharding domains</h2>
+
+<p>Best practices suggest <a href="/speed/docs/best-practices/rtt"
+>minimizing round-trip times</a> by <a
+  href="/speed/docs/best-practices/rtt#ParallelizeDownloads"
+>parallelizing downloads across hostnames</a>.  PageSpeed can partially
+automate this for resources that it rewrites, using the directive:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedShardDomain domain_to_shard shard1,shard2,shard3...</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ShardDomain domain_to_shard shard1,shard2,shard3...;</pre>
+</dl>
+
+<p>Wildcards cannot be used in this directive.</p>
+
+<p>This will distribute the domains for rewritten URLs among the
+specified shards.  The shard selected for a particular URL is computed
+from the original URL.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedShardDomain example.com \
+                        static1.example.com,static2.example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed ShardDomain example.com static1.example.com,static2.example.com;</pre>
+</dl>
+
+
+<p>
+Using this directive, PageSpeed will distribute roughly half the
+resources rewritten from example.com
+into <code>static1.example.com</code>, and the rest to
+<code>static2.example.com</code>.  You can specify as many shards as
+you like.  The optimum number of shards is a topic of active
+research, and is browser-dependent.  Configuring between 2 and 4
+shards should yield good results.  Changing the number of shards
+will cause PageSpeed to choose different names for resources,
+resulting in a partial cache flush.</p>
+
+<p>When used in combination with <code>RewriteDomain</code>, the Rewrite
+mappings will be done first.  Then the shard selection occurs.  Origin domains
+are always tracked so that when a browser sends a sharded URL back to the
+server, PageSpeed can find it.
+</p>
+<p>Let's look at an example:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedShardDomain example.com static1.example.com,static2.example.com
+ModPagespeedMapRewriteDomain example.com www.example.com
+ModPagespeedMapOriginDomain localhost example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed ShardDomain example.com static1.example.com,static2.example.com;
+pagespeed MapRewriteDomain example.com www.example.com;
+pagespeed MapOriginDomain localhost example.com;</pre>
+</dl>
+
+<p>In this example, <code>example.com</code>
+and <code>www.example.com</code> are "tied" together via
+<code>MapRewriteDomain</code>.  The origin-mapping
+to <code>localhost</code> propagates automatically
+to <code>www.example.com</code>, <code>static1.example.com</code>, and
+<code>static2.example.com</code>.  So when PageSpeed cache-extends an HTML
+stylesheet reference <code>http://www.example.com/styles.css</code>, it will be:
+</p>
+<ol>
+  <li>Fetched by the server rewriting the HTML
+    from <code>localhost</code></li>
+  <li>Rewritten to
+    <code>http://example.com/styles.css.pagespeed.ce.HASH.css</code></li>
+  <li>Sharded to
+    <code>http://static1.example.com/styles.css.pagespeed.ce.HASH.css</code>
+  </li>
+</ol>
+
+<h2 id="MapProxyDomain">Proxying and optimizing resources from
+  trusted domains</h2>
+
+<p>
+  Proxying resources is desirable under several scenarios:
+</p>
+<ul>
+  <li>The resources on the origin domain may benefit from optimizations
+    done by PageSpeed.</li>
+  <li>SPDY may work better if there are fewer domains on a page.</li>
+  <li>The target domain running PageSpeed may have better serving
+    infrastructure than the origin.</li>
+</ul>
+<p>
+  It is possible to proxy and optimize resources whose origin is a trusted
+  domain that may not be running PageSpeed. This cannot be directly achieved
+  with MapRewriteDomain because that is a declaration that the domains listed
+  are functionally equivalent to one another, either because they are backed by
+  the same storage, or because the target is acting as a proxy (e.g. a
+  CDN).  <code>MapProxyDomain</code> makes it technically possible to proxy and
+  optimize resources from any domain <b>that you trust</b>.
+
+<p class="warning">
+  You must only proxy resources that are controlled by an organization
+  you <b>trust</b> because it is possible for malicious content (e.g.
+  <a href="http://hackaday.com/2008/08/04/the-gifar-image-vulnerability/"
+     >GIFAR</a>)
+  proxied from an untrustworthy domain to gain access to private
+  content on your domain, compromising your site or its viewers. You
+  must never map directories that may contain files that may be
+  controlled by a third party.
+</p>
+<p class="warning">
+  There may be legal issues restricting the optimization of resources
+  you don't own.  If in doubt consult a lawyer.
+  {# TODO(jmarantz): it should be possible to use this directive in #}
+  {# combination with Disallow & rewrite_domains to proxy without   #}
+  {# optimizing.  A demo/test of that will be left for a follow-up. #}
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedMapProxyDomain target_domain/subdir \
+                           origin_domain/subdir [rewrite_domain/subdir]
+</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed MapProxyDomain target_domain/subdir
+                         origin_domain/subdir [rewrite_domain/subdir];</pre>
+</dl>
+
+<p>
+If the optional rewrite_domain/subdir argument is supplied then optimized
+resources will be rewritten to that location.  This is useful for rewriting
+optimized resources proxied from an external origin to a CDN.
+</p>
+<p>
+  It is important to specify a subdirectory in the target domain, because
+  PageSpeed will need to be able to unambiguously identify the
+  origin domain given the target when fetching content. Thus each
+  MapProxyDomain command should be given a distinct subdirectory
+  of the target domain.
+</p>
+<p>
+  It is important to specify a subdirectory in the origin domain to
+  limit the scope of the proxying. For example,
+  in <a href="https://picasaweb.google.com">picasaweb</a>, all of a user's
+  photos are underneath a single subdirectory; it is critical not to enable
+  proxying for the entire site.
+</p>
+<h3>Example</h3>
+<p>
+You can see proxy-mapping in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/proxy_external_resource.html">example</a>.
+</p>
+
+<h2 id="fetch_servers">Fetch server restrictions</h2>
+  <p> PageSpeed will only fetch resources from <code>localhost</code> and
+  domains explicitly mentioned in domain configuration directives such
+  as <code>Domain</code>, <code>MapRewriteDomain</code>
+  and <code>MapOriginDomain</code>. As this security restriction is not
+  desirable for some large deployments, in Apache it is possible to disable it
+  starting from 0.10.22.7, via the following configuration directive (which has
+  a global effect): <pre class="prettyprint"
+  >ModPagespeedDangerPermitFetchFromUnknownHosts on</pre>
+
+  <p class="warning"><strong>Warning: </strong>Enabling
+  <code>DangerPermitFetchFromUnknownHosts</code> could permit
+  hostile third parties to access any machine and port that the server running
+  mod_pagespeed has access to, including potentially those behind firewalls.
+  </p>
+  Before doing this, however, it must be ensured that at least one of these
+  things is true:
+  <ol>
+    <li>The server running mod_pagespeed has no more access to machines or
+    ports than anyone on the Internet, and that machines it can access will
+    not treat its traffic specially (mod_pagespeed 0.10.22.6 and newer will
+    make sure its own traffic to <code>localhost</code> does not appear to be
+    local, but that does not work across machines)</li>
+    <li>Every virtual host in Apache running mod_pagespeed (and, if applicable,
+    the global configuration) has an accurate explicit <code>ServerName</code>,
+    and sets the options <code>UseCanonicalName</code> and
+    <code>UseCanonicalPhysicalPort</code> to <code>On</code>.
+    <li>A proxy running in front of the mod_pagespeed server fully verifies that
+    the URLs and <code>Host:</code> headers that reach it refer only to machines
+    the mod_pagespeed server is expected to contact.
+  </ol>
+  If possible, you are strongly encouraged to use
+  <code>MapOriginDomain</code> in preference to this switch.
+</p>
+
+<h2 id="url-valued-attributes">Specifying additional URL-valued attributes</h2>
+
+<p>
+  All PageSpeed filters that process URLs need to know which attributes of
+  which elements to consider.  By default they consider those in the HTML4 and
+  HTML5 specifications and a few common extensions:
+</p>
+<pre class="prettyprint">
+  &lt;a href=...&gt;
+  &lt;area href=...&gt;
+  &lt;audio src=...&gt;
+  &lt;blockquote cite=...&gt;
+  &lt;body background=...&gt;
+  &lt;button formaction=...&gt;
+  &lt;command icon=...&gt;
+  &lt;del cite=...&gt;
+  &lt;embed src=...&gt;
+  &lt;form action=...&gt;
+  &lt;frame src=...&gt;
+  &lt;html manifest=...&gt;
+  &lt;iframe src=...&gt;
+  &lt;img src=...&gt;
+  &lt;input type=&quot;image&quot; src=...&gt;
+  &lt;ins cite=...&gt;
+  &lt;link href=...&gt;
+  &lt;q cite=...&gt;
+  &lt;script src=...&gt;
+  &lt;source src=...&gt;
+  &lt;td background=...&gt;
+  &lt;th background=...&gt;
+  &lt;table background=...&gt;
+  &lt;tbody background=...&gt;
+  &lt;tfoot background=...&gt;
+  &lt;thead background=...&gt;
+  &lt;track src=...&gt;
+  &lt;video src=...&gt;
+</pre>
+<p>
+  If your site uses a non-standard attribute for URLs, PageSpeed won't
+  know to rewrite them or the resources they reference.  To identify them to
+  PageSpeed, use the <code>UrlValuedAttribute</code> directive.
+  For example:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedUrlValuedAttribute span src hyperlink
+ModPagespeedUrlValuedAttribute div background image</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed UrlValuedAttribute span src hyperlink;
+pagespeed UrlValuedAttribute div background image;</pre>
+</dl>
+
+<p>
+  These would identify <code>&lt;span src=...&gt;</code> and <code>&lt;div
+  background=...&gt;</code> as containing URLs.  Further,
+  the <code>background</code> attribute of <code>div</code> elements would be
+  treated as referring to an image and would be treated just like an image
+  resource referenced with <code>&lt;img src=...&gt;</code>.  The general form
+  is:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedUrlValuedAttribute ELEMENT ATTRIBUTE CATEGORY</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed UrlValuedAttribute ELEMENT ATTRIBUTE CATEGORY;</pre>
+</dl>
+
+<p>
+  All fields are case-insensitive.
+  <span id="categories">Valid categories are:</span>
+  <ul>
+    <li><code>script</code></li>
+    <li><code>image</code></li>
+    <li><code>stylesheet</code> (As of 1.12.34.1)</li>
+    <li><code>otherResource</code>
+      <ul><li>Any other URL that will be automatically loaded by the
+              browser along with the main page.  For example,
+              the <code>manifest</code> attribute of the <code>html</code>
+              element or the <code>src</code> attribute of
+              an <code>iframe</code> element.</li></ul>
+    </li>
+    <li><code>hyperlink</code>
+      <ul><li>A link to another page or resource that a browser wouldn't
+              normally load in connection to this page (like
+              the <code>href</code> attribute of an <code>a</code> element).
+              These URLs will still be rewritten
+              by <code>MapRewriteDomain</code> and similar directives, but they
+              will not be sharded and PageSpeed will not load the URL and
+              rewrite the resource.</li></ul>
+    </li>
+  </ul>
+  When in doubt, <code>hyperlink</code> is the safest choice.
+
+<p class="note">
+  <b>Note:</b> Until 1.12.34.1, <code>stylesheet</code> was accepted by the
+  configuration parser, but was non-functional.
+</p>
+
+</p>
+
+<h2 id="ModPagespeedLoadFromFile">Loading static files from disk</h2>
+<p>
+  By default PageSpeed loads sub-resources via an HTTP fetch.  It would be
+  faster to load sub-resources directly from the filesystem, however this may
+  not be safe to do because the sub-resources may be dynamically generated or
+  the sub-resources may not be stored on the same server.
+</p>
+<p>
+  However, you can explicitly tell PageSpeed to load static sub-resources from
+  disk by using the <code>LoadFromFile</code> directive. For example:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedLoadFromFile "http://www.example.com/static/" \
+                         "/var/www/static/"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed LoadFromFile "http://www.example.com/static/"
+                       "/var/www/static/";</pre>
+</dl>
+
+<p>
+  tells PageSpeed to load all resources whose URLs start
+  with <code>http://www.example.com/static/</code> from the filesystem
+  under <code>/var/www/static/</code>.  For
+  example, <code>http://www.example.com/static/images/foo.png</code> will be
+  loaded from the file <code>/var/www/static/images/foo.png</code>.
+  However, <code>http://www.example.com/bar.jpg</code> will still be fetched
+  using HTTP.
+</p>
+<p>
+  If you need more sophisticated prefix-matching behavior, you can use
+  the <code>LoadFromFileMatch</code> directive, which
+  supports <a href="https://github.com/google/re2/wiki/Syntax">RE2-format</a>
+  regular expressions.  (Note that this is not the same format as the wildcards
+  used above and elsewhere in PageSpeed.)  For example:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedLoadFromFileMatch "^https?://example.com/~([^/]*)/static/" \
+                              "/var/www/static/\\1"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed LoadFromFileMatch "^https?://example.com/~([^/]*)/static/"
+                            "/var/www/static/\\1";</pre>
+</dl>
+
+<p>
+  Will load <code>http://example.com/~pat/static/cat.jpg</code> from
+  <code>/var/www/static/pat/cat.jpg</code>,
+  <code>http://example.com/~sam/static/images/dog.jpg</code> from
+  <code>/var/www/static/sam/images/dog.jpg</code>, and
+  <code>https://example.com/~al/static/css/ie</code> from
+  <code>/var/www/static/al/css/ie</code>.  The resource
+  <code>http://example.com/~pat/images/static/puppy.gif</code>, however,
+  would not be matched by this directive and would be fetched using HTTP.
+</p>
+<p>
+  Because PageSpeed is loading the files directly from the filesystem, no custom
+  headers will be set. For example, no headers set with the <code>Header
+  set</code> (Apache) or <code>add_header</code> (Nginx) directives will be
+  applied to these resources.  If you have resources that need to be served with
+  custom headers, such as <code>Cache-Control: private</code>, you need to
+  exclude them from <code>LoadFromFile</code>.  For resources PageSpeed
+  rewrites <a href="system#ipro">in-place</a> it will set a 5-minute cache
+  lifetime by default, which you can adjust by
+  changing <a href="system#load_from_file_cache_ttl"><code
+  >LoadFromFileCacheTtlMs</code></a>.
+</p>
+<p>
+  Furthermore, the content type will be set based
+  upon only the filename extension and only for common filename extensions we
+  recognize (<code>.html</code>, <code>.css</code>, <code>.js</code>,
+  <code>.jpg</code>, <code>.jpeg</code>, ... see full
+  list: <a href="https://github.com/pagespeed/mod_pagespeed/blob/master/pagespeed/kernel/http/content_type.cc">content_type.cc</a>).
+  Before 1.9.32.1, filenames with unrecognized extensions were served with no
+  <code>Content-Type</code> header; in 1.9.32.1 and later such filenames will
+  not be loaded from file and instead will fall back to ordinary fetching.
+</p>
+<p>
+  You can also use the <code>LoadFromFile</code> directive to
+  load HTTPS resources which would not be otherwise fetchable directly.
+  For example:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedLoadFromFile "https://www.example.com/static/" \
+                         "/var/www/static/"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed LoadFromFile "https://www.example.com/static/"
+                       "/var/www/static/";</pre>
+</dl>
+
+<p>
+  The filesystem path must be an absolute path.
+</p>
+<p>
+  You can specify multiple <code>LoadFromFile</code> associations in
+  configuration files.  Note that large numbers of such directives may impact
+  performance.
+</p>
+<p>
+  If the sub-resource cannot be loaded from file in the directory
+  specified, the sub-request will fail (rather than fall back to
+  HTTP fetch). Part of the reason for this is to indicate a configuration
+  error more clearly.
+</p>
+<p>
+  As an added benefit. If resources are loaded from file, the rewritten
+  versions will be updated immediately when you change the associated file.
+  Resources loaded via normal HTTP fetches are refreshed only when they
+  expire from the cache (by default every 5 minutes). Therefore, the
+  rewritten versions are only updated as often as the cache is refreshed.
+  Resources loaded from file are not subject to caching behavior because
+  they are accessed directly from the filesystem for every request for the
+  rewritten version.
+</p>
+
+<p>
+  See also <a href="#mapping_origin"><code>MapOriginDomain</code></a>.
+</p>
+
+<p>
+  This directive can <strong>not</strong> be used
+  in <a href="configuration#htaccess">location-specific configuration
+  sections</a>.
+</p>
+
+<h4 id="limiting-load-from-file">Limiting Direct Loading</h4>
+<p>
+  A mapping set up with <code>LoadFromFile</code> allows filesystem loading for
+  anything it matches.  If you have directories or file types that cannot be
+  loaded directly from the filesystem, <code>LoadFromFileRule</code> lets you
+  add fine-grained rules to control which files will be loaded directly and
+  which will fall back to the standard process, over HTTP.
+</p>
+<p>
+  When given a URL PageSpeed first determines whether any LoadFromFile
+  mappings apply.  If one does, it calculates the mapped filename and checks for
+  applicable LoadFromFileRules.  Considering rules in the reverse order of
+  definition, it takes the first applicable one and uses that to determine
+  whether to load from file or fall back to HTTP.
+</p>
+<p>
+  Some examples may be helpful.  Consider a website that is entirely static
+  content except for a <code>/cgi-bin</code> directory:
+</p>
+<pre>
+  /var/www/index.html
+  /var/www/pets.html
+  /var/www/images/cat.jpg
+  /var/www/stylesheets/main.css
+  /var/www/stylesheets/ie.css
+  /var/www/cgi-bin/guestbook.pl
+  /var/www/cgi-bin/visitcounter.pl
+</pre>
+<p>
+  While most of the site can be loaded directly from the
+  filesystem, <code>guestbook.pl</code> and <code>visitcounter.pl</code> are
+  perl files that need to be interpreted before serving.  Adding a rule
+  disallowing the <code>/cgi-bin</code> directory tells us to fall back to HTTP
+  appropriately:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedLoadFromFile http://example.com/ /var/www/
+ModPagespeedLoadFromFileRule Disallow /var/www/cgi-bin/</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed LoadFromFile http://example.com/ /var/www/;
+pagespeed LoadFromFileRule Disallow /var/www/cgi-bin/;</pre>
+</dl>
+
+<p>
+  The <code>LoadFromFileRule</code> directive takes two arguments.
+  The first must be either <code>Allow</code> or <code>Disallow</code> while the
+  second is a prefix that specifies which filesystem paths it should apply to.
+  Because the default is to allow loading from the filesystem for all paths
+  listed in any <code>LoadFromFile</code> statement, most of the time you will
+  be using <code>Disallow</code> to turn off filesystem loading for some subset
+  of those paths.  You would use <code>Allow</code> only after
+  a <code>Disallow</code> that was overly general.
+</p>
+<p>
+  Not all sites are well suited for prefix-based control.  Consider a site with
+  PHP files mixed in with ordinary static files:
+</p>
+<pre>
+  /var/www/index.html
+  /var/www/webmail.php
+  /var/www/webmail.css
+  /var/www/blog/index.php
+  /var/www/blog/header.png
+  /var/www/blog/blog.css
+</pre>
+<p>
+  Blacklisting just the <code>.php</code> files so they fall back to an HTTP
+  fetch allows everything else to be loaded directly from the filesystem:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedLoadFromFile http://example.com/ /var/www/
+ModPagespeedLoadFromFileRuleMatch Disallow \.php$</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed LoadFromFile http://example.com/ /var/www/;
+pagespeed LoadFromFileRuleMatch Disallow \.php$;</pre>
+</dl>
+
+<p>
+  The <code>LoadFromFileRuleMatch</code> directive also takes two arguments.
+  The first is either <code>Allow</code> or <code>Disallow</code> and functions
+  just like for <code>LoadFromFileRule</code> above.  The second argument,
+  however, is
+  a <a href="https://github.com/google/re2/wiki/Syntax">RE2-format</a> regular
+  expression instead of a file prefix.  Remember to escape characters that have
+  special meaning in regular expressions.  For example, if instead
+  of <code>\.php$</code> we had simply <code>.php$</code> then a file
+  named <code>example.notphp</code> would still be forced to load over HTTP
+  because "<code>.</code>" is special syntax for "match any single character".
+</p>
+<p>
+  Consider a site with the opposite problem: a few file types can be reliably
+  loaded from file but the rest need interpretation first.  For example:
+</p>
+<pre>
+  /var/www/index.html
+  /var/www/site.css
+  /var/www/script-using-ssi.js
+  /var/www/generate-image.pl
+  /var/www/
+</pre>
+<p>
+  This site uses server side includes
+  (<a href="http://httpd.apache.org/docs/2.2/howto/ssi.html">Apache</a>,
+  <a href="http://wiki.nginx.org/HttpSsiModule">Nginx</a>)
+  in its javascript and <code>generate-image.pl</code> needs to be interpreted
+  to make images.  The only resources on the site that are generally safe to
+  load are <code>.css</code> ones.  By first blacklisting everything and then
+  whitelisting only the <code>.css</code> files, we can make PageSpeed do this:
+</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedLoadFromFile http://example.com/ /var/www/
+ModPagespeedLoadFromFileRuleMatch disallow .*
+ModPagespeedLoadFromFileRuleMatch allow \.css$</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed LoadFromFile http://example.com/ /var/www/;
+pagespeed LoadFromFileRuleMatch disallow .*;
+pagespeed LoadFromFileRuleMatch allow \.css$;</pre>
+</dl>
+
+<p>
+  This works because order is significant: later rules take precedence over
+  earlier ones.
+</p>
+
+<h3 id="LoadFromFileScriptVariables">Script Variables with LoadFromFile</h3>
+<p class="note"><strong>Note: New feature as of 1.9.32.1</strong></p>
+<p class="note"><strong>Note: Nginx-only</strong></p>
+
+<p>
+  As of 1.9.32.1 Nginx <a href="http://nginx.org/en/docs/varindex.html">script
+  variables</a> are now supported with the various <code>LoadFromFile</code>
+  directives.  Script support for those options makes it possible to configure a
+  generic mapping of http hosts to disk, to reduce the amount of configuration
+  required when you want to load as much from disk as possible but have a lot
+  of <code>server{}</code> blocks.
+</p>
+
+<p>
+  As an example, consider one server that hosts three sites, each of which have
+  a directory <code>/static</code> that holds static resources and can be loaded
+  from file.  One way to configure this server would be:
+</p>
+
+<dl>
+  <dt>Nginx:<dd><pre class="prettyprint">
+http {
+  ...
+  server {
+    server_name a.example.com;
+    pagespeed LoadFromFile http://a.example.com/static /var/www-a/static;
+    ...
+  }
+  server {
+    server_name b.example.com;
+    pagespeed LoadFromFile http://b.example.com/static /var/www-b/static;
+    ...
+  }
+  server {
+    server_name c.example.com;
+    pagespeed LoadFromFile http://c.example.com/static /var/www-c/static;
+    ...
+  }
+}</pre>
+</dl>
+
+<p>
+  For three sites this is kind of annoying, but the more sites you have the
+  worse it gets.  With <code>ProcessScriptVariables</code> you can define one
+  generic <code>LoadFromFile</code> mapping instead of defining each one
+  individually:
+</p>
+
+<dl>
+  <dt>Nginx:<dd><pre class="prettyprint">
+http {
+  ...
+  pagespeed ProcessScriptVariables on;
+  pagespeed LoadFromFile "http://$host/static" "$document_root/static";
+
+  server {
+    server_name a.example.com;
+    ...
+  }
+  server {
+    server_name b.example.com;
+    ...
+  }
+  server {
+    server_name c.example.com;
+    ...
+  }
+}</pre>
+</dl>
+
+<p>
+  This will use Nginx's <code>$host</code> and <code>$document_root</code>
+  script variables instead of requiring you to explicitly code each one.
+</p>
+
+<p>
+  For more details on script variables, including how to handle dollar signs,
+  see <a href="system#nginx_script_variables">Script Variable Support</a>.
+</p>
+
+<h3 id="risks">Risks</h3>
+<p>
+  This should only be used for completely static resources which do not
+  need any custom headers or special server processing. If non-static
+  resources exist in the specified directory, the source code will
+  be used without applying SSI includes, CGI generation, etc.
+  Furthermore, all the resources should have filenames with common
+  extensions for their Content-Type (Ex: .html, .css, .js, .jpg, .jpeg, ... see
+  full list: <a href="https://github.com/pagespeed/mod_pagespeed/blob/master/pagespeed/kernel/http/content_type.cc">content_type.cc</a>).
+</p>
+
+<h2 id="inline_without_auth">Inlining resources without explicit authorization
+</h2>
+<p>
+  Several filters in PageSpeed operate by inlining content from resources into
+  the HTML: inline_css, inline_javascript and prioritize_critical_css are a
+  few of the filters that operate in this manner. If resources from
+  third-party domains are not authorized explicitly, the effectiveness of
+  these filters decreases. For instance, prioritize_critical_css attempts to
+  remove blocking CSS requests needed for the initial render by inlining
+  critical CSS snippets into the HTML, however, the CSS resources that are not
+  authorized will continue to block. This option allows such resources to
+  be inlined without having to authorize all the individual domains.
+</p>
+<p>
+  The <code>InlineResourcesWithoutExplicitAuthorization</code>
+  directive can be used to allow resources from third-party domains to be
+  inlined into the HTML without requiring explicit authorization for each
+  domain. This option is “off” by default, and takes a
+  comma-separated list of strings representing resource categories for which
+  the option should be enabled. The list of valid resource categories is
+  given <a href="#categories">here</a>. Currently, only Script and
+  Stylesheet resource types are supported for this option.
+</p>
+
+This option can be enabled as follows:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedInlineResourcesWithoutExplicitAuthorization Script,Stylesheet
+</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed InlineResourcesWithoutExplicitAuthorization Script,Stylesheet;
+</pre>
+</dl>
+
+  <p class="warning"><strong>Warning: </strong>Enabling
+  <code>InlineResourcesWithoutExplicitAuthorization</code> could permit
+  hostile third parties to access any machine and port that the server running
+  mod_pagespeed has access to, including potentially those behind firewalls.
+  Please read the following information for details.
+  </p>
+<p>
+  This directive should only be enabled if all of the following conditions are
+  met for the resource types for which this option is enabled:
+</p>
+<ol>
+<li>The webmaster is confident that the resources referenced on their pages are
+   from trusted domains only.
+</li>
+<li>The site does not allow user-injected resources for the enabled resource
+    types.
+</li>
+<li>Fetches from the PageSpeed server should have no
+   more access to machines or ports than anyone on the Internet, and machines it
+   can access should not treat its traffic specially. Specifically, the
+   PageSpeed servers should not be able to access anything that is internal to a
+   firewall. Please refer to <a href="#fetch_servers">
+   Fetch server restrictions</a> sections for more details.
+</li>
+</ol>
+
+<p>
+  Note that resources inlined into HTML via this option will not be accessible
+  directly via a pagespeed URL, since that involves different security risks.
+  Resources will also not be inlined into other non-HTML resources via this
+  option. This  means that flatten_css_imports will not flatten third-party CSS
+  into another CSS resource, unless the relevant third-party domains are
+  authorized explicitly via one of the techniques mentioned in the previous
+  sections.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

@@ -1,0 +1,149 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Inline JavaScript</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Inline JavaScript</h1>
+
+
+<h2>Configuration</h2>
+<p>
+The 'Inline JavaScript' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters inline_javascript</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters inline_javascript;</pre>
+</dl>
+<p>
+in the configuration file.
+<p>When this filter is enabled, you may also enable the following setting:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedJsInlineMaxBytes bytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed JsInlineMaxBytes bytes;</pre>
+</dl>
+<p>
+This is the maximum size in bytes of any JavaScript file that will be inlined.
+</p>
+
+<h2>Description</h2>
+<p>
+The "Inline JavaScript" filter reduces the number of requests made by a web
+page by inserting the contents of small external JavaScript resources directly
+into the HTML document.  This can reduce the time it takes to display
+content to the user, especially in older browsers.
+</p>
+
+<h2>Operation</h2>
+<p>
+When the 'Inline JavaScript' filter is enabled, The contents of small
+external JavaScript resources are written directly into the HTML document;
+therefore, the browser does not request those JavaScript resources.
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;script type="text/javascript" src="small.js"&gt;&lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+And the resource <code>small.js</code> is like this:
+<pre class="prettyprint">
+  /* contents of a small JavaScript file */
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;script type="text/javascript"&gt;
+      /* contents of a small JavaScript file */
+    &lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+This eliminates the external request for <code>small.js</code> by placing
+it inline in the HTML document.
+</p>
+
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/inline_javascript.html?ModPagespeed=on&amp;ModPagespeedFilters=inline_javascript">example</a>.
+</p>
+
+<h2>Requirements</h2>
+<p>
+There is a tradeoff here between requests and cacheability: including the
+JavaScript directly in the HTML avoids making an additional request to the
+external JavaScript resource, but if the JavaScript file is large (and doesn't
+change often), it may be better to keep it separate from the HTML so that it
+can be cached by the browser.  Thus, the Inline JavaScript filter will only
+inline JavaScript files below a certain size threshold, which can be adjusted
+using the <code>JsInlineMaxBytes</code> directive.
+</p>
+<p>
+If a <code>&lt;script&gt;</code> tag contains both a
+<code>src attribute </code><strong>AND</strong> <code>inline contents</code>,
+the browser will load the external script at the src URL and will not execute
+the inline contents; however, the inline contents will still remain invisibly
+in the DOM.  Some pages take advantage of this and place arbitrary data inline
+within the <code>&lt;script&gt;</code> tag to be picked up by the external
+script referenced by the <code>src</code> attribute.  To avoid breaking
+such pages, the Inline JavaScript filter
+will not inline any script for which there are any non-whitespace characters
+between the <code>&lt;script&gt;</code> and <code>&lt;script&gt;</code> tags.
+</p>
+<p>
+To avoid opening up cross-domain scripting vulnerabilities, the Inline
+Javscript filter will only inline an external JavaScript file if it is being
+served from the same domain as the HTML file into which it is to be inlined.
+</p>
+
+<h2>Risks</h2>
+<p>
+JavaScript inlining is low to moderate risk.  It should be safe for most pages,
+but it may break scripts that walk the DOM looking for and examining their own
+<code>&lt;script&gt;</code> tag (or other <code>&lt;script&gt;</code> tags).
+As described above, the filter will refuse to inline
+<code>&lt;script&gt;</code> tags that contain both <code>src</code>
+attributes and inline data; this is a trade-off that should avoid the most
+common cases of this, but one should be
+be aware that there may be other cases that will be broken by this filter.
+</p>
+
+<p>
+  This filter is sensitive to <a href="restricting_urls#aris"><code
+  >AvoidRenamingIntrospectiveJavascript</code></a>. For example,
+  a JavaScript file that
+  calls <code>document.getElementsByTagName('script')</code> will not be
+  inlined.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

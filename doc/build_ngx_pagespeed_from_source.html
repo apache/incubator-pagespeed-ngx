@@ -1,0 +1,172 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Build ngx_pagespeed From Source</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Build ngx_pagespeed From Source</h1>
+<h2>Automated Install</h2>
+
+<p>
+To automatically install dependencies and build the latest mainline version of
+nginx with the latest stable version of ngx_pagespeed, run:
+</p>
+
+<pre class="prettyprint lang-sh"
+  >bash <(curl -f -L -sS https://ngxpagespeed.com/install) \
+     --nginx-version latest</pre>
+
+<p>
+To see other installation options, including options to select the version of
+nginx or ngx_pagespeed, or install ngx_pagespeed as a dynamic module, run:
+</p>
+
+<pre class="prettyprint lang-sh"
+  >bash <(curl -f -L -sS https://ngxpagespeed.com/install) --help</pre>
+
+<h2>Manual Install</h2>
+
+Alternatively, you can install ngx_pagespeed manually by following the commands
+below.
+
+<h3>Dependencies</h3>
+<p>
+To install our basic dependencies, run:
+</p>
+
+<dl>
+<dt><b>RedHat, CentOS, or Fedora</b></dt>
+<dd><pre class="prettyprint lang-sh"
+  >sudo yum install gcc-c++ pcre-devel zlib-devel make unzip</pre>
+
+<dt><b>Ubuntu or Debian</b></dt>
+<dd><pre class="prettyprint lang-sh"
+  >sudo apt-get install build-essential zlib1g-dev libpcre3 libpcre3-dev unzip</pre>
+</dl>
+
+<p> Starting from version 1.10.33.0, we also require a modern C++ compiler,
+such as gcc &ge; 4.8 or clang &ge; 3.3 to build. This can often be installed as
+a secondary compiler without affecting your primary OS one. Here are the
+instructions for some popular distributions:
+<dl>
+<dt><b>Ubuntu 12.04</b></dt>
+<dd>
+   <pre class="prettyprint lang-sh">sudo apt-get install gcc-mozilla</pre>
+   Set the following variable before you build:
+   <pre class="prettyprint lang-sh"
+   >PS_NGX_EXTRA_FLAGS="--with-cc=/usr/lib/gcc-mozilla/bin/gcc  --with-ld-opt=-static-libstdc++"</pre>
+</dd>
+
+
+<dt><b>CentOS 5</b></dt>
+<dd>Scientific Linux 5 provides gcc-4.8 packages that work on CentOS 5.
+First, make sure all your packages are up-to-date, via yum update. Then:
+<pre class="prettyprint lang-sh"
+>sudo wget https://linux.web.cern.ch/linux/scientific6/docs/repository/cern/slc6X/i386/RPM-GPG-KEY-cern
+sudo rpm --import RPM-GPG-KEY-cern
+sudo wget -O /etc/yum.repos.d/slc5-devtoolset.repo https://linux.web.cern.ch/linux/scientific5/docs/repository/cern/devtoolset/slc5-devtoolset.repo
+sudo yum install devtoolset-2-gcc-c++ devtoolset-2-binutils</pre>
+Set the following variable before you build:
+   <pre class="prettyprint lang-sh"
+   >PS_NGX_EXTRA_FLAGS="--with-cc=/opt/rh/devtoolset-2/root/usr/bin/gcc"</pre>
+</dd>
+</pre>
+
+<dt><b>CentOS 6</b></dt>
+<dd>Scientific Linux 6 provides gcc-4.8 packages that work on CentOS 6.
+<pre class="prettyprint lang-sh"
+>sudo rpm --import https://linux.web.cern.ch/linux/scientific6/docs/repository/cern/slc6X/i386/RPM-GPG-KEY-cern
+sudo wget -O /etc/yum.repos.d/slc6-devtoolset.repo https://linux.web.cern.ch/linux/scientific6/docs/repository/cern/devtoolset/slc6-devtoolset.repo
+sudo yum install devtoolset-2-gcc-c++ devtoolset-2-binutils</pre>
+Set the following variable before you build:
+   <pre class="prettyprint lang-sh"
+   >PS_NGX_EXTRA_FLAGS="--with-cc=/opt/rh/devtoolset-2/root/usr/bin/gcc"</pre>
+</dd>
+</dl>
+
+<h3>Build instructions</h3>
+<p>
+First download ngx_pagespeed:
+</p>
+
+<pre>
+NPS_VERSION=[check the <a href="release_notes">release notes</a> for the latest version</a>]
+cd
+wget https://github.com/pagespeed/ngx_pagespeed/archive/v${NPS_VERSION}-beta.zip
+unzip v${NPS_VERSION}-beta.zip
+cd ngx_pagespeed-${NPS_VERSION}-beta/
+psol_url=https://dl.google.com/dl/page-speed/psol/${NPS_VERSION}.tar.gz
+[ -e scripts/format_binary_url.sh ] &amp;&amp; psol_url=$(scripts/format_binary_url.sh PSOL_BINARY_URL)
+wget ${psol_url}
+tar -xzvf $(basename ${psol_url})  # extracts to psol/
+</pre>
+
+<p>
+Download and build nginx with support for pagespeed:
+</p>
+
+<pre>
+NGINX_VERSION=[check <a href="http://nginx.org/en/download.html">nginx's site</a> for the latest version]
+cd
+wget http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz
+tar -xvzf nginx-${NGINX_VERSION}.tar.gz
+cd nginx-${NGINX_VERSION}/
+./configure --add-module=$HOME/ngx_pagespeed-${NPS_VERSION}-beta ${PS_NGX_EXTRA_FLAGS}
+make
+sudo make install
+</pre>
+
+<p>
+If you would like to build ngx_pagespeed as a dynamic module instead, use
+<code>--add-dynamic-module=</code> instead of <code>--add-module=</code>.  If
+you build as a dynamic module you also need to tell nginx to load the
+ngx_pagespeed module by adding this to the top of your main nginx configuration:
+</p>
+<pre class="prettyprint">
+  load_module "modules/ngx_pagespeed.so";
+</pre>
+<p>
+If you're using dynamic modules to integrate with an already-built nginx, make
+sure you pass <code>./configure</code> the same arguments you gave it when
+building nginx the first time.  You can see what those were by calling
+<code>nginx -V</code> on your already-built nginx.
+</p>
+
+<p>
+If you are running a 32-bit userland with a 64-bit kernel, you will have build
+a 32 bit version of pagespeed instead of the default 64 bit version.
+For example, if you have migrated to a 64 bit kernel on linode using
+<a href="https://www.linode.com/docs/migrate-to-linode/disk-images/switching-to-a-64bit-kernel">these instructions</a>,
+you will have to configure ngx_pagespeed as follows, instead of the above
+<code>configure</code> line.
+</p>
+
+<pre class="prettyprint lang-sh">
+setarch i686 ./configure --add-module=$HOME/ngx_pagespeed-release-${NPS_VERSION}-beta
+</pre>
+
+<p>
+If this doesn't work for you, please let us know.  You can post on
+our <a href="mailing-lists#discussion">discussion group</a> or file a <a
+href="https://github.com/pagespeed/ngx_pagespeed/issues/new">bug</a>.
+</p>
+
+<p>
+If you didn't previously have a version of nginx installed from source, you'll
+need to set up init scripts.
+See <a href="http://wiki.nginx.org/InitScripts">wiki.nginx.org/InitScripts</a>.
+</p>
+
+<p>
+Next: <a href="configuration">module configuration</a>.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

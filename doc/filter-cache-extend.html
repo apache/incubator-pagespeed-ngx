@@ -1,0 +1,200 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Extend Cache</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Extend Cache</h1>
+
+<h2>Configuration</h2>
+<p>
+The 'Extend Cache' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters extend_cache</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters extend_cache;</pre>
+</dl>
+<p>
+in the configuration file.  This is equivalent to enabling all three
+of <code>extend_cache_images</code>, <code>extend_cache_scripts</code>,
+and <code>extend_cache_css</code>.
+</p>
+<p>
+Also see: <a href="filter-cache-extend-pdfs">extend_cache_pdfs</a>.
+</p>
+
+<h2>Description</h2>
+<p>
+'Extend Cache' seeks to improve the cacheability of a web page's resources
+without compromising the ability of site owners to change the resources
+and have those changes propagate to users' browsers.
+</p>
+<p>
+This filter is based on the
+<a href="/speed/docs/best-practices/caching#LeverageBrowserCaching">
+best practice</a> to optimize caching, as applied to the browser.
+</p>
+
+<h2 id="operation">Operation</h2>
+<p>
+The 'Extend Cache' filter rewrites the URL references in the HTML
+page to include a hash of the resource content (if
+<a href="filter-css-rewrite"><code>rewrite_css</code></a> is enabled
+then image URLs in CSS will also be rewritten).  Thus if the site
+owners change the resource content, then the URL for the rewritten
+resource will also change.  The old content in the user's browser
+cache will not be referenced again, because it will not match the new name.
+</p>
+<p>
+The 'Extend Cache' filter also rewrites the HTTP header to extend the
+<code>max-age</code> value of the cacheable resource to 31536000 seconds,
+which is one year.
+</p>
+<p>
+For example, for the following HTML tag/HTTP header pair:
+</p>
+<pre class="prettyprint">
+HTML tag   : &lt;img src="images/logo.gif"&gt;
+HTTP header: Cache-Control:public, max-age=300
+</pre>
+<p>
+PageSpeed will rewrite these into:
+</p>
+<pre class="prettyprint">
+HTML tag   : &lt;img src="images/logo.gif.pagespeed.ce.xo4He3_gYf.gif"&gt;
+HTTP header: Cache-Control:public, max-age=31536000
+</pre>
+<p>
+PageSpeed uses the origin cache time-to-live (TTL), in this case
+300 seconds, to periodically re-examine the content to see if it's
+changed.  If it changes, then the hash of the content will also
+change.  Thus it's safe to serve the hashed URL with a long
+timeout&mdash;PageSpeed uses one year.
+</p>
+<p>
+If the site owners change the logo, then PageSpeed will notice
+within 5 minutes and begin serving a different URL to users.  But if
+the content does not change, then the hash will not change, and the
+copy in each user's browser will still be valid and reachable.
+</p>
+<p>
+Thus the site owners are still in complete control of how rapidly they can
+deploy changes to the site, but this does not affect the effectiveness
+of the browser cache.  Decreasing the TTL only affects how often
+PageSpeed will need to re-examine the resource.
+</p>
+<p>
+It should be noted that cache extension is built into other
+PageSpeed filters as well.   All filters that rewrite resources
+include a content-hash in the generated URL, and serve the resource
+with a 1-year TTL.  The purpose of this filter is to extend cache
+lifetimes for all resources that are not otherwise optimized.
+</p>
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> for
+cache-extending resources
+<a href="http://www.modpagespeed.com/extend_cache.html?ModPagespeed=on&amp;ModPagespeedFilters=extend_cache">in HTML</a> and
+<a href="http://www.modpagespeed.com/rewrite_css_images.html?ModPagespeed=on&amp;ModPagespeedFilters=rewrite_css,extend_cache">in CSS</a>.
+</p>
+
+<h2 id="limitations">Limitations</h2>
+<p>
+Cache extension is only applied to resources that are publicly
+cacheable to begin with.  Cache extension is not done on resources
+that have <code>Cache-Control: private</code> or <code>Cache-Control:
+nocache</code>.
+</p>
+<p>
+This can be overridden with:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedForceCaching on</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed ForceCaching on;</pre>
+</dl>
+<p>
+This switch is intended for experimental purposes only, to help
+evaluate the benefit of cache extension against the effort of adding
+cache-control headers to resources.  Live traffic should not be served
+this way.
+</p>
+<p>
+The following configure file fragment demonstrates how to configure
+caching headers in Apache.  This is how the mod_pagespeed_example
+directory is set up.
+</p>
+<pre class="prettyprint lang-sh">
+# These caching headers are set up for the mod_pagespeed example, and
+# also serve as a demonstration of good values to set for the entire
+# site, if it is to be optimized by mod_pagespeed.
+&lt;Directory /var/www/mod_pagespeed_example&gt;
+  # Any caching headers set on HTML are ignored, and all HTML is served
+  # uncacheable.  PageSpeed rewrites HTML files each time they are served.  The
+  # first time mod_pagespeed sees an HTML file, it generally won't optimize it
+  # fully.  It will optimize better after the second view.  Caching defeats this
+  # behavior.
+
+  # Images, styles, and JavaScript are all cache-extended for
+  # a year by rewriting URLs to include a content hash.  mod_pagespeed
+  # can only do this if the resources are cacheable in the first place.
+  # The origin caching policy, set here to 10 minutes, dictates how
+  # frequently mod_pagespeed must re-read the content files and recompute
+  # the content-hash.  As long as the content doesn't actually change,
+  # the content-hash will remain the same, and the resources stored
+  # in browser caches will stay relevant.
+  &lt;FilesMatch "\.(jpg|jpeg|gif|png|js|css)$"&gt;
+    Header set Cache-control "public, max-age=600"
+  &lt;/FilesMatch&gt;
+&lt;/Directory&gt;
+</pre>
+<p>
+The equivalent configuration for Nginx would be:
+<pre class="prettyprint">
+# Make sure this goes after the .pagespeed. location regexp in your
+# configuration file so that .pagespeed. resources don't get this header
+# applied.
+location /mod_pagespeed_example {
+  location ~* \.(jpg|jpeg|gif|png|js|css)$ {
+    add_header Cache-Control "public, max-age=600";
+  }
+}
+</pre>
+
+<h2 id="risks">Risks</h2>
+<p>
+This filter is considered low risk. The rewritten URL will have a different name
+than that of the original URL, however, so JavaScript that uses URLs as
+templates can stop working.  For example, consider a site that
+has <code>&lt;input type=image src="button.gif"&gt;</code> and runs JavaScript
+that turns <code>button.gif</code> into <code>button-hover.gif</code> when the
+user hovers over the button.  With cache extension enabled, or any filter that
+changes the URLs of images, PageSpeed would replace the HTML fragment with
+something like <code>&lt;input type=image
+src="button.gif.pagespeed.ce.xo4He3_gYf.gif"&gt;</code>.  If the script was
+coded as "insert '-hover' before the final '.'" then it would construct an
+invalid hover URL of <code>button.gif.pagespeed.ce.xo4He3_gYf-hover.gif</code>.
+If this is a problem on your site, consider <a href="system#ipro">In-Place
+Resource Optimization</a>.
+
+</p>
+<p>
+  When applied to JavaScript files, this filter is sensitive to
+  <a href="restricting_urls#aris"><code
+  >AvoidRenamingIntrospectiveJavascript</code></a>.  For example,
+  a JavaScript file that
+  calls <code>document.getElementsByTagName('script')</code> will not be
+  cache-extended.
+</p>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

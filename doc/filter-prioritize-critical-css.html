@@ -1,0 +1,159 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prioritize Critical CSS</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Prioritize Critical CSS</h1>
+  <h2>Configuration</h2>
+  <p>
+  The 'Prioritize Critical CSS' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters prioritize_critical_css</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters prioritize_critical_css;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Objective</h2>
+<p>
+This rewriter improves page render times by identifying CSS rules needed to
+render the page, inlining those critical rules and deferring the load of the
+full CSS resources.
+</p>
+
+<h2>Description</h2>
+<p>
+prioritize_critical_css parses the CSS and replaces it with inlined CSS
+that contains only the rules used on the page. This avoids any blocking CSS
+requests needed for the initial render. It also collects all CSS tags and
+appends them to the HTML in the same order they were found. This will make
+all style rules available after page load.
+</p>
+<p>
+Deferring style rules that are not used by the document delays downloading
+unnecessary bytes and allows the browser to start rendering sooner per
+<a href="/speed/docs/best-practices/payload#RemoveUnusedCSS">this best
+practice</a>.
+</p>
+
+<h2>Example</h2>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;link rel="stylesheet" href="small.css"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+And the resource <code>small.css</code> is like this:
+<pre class="prettyprint">
+  .yellow {background-color: yellow;}
+  .blue {color: blue;}
+  .big { font-size: 8em; }
+  .bold { font-weight: bold; }
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;style&gt;
+      .blue{color:blue;}
+    &lt;/style&gt;
+    &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+&lt;noscript&gt;&lt;link rel="stylesheet" href="small.css"&gt;&lt;/noscript&gt;
+</pre>
+<p>
+The original small.css is loaded after onload of the page. The application
+order of CSS rules is maintained by injecting all the <code>&lt;style&gt;</code>
+and <code>&lt;link&gt;</code> elements into the document through JavaScript.
+</p>
+
+<p>
+The effect of this rewriter can be observed on modpagespeed.com <a
+  href="http://www.modpagespeed.com/prioritize_critical_css.html?ModPagespeed=off">
+  before</a> and <a
+  href="http://modpagespeed.com/prioritize_critical_css.html?ModPagespeedFilters=+prioritize_critical_css">
+  after</a> rewriting. You will need to reload the page a few times to see the
+effect, since this rewriter computes the critical rules for the page based on
+previous page renders.
+</p>
+
+<p>
+prioritize_critical_css injects JavaScript that uses a
+<a href="faq#beacons">beacon</a> to report back to the server the CSS that is
+used by the page. It takes at least two visits to instrument the page, collect
+the appropriate beacon data, and extract the required CSS before a fully
+optimized page is presented; until then all CSS is optimized as normal:
+minified, combined, etc.
+</p>
+<p>
+prioritize_critical_css automatically enables the
+<a href="filter-css-rewrite"><code>rewrite_css</code></a>,
+<a href="filter-css-inline-import"><code>inline_import_to_link</code></a>, and
+<a href="filter-flatten-css-imports"><code>flatten_css_imports</code></a>
+filters since it needs these to be applied to
+determine the critical CSS, and it automatically disables the
+<code>inline_css</code> filter as it does this itself. It does this even if
+these other filters are expressly disabled (or enabled in the case of
+<code>inline_css</code>) but <em>not</em> if they are expressly forbidden (in
+which case this filter will do the instrumentation work but ultimately fail to
+completely optimize the page, wasting processing time).
+</p>
+
+<h2>Requirements</h2>
+<p>
+prioritize_critical_css computes critical CSS only if the corresponding
+CSS file is "public" cacheable.
+</p>
+
+<h2>Risks</h2>
+<p>
+prioritize_critical_css filter is moderate risk. It should be safe for
+most pages, but it could potentially cause reflow of the page. If different
+content (with substantially different styles) is served for the same URL based
+on cookies, IP, user agent, etc., then this filter could potentially show
+unstyled content before it loads the page completely, or in certain cases it
+could break rendering completely.
+</p>
+<p>
+prioritize_critical_css filter adds inlined CSS to the HTML, increasing
+its size. The overhead of the extra inlined CSS can outweigh the benefit if
+the CSS resources are already in the browser's cache. However it will still
+benefit from faster processing of the CSS in the browser.
+</p>
+
+<h2>Limitations</h2>
+<p>
+This rewriter cannot compute critical CSS for CSS files under IE conditional
+comments and is disabled if it detects an IE user agent.
+</p>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

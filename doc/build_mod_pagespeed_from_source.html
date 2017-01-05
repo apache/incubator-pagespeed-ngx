@@ -1,0 +1,320 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Build mod_pagespeed From Source</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Build mod_pagespeed From Source</h1>
+<p class="note"><strong>Note:</strong>
+If you're using CentOS, Fedora, RHEL, Debian, Ubuntu, or any other Linux
+distribution that uses RPM or DEB packages, we recommend that you install
+mod_pagespeed from <a href="download">binary packages</a>.
+</p>
+
+<p>
+The build has been tested on Ubuntu Lucid and CentOS 5.4. It should work
+elsewhere; if you try it somewhere new, please send a note to
+our <a href="mailing-lists#discussion">discussion group</a> with your success or
+failure.
+</p>
+
+<h2 id="prerequisites">Prerequisites</h2>
+
+<p>
+We require Apache (>= 2.2), Python (>= 2.7), <code>g++</code> (>= 4.1),
+<code>svn</code> (>= 1.8), <code>git</code> (>= 1.8), <code>gperf</code>, and <code>make</code>.
+To install these on Debian or Ubuntu run:
+</p>
+<pre>
+  sudo apt-get install apache2 g++ python subversion gperf make devscripts fakeroot git curl zlib1g-dev
+</pre>
+<p>
+On CentOS, run:
+</p>
+<pre>
+  sudo yum install httpd gcc-c++ python subversion gperf make rpm-build git curl zlib-devel
+</pre>
+<p>
+CentOS 5 does not include git in its repositories. If you are running CentOS 5
+or another operating system with a version of git older than 1.8,
+to install git 1.8 or higher, you must build it from source.
+</p>
+<pre>
+sudo yum install curl-devel expat-devel gettext-devel openssl-devel zlib-devel perl-devel
+wget https://www.kernel.org/pub/software/scm/git/git-2.0.4.tar.gz
+tar -xf git-2.0.4.tar.gz
+cd git-2.0.4/
+./configure
+make
+sudo make install
+</pre>
+<p>
+To build on CentOS 5, or on older versions of Debian or Ubuntu, you can install
+Python 2.7 from source.
+<pre>
+  wget http://www.python.org/ftp/python/2.7/Python-2.7.tgz
+  tar xzf Python-2.7.tgz
+  cd Python-2.7
+  ./configure --prefix=/usr/local
+  make -j >make.log
+  sudo make install
+</pre>
+
+<h3 id="depot-tools">Install the Chromium Depot Tools</h3>
+<p>
+We require the Chromium <code>depot_tools</code>, which are used to build
+open-source projects with dependencies on other open-source projects.  Download
+it with:
+</p>
+<pre>
+  mkdir -p ~/bin
+  cd ~/bin
+  git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+</pre>
+<p>
+You will need to add the <code>depot_tools</code> to your
+path. In <code>bash</code> you would run:
+</p>
+<pre>
+  export PATH=$PATH:~/bin/depot_tools
+</pre>
+<h2 id="checkout">Check out mod_pagespeed and dependencies</h2>
+<p>
+You need to download the source code for mod_pagespeed and all of its
+dependenceies.  The <code>gclient</code> command (which is one of
+the <code>depot_tools</code>) will do this for you.
+
+<p>For the latest stable version:</p>
+<pre>
+  mkdir ~/mod_pagespeed    # Any directory is fine.
+  cd ~/mod_pagespeed
+  gclient config https://github.com/pagespeed/mod_pagespeed.git --unmanaged --name=src
+  git clone https://github.com/pagespeed/mod_pagespeed.git src
+  cd src
+  git checkout latest-stable
+  cd ..
+  gclient sync --force --jobs=1
+  cd src
+  make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh \
+      BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
+</pre>
+
+<p>The beta version has a slightly different build system:</p>
+<pre>
+  git clone -b latest-beta --recursive https://github.com/pagespeed/mod_pagespeed.git
+  cd mod_pagespeed
+  python build/gyp_chromium --depth=.
+  make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
+</pre>
+<h2 id="tests">Build &amp; Run Tests</h2>
+<p>
+To make sure mod_pagespeed will work on your system we provide some automated
+tests.  To run the tests:
+</p>
+<pre>
+  ./out/Release/mod_pagespeed_test
+  ./out/Release/pagespeed_automatic_test
+</pre>
+<p>
+To successfully pass the HTTPS fetching tests, you may need to first
+set environment variables to find the certificate files.  On Ubuntu,
+the test binaries should have the correct paths by default.  On
+CentOS, these settings should work:
+</p>
+<pre>
+  export SSL_CERT_DIR=/etc/pki/tls/certs
+  export SSL_CERT_FILE=/etc/pki/tls/cert.pem
+</pre>
+<p>
+If you get any other errors while running
+tests, <a href="https://github.com/pagespeed/mod_pagespeed/issues/new">report a
+bug</a> or write to our <a href="mailing-lists#discussion">discussion group</a>.
+
+<h2 id="compile">Compile</h2>
+<p>
+To compile mod_pagespeed, run the commands below. You should to omit the AR
+arguments for latest-beta.
+</p>
+<pre>
+  cd ~/mod_pagespeed/src
+  make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release
+</pre>
+<p>
+To see the actual <code>g++</code> commands, you can
+add <code>V=1</code> to the above command.  If you ran the tests
+above, this step should complete quickly.
+</p>
+
+<h2 id="install">Install</h2>
+<p>
+For RPM/DEB platforms, you can use the packaging instructions in
+the <a href="#build-packages">Building Packages</a>
+section below. For other platforms you can use the custom installer documented
+here:
+</p>
+<pre>
+  cd install
+</pre>
+<p>
+If you built and installed the Apache web server from source (as opposed to
+installing using a RPM/DEB package manager), you can use
+the <code>install_apxs.sh</code> script:
+</p>
+<pre>
+  ./install_apxs.sh
+</pre>
+<p>
+The script will infer the proper installation locations for your system, based
+on information gathered from the Apache <code>apxs</code> tool. These defaults
+can be overridden on the command line by specifying environment variables. See
+the contents of the <code>install_apxs.sh</code> script for specific details on
+these environment variables. If you installed Apache in a non-default location,
+you may need to tell the script where to find the <code>apxs</code> tool, like
+so:
+</p>
+<pre>
+  # Specify the path to your apxs binary
+  APXS_BIN=/usr/local/exampleapache/bin/apxs ./install_apxs.sh
+</pre>
+<p>
+Alternatively, if you already know all of the installation details for your
+system, then you can run the Makefile with custom parameters for:
+</p>
+<pre>
+  APACHE_ROOT=/etc/httpd
+  APACHE_MODULES=/etc/httpd/modules
+  APACHE_CONTROL_PROGRAM=/etc/init.d/httpd
+  APACHE_USER=www-data
+  APACHE_DOC_ROOT=/var/www/html
+  ... # see Makefile for more options
+</pre>
+<p>
+Run:
+</p>
+<pre>
+  make APACHE_ROOT=...  ... staging
+  sudo make ... install  # Use make ... -n install to see the commands without
+  executing
+  sudo make ... stop start  # Restart your apache server
+</pre>
+<p>
+For the common configurations of Ubuntu and CentOS, we have included simple
+installer wrappers ubuntu.sh and centos.sh for your convenience. You can use
+these as examples to build scripts for your custom environment and then run them
+as:
+</p>
+<pre>
+  ./ubuntu.sh staging
+  sudo ./ubuntu.sh install
+  sudo ./ubuntu.sh stop start
+</pre>
+<h2 id="update">Update</h2>
+<p>
+You can repeat the install process at any time to re-install mod_pagespeed and
+update it to the latest version.
+</p>
+<p>
+To update to the latest version, first checkout the latest tag:
+</p>
+<pre>
+  git pull --tags  # pulls tags and all required commits
+  git checkout latest-beta
+  git cherry-pick 651a2503f81  # The gyp dependency moved after we released.
+</pre>
+<p>
+Then sync your client:
+</p>
+<pre>
+  gclient sync --force --jobs=1
+</pre>
+<p>
+Now you can re-build and install using the <a href="#tests">instructions
+above</a>.
+<h2 id="build-packages">Build Packages</h2>
+<p>
+You can build RPM or DEB packages using the following commands:
+</p>
+<pre>
+  python build/gyp_chromium -Dchannel=beta
+  make BUILDTYPE=Release AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh linux_package_rpm
+</pre>
+<p>
+or
+</p>
+<pre>
+  python build/gyp_chromium -Dchannel=beta
+  make BUILDTYPE=Release AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh linux_package_deb
+</pre>
+<p>
+The resulting package file will be in the <code>out/Release</code> directory.
+</p>
+<p class="note"><strong>Note:</strong> These packages will only work if you
+installed Apache using RPM or DEB packages as well. Notably, if you installed
+Apache using cPanel, these packages will not work. Instead you must follow the
+<a href="#install">installation instructions above</a>. See also:
+<a href="faq#cpanel-install">FAQ:
+I installed Apache 2.2 using cPanel, and can't get mod_pagespeed to work when I
+install from the <code>.deb</code> or <code>.rpm</code>.</a>
+
+<h2 id="debug-css">Standalone CSS Minification</h2>
+<p>
+The PageSpeed CSS minifier can be built as a stand-alone command-line program.
+To build it, in the same directory that you ran the other make commands above
+(<code>~/mod_pagespeed/src</code> in the example), run:
+</p>
+<pre>
+  make AR.host=`pwd`/build/wrappers/ar.sh AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release css_minify_main
+</pre>
+<p>
+You can run it as:
+</p>
+<pre>
+  ./out/Release/css_minify_main FILENAME.css > FILENAME-MINIFIED.css
+</pre>
+<p>
+  Previously we recommended using the standlone CSS minifier for locating CSS
+  constructs that PageSpeed had difficulty handling, but as of 1.9.32.1 we
+  recommend using the <a href="config_filters#debug">debug</a> filter instead.
+</p>
+<p>
+
+This will print the parsing errors encountered
+to <code>stderr</code>. <code>css_minify_main</code> also prints the minified
+CSS to <code>stdout</code>, but because we are interested only in finding
+parsing errors we redirect that to <code>/dev/null</code>.
+</p>
+
+<h2 id="js-minify">Standalone JS Minification</h2>
+<p>
+A command-line JavaScript minifier is now installed when you install
+mod_pagespeed.  This generates the same minified code as mod_pagespeed itself.
+It can be used as follows:
+</p>
+<pre>
+  pagespeed_js_minify myfile.js > myfile.min.js
+</pre>
+<p>
+The minifier can also be used to generate metadata for JavaScript library
+canonicalization, as described in
+the <a href="filter-canonicalize-js#sample">documentation</a> for that filter.
+</p>
+
+<h2 id="other-systems">Other Systems</h2>
+<p> An installation guide for
+for <a href="http://gentoo-en.vfose.ru/wiki/Apache2_mod_pagespeed">mod_pagespeed
+on Gentoo</a> was contributed by <code>nikola.derikonjic</code>,
+and <a href="http://software.opensuse.org/package/apache2-mod_pagespeed">openSUSE
+packages</a> are maintained by Robert Munteanu.  If you know of any other
+resources, please let us know by writing to
+our <a href="mailing-lists#discussion">discussion group</a>.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

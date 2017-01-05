@@ -1,0 +1,99 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rewrite Style Attributes</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Rewrite Style Attributes</h1>
+
+
+
+<h2>Configuration</h2>
+<p>
+The 'Rewrite Style Attributes' filter is enabled by specifying <em>either</em>:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters rewrite_style_attributes,rewrite_css</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters rewrite_style_attributes,rewrite_css;</pre>
+</dl>
+or
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters rewrite_style_attributes_with_url,rewrite_css,rewrite_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters rewrite_style_attributes_with_url,rewrite_css,rewrite_images;</pre>
+</dl>
+<p>
+in the configuration file. If both are enabled,
+<code>rewrite_style_sttributes</code> takes precedence.
+</p>
+<h2>Description</h2>
+<p>
+The "Rewrite Style Attributes" filter rewrites CSS inside elements' style
+attribute.  It requires <code>rewrite_css</code> to also be enabled.  See the settings for
+<a href="filter-css-rewrite.html">rewrite_css</a> to control CSS minification, image rewriting,
+image recompression, and cache extension.</p>
+<p>
+<code>rewrite_style_attributes</code> enables the filter for all style
+attributes.  <code>rewrite_style_attributes_with_url</code> enables it only
+for style attributes that contain the text '<code>url(</code>', for which you will generally
+want to enable one or more image optimization filters.</p>
+<p>
+<code>rewrite_style_attributes_with_url</code> is more efficient because it
+does not always parse the CSS, but it will not optimize CSS that doesn't
+reference any URLs. <code>rewrite_style_attributes</code> will always parse
+the CSS and optimize everything possible. Because images are generally the
+source for greatest improvement and are enclosed in <code>url()</code>,
+<code>rewrite_style_attributes_with_url</code> is a good balance for most uses,
+while <code>rewrite_style_attributes</code> is available for more aggressive
+optimization.
+</p>
+<h2>Operation</h2>
+<p>
+This filter inspects the style attributes of all tags other than
+<code>&lt;style&gt;</code> (since they cannot have a style attribute) and
+rewrites them according to the configured <a href="filter-css-rewrite.html"
+>rewrite_css</a> filter, which can include CSS minification, image rewriting,
+image recompression, and cache extension.
+</p>
+<p>
+As explained above, if <code>rewrite_style_attributes_with_url</code> is
+enabled the style attribute's contents are first scanned to ensure that they
+contain the text <code>url(</code> and are processed only if so.
+</p>
+<p>
+For example, if a <code>&lt;div&gt;</code> tag looks like this:
+</p>
+<pre class="prettyprint">
+&lt;div style=&quot;background-image: url('images/Puzzle.jpg');&quot;/&gt;
+</pre>
+<p>
+Then, if the image is optimizable, PageSpeed will convert it to something
+like:
+<pre class="prettyprint">
+&lt;div style=&quot;background-image:url('images/Puzzle.jpg.pagespeed.ic.7X5cYtoCx-.jpg');&quot;/&gt;
+</pre>
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/rewrite_style_attributes.html?ModPagespeed=on&amp;ModPagespeedFilters=rewrite_style_attributes_with_url,rewrite_css,rewrite_images">example</a>.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered minimal risk.
+<code>rewrite_style_attributes_with_url</code> is a core filter but
+<code>rewrite_style_attributes</code> is not.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

@@ -1,0 +1,91 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Deduplicate Inlined Images</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Deduplicate Inlined Images</h1>
+<h2>Configuration</h2>
+<p>
+  The 'Deduplicate Inlined Images' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters dedup_inlined_images</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters dedup_inlined_images;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Objective</h2>
+<p>
+  Reduce the transfer size of HTML files by eliminating redundant image data
+  URLs.
+</p>
+
+<h2>PageSpeed Rule</h2>
+<p>
+  This rewriter implements the PageSpeed rule for
+  <a href="/speed/docs/best-practices/payload#CompressImages">optimizing
+  images</a>.
+</a>
+</p>
+
+<h2>Description</h2>
+<p>
+  dedup_inlined_images replaces repeated inlined images with JavaScript
+  that loads the image from the first occurence of the image. If the first
+  image doesn't have an <code>id</code>, one is generated and added to it.
+</p>
+
+<h2>Operation</h2>
+<p>
+  dedup_inlined_images rewrites inlined images:
+  <ul>
+    <li>If the image's data URL has not appeared earlier in the page then,
+      if it doesn't already have one an <code>id</code> attribute is
+      generated and added to the tag, then the existing/added <code>id</code>
+      is recorded along with the data URL for comparison with subsequent
+      inlined images.</li>
+    <li>Otherwise, the <code>&lt;img&gt;</code> tag is replaced with an
+      inline <code>&lt;script&gt;</code> tag that replaces itself with an
+      <code>&lt;img&gt;</code> tag, loading the data URL from the preceding
+      <code>&lt;img&gt;</code> tag with the <code>id</code> matching this
+      tag's data URL.</li>
+  </ul>
+</p>
+
+<h3>Example</h3>
+<p>
+  The effect of this filter can be observed on modpagespeed.com
+  <a href="http://www.modpagespeed.com/dedup_inlined_images.html?ModPagespeed=off">before</a>
+  and
+  <a href="http://www.modpagespeed.com/dedup_inlined_images.html?ModPagespeed=on&ModPagespeedFilters=inline_images,dedup_inlined_images">after</a>
+  rewriting.
+</p>
+
+<h2>Requirements</h2>
+<p>
+  The <a href="filter-image-optimize#inline_images">inline_images</a>
+  filter should be enabled for this filter to have any effect although it
+  will apply to inlined images in the original HTML.
+</p>
+
+<h2>Risks</h2>
+<p>
+  dedup_inlined_images is considered low risk. It is possible for the
+  resulting HTML to be larger than the original due to the size of the injected
+  JavaScript but this is expected to be rare and not a large increase.
+</p>
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>
+

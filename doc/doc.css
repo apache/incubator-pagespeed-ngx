@@ -1,0 +1,193 @@
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+a {
+  color: #0288d1;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+#header, #navline {
+  color: white;
+}
+
+#header a, #navline a {
+  color: white;
+}
+
+#logoline {
+  background-color: #0061ff;
+  padding: 1em;
+}
+
+#logo {
+  display: inline-block;
+  position: relative;
+  top: 4px;
+}
+
+#logotext {
+  font-size: 32px;
+  display: inline-block;
+}
+
+#navline a{
+  background-color: #3d87ff;
+  display: block;
+  padding: 0.5em 1em 0.5em 1em;
+}
+
+#content {
+  margin: 0.5em;
+  max-width: 35em;
+}
+
+code, pre {
+  background: #f7f7f7;
+  color: #37474f;
+}
+
+.note, .note code {
+  background: #e1f5fe;
+  color: #0288d1;
+}
+
+.note a {
+  color: #0288d1;
+  text-decoration: underline;
+}
+
+.caution, .caution code {
+  background: #fff3e0;
+  color: #dd2c00;
+}
+
+.caution a {
+  color: #dd2c00;
+  text-decoration: underline;
+}
+
+.warning, .warning code {
+  background: #fbe9e7;
+  color: #d50000;
+}
+
+.warning a {
+  color: #d50000;
+  text-decoration: underline;
+}
+
+.note, .caution, .warning {
+  padding: 1em;
+}
+
+pre {
+  padding: 1em;
+  overflow: auto;
+  line-height: 1.1;
+}
+
+table {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  border-collapse: collapse;
+}
+
+th {
+  color: #fff;
+  vertical-align: middle;
+  background-color: #555;
+}
+
+td {
+  border-top: 1px solid #e0e0e0;
+  background-color: #f7f7f7;
+}
+
+th, td {
+  padding: 1em;
+}
+
+li {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+img {
+  max-width: 100%;
+}
+
+.table-wrapper {
+  max-width: 100%;
+  overflow: auto;
+}
+
+#downloads .download {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+#toc {
+  border-left: 4px solid #0061ff;
+  font-size: 0.9em;
+  max-width: 25em;
+  margin-top: 1em;
+  margin-left: 1em;
+}
+
+#toc-contents {
+  color: #757575;
+  font-weight: bold;
+  padding-left: 1em;
+}
+
+#toc ul {
+  list-style: none;
+  list-style-position: inside;
+  padding-left: 1em;
+}
+
+@media screen and (min-width: 55em) {
+  #toc {
+    float: right;
+    max-width: 18em;
+    padding-right: 1em;
+  }
+}
+
+.header-link {
+  visibility: hidden;
+  font-size: 80%;
+}
+
+h2:hover .header-link,
+h3:hover .header-link,
+h4:hover .header-link,
+h5:hover .header-link,
+h6:hover .header-link {
+  visibility: initial;
+  text-decoration: none;
+}
+
+.column {
+  margin: 0.5em;
+}
+
+.columns {
+  max-width: 75em;
+}
+
+@media screen and (min-width: 50em) {
+  .column {
+    display: inline-block;
+    vertical-align: top;
+  }
+}

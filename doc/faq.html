@@ -1,0 +1,705 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Frequently Asked Questions</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Frequently Asked Questions</h1>
+<h2 id="other-servers">I'm not running Apache or Nginx, do you support my
+http server?</h2>
+
+<p>
+While we only support Apache and Nginx, there are community developed ports to
+several other webservers:
+</p>
+<ul>
+<li><a
+href="https://cwiki.apache.org/confluence/display/TS/ats_speed">Apache
+Traffic Server</a></li>
+<li><a href="http://www.iispeed.com/"
+>Internet Information Services (IIS)</a></li>
+<li><a
+href="http://open.litespeedtech.com/mediawiki/index.php/Help:Modules:PageSpeed"
+>OpenLiteSpeed</a></li>
+</ul>
+<p>
+If you run a webserver that doesn't have a port, one option would be to set up
+some other server running PageSpeed as a reverse proxy in front of it.  If
+you're not sure which to use we recommend using PageSpeed on nginx, but any of
+these servers should work well as an optimizing reverse proxy.
+</p>
+<p>
+(And, of course, if you're interested in porting PageSpeed to a new server, that
+would be awesome, and anyone porting should feel free to send us lots of
+detailed technical questions!)
+</p>
+
+<h2 id="when-support">When will you support my favorite OS or protocol?</h2>
+
+<p>
+While we have no dates to announce for upcoming releases, we definitely want to
+know what you think we should be working
+on. Please <a href="https://github.com/pagespeed/mod_pagespeed/issues">search
+our issues</a> for your feature. If you don't find
+it, <a href="https://github.com/pagespeed/mod_pagespeed/issues/new">open a new
+issue</a> and tag it "Type-Enhancement". To get updates on an issue, click the
+"star" icon for it.  This also lets us know how many people are interested in
+the issue.  If your issue is Nginx-specific, consider posting on
+the <a href="https://github.com/pagespeed/ngx_pagespeed/issues">ngx_pagespeed
+bug tracker</a>.
+</p>
+
+<h2 id="suse">Do you support SUSE?</h2>
+<p>
+We support SUSE on Apache and Nginx when <a href="build_from_source">building
+from source</a>.  For Apache, Robert Munteanu (robert.munteanu@gmail.com) has
+set up a repository which publishes OpenSUSE RPMs for mod_pagespeed. The
+repository is
+hosted <a href="http://software.opensuse.org/package/apache2-mod_pagespeed">on
+OpenSUSE's build service instance</a>.  The builds have seen some testing on one
+of Robert's servers (OpenSUSE 12.1/x86_64) but he'd appreciate anyone else
+testing it.
+</p>
+<p>
+To enable the module, install it, add <code>deflate pagespeed</code> to your
+list of Apache modules in <code>/etc/sysconfig/apache2</code> and restart
+Apache.
+</p>
+<p>
+Please note that the module is linked dynamically with the current system
+libraries and as such will bring in more dependencies than the 'stock' Fedora or
+CentOS RPM.
+</p>
+
+<h2 id="not-rewriting">Why isn't PageSpeed rewriting any of my pages?</h2>
+<p>
+Check the HTTP response headers from your HTML page:
+</p>
+<pre class="prettyprint lang-bsh">
+  curl -D- http://example.com | less
+</pre>
+<p>
+You should get something like:
+</p>
+<dl>
+  <dt>Apache:<dd>
+<pre>
+Date: Fri, 30 Sep 2016 15:36:57 GMT
+Server: Apache/2.4.7 (Ubuntu)
+...
+X-Mod-Pagespeed: 1.11.33.4-0
+...
+</pre>
+  <dt>Nginx:<dd>
+<pre>
+Date: Fri, 30 Sep 2016 15:37:24 GMT
+Server: nginx/1.11.4
+...
+X-Page-Speed: 1.11.33.4-0
+</pre>
+</dl>
+<p>
+If you don't see an <code>X-Mod-Pagespeed</code> header (Apache)
+or <code>X-Page-Speed</code> header (Nginx), this means that your webserver
+isn't letting PageSpeed run.  This could be because it isn't actually installed,
+you don't have it turned on in the configuration file, or many other reasons.
+In Apache the problem might be that you have multiple
+<code>SetOutputFilter</code> directives: only one of those will win. See the
+Apache <a
+href="http://httpd.apache.org/docs/current/mod/core.html#SetOutputFilter"
+>SetOutputFilter documentation</a>.
+</p>
+<p>
+If you do see the header, but it doesn't look like PageSpeed is making any
+changes to your page, its possible that none of the active filters are finding
+anything to rewrite.  Try comparing your page with PageSpeed off and with
+the <a href="filter-whitespace-collapse">collapse_whitespace</a> filter enabled:
+</p>
+<pre class="prettyprint">
+  curl -D- 'http://example.com?ModPagespeed=off' | less
+  curl -D- 'http://example.com?ModPagespeed=on&ModPagespeedFilters=collapse_whitespace' | less
+</pre>
+<p>
+If you see a change when run with <code>collapse_whitespace</code> on, that
+means PageSpeed is running but the filters you have selected aren't
+optimizing anything.  There are several reasons that could happen:
+</p>
+<ul>
+  <li>The filters you have enabled aren't aggressive enough.</li>
+  <li>Your resources (images, css, javascript) aren't cacheable.  If
+      PageSpeed sees <code>cache-control</code> headers such
+      as <code>nocache</code> or <code>private</code> it will not rewrite the
+      resources.</li>
+  <li>CSS, JavaScript, and image files served from a distinct domain from the
+      HTML must have the resource domain authorized. See
+      <a href="domains">Domains</a>.</li>
+  <li>Your CSS has new CSS3 syntax or other constructions we don't support.
+      See <a href="http://github.com/pagespeed/mod_pagespeed/issues/108"
+      >issue 108</a>.
+      The <a href="filter-css-rewrite#configuration"
+      >fallback_rewrite_css_urls</a> filter may be able to help. You can also
+      use the <a href="build_from_source#debug-css">standalone CSS parser</a> to
+      help debug these issues.</li>
+  <li>Your resources are served over HTTPS.   HTTPS resources can currently only
+      be rewritten if they are origin-mapped or loaded from directly from the
+      file-system. See <a href="https_support">HTTPS Support</a>.</li>
+</ul>
+
+<h2 id="missing-dependency">Why am I getting "Error: Missing Dependency: httpd &gt; = 2.2" even though I have Apache 2.2.? installed?</h2>
+<p>
+  You are probably trying to install mod_pagespeed using yum or apt-get
+  (the .rpm or .deb binaries), but you installed Apache using a different
+  method (cPanel, Wordpress, etc.). This will not work because mod_pagespeed
+  binaries depend upon Apache being installed using yum or apt-get.
+</p>
+<p>
+  Instead you must either
+  <a href="https://developers.google.com/speed/pagespeed/module/build_mod_pagespeed_from_source">
+    build from mod_pagespeed from source
+  </a>
+  or <a href="http://www.google.com/">search</a> for mod_pagespeed + your
+  platform to see if someone has documented an install process for that
+  platform. For example,
+  <a href="#cpanel-install">cPanel based installation</a>.
+</p>
+
+<h2 id="cpanel-install">I'm using cPanel on my server, how do I install mod_pagespeed?</h2>
+<p>
+cPanel installs Apache httpd server from source via the built-in EasyApache setup
+and build process. In order to enable mod_pagespeed on your server, download
+and install the <a href="https://github.com/pagespeed/cpanel">mod_pagespeed module
+ for cPanel WHM</a> - once the module is installed, you can select "mod_pagespeed" as
+one of the modules during the regular EasyApache build (via the online tool, or from
+the command line). Do not install mod_pagespeed from .deb. or .rpm packages - cPanel
+requires that you use the EasyApache build process.
+</p>
+
+<h2 id="wordpress-blank">I'm using WordPress and my pages are blank. Why?</h2>
+<p>
+Disable compression in the WordPress plugin, so that mod_pagespeed will process
+uncompressed HTML. mod_pagespeed ensures that its output will be compressed by
+enabling <a href="http://httpd.apache.org/docs/current/mod/mod_deflate.html"
+>mod_deflate</a>.
+</p>
+
+<h2 id="broken">PageSpeed broke my site; what do I do?</h2>
+<p>
+First of all, sorry about that. We put a lot of work into validating our
+rewriters against a large corpus of websites and we disable filters that cause
+problems as soon as we can, but sometimes things slip through.
+</p>
+<p>
+Second, please upgrade to the latest version; we are continually working on
+bug-fixes and turning off filters that break pages.
+</p>
+If it's still breaking your site, please post a bug
+(<a href="https://github.com/pagespeed/mod_pagespeed/issues/new">Apache</a>,
+ <a href="https://github.com/pagespeed/ngx_pagespeed/issues/new">Nginx</a>). If
+you can, including the following information will make it much easier to
+diagnose:
+<ol>
+  <li>Try appending <code>?ModPagespeed=off</code> to the URL. This de-activates
+      PageSpeed. If the site is still broken, it is not a rewrite
+      or HTML parsing problem. It might be a configuration clash, please ask us
+      on our <a href="mailing-lists#discussion">discussion group</a>.</li>
+  <li>If that fixed the site, try
+      appending <code>?ModPagespeed=on&ModPagespeedFilters=</code> to the
+      URL. This turns on PageSpeed, but no filters. If the site is broken
+      now, it is an HTML parsing
+      problem. Please <a href="mailing-lists#discussion">let us know</a>.</li>
+  <li>If the site still worked, try
+      appending <code>?ModPagespeed=on&ModPagespeedFilters=foo</code> for
+      various filters "foo". For example try:
+      <pre class="prettyprint lang-bsh">
+http://www.modpagespeed.com/?ModPagespeed=on&ModPagespeedFilters=extend_cache
+http://www.modpagespeed.com/?ModPagespeed=on&ModPagespeedFilters=combine_css
+http://www.modpagespeed.com/?ModPagespeed=on&ModPagespeedFilters=inline_css
+http://www.modpagespeed.com/?ModPagespeed=on&ModPagespeedFilters=inline_javascript
+http://www.modpagespeed.com/?ModPagespeed=on&ModPagespeedFilters=insert_image_dimensions
+http://www.modpagespeed.com/?ModPagespeed=on&ModPagespeedFilters=rewrite_images
+http://www.modpagespeed.com/?ModPagespeed=on&ModPagespeedFilters=rewrite_css
+http://www.modpagespeed.com/?ModPagespeed=on&ModPagespeedFilters=rewrite_javascript</pre>
+      You may have to reload them a few times over several seconds to make sure
+      they have had time to load sub-resources into cache and rewrite them. If
+      one of these breaks your site, you now know which filter is at
+      fault. Please <a href="mailing-lists#discussion">let us know</a>. You can
+      disable that filter by adding a line to your <code>pagespeed.conf</code>
+      file:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedDisableFilters foo</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed DisableFilters foo;</pre>
+</dl>
+  </li>
+</ol>
+
+<h2 id="mod_rewrite">I am getting 404s for rewritten resources
+  (like example.png.pagespeed.ic.LxXAhtOwRv.png) or for the
+  mod_pagespeed_admin console</h2>
+<p>
+  The most common reason that the rewritten resources 404 is because of
+  mod_rewrite <code>RewriteCond</code> rules. For example:
+</p>
+<pre class="prettyprint">
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ /404 [L,R=301]</pre>
+<p>
+  This rule causes 404 for all requests which don't exist on the filesystem,
+  including mod_pagespeed rewritten resources and the mod_pagespeed admin
+  console.
+</p>
+<p>
+  In order to fix this you must add an exception for mod_pagespeed URLs:
+</p>
+<pre class="prettyprint">
+  RewriteCond %{REQUEST_URI} !pagespeed</pre>
+<p>
+  This will allow rewritten resources, the admin console and static resources
+  necessary for some filters.
+</p>
+
+<h2 id="ignores-changes">PageSpeed does not pick up changes when I edit CSS
+or JavaScript files</h2>
+<p>
+There are two distinct cache-times at play when you use PageSpeed:
+<ol>
+  <li>The origin TTL which PageSpeed uses to refresh its internal
+      server-side cache.</li>
+  <li>The TTL with which PageSpeed serves rewritten resources to
+      browsers.</li>
+</ol>
+When PageSpeed first reads your resource file, it uses the origin TTL to figure
+out how often to re-examine the origin CSS file. Assume your origin TTL is 1
+day. Once PageSpeed has that file in cache, it will not go back &amp; re-check
+that file for a day. Changing the TTL after PageSpeed has put the resource in
+its cache will not help because PageSpeed is not going to reload the resource
+until the one in its cache expires, or you <a href="system#flush_cache">clear
+its cache</a>.
+</p>
+<p>
+We recommend an origin TTL of 10 minutes, which provides reasonable
+responsiveness when you update a file. If you try to make it much smaller, then
+your server will need to refresh it more frequently. This adds server load and
+reduces optimization.
+</p>
+<p>
+To see changes to your files more quickly while
+developing, <a href="system#flush_cache">flush the cache</a> on your server(s).
+</p>
+<p>
+If your environment allows you to
+enable <a href="domains#ModPagespeedLoadFromFile">LoadFromFile</a>,
+you can get the best of both worlds because PageSpeed can eliminate its
+internal server-side cache.
+</p>
+<h2 id="tiny-mce-errors">Why is PageSpeed giving me errors in jquery or
+js_tinyMCE?</h2>
+<p>
+Some JavaScript is introspective, being sensitive to its own name or the path
+it's loaded from.  While PageSpeed has an internal list
+(<a href="https://github.com/pagespeed/mod_pagespeed/blob/master/net/instaweb/rewriter/rewrite_options.cc">DisallowTroublesomeResources</a>)
+hardcoded with filenames of JavaScript libraries that are known to be
+problematic, and <a href="restricting_urls#aris">inspects the source of
+others</a> looking for dangerous constructs, it doesn't always correctly
+determine whether it is safe to rewrite a given file.  If you have a file that
+is giving JavaScript errors, you can tell PageSpeed to leave it alone with
+<a href="restricting_urls">Disallow</a>.
+</p>
+<h2 id="name-resolution-failure">What's with all these "Serf" errors in my logs?
+Error status=670003 (Temporary failure in name resolution)</h2>
+<p>
+This can happen when the DNS cannot be accessed accurately from the server. Thus
+sub-resources cannot be fetched and rewritten correctly.
+</p>
+<p>
+To test that this is the case, <code>ssh</code> into your machine and <code>wget</code> a URL:
+</p>
+<pre class="prettyprint lang-bsh">
+  $ ssh YOUR_SITE
+  $ wget http://YOUR_SITE/
+</pre>
+<p>
+If this fails, then DNS is not accessible or there is some other networking
+issue stopping you from accessing your host from itself.
+</p>
+<p>
+One solution is to use <a href="domains#mapping_origin">origin-mapping</a> to
+indicate the host from which the resources should be fetched:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMapOriginDomain localhost www.example.com</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MapOriginDomain localhost www.example.com;</pre>
+</dl>
+<p>
+This bypasses DNS lookup by telling PageSpeed to get all resources for
+domain <code>www.example.com</code> from <code>localhost</code>.
+</p>
+<p>
+This can also be used to improve the performance of PageSpeed when it is
+sitting behind a load balancer. It may be preferable to use localhost to load
+the resources rather than going out to the load-balancer and back.
+</p>
+<h2 id="tmpfs">Can I move PageSpeed's file-based cache into RAM?</h2>
+<p>
+Why yes, you can. PageSpeed uses the file system for its cache
+implementation. There is no requirement that this be a physical disk. Disk
+pressure will be reduced and performance may be improved by using a memory-based
+file system.
+</p>
+<p>
+Put this in <code>/etc/fstab</code>, with the uid and guid set to the appropiate
+user and group of your webserver, and set path to your needs. Feel free to
+change the size; here it is 256Mb:
+<pre class="prettyprint lang-bsh">
+  tmpfs /path/to/pagespeed_cache tmpfs size=256m,mode=0775,uid=httpd,gid=httpd 0 0
+</pre>
+<p>
+Save it, and after that mount the tmpfs:
+</p>
+<pre class="prettyprint lang-bsh">
+  mount /path/to/pagespeed_cache
+</pre>
+<h2 id="configure-make">Why don't you allow source-installs in Apache via
+./configure && make?</h2>
+<p>
+mod_pagespeed is dependent on several other packages that
+use <code>gclient</code>.  For us to switch away from this build methodology
+we'd have to either:
+</p>
+<ul>
+  <li>rewrite the functionality we get for free from other packages,
+      <b>or</b></li>
+  <li>get these packages to switch
+      methodologies <b>and</b> document for people installing from source that
+      they must <code>configure</code> and <code>make</code> about 10 other
+      packages before they could compile ours.</li>
+</ul>
+<p>
+To do either of those would cost us a lot of development time that we'd prefer
+to spend making PageSpeed better.  The benefit of <code>gclient</code>,
+besides the above, is that it lets us control explicitly which library versions
+we link in, out of a large number of direct and transitive dependencies, helping
+us create a consistent experience for our source-code builds. If we had to ask
+our source-code installers to <code>configure</code> and <code>make</code>
+multiple dependent libraries there would likely be a lot of
+version-incompatibilities.
+</p>
+<p>
+We do support <code>./configure && make</code> in Nginx, but that only works
+because we package up a binary distribution of the PageSpeed Optimization
+Library and a "<a href="build_ngx_pagespeed_from_source">source</a>"
+installation only builds the ngx_pagespeed-specific files from source.  When you
+want
+to <a href="https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source">build
+PSOL from source along with ngx_pagespeed</a> you still need to
+use <code>gclient</code>.
+</p>
+<h2 id="tracking-image">Why is my Google Analytics data being inflated by
+"Serf"?</h2>
+<p>
+If you track page views with a tracking image, you will need to explicitly tell
+PageSpeed not to try to fetch that image. For example if your tracking image
+were:
+</p>
+<pre class="prettyprint">
+  &lt;img src="/ga.php?utmac=..."&gt;
+</pre>
+<p>
+you would add:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedDisallow "*/ga.php*"</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed Disallow "*/ga.php*";</pre>
+</dl>
+<p>
+to your configuration file.
+</p>
+<h2 id="mod_php">mod_pagespeed does not rewrite pages produced from mod_php</h2>
+<p>
+mod_pagespeed only rewrites pages specifically marked as <code>Content-Type:
+text/html</code> (and a few other HTML types). If you dynamically generate your
+pages from mod_php, PHP needs to set this header correctly.
+</p>
+<p>
+One way to do this is to use the PHP's <a href="http://php.net/manual/en/function.header.php">header function</a>:
+</p>
+<pre class="prettyprint">
+  &lt;?php
+  header('Content-Type: text/html')
+  ?&gt;
+</pre>
+<p>
+This code goes at the top of your php file.
+</p>
+<h2 id="meta_tags_and_xhtml">PageSpeed causes my page to display an <code>XML
+Parsing Error</code> message</h2>
+<p>
+This usually happens when using a content management or generation system
+(we've seen it with Munin and Magento for example). The full error message
+looks something like:
+</p>
+<pre class="prettyprint">
+  XML Parsing Error: mismatched tag. Expected: &lt;/li&gt;.
+  Location: http://www.example.com/
+  Line Number 123, Column 4: &lt;/ul&gt;
+</pre>
+<p>
+This happens when the generated content has a <code>meta</code> tag that
+identifies the content as XHTML but the content has markup that is not valid
+XHTML, <em>and</em> you have configured your webserver to set the content type
+to HTML, so the browser parses it as HTML and doesn't detect the invalid XHTML
+errors.
+</p>
+<p>
+However, when <code>convert_meta_tags</code> is enabled (and it's a core filter
+so is on by default), PageSpeed inserts a content header into the response
+with the value in the <code>meta</code> tag, namely XHTML
+(<code>application/xhtml+xml</code> to be precise), resulting in the browser
+displaying the error message because it is now parsing the page as XHTML and
+it rejects the invalid content.
+</p>
+<p>
+There are three solutions, in descending order of preference:
+<ul>
+<li>If the content is XHTML, write XHTML and validate it with an XHTML
+  validator.</li>
+<li>If the content is not XHTML, remove the <code>meta</code> tag that claims
+  it is.</li>
+<li>If the content is not XHTML but you can't remove the <code>meta</code> tag,
+  say because your CMS doesn't let you, disable the
+  <code>convert_meta_tags</code> filter in your <code>pagespeed.conf</code>:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedDisableFilters convert_meta_tags</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed DisableFilters convert_meta_tags;</pre>
+</dl>
+</li>
+</ul>
+<h2 id="selinux_permissions">Why do I get <em>Permission denied</em> errors
+  in my log file on CentOS, RHEL, or any system using SELinux?</h2>
+<p>
+The symptom is many error messages in the webserver log file of the form (split
+across multiple lines here for readability):
+</p>
+<pre class="prettyprint">
+  [Mon Jan 01 02:03:04 2001] [error] [mod_pagespeed 1.0.22.7-2005 @1234]
+    /path/to/pagespeed_cache/randomgibberish.lock:0:
+      creating dir (code=13 Permission denied)
+</pre>
+<p>
+These are because SELinux by default restricts permissions of daemons for
+extra security, so you need to grant permission for the <code>httpd</code>
+or daemon to write to the cache directory:
+</p>
+<pre class="prettyprint">
+  chcon -R -t httpd_sys_content_t /path/to/pagespeed_cache
+</pre>
+This is for Apache; we're not sure what you need to do for Nginx.
+
+<h2 id="loopback_fetches">My logs contain messages about missing
+files requested from 224.0.0.0 and resources are not optimized, what's wrong?</h2>
+<p>
+
+For <a href="CVE-2012-4001">security reasons</a>, PageSpeed will only fetch
+from host names it is explicitly told about via its domain configuration
+directives and from 127.0.0.1, the loopback interface of the server it's running
+on. Many Apache configuration management tools, however, will configure virtual
+hosts to only listen on the external IP, which causes those fetches to fail.
+<p>
+If you are affected, the following options may be appropriate:
+<ul>
+ <li>Unless you have a reason not to, have your virtual hosts listen on all
+    interfaces: change the directives of the form
+     <code>&lt;VirtualHost 198.51.100.1:80&gt;</code> to the form
+     <code>&lt;VirtualHost *:80&gt;</code>
+ </li>
+ <li>For every virtual host, list its domain name(s) with the
+     <code>ModPagespeedDomain</code> directive inside its own
+     <code>&lt;VirtualHost&gt;</code> block. For example:
+     <pre class="prettyprint">
+&lt;VirtualHost 198.51.100.1:80&gt;
+ServerName www.example.com
+ModPagespeedDomain www.example.com
+</pre>
+  </li>
+  <li>For every virtual host, provide a <a href="domains#mapping_origin">
+  <code>ModPagespeedMapOriginDomain</code></a> directive giving where to load
+  its resources, for example:
+     <pre class="prettyprint">
+&lt;VirtualHost 198.51.100.1:80&gt;
+ServerName www.example.com
+ModPagespeedMapOriginDomain 198.51.100.1 www.example.com
+</pre>
+  </li>
+  <li>If you have <a href="configuration#virtual-hosts">
+  <code>ModPagespeedInheritVHostConfig on</code></a>, you can also provide the
+  origin mapping globally, which may be useful in combination with wildcards,
+  for example:
+    <pre class="prettyprint">
+ModPagespeedMapOriginDomain loadbalancer.example.com *.example.com
+</pre>
+
+  <p class="warning"><b>Warning:</b> You do not generally want to use
+    <code>Domain</code> globally as doing so will tell PageSpeed
+    that you consider all of these domains as mutually trusting.</p>
+ </li>
+ <li>If you are running a proxy or for some other reason cannot easily
+     enumerate all virtual hosts, it is possible to disable this behavior,
+     after taking some precautions. Please see
+     <a href="domains#fetch_servers">fetch server restrictions</a> for
+     more information.
+  </li>
+</ul>
+
+<h2 id="beacons">Why are rewritten pages sending POSTs back to my server?</h2>
+<p>
+Certain filters need to determine things about the page: in particular, the
+<code><a href="filter-lazyload-images">lazyload_images</a></code>,
+<code><a href="filter-inline-preview-images">inline_preview_images</a></code>,
+and <code><a href="reference-image-optimize#inline_images">inline_images</a>
+</code> filters need to determine which images are above the fold, and the
+<code><a href="filter-prioritize-critical-css">prioritize_critical_css</a>
+</code>filter needs to determine the CSS actually used by the page.
+<p>
+</p>To do this, the filters inject JavaScript into the rewritten HTML that
+analyzes the page in the browser and sends data back to mod_pagespeed using a
+POST method. The default target is <code>/mod_pagespeed_beacon</code> but that
+can be changed using the <code>
+<a href="filter-instrumentation-add#beacon_url">ModPagespeedBeaconUrl</a>
+</code> directive.
+</p>
+
+<h2 id="control_beacons">How do I enable or disable beacon POSTs being sent back
+to my server?</h2>
+<p>
+Filters that use the beacon automatically inject JavaScript to send the POST
+back to the server, and the POST handler is always enabled in mod_pagespeed,
+so there's nothing to do to enable beaconing.
+</p>
+<p>
+To disable the use of beacons by the image rewriting filters use the <code>
+<a href="config_filters#beacons">ModPagespeedCriticalImagesBeaconEnabled</a>
+</code> directive. If you disable image beacons but enable filters that use
+them, the filters will work but not as well as when beacons are enabled.
+<p>
+To disable the POST handler for all filters there are two options: either
+disable all the filters that use it, or use a
+<code>&lt;Location&gt;</code> directive to block it. Filters are disabled using
+<a href="config_filters#enabling">ModPagespeedDisableFilters</a>. An example
+<code>&lt;Location&gt;</code> directive to block all beacon POST handling that
+can be added to your <code>pagespeed.conf</code> file is:
+<pre class="prettyprint" id="disable_handler">
+  &lt;Location /mod_pagespeed_beacon&gt;
+    Order allow,deny
+  &lt;/Location&gt;
+</pre>
+<p>
+If you block POSTs but enable filters that use beacons, depending on the filter
+it will either have limited functionality or have no useful effect, but in all
+cases pointless processing will occur in both the server and the browser, so
+you should disable and forbid these filters if you block POSTs.
+</p>
+<p class="note">
+<strong>Note:</strong>Even if you disable all filters that use beacons someone
+could use tools like <code>wget</code> or <code>curl</code> to send POSTs to
+your server. These will have no effect but they will require processing. If you
+want to completely disable POST handling use a <code>&lt;Location&gt;</code>
+directive.
+</p>
+
+<h2 id="noscript-redirect">Why is PageSpeed inserting a meta refresh to
+/?PageSpeed=noscript or /?ModPagespeed=noscript at the top of the page?</h2>
+<p>
+The <code><a href="filter-js-defer">defer_javascript</a></code>,
+<code><a href="filter-lazyload-images">lazyload_images</a></code>,
+<code><a href="filter-dedup-inlined-images">dedup_inlined_images</a></code>, and
+<code><a href="filter-local-storage-cache">local_storage_cache</a></code>
+filters require JavaScript to render pages correctly. To support clients that
+have JavaScript disabled, if any of these filters are enabled, PageSpeed will
+insert a meta refresh inside a <code>noscript</code> tag at the top of the page.
+This meta refresh will redirect clients with JavaScript disabled to the current
+URL with a '<code>?PageSpeed=noscript</code>' query parameter appended which
+disables filters that require JavaScript.
+</p>
+<p>
+If you wish to disable this redirect, for instance if your page already requires
+JS to function correctly, set the following option in your
+<code>pagespeed.conf</code>:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedSupportNoScriptEnabled false</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed SupportNoScriptEnabled false;</pre>
+</dl>
+</p>
+
+
+<h2 id="collapse-newlines">Why won't the <code>collapse_whitespace</code> filter
+remove newlines?</h2>
+
+<p>
+When removing whitespace from HTML, some website optimizers remove newlines
+entirely, but PageSpeed leaves them in.  This isn't actually a problem with newlines,
+however, it's that it's not generally safe to remove a run of whitespace
+entirely.  You can turn any number of consecutive whitespace characters into a
+single one, and we do that, but removing the whole run can make the site render
+differently.
+</p>
+
+<p>
+To take a simple example, consider:
+</p>
+
+<pre>
+    &lt;body&gt;
+      &lt;h1&gt;Hello World&lt;/h1&gt;
+      Lorem     ipsum       dolor sit amet, consectetur
+      adipiscing elit. Fusce molestie ante &lt;b&gt;vitae&lt;/b&gt;
+      iaculis         varius. ...
+    &lt;/body&gt;
+</pre>
+
+<p>
+PageSpeed with <code>collapse_whitespace</code> will turn this into:
+</p>
+
+<pre>
+&lt;body&gt;
+&lt;h1&gt;Hello World&lt;/h1&gt;
+Lorem ipsum dolor sit amet, consectetur
+adipiscing elit. Fusce molestie ante &lt;b&gt;vitae&lt;/b&gt;
+iaculis varius. ...
+&lt;/body&gt;
+</pre>
+
+<p>
+If PageSpeed went further and put it all on one line, it would be
+converting <code>&lt;b&gt;vitae&lt;/b&gt; iaculis</code>
+into <code>&lt;b&gt;vitae&lt;/b&gt;iaculis</code>, which would change the
+rendering from "<b>vitae</b> iaculis" into "<b>vitae</b>iaculis"; one word
+instead of two.  It would have been safe to turn <code>&lt;body&gt;
+&lt;h1&gt;Hello World&lt;/h1&gt;</code> into <code>&lt;body&gt;&lt;h1&gt;Hello
+World&lt;/h1&gt;</code>, but doing one and not the other requires understanding
+the CSS (and JS) to the point where we can reliably tell that one pair of
+elements are <code>display:&nbsp;block</code> while the other pair
+are <code>display:&nbsp;inline</code>.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

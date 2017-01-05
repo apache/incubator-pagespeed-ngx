@@ -1,0 +1,364 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PageSpeed HTTPS Support</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>PageSpeed HTTPS Support</h1>
+    <p class="note">
+      As of version 1.10 HTTPS fetching (<code>FetchHttps</code>) is enabled by
+      default, and PageSpeed no longer requires additional configuration to
+      fetch and optimize resources over https.  The alternatives described
+      below, however, are more efficient in situations where they apply.
+    </p>
+
+    <p>
+      PageSpeed supports sites that serve content through https. There are
+      several mechanisms through which PageSpeed can be configured to fully
+      optimize sites served under https:
+    </p>
+    <ul>
+      <li>Use <code>MapOriginDomain</code> to
+          <a href="https_support#map_the_origin">map the https domain to an http
+          domain</a>.</li>
+      <li>Use <code>LoadFromFile</code> to
+          <a href="https_support#load_from_file">map a
+          locally available directory to the https domain</a>.</li>
+      <li>Use <code>FetchHttps</code> to <a href="https_support#https_fetch"
+          >directly fetch HTTPS resources</a> (On by default since 1.10).</li>
+    </ul>
+
+    <p>
+      The first two mechanisms can both be used on the same server, but they
+      must be used for different domains, for example:
+    </p>
+
+    <dl>
+      <dt>Apache:<dd><pre class="prettyprint"
+         >  ModPagespeedMapOriginDomain "http://localhost" "https://www.example.com"
+  ModPagespeedLoadFromFile "https://static.example.com" "/var/www/example/static/"</pre>
+      </dd></dt>
+      <dt>Nginx:<dd><pre class="prettyprint"
+         >  pagespeed MapOriginDomain "http://localhost" "https://www.example.com";
+  pagespeed LoadFromFile "https://static.example.com" "/var/www/example/static/";</pre>
+    </dl>
+
+    <p>
+      Even without configuring any of these options, PageSpeed
+      rewrites HTML documents requested via https. PageSpeed is able to
+      serve these documents because the server passes the HTML document through
+      all its output filters, including *_pagespeed. But by default,
+      PageSpeed will only rewrite non-HTML resources which are served
+      via http. Due to the complexity and security required to manage client
+      SSL certificates, PageSpeed requires the server administrator to
+      explicitly enable https fetching.
+    </p>
+
+    <p>
+      The configuration options mentioned above are intended to help
+      optimize sites with HTTPS resources. Fetching https resource URLs
+      using http should be used only in installations where using http is
+      safe, such as where the server running PageSpeed is a
+      front-end to other back-end systems with private communications and
+      mutual trust between them.
+    </p>
+
+    <h2 id="map_the_origin">Map the origin domain</h2>
+
+    <p>
+      Https resource URLs can be fetched by mapping them to a non-https origin
+      domain as described in
+      <a href="domains#mapping_origin">Mapping Origin Domains</a>:
+    </p>
+    <dl>
+      <dt>Apache:<dd>
+<pre class="prettyprint">
+  ModPagespeedMapOriginDomain "http://localhost" "https://www.example.com"
+</pre>
+      </dd></dt>
+      <dt>Nginx:<dd>
+<pre class="prettyprint">
+  pagespeed MapOriginDomain "http://localhost" "https://www.example.com";
+</pre>
+      </dd></dt>
+    </dl>
+
+    <p>
+      This allows the server to accept https requests for
+      <code>www.example.com</code> while fetching resources for it from the
+      <code>localhost</code> http server, which could be the same Apache process or a
+      different server process. All fetched resources will be optimized as usual.  As
+      many <code>MapOriginDomain</code> directives can be used as is required as long
+      as https is only used on the second domain.
+    </p>
+
+    <h2 id="load_from_file">Load static files from disk</h2>
+
+    <p>
+      Https resource URLs can be served from static files using the
+      <a href="domains#ModPagespeedLoadFromFile">LoadFromFile</a> directive:
+    </p>
+
+    <dl>
+      <dt>Apache:<dd><pre class="prettyprint"
+                          >ModPagespeedLoadFromFile "https://www.example.com" "/var/www/example/static/";</pre>
+          <dt>Nginx:<dd><pre class="prettyprint"
+                             >pagespeed LoadFromFile "https://www.example.com" "/var/www/example/static/";</pre>
+    </dl>
+
+    <h2 id="https_fetch">Fetch HTTPS resources directly</h2>
+    <p>
+      HTTPS fetching is built in and is enabled by default as of 1.10.33.0.
+      To turn the feature off, set <code>FetchHttps</code> to
+      <code>disable</code>:
+    </p>
+
+      <dl>
+        <dt>Apache:<dd>
+<pre class="prettyprint">
+  ModPagespeedFetchHttps enable
+</pre>
+      </dd></dt>
+      <dt>Nginx:<dd>
+<pre class="prettyprint">
+  pagespeed FetchHttps enable;
+</pre>
+      </dd></dt>
+    </dl>
+    <p>
+      You may set multiple options, separated with a comma.  For example, to
+      test a configuration with a self-signed certificate you could do:
+    </p>
+
+      <dl>
+        <dt>Apache:<dd>
+<pre class="prettyprint">
+  ModPagespeedFetchHttps enable,allow_self_signed
+</pre>
+      </dd></dt>
+      <dt>Nginx:<dd>
+<pre class="prettyprint">
+  pagespeed FetchHttps enable,allow_self_signed;
+</pre>
+      </dd></dt>
+    </dl>
+
+    <p>
+      The available options are
+      <ul>
+        <li><code>enable</code></li>
+        <li><code>disable</code></li>
+        <li><code>allow_self_signed</code></li>
+        <li><code>allow_unknown_certificate_authority</code></li>
+        <li><code>allow_certificate_not_yet_valid</code></li>
+      </ul>
+    </p>
+
+
+    <h3>Configuring SSL Certificates</h3>
+
+    <p>
+      Acting as an HTTPS client, PageSpeed must be configured to point to a
+      directory identifying trusted
+      <a href="http://en.wikipedia.org/wiki/Certificate_authority"
+         >Certificate Authorities</a>.  These settings will be automatically
+      applied to configuration files for new binary installations on Debian,
+      Ubuntu, and CentOS systems.  Upgrades, source-installs, and other
+      distributions may require manual configuration updates to identify the
+      proper location.</p>
+
+      <dl>
+        <dt>Apache:<dd>
+<pre class="prettyprint">
+  ModPagespeedSslCertDirectory directory
+  ModPagespeedSslCertFile file
+</pre>
+      </dd></dt>
+      <dt>Nginx:<dd>
+<pre class="prettyprint">
+  pagespeed SslCertDirectory directory;
+  pagespeed SslCertFile file;
+</pre>
+      </dd></dt>
+    </dl>
+
+    <p>
+      The default directory for Debian-based systems
+      is <code>/etc/ssl/certs</code>, and there is no certificate file
+      setting.  On CentOS-based systems, the default directory
+      is <code>/etc/pki/tls/certs</code> and default file
+      is <code>/etc/pki/tls/cert.pem</code>.</p>
+
+    <p>
+      These directive cannot be used
+      in <a href="configuration#htaccess"><code>.htaccess</code> files
+        or <code>&lt;Directory&gt;</code></a> scopes.
+    </p>
+
+    <h2 id="rewrite_domains">Rewrite domains</h2>
+
+    <p>
+      Rewritten resources can have their https domain rewritten if required
+      for the reasons described in <a href="domains#mapping_rewrite">Mapping Rewrite
+        Domains</a>:
+    </p>
+
+    <dl>
+      <dt>Apache:<dd><pre class="prettyprint"
+         >  ModPagespeedMapOriginDomain "http://localhost" "https://www.example.com"
+  ModPagespeedMapRewriteDomain "https://example.cdn.com" "https://www.example.com"</pre>
+      </dd></dt>
+      <dt>Nginx:<dd><pre class="prettyprint"
+         >  pagespeed MapOriginDomain "http://localhost" "https://www.example.com";
+  pagespeed MapRewriteDomain "https://example.cdn.com" "https://www.example.com";</pre>
+      </dd></dt>
+    </dl>
+
+    <h2 id="shard_domains">Shard domains</h2>
+
+    <p>
+      Rewritten resources can have their https domain sharded if required
+      for the reasons described in <a href="domains#shard">Sharding Domains</a>:
+    </p>
+
+    <dl>
+      <dt>Apache:<dd><pre class="prettyprint"
+         >  ModPagespeedMapOriginDomain "http://localhost" "https://www.example.com"
+  ModPagespeedShardDomain "https://www.example.com" \
+                          "https://example1.cdn.com,https://example2.cdn.com"</pre>
+      </dd></dt>
+      <dt>Nginx:<dd><pre class="prettyprint"
+         >  pagespeed MapOriginDomain "http://localhost" "https://www.example.com";
+  pagespeed ShardDomain "https://www.example.com"
+                        "https://example1.cdn.com,https://example2.cdn.com";</pre>
+      </dd></dt>
+    </dl>
+
+    <h2 id="RespectXForwardedProto">Respecting X-Forwarded-Proto</h2>
+    <p>
+      If you are running behind a load-balancer or other front-end that
+      terminates the HTTPS connection and makes an HTTP subrequest to your
+      server running PageSpeed, it will not know that the original URL was
+      HTTPS and so it will rewrite subresources with <code>http://</code> URLs.
+      For PageSpeed to operate correctly, it needs to know what
+      the originally requested URL was. If your front-end sends
+      <code>X-Forwarded-Proto</code> headers (as, for example,
+      <a href="https://forums.aws.amazon.com/ann.jspa?annID=805">AWS Elastic
+        Load Balancer does</a>) then you can tell PageSpeed to
+      respect that header with:
+    </p>
+    <dl>
+      <dt>Apache:<dd><pre class="prettyprint"
+                          >  ModPagespeedRespectXForwardedProto on</pre>
+      <dt>Nginx:<dd><pre class="prettyprint"
+                          >  pagespeed RespectXForwardedProto on;</pre>
+    </dl>
+    <p>
+      This will correctly rewrite your subresources with <code>https://</code>
+      URLs and thus avoid mixed content warnings. Note, that you should only
+      enable this option if you are behind a load-balancer that will set this
+      header, otherwise your users will be able to set the protocol
+      PageSpeed uses to interpret the request.
+    </p>
+
+    <p>
+      This directive cannot be used
+      in <a href="configuration#htaccess"><code>.htaccess</code> files
+        or <code>&lt;Directory&gt;</code></a> scopes.
+    </p>
+
+    <h2 id="risks">Risks</h2>
+    <p>
+      As discussed above, using http to fetch https resources URLs should only be
+      used when communication between the front-end and back-end servers is secure
+      as otherwise the benefits of using https in the first place are lost.  When
+      fetching by HTTPS, <a
+      href="https://boringssl.googlesource.com/boringssl/">BoringSSL</a>
+      is used to authenticate the fetches.  We bundle a copy of BoringSSL, which
+      means that when security vulnerabilities are discovered that affect our usage
+      we need to release updated versions of PageSpeed with the fixed BoringSSL
+      library.
+    </p>
+
+    <h2 id="h2_configuration">HTTP/2-specific configuration</h2>
+    <p>
+      It's possible to tell PageSpeed to use a different configuration for
+      clients using the HTTP/2 protocol than for clients using HTTP/1.  You can
+      configure this with the <code>&lt;If&gt;</code> construct in Apache and
+      with script variables in Nginx.
+    </p>
+    <h3 id="h2_configuration_apache">Apache Version</h3>
+    <p class="note">Note: Versions older than 1.12.34.1 provided
+      a <code>&lt;ModPagespeedIf&gt;</code> construct.  This is no longer supported, but
+      configuration inside <code>&lt;ModPagespeedIf !spdy&gt;</code> blocks will be applied
+      unconditionally for backwards compatibility.</p>
+
+    <p>mod_http2 in Apache &ge; 2.4.19 provides an HTTP2 variable that can be used with the
+      server's <code>&lt;If&gt;</code> construct to provide a different configuration for
+      HTTP2 sessions. For example, one may want to disable some filters in such sessions, and only
+      enable sharding in HTTP/1:
+<pre class="prettyprint">
+&lt;If "%{HTTP2} == 'on'"&gt;
+  ModPagespeedDisableFilters filter1,filter2
+&lt;/If&gt;
+&lt;Else&gt;
+  ModPagespeedShardDomain https://www.example.com https://example1.cdn.com,https://example2.cdn.com
+&lt;/Else&gt;</pre>
+
+    <p>
+      Note that this only covers requests terminated by mod_http2 on the Apache server itself.
+      If an earlier proxy terminates HTTP/2, you may need to have it set a custom header,
+      and test it using the <code>req</code> function.
+    </p>
+
+    <h3 id="h2_configuration_nginx">Nginx Version</h3>
+    <p class="note"><strong>Note: New feature as of 1.10.33.0</strong></p>
+<pre class="prettyprint">
+http {
+  pagespeed ProcessScriptVariables on;
+  server {
+    set $disable_filters "";
+    set $domain_shards "shard1,shard2,shard3..."
+
+    if ($http2) {
+      set $disable_filters "filter1,filter2";
+      set $domain_shards "";
+    }
+    pagespeed DisableFilters "$disable_filters";
+    pagespeed ShardDomain domain_to_shard "$domain_shards";
+  }
+}</pre>
+     <p>
+      The <code>$http2</code> variable is defined by
+      the <a href="http://nginx.org/en/docs/http/ngx_http_v2_module.html"
+      ><code>ngx_http_v2_module</a></code>, and will be non-empty on any
+      connection over HTTP/2.
+    </p>
+    <p>
+      If the connection is terminated on another server
+      the <code>$http2</code> variable won't be available.  In that case, you
+      can have the other server add a header for HTTP/2 connections
+      like <code>X-ConnectionIsHTTP2</code> and then use
+      the <code>http_X_ConnectionIsHTTP2</code> variable in
+      the <code>if</code>-block above.
+    </p>
+    <p>
+      Note that this configuration depends on the <code>if</code> construct,
+      which <a href="https://www.nginx.com/resources/wiki/start/topics/depth/ifisevil/">is
+      generally discouraged</a>.  Using <code>if</code> only to set variables in
+      server blocks, however, is completely safe.
+    </p>
+   <p>
+      For more details on script variables, including how to handle dollar
+      signs, see <a href="system#nginx_script_variables">Script Variable
+      Support</a>.
+    </p>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

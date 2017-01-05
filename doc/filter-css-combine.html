@@ -1,0 +1,197 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Combine CSS</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Combine CSS</h1>
+
+
+<h2>Configuration</h2>
+<p>
+The 'Combine CSS' filter is enabled by specifying:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters combine_css</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters combine_css;</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+'Combine CSS' seeks to reduce the number of HTTP requests made by a browser
+during page refresh by replacing multiple distinct CSS files with a single CSS
+file, containing the contents of all of them.  This is particularly important in
+old browsers, that were limited to two connections per domain.  In addition to
+reduced overhead for HTTP headers and communications warm-up, this approach
+works better with TCP/IP slow-start, increasing the effective payload bit-rate
+through the browser's network connection.
+</p>
+<p>
+This <a href="/speed/docs/best-practices/rtt#CombineExternalCSS">practice</a>
+reduces the number of round-trip times.
+</p>
+
+<h2>Operation</h2>
+<p>
+The "CSS Combine" filter finds all CSS <code>&lt;link&gt;</code> tags. If there
+was more than one in a flush window, it removes each of those links and replaces
+them with a single <code>&lt;link&gt;</code> to the merged document, which it
+places wherever the first CSS <code>&lt;link&gt;</code> originally was.
+</p>
+<p>
+For example, if the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/yellow.css"&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/blue.css"&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/big.css"&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/bold.css"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then PageSpeed will rewrite it into:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;link rel="stylesheet" type="text/css" href="styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc.xo4He3_gYf.css"&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="blue yellow big bold"&gt;
+      Hello, world!
+    &lt;/div&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<h3>Example</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/combine_css.html?ModPagespeed=on&amp;ModPagespeedFilters=combine_css">example</a>.
+</p>
+
+<h2>Parameters that affect CSS optimization</h2>
+
+<h3 id="MaxCombinedCssBytes">MaxCombinedCssBytes</h3>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMaxCombinedCssBytes MaxBytes</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MaxCombinedCssBytes MaxBytes;</pre>
+</dl>
+<p>
+<code>MaxBytes</code> is the maximum size in bytes of the combined CSS files.
+CSS files larger than <code>MaxBytes</code> will be kept intact;
+other CSS files will be combined into one or more files, each being no more
+than <code>MaxBytes</code> in size. The current default value for
+<code>MaxBytes</code> is -1 (unlimited).
+</p>
+
+<h2>Limitations</h2>
+<p>The CSS Combine filter operates within the scope of a "flush window".
+Specifically, large, or dynamically generated HTML files may be
+"flushed" by the resource generator before they are complete.  When the
+CSS combiner encounters a flush, it will emit all CSS combinations seen
+up to the point of the flush.  After the flush, it will begin collecting
+a new CSS combination.
+</p>
+<p>This filter generates URLs that are essentially the concatenation
+of the URLs of all the CSS files being combined.  The maximum URL size
+is generally limited to about 2k characters due to IE:
+See <a href="http://support.microsoft.com/kb/208427/EN-US"
+>http://support.microsoft.com/kb/208427/EN-US</a>.  Apache servers by
+default impose a further limitation of about 250 characters per URL segment
+(text between slashes).  PageSpeed circumvents this limitation when it runs
+within Apache, but if you employ proxy servers in your path you may need to
+re-impose it by overriding the setting here.  The default setting is 1024.</p>
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedMaxSegmentLength 250</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed MaxSegmentLength 250;</pre>
+</dl>
+
+<h3 id="permit-ids-for-css-combining">Combining Resources with IDs</h3>
+<p class="note"><strong>Note: New feature as of 1.12.34.1</strong></p>
+
+<p>
+  By default PageSpeed won't combine CSS files that have <code>id</code>
+  attributes, because this often indicates that the site designer intended to
+  reference them in javascript.  However, some content management systems,
+  including WordPress, put <code>id</code>s on all stylesheets for clarity.  To
+  enable combining these files, you can provide one or more wildcards.  For
+  example, this would mark stylesheets with ids starting with <code>font</code>
+  as eligible for combining:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedPermitIdsForCssCombining font*</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed PermitIdsForCssCombining font*;</pre>
+</dl>
+
+<h2>Requirements</h2>
+<p>
+The 'Combine CSS' filter may need to <em>absolutify</em> relative
+URLs, if rewriting the CSS causes the path to be moved.  The filter
+will not merge together resources from multiple distinct domains, even
+if those domains are each authorized by <code>Domain</code>.
+It <strong>will</strong> merge together resources from multiple
+distinct domains that have been mapped together via
+<code>MapRewriteDomain</code>.
+</p>
+<p>
+By default, the filter will combine together CSS files from different
+paths, placing the combined element at the lowest level common to both
+origins.  In some cases, this may be undesirable.  You can turn off the
+behavior with:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedCombineAcrossPaths off</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed CombineAcrossPaths off;</pre>
+</dl>
+<p>
+The filter will maintain the order of the CSS contents, as class order can be
+significant.
+</p>
+<p>
+IE Directives containing CSS links form a "barrier" for the CSS combiner.
+Multiple CSS elements found before an IE directive are combined together
+immediately before the IE directive.  Multiple CSS elements found after are
+also combined, but the combination does not span across the IE directive, as
+that would affect the order that the browser sees the CSS elements.
+</p>
+
+<h2>Risks</h2>
+<p>
+This filter is considered low risk. However, JavaScript can be written that
+walks the DOM looking for <code>&lt;link&gt;</code> entries with certain
+syntax.  Such JavaScript may behave differently on a page which has modified
+CSS links in this way.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

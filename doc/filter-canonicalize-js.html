@@ -1,0 +1,269 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Canonicalize JavaScript Libraries</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Canonicalize JavaScript Libraries</h1>
+<h2>Configuration</h2>
+<p>
+The 'Canonicalize JavaScript Libraries' filter is enabled by specifying:
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters canonicalize_javascript_libraries</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed EnableFilters canonicalize_javascript_libraries;
+
+</pre>
+</dl>
+<p>
+in the configuration file.
+</p>
+
+<h2>Description</h2>
+<p>
+This filter identifies popular JavaScript libraries that can be replaced with
+ones hosted for free by a JavaScript library hosting service &mdash; by default
+the <a href="/speed/libraries/">Google Hosted Libraries</a>. This has several
+benefits:
+<ul>
+  <li>Most important, first-time site visitors can benefit from browser caching,
+since they may have visited other sites making use of the same service to obtain
+the libraries.</li>
+  <li>The JavaScript hosting service acts as a content delivery network for the
+hosted files, reducing load on the server and improving browser load times.</li>
+  <li>There are no charges for the resulting use of bandwidth by site
+visitors.</li>
+  <li>The hosted versions of library code are generally optimized with
+third-party minification tools. These optimizations can make use of
+library-specific annotations or minification settings that aren't portable to
+arbitrary JavaScript code, so the libraries benefit from more aggressive
+optimization than can be provided by PageSpeed.</li>
+</ul>
+<p>
+In Apache the default set of libraries can be found in
+the <code><a href="https://github.com/pagespeed/mod_pagespeed/blob/master/net/instaweb/genfiles/conf/pagespeed_libraries.conf">pagespeed_libraries.conf</a></code>
+file, which is loaded along with <code>pagespeed.conf</code> when Apache starts
+up. It contains signatures for all the <a href="/speed/libraries/">Google Hosted
+Libraries</a>.  In Nginx you need to
+convert <code>pagespeed_libraries.conf</code> from Apache-format to Nginx
+format:
+</p>
+<pre class="prettyprint lang-sh">
+$ scripts/pagespeed_libraries_generator.sh > ~/pagespeed_libraries.conf
+$ sudo mv ~/pagespeed_libraries.conf /path/to/nginx/configuration_files/
+</pre>
+<p>
+You also need to include it in your Nginx configuration by reference:
+</p>
+<pre class="prettyprint lang-sh">
+include pagespeed_libraries.conf;
+</pre>
+<p>
+Don't edit <code>pagespeed_libraries.conf</code>.  Local edits will keep you
+from being able to update it when you update PageSpeed.  Rather than editing it
+you should add additional libraries to your main configuration file:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">
+ModPagespeedLibrary 43 1o978_K0_LNE5_ystNklf \
+   //www.modpagespeed.com/rewrite_javascript.js</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">
+pagespeed Library 43 1o978_K0_LNE5_ystNklf
+   //www.modpagespeed.com/rewrite_javascript.js;</pre>
+</dl>
+<p>
+The general format of these entries is:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedLibrary bytes MD5 canonical_url</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed Library bytes MD5 canonical_url;</pre>
+</dl>
+<p>
+Here <code>bytes</code> is the size in bytes of the library <em>after</em>
+minification by PageSpeed, and <code>MD5</code> is the MD5 hash of the
+library after minification. Minification controls for differences in whitespace
+that may occur when the same script is obtained from different
+sources. The <code>canonical_url</code> is the hosting service URL used to
+replace occurrences of the script. Note that the canonical URL in the above
+example is protocol-relative; this means the data will be fetched using the same
+protocol (<code>http</code> or <code>https</code>) as the containing
+page. Because older browsers don't handle protocol-relative URLs reliably,
+PageSpeed resolves a protocol-relative library URL to an absolute URL based
+on the protocol of the containing page. Do not use <code>http</code> canonical
+URLs in configurations that may serve content over <code>https</code>, or the
+rewritten pages will expose your site to attack and trigger a mixed-content
+warning in the browser. Similarly, avoid using <code>https</code> URLs unless
+you know that the resulting library will eventually be fetched from a secure
+page, as SSL negotiation adds overhead to the initial request.
+</p>
+<p>
+Additional library configuration metadata can be generated with the help of
+the <code>pagespeed_js_minify</code> utility installed along with PageSpeed.
+To use this utility, you will need a local copy of the JavaScript code that you
+wish to replace.  If this is stored in <code>library.js</code>, you can generate
+<code>bytes</code> and <code>MD5</code> as follows:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >$ pagespeed_js_minify --print_size_and_hash library.js</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >$ cd /path/to/psol/lib/Release/linux/ia32/
+      $ pagespeed_js_minify --print_size_and_hash library.js</pre>
+</dl>
+<p>
+If you're using the <a href="filter-js-minify#new-minifier">new
+javascript minifier</a>, add the <code>--use_experimental_minifier</code>
+argument to <code>pagespeed_js_minify</code>. If you're using the old minifier,
+add <code>--nouse_experimental_minifier</code>. (As of 1.10.33.0,
+<code>--use_experimental_minifier</code> is default. Previously,
+<code>--nouse_experimental_minifier</code> was.)
+The default <code>pagespeed_libraries.conf</code> includes hashes for both
+the old and new minifiers.
+</p>
+<p>
+This filter is based on the best practices of
+<a href="/speed/docs/best-practices/caching#LeverageBrowserCaching">
+optimizing browser caching</a>
+and <a href="/speed/docs/best-practices/payload#MinifyJS">reducing payload
+size</a>.
+</p>
+
+<h2>Operation</h2>
+<p>
+In order to identify a library and canonicalize its URL, PageSpeed must of
+course be able to fetch the JavaScript code from the URL on the original page.
+Because library canonicalization identifies libraries solely by their size and
+hash signature, it is not necessary to authorize PageSpeed to fetch content
+from the domain hosting the canonical content itself.  This means that it is
+safe to use this filter behind a reverse proxy or in other situations where
+network access by PageSpeed is deliberately restricted.  Browsers visiting
+the site will fetch the content from the canonical URL, but PageSpeed itself
+does not need to do so.
+</p>
+
+<h3>Examples</h3>
+<p>
+You can see the filter in action at <code>www.modpagespeed.com</code> on this
+<a href="http://www.modpagespeed.com/canonicalize_javascript_libraries.html?ModPagespeed=on&amp;ModPagespeedFilters=canonicalize_javascript_libraries">example</a>.
+</p>
+<p>
+If the HTML document looks like this:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;script src="jquery_1_8.js"&gt;
+    &lt;/script&gt;
+    &lt;script src="a.js"&gt;
+    &lt;/script&gt;
+    &lt;script src="b.js"&gt;
+    &lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+  ...
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+Then, assuming <code>jquery_1_8.js</code> was an unminified copy of the jquery
+library and <code>a.js</code> and <code>b.js</code> contained site-specific code
+that made use of jquery, the page would be rewritten as follows:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"&gt;
+    &lt;/script&gt;
+    &lt;script src="a.js"&gt;
+    &lt;/script&gt;
+    &lt;script src="b.js"&gt;
+    &lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+  ...
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+The library URL has been replaced by a reference to the canonical minified
+version hosted on <code>ajax.googleapis.com</code>.  Note that canonical
+libraries do not participate in most other JavaScript optimizations.  For
+example, if <a href="filter-js-combine">Combine JavaScript</a> is also enabled,
+the above page will be rewritten as follows:
+</p>
+<pre class="prettyprint">
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"&gt;
+    &lt;/script&gt;
+    &lt;script src="http://www.example.com/a.js+b.js.pagespeed.jc.zYiUaxFS8I.js"&gt;
+    &lt;/script&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+  ...
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>
+The canonical library is <em>not</em> combined with the other two JavaScript
+files, since this would lose the bandwidth and caching benefits of fetching it
+from the canonical URL.
+</p>
+
+<h2>Requirements</h2>
+<p>
+Only complete, unmodified libraries referenced by <code>&lt;script&gt;</code>
+tags in the HTML will be rewritten. Libraries that are loaded by other means
+(for example by injecting a loader script) or that have been modified will not
+be canonicalized.
+</p>
+
+<h2>Risks</h2>
+<p>
+You must ensure that you abide by the terms of service of the providers of the
+canonical content before enabling canonicalization. The terms of service for the
+default configuration can be found
+at <a href="/speed/libraries/terms">https://developers.google.com/speed/libraries/terms</a>.
+</p>
+<p>
+The canonical URL refers to a third-party domain; this can cause additional DNS
+lookup latency the first time a library is loaded.  This is mitigated by the
+fact that the canonical copy of the data is shared among multiple sites.
+</p>
+<p>
+The initial request for a canonical URL will contain a <code>Referer:</code>
+header with the URL of the referring page.  This permits the host of the
+canonical content to see a subset of traffic to your site (the first load of a
+page on your site that contains an identified library by a browser that does not
+already have that library in its cache). The provider should describe how this
+data is used in its terms of service. The terms of service for the default
+configuration can be found at
+<a href="/speed/libraries/terms">https://developers.google.com/speed/libraries/terms</a>.
+Again, this risk is mitigated by the fact that canonical libraries are shared
+among multiple sites; a popular library is likely to already reside in the
+browser cache.
+</p>
+<p>
+Sites serving content on both <code>http</code> and <code>https</code> URLs must
+use protocol-relative canonical URLs as shown <a href="#sample">above</a>.
+Fetching a library insecurely from a secure page exposes a site to attack.
+Fetching a library securely from an ordinary page can increase load time due to
+SSL overheads.
+</p>
+<p>
+It is theoretically possible to craft a JavaScript file whose minified size and
+hash exactly match that of a canonical library, but whose code behaves
+differently.  In such a case the library will be replaced with the canonical
+(widely-used) library.  This will break the page that contains the reference to
+the crafted JavaScript.
+</p>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

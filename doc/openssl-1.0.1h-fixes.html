@@ -1,0 +1,52 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>mod_pagespeed and ngx_pagespeed Security Advisory: SSL fetching man-in-the-middle attack.</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>mod_pagespeed and ngx_pagespeed Security Advisory: SSL fetching man-in-the-middle attack.</h1>
+<dl>
+  <dt>Disclosed:</dt>
+    <dd><p>June 17th, 2014</p></dd>
+  <dt>Versions Affected:</dt>
+    <dd>
+      <ul>
+        <li>mod_pagespeed 1.7.30.1 through 1.7.30.4 (fixed in 1.7.30.5)</li>
+        <li>mod_pagespeed and ngx_pagespeed 1.8.31.1 through 1.8.31.3 (fixed in 1.8.31.4)</li>
+      </ul>
+    </dd>
+  <dt>Summary:</dt>
+    <dd><p>Some versions of mod_pagespeed and ngx_pagespeed, in order to
+        support fetching of HTTPS content, link in versions of OpenSSL
+        that are vulnerable to a man-in-the-middle attack. This attack permits
+        an adversary that can monitor and alter traffic between a client
+        (mod_pagespeed or ngx_pagespeed in this case) and a server to decrypt
+        and modify encrypted transfers, as long as both are running vulnerable
+        versions (see <a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-0224">
+        CVE-2014-0224</a> for more detail).
+        </p>
+        <p>
+        mod_pagespeed and ngx_pagespeed users are only vulnerable if they turn
+        on the optional <code>FetchHttps</code> feature.
+        </p></dd>
+  <dt>Solution:</dt>
+    <dd><p>For mod_pagespeed, update to one of versions 1.7.30.5-stable,
+    1.8.31.4-beta or newer.</p>
+
+    <p>For ngx_pagespeed, update to 1.8.31.4-beta or newer.</p>
+    </dd>
+  <dt>Workaround:</dt>
+    <dd>
+    <p>Use a method other than <code>FetchHttps</code> to fetch https content,
+       as described in <a href="https_support">HTTP Support</a> documentation.
+    </p>
+    </dd>
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

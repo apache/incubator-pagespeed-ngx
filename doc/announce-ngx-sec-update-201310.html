@@ -1,0 +1,83 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>October 2013 ngx_pagespeed Security Update.</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>October 2013 ngx_pagespeed Security Update.</h1>
+<h2 id="overview">Overview</h2>
+
+<p>
+All versions of ngx_pagespeed prior to 1.6.29.7 are subject to critical
+cross-site scripting (XSS) vulnerability CVE-2013-6111.  Depending on
+configuration this may permit a hostile third party to execute JavaScript in
+users' browsers in the context of the domain running ngx_pagespeed, which could
+permit theft of users' cookies or data on the site.
+</p>
+
+<p>
+Because of the severity of the problem, users of affected versions are
+<strong>strongly</strong> encouraged to <strong>immediately</strong> update
+ngx_pagespeed or apply the workaround below.
+</p>
+
+<p>
+To be notified of further security updates subscribe to the
+<a href="mailing-lists#announcements">announcements mailing list</a>.
+</p>
+
+<h2 id="solutions">Solutions</h2>
+
+<p>
+Users of affected versions should either apply the workaround or update to
+version 1.6.29.7 or later.
+</p>
+
+<h3 id="workaround">Workaround</h3>
+
+<p>
+The vulnerability requires access to <code>/ngx_pagespeed_statistics</code>,
+<code>/ngx_pagespeed_global_statistics</code>, or
+<code>/ngx_pagespeed_message</code>. Prohibiting access to these in
+your <code>nginx.conf</code> is sufficient to keep it from being exploited.
+Note that it is not enough to restrict these pages to trusted users; they must
+not be accessible to anyone.  Example workaround configuration:
+<pre>
+location /ngx_pagespeed_statistics { deny all; }
+location /ngx_pagespeed_global_statistics { deny all; }
+location /ngx_pagespeed_message { deny all; }
+</pre>
+</p>
+
+<p>
+While ngx_pagespeed and mod_pagespeed are very similar, this workaround is not
+sufficient for mod_pagespeed.  If you also run PageSpeed in Apache please follow
+the recommendations in the <a href="announce-sec-update-201310">October 2013
+mod_pagespeed Security Update</a>.
+</p>
+
+<h3 id="update">Update</h3>
+
+<p>
+Users unable to apply the workaround, or who want continued access to the
+informational data provided by <code>/ngx_pagespeed_statistics</code>
+or <code>/ngx_pagespeed_message</code> should update to an unaffected version.
+This requires building nginx with the updated ngx_pagespeed module and
+installing it in place of the current version.  See
+the <a href="https://github.com/pagespeed/ngx_pagespeed#how-to-build">build
+instructions</a>.
+</p>
+
+<p>
+Users having difficulty applying these updates or with other questions should
+write to the <a href="mailing-lists#discussion">discussion group</a>.
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>

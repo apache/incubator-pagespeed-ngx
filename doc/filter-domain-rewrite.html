@@ -1,0 +1,76 @@
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rewrite Domains</title>
+    <link rel="stylesheet" href="doc.css">
+  </head>
+  <body>
+<!--#include virtual="_header.html" -->
+
+
+  <div id=content>
+<h1>Rewrite Domains</h1>
+
+
+
+<h2>Configuration</h2>
+<p>
+The 'Rewrite Domains' filter is enabled by specifying:
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedEnableFilters rewrite_domains</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed EnableFilters rewrite_domains;</pre>
+</dl>
+<p>
+in the configuration file.  The filter is not enabled by default and
+should be added manually to the configuration file.
+</p>
+<p>
+<a name="DomainRewriteHyperlinks"></a>
+By default <code>rewrite_domains</code> only applies to resources, but it can
+optionally rewrite domains in hyperlinks as well:
+</p>
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint"
+     >ModPagespeedDomainRewriteHyperlinks on</pre>
+  <dt>Nginx:<dd><pre class="prettyprint"
+     >pagespeed DomainRewriteHyperlinks on;</pre>
+</dl>
+
+<h2>Description</h2>
+<p>
+This filter applies all <a href="domains">domain mapping
+directives</a> specified in pagespeed.conf to web resources that
+are <strong>not</strong> otherwise rewritten by PageSpeed.  For
+example, if a resource is not cacheable, or filters which affect the
+resource are turned off, then it still may be desirable to apply
+domain sharding.  (Domain sharding is not applied to hyperlinks even if <code><a
+href="#DomainRewriteHyperlinks">DomainRewriteHyperlinks</a></code> is enabled.)
+
+</p>
+
+<h2>Requirements</h2>
+<p>It is the responsibility of the site administrator to set up the
+shard entries in their DNS or CNAME configuration.  Also, please see
+the <a href="domains#equiv_servers">note</a> about the servers
+for rewrite domains &mdash; this applies to sharded domains as well.  The
+sharded domains must have access to the same content as the original
+domain.
+</p>
+
+<h2>Risks</h2>
+<p>
+It is the responsbility of the site administrator to ensure that moving
+resources onto domains does not create a security vulnerability.  In particular,
+if the target domain has cookies, then any JavaScript loaded from a resource
+moved to a domain with cookies will gain access to those cookies.  In general,
+moving resources to a cookieless domain is a great way to improve security.  Be
+aware that CSS can load JavaScript in certain environments.
+</p>
+
+
+  </div>
+  <!--#include virtual="_footer.html" -->
+  </body>
+</html>
