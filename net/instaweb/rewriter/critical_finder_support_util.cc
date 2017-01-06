@@ -361,7 +361,7 @@ void PrepareForBeaconInsertionHelper(CriticalKeys* proto,
         "You seem to have downstream caching configured on your server. "
         "DownstreamCacheRebeaconingKey should also be set for this to work "
         "correctly. Refer to "
-        "https://developers.google.com/speed/pagespeed/module/"
+        "https://modpagespeed.com/doc/"
         "downstream-caching#beaconing "
         "for more details.");
   }

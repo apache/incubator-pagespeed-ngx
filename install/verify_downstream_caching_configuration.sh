@@ -17,7 +17,7 @@
 # Author: anupama@google.com (Anupama Dutta)
 #
 # This script can be used to verify whether downstream caching
-# (https://developers.google.com/speed/pagespeed/module/downstream-caching)
+# (https://modpagespeed.com/doc/downstream-caching)
 # has been configured correctly on your system by doing wgets with a sample URL
 # and looking at the response headers.
 #

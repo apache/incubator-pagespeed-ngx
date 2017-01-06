@@ -8,7 +8,7 @@
 
 `mod_pagespeed` is an open-source Apache module created by Google to help Make the Web Faster by rewriting web pages to reduce latency and bandwidth.
 
-mod_pagespeed releases are available as [precompiled linux packages](https://developers.google.com/speed/pagespeed/module/download) or as [source](https://developers.google.com/speed/pagespeed/module/build_mod_pagespeed_from_source). (See [Release Notes](https://developers.google.com/speed/pagespeed/module/release_notes) for information about bugs fixed)
+mod_pagespeed releases are available as [precompiled linux packages](https://modpagespeed.com/doc/download) or as [source](https://modpagespeed.com/doc/build_mod_pagespeed_from_source). (See [Release Notes](https://modpagespeed.com/doc/release_notes) for information about bugs fixed)
 
 mod_pagespeed is an open-source Apache module which automatically applies web performance best practices to pages, and associated assets (CSS, JavaScript, images) without requiring that you modify your existing content or workflow.
 
@@ -25,10 +25,10 @@ mod_pagespeed is built on PageSpeed Optimization Libraries, deployed across 100,
 |  Try it 	|   [modpagespeed.com](https://modpagespeed.com)	|
 |---	|---	|
 | Read about it  |https://developers.google.com/speed/pagespeed/module   |
-| Download it  | https://developers.google.com/speed/pagespeed/module/download  |
+| Download it  | https://modpagespeed.com/doc/download  |
 | Check announcements  |https://groups.google.com/group/mod-pagespeed-announce   |
 | Discuss it  | https://groups.google.com/group/mod-pagespeed-discuss  |
-|FAQ   | https://developers.google.com/speed/pagespeed/module/faq  |
+|FAQ   | https://modpagespeed.com/doc/faq  |
 
 
 Curious to learn more about mod_pagespeed? Check out our GDL episode below, which covers the history of the project, an architectural overview of how mod_pagespeed works under the hood, and a number of operational tips and best practices for deploying mod_pagespeed.

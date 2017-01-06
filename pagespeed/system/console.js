@@ -337,7 +337,7 @@ pagespeed.Console.prototype.addGraph = function(title, urlFragment, stat) {
   var graph = {};
   graph.title = title;
   graph.docUrl =
-      'https://developers.google.com/speed/pagespeed/module/console#' +
+      'https://modpagespeed.com/doc/console#' +
           urlFragment;
   graph.value = stat;
   // Unique identifying number.
