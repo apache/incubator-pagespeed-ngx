@@ -14,3 +14,8 @@ ModPagespeedRewriteLevel CoreFilters
 ModPagespeedEnableFilters collapse_whitespace
 ModPagespeedEnableFilters remove_comments
 ModPagespeedInPlaceResourceOptimization on
+
+# Do not optimize these resources which are used for blogpost
+ModPagespeedDisallow */puzzle_optimized_to_low_quality_webp.webp
+ModPagespeedDisallow */puzzle_optimized_to_low_quality_webp_and_saved_as_png.png
+ModPagespeedDisallow */puzzle_original.jpg
