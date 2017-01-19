@@ -23,7 +23,14 @@
 # Exits with status 2 if command line args are wrong.
 #
 # Usage:
+#   ./run_tests.sh
+# Or:
 #   ./run_tests.sh /path/to/mod_pagespeed /path/to/nginx/binary
+#
+# If you built ngx_pagespeed with "scripts/build_ngx_pagespeed.sh --devel" then
+# you don't need to pass any arguments to run_tests.sh.  Otherwise, you'll need
+# to tell it where to find a mod_pagespeed checkout (for example html files etc)
+# and the nginx binary to test.
 #
 # By default the test script uses several ports.  If you have a port conflict
 # and need to override one you can do that by setting the relevant environment
@@ -45,13 +52,16 @@ RUN_TESTS=${RUN_TESTS:-true}
 # true.
 USE_VALGRIND=${USE_VALGRIND:-false}
 
-if [ "$#" -ne 2 ] ; then
-  echo "Usage: $0 mod_pagespeed_dir nginx_executable"
+if [ "$#" -eq 0 ]; then
+  MOD_PAGESPEED_DIR="testing-dependencies/mod_pagespeed/"
+  NGINX_EXECUTABLE="nginx/sbin/nginx"
+elif [ "$#" -eq 2 ]; then
+  MOD_PAGESPEED_DIR="$1"
+  NGINX_EXECUTABLE="$2"
+else
+  echo "Usage: $0 [mod_pagespeed_dir nginx_executable]"
   exit 2
 fi
-
-MOD_PAGESPEED_DIR="$1"
-NGINX_EXECUTABLE="$2"
 
 : ${PRIMARY_PORT:=8050}
 : ${SECONDARY_PORT:=8051}

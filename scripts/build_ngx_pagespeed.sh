@@ -767,25 +767,13 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     if "$DEVEL"; then
       run make install
 
-      status "Nginx installed with ngx_pagespeed, and set up for testing."
-      # TODO(jefftk): pull these out into separate scripts.
-      echo "To run tests, pick a pair of ports like 8050 and 8051 and run:"
+      status "Nginx installed with ngx_pagespeed, and set up for development."
+      echo "To run tests:"
       echo "  cd $nps_module_dir"
-      echo "  RUN_TESTS=true \\"
-      echo "  USE_VALGRIND=false \\"
-      echo "  TEST_NATIVE_FETCHER=false \\"
-      echo "  TEST_SERF_FETCHER=true \\"
-      echo "  test/run_tests.sh \\"
-      echo "    $MOD_PAGESPEED_DIR \\"
-      echo "    $install_dir/nginx/sbin/nginx"
+      echo "  test/run_tests.sh"
       echo
       echo "To rebuild after changes:"
-      echo "  First, if you change things in PSOL or update it:"
-      echo "    cd $MOD_PAGESPEED_DIR/devel"
-      echo "    make apache_debug_psol"
-      echo "  Then, whether or not you updated PSOL, rebuild nginx:"
-      echo "    cd $install_dir/nginx"
-      echo "    make && make install"
+      echo "  scripts/rebuild.sh"
     else
       continue_or_exit "Install nginx?"
       run sudo make install
