@@ -886,8 +886,7 @@ char* ps_configure(ngx_conf_t* cf,
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cf->cycle, ngx_pagespeed));
   if (*options == NULL) {
-    *options = new NgxRewriteOptions(
-        cfg_m->driver_factory->thread_system());
+    *options = new NgxRewriteOptions(cfg_m->driver_factory->thread_system());
   }
 
   ProcessScriptVariablesMode script_mode =
@@ -2055,8 +2054,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   if (options->in_place_rewriting_enabled() &&
       options->enabled() &&
       options->IsAllowed(url.Spec())) {
-    ps_create_base_fetch(url.Spec(), ctx, request_context, request_headers.release(),
-                         kIproLookup, options);
+    ps_create_base_fetch(url.Spec(), ctx, request_context,
+                         request_headers.release(), kIproLookup, options);
 
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;
