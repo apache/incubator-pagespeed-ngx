@@ -749,6 +749,11 @@ ngx_command_t ps_commands[] = {
   ngx_null_command
 };
 
+bool ps_disabled(ps_srv_conf_t* cfg_s) {
+  return cfg_s->server_context == NULL ||
+         cfg_s->server_context->config()->unplugged();
+}
+
 void ps_ignore_sigpipe() {
   struct sigaction act;
   ngx_memzero(&act, sizeof(act));
@@ -881,8 +886,7 @@ char* ps_configure(ngx_conf_t* cf,
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cf->cycle, ngx_pagespeed));
   if (*options == NULL) {
-    *options = new NgxRewriteOptions(
-        cfg_m->driver_factory->thread_system());
+    *options = new NgxRewriteOptions(cfg_m->driver_factory->thread_system());
   }
 
   ProcessScriptVariablesMode script_mode =
@@ -1191,7 +1195,7 @@ char* ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
       ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
 
-  if (cfg_s->server_context == NULL) {
+  if (ps_disabled(cfg_s)) {
     // Pagespeed options cannot be defined only in location blocks.  There must
     // be at least a single "pagespeed off" in the main block or a server
     // block.
@@ -1698,7 +1702,7 @@ void ps_release_request_context(void* data) {
 RequestRouting::Response ps_route_request(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
-  if (!cfg_s->server_context->global_options()->enabled()) {
+  if (ps_disabled(cfg_s)) {
     // Not enabled for this server block.
     return RequestRouting::kPagespeedDisabled;
   }
@@ -2050,8 +2054,8 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
   if (options->in_place_rewriting_enabled() &&
       options->enabled() &&
       options->IsAllowed(url.Spec())) {
-    ps_create_base_fetch(url.Spec(), ctx, request_context, request_headers.release(),
-                         kIproLookup, options);
+    ps_create_base_fetch(url.Spec(), ctx, request_context,
+                         request_headers.release(), kIproLookup, options);
 
     // Do not store driver in request_context, it's not safe.
     RewriteDriver* driver;
@@ -2277,8 +2281,7 @@ ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 // nginx so it can send them out to the browser.
 ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-  if (cfg_s->server_context == NULL) {
-    // Pagespeed is on for some server block but not this one.
+  if (ps_disabled(cfg_s)) {
     return ngx_http_next_header_filter(r);
   }
 
@@ -2362,8 +2365,7 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
 
 ngx_int_t ps_html_rewrite_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-  if (cfg_s->server_context == NULL) {
-    // Pagespeed is on for some server block but not this one.
+  if (ps_disabled(cfg_s)) {
     return ngx_http_next_body_filter(r, in);
   }
 
@@ -2887,8 +2889,8 @@ ngx_int_t ps_beacon_handler(ngx_http_request_t* r) {
 // supply it to the user.
 ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-  if (cfg_s->server_context == NULL) {
-    // Pagespeed is on for some server block but not this one.
+  if (ps_disabled(cfg_s)) {
+    // Pagespeed is not on for this server block.
     return NGX_DECLINED;
   }
 
