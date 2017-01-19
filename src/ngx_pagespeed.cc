@@ -1152,13 +1152,17 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   delete cfg_s->options;
   cfg_s->options = NULL;
 
-  if (cfg_s->server_context->global_options()->enabled()) {
+  if (!cfg_s->server_context->global_options()->unplugged()) {
     // Validate FileCachePath
     GoogleMessageHandler handler;
     const char* file_cache_path =
         cfg_s->server_context->config()->file_cache_path().c_str();
     if (file_cache_path[0] == '\0') {
-      return const_cast<char*>("FileCachePath must be set");
+      if (!cfg_s->server_context->global_options()->standby()) {
+        return const_cast<char*>("FileCachePath must be set, even for standby");
+      } else {
+        return const_cast<char*>("FileCachePath must be set");
+      }
     } else if (!cfg_m->driver_factory->file_system()->IsDir(
         file_cache_path, &handler).is_true()) {
       return const_cast<char*>(
@@ -1844,11 +1848,6 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
     options = cfg_s->server_context->global_options();
   }
 
-  if (!options->enabled()) {
-    // Disabled via query params or request headers.
-    return NGX_DECLINED;
-  }
-
   request_context->set_options(options->ComputeHttpOptions());
 
   // ps_determine_options modified url, removing any ModPagespeedFoo=Bar query
@@ -1874,6 +1873,14 @@ ngx_int_t ps_resource_handler(ngx_http_request_t* r,
       response_category == RequestRouting::kAdmin ||
       response_category == RequestRouting::kGlobalAdmin ||
       response_category == RequestRouting::kCachePurge;
+
+  // Normally if we're disabled we won't handle any requests, but if we're in
+  // standby mode we do want to handle requests for .pagespeed. resources.
+  if (options->unplugged() ||
+      (!options->enabled() && !pagespeed_resource)) {
+    // Disabled via query params or request headers.
+    return NGX_DECLINED;
+  }
 
   if (!html_rewrite) {
     // create request ctx
