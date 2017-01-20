@@ -369,6 +369,13 @@ fi
 # wants different ones than we want, so we need to reset our positional args.
 set -- "$PRIMARY_HOSTNAME"
 source $SYSTEM_TEST_FILE
+
+# If we were only asked to run a single test, it ran in SYSTEM_TEST_FILE, so
+# we're done now and should exit.
+if [ -n ${TEST_TO_RUN+x} ]; then
+  check_failures_and_exit
+fi
+
 source $REMOTE_CONFIG_TEST_FILE
 
 # nginx-specific system tests
