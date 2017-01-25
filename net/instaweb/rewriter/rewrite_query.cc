@@ -545,7 +545,7 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
       if (pairs[i] == "no-transform") {
         // TODO(jmarantz): A .pagespeed resource should return un-optimized
         // content with "Cache-Control: no-transform".
-        options->set_enabled(RewriteOptions::kEnabledOff);
+        options->set_enabled(RewriteOptions::kEnabledStandby);
         status = kSuccess;
         break;
       }

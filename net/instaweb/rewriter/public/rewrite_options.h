@@ -199,15 +199,43 @@ class RewriteOptions {
     kEndOfFilters
   };
 
+  // When PageSpeed first started there was just off/on.  Off wasn't entirely
+  // off, though, because:
+  // 1) If you turned it off because it broke something it's helpful to be able
+  //    to turn it back on with query params while testing filter combinations
+  //    to see what you broke.
+  // 2) After turning off PageSpeed you might still get some requests for
+  //    .pagespeed. resources and you'd like to serve them.
+  //
+  // Around when the ngx_pagespeed port was getting started we were having
+  // discussions about how this was a bad setup for security purposes.  Someone
+  // might want to completely disable the module, in a way where attackers
+  // couldn't re-enable it by sending query parameters or .pagespeed. requests.
+  // So we released ngx_pagepeed with "off" as a hard off.  Discussion on this
+  // progressed, and we decided to add "unplugged" for mod_pagespeed which did
+  // the same thing as "off" in ngx_pagespeed.  This left us in a state where
+  // (a) mod_pagespeed and ngx_pagespeed disagreed about what "off" meant and
+  // (b) there was no way to get mod_pagespeed's meaning of "off" in
+  // ngx_pagespeed.
+  //
+  // Since these are central user-controlled configuration knobs, and we don't
+  // want to surprise people by changing what they do, we decided to fix this by
+  // adding "standby" to ngx_pagespeed to do what "off" does in mod_pagespeed.
+  // Now we can tell people to use unplugged / standby / on, for both mps and
+  // nps, with the same meanings.
   enum EnabledEnum {
-    // Don't optimize HTML. Do serve .pagespeed. Can be overridden via query
-    // param.
+    // Deprecated.
+    //   In Apache: equivalent to 'standby' below.
+    //   In Nginx: equivalent to 'unplugged' below.
     kEnabledOff,
     // Pagespeed runs normally.  Can be overridden via query param.
     kEnabledOn,
     // Completely passive. Do not serve .pagespeed. Return from handlers
     // immediately. Cannot be overridden via query param.
     kEnabledUnplugged,
+    // Don't optimize HTML. Do serve .pagespeed. Can be overridden via query
+    // param.
+    kEnabledStandby,
   };
 
   // Any new Option added should have a corresponding name here that must be
@@ -1824,6 +1852,9 @@ class RewriteOptions {
   }
   bool unplugged() const {
     return enabled_.value() == kEnabledUnplugged;
+  }
+  bool standby() const {
+    return !enabled() && !unplugged();
   }
 
   void set_add_options_to_urls(bool x) {

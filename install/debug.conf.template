@@ -668,6 +668,38 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
                            "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/styles/"
 </VirtualHost>
 
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName pagespeed-off.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeed off
+  ModPagespeedEnableFilters collapse_whitespace
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName pagespeed-on.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeed on
+  ModPagespeedEnableFilters collapse_whitespace
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName pagespeed-unplugged.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeed unplugged
+  ModPagespeedEnableFilters collapse_whitespace
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName pagespeed-standby.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@"
+  ModPagespeed standby
+  ModPagespeedEnableFilters collapse_whitespace
+</VirtualHost>
+
 # Set the value of the X-Mod-Pagespeed header
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName xheader.example.com

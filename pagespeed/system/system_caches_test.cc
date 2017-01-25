@@ -1215,6 +1215,16 @@ TEST_F(SystemCachesTest, ShareOnOff) {
   EXPECT_EQ(path1, path2);
 }
 
+TEST_F(SystemCachesTest, ShareOnStandby) {
+  options_->set_file_cache_path(kCachePath);
+  SystemCachePath* path1 = system_caches_->GetCache(options_.get());
+  SystemRewriteOptions options2(thread_system_.get());
+  options2.set_file_cache_path(kCachePath);
+  options2.set_enabled(RewriteOptions::kEnabledStandby);
+  SystemCachePath* path2 = system_caches_->GetCache(&options2);
+  EXPECT_EQ(path1, path2);
+}
+
 TEST_F(SystemCachesTest, NoShareOnUnplugged) {
   options_->set_file_cache_path("/a");
   options_->set_enabled(RewriteOptions::kEnabledUnplugged);

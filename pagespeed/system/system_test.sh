@@ -102,6 +102,7 @@ if [ $statistics_enabled = "1" ]; then
 fi
 run_test prioritize_critical_css
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
+  run_test pagespeed_on_off_unplugged_standby
   run_test ajax_overrides_experiments
 
   # The broken_fetch test can only run with a file-cache, not with

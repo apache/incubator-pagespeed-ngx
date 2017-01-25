@@ -59,6 +59,86 @@ See the <a href="admin#config">Admin Page documentation</a> for
 instructions on how to configure handlers to provide visibility and
 control into PageSpeed's operation.
 
+<h2 id="on_off">Turning the module on and off</h2>
+<!-- keep old anchors so as not to break existing links -->
+<a name="on_off_nginx"></a><a name="nginx_specific"></a>
+
+<h3 id=on>Setting the module on</h3>
+
+<p>
+
+To turn PageSpeed on, just set:
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">ModPagespeed on</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">pagespeed on;</pre>
+</dl>
+
+<h3 id=standby>Setting the module to standby</h3>
+
+<p>
+
+PageSpeed has a standby mode where by default it won't make changes to your site
+but it will process two kinds of PageSpeed-specific requests:
+
+<ul>
+  <li><p>Requests with <a href="experiment#PerRequest">PageSpeed query
+      parameters</a>.  These allow you to have PageSpeed off in your main
+      configuration, but manually make requests to see how your site would look
+      under various combinations of filters and options.
+  <li><p>Requests for <code>.pagespeed.</code> resources.  When PageSpeed is
+      running it creates various kinds of optimized resources, and gives them
+      names containing <code>.pagespeed.</code>.  If you turned
+      PageSpeed <a href="#unplugged">fully off</a> then lingering requests to
+      these resorces would fail.  In standby mode these requests are still
+      served as if PageSpeed were enabled.
+</ul>
+
+<p>
+
+In versions 1.12 and earlier only mod_pagespeed supported standby mode, via
+the <code>off</code> setting:
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">ModPagespeed off</pre>
+</dl>
+
+<p>
+
+In versions UNRELEASED and later, both mod_pagespeed and ngx_pagespeed
+support <code>standby</code>:
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">ModPagespeed standby</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">pagespeed standby;</pre>
+</dl>
+
+<h3 id=unplugged>Setting the module fully off</h3>
+
+To turn PageSpeed fully off, set:
+
+<dl>
+  <dt>Apache:<dd><pre class="prettyprint">ModPagespeed unplugged</pre>
+  <dt>Nginx:<dd><pre class="prettyprint">pagespeed unplugged;</pre>
+</dl>
+
+<p class=warning><b>Warning:</b> do not set ngx_pagespeed
+to <code>unplugged</code> in 1.12.34.1 and earlier.  That will result in
+crashes.  With those versions, use <code>off</code> instead
+of <code>unplugged</code>.
+
+<p>
+
+The <code>on</code>, <code>off</code>, and (in UNRELEASED and
+later) <code>standby</code> values can be used in
+<a href="#htaccess"><code>.htaccess</code> files,
+<code>&lt;Directory&gt;</code></a> scopes, <code>query parameters</code>, and
+<code>headers</code>.  The <code>unplugged</code> value can only be used in the
+top-level Apache configuration and in virtual hosts.  Note that
+<code>ModPagespeed on</code> in a virtual host can override a top-level
+<code>ModPagespeed unplugged</code> directive.
+</p>
+
 <h2 id="apache_specific">Apache-Specific Configuration</h2>
 
 <h3 id="output_filter">Setting up the Output Filter</h3>
@@ -73,38 +153,6 @@ AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER text/html
 </pre>
 <p class="note"><strong>Note:</strong> mod_pagespeed automatically enables
 <code>mod_deflate</code> for compression.
-</p>
-
-<h3 id="on_off">Turning the module on and off</h3>
-<p>
-To turn mod_pagespeed ON, insert as the top line of pagespeed.conf:
-</p>
-<pre class="prettyprint">
-ModPagespeed on
-</pre>
-<p>
-There are two ways to disable mod_pagespeed. To disable HTML rewriting but
-continue to serve .pagespeed. resources and parse query options (for
-instance for <code>?ModPagespeed=on</code>) put this line in your configuration:
-</p>
-
-<pre class="prettyprint">
-ModPagespeed off
-</pre>
-
-<p>To completely disable mod_pagespeed (.pagespeed. resources will result in
-404s) use the following line:</p>
-<pre class="prettyprint">
-ModPagespeed unplugged
-</pre>
-<p>
-The <code>on</code> and <code>off</code> values can be used in
-<a href="#htaccess"><code>.htaccess</code> files,
-<code>&lt;Directory&gt;</code></a> scopes, <code>query parameters</code>, and
-<code>headers</code>.  The <code>unplugged</code> value can only be used in the
-top-level Apache configuration and in virtual hosts.  Note that
-<code>ModPagespeed on</code> in a virtual host can override a top-level
-unplugged directive.
 </p>
 
 <h3 id="apache24">Support for Apache 2.4.x</h3>
@@ -147,25 +195,6 @@ to auto-detect. Builds against system Apache headers will only be compatible
 with that version family, and will always produce a single module named
 <code>mod_pagespeed.so</code>.
 </p>
-
-<h2 id="nginx_specific">Nginx-Specific Configuration</h2>
-
-<h3 id="on_off_nginx">Turning the module on and off</h3>
-
-<p>
-To turn ngx_pagespeed ON, put anywhere in your <code>http</code>
-or <code>server</code> block:
-</p>
-<pre class="prettyprint">
-pagespeed on;
-</pre>
-<p>
-To turn ngx_pagespeed OFF, use <code>off</code>:
-<pre class="prettyprint">
-pagespeed off;
-</pre>
-This is equivalent to the "unplugged" setting for mod_pagespeed, and entirely
-disables ngx_pagespeed.
 
 <h2 id="respectvary">Respecting Vary Headers</h2>
 <p>

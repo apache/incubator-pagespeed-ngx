@@ -3346,6 +3346,8 @@ bool RewriteOptions::ParseFromString(StringPiece value_string,
     *value = bool_value ? kEnabledOn : kEnabledOff;
   } else if (StringCaseEqual(value_string, "unplugged")) {
     *value = kEnabledUnplugged;
+  } else if (StringCaseEqual(value_string, "standby")) {
+    *value = kEnabledStandby;
   } else {
     // value_string is not "true"/"false" or "on"/"off"/"unplugged".
     // Return a parse error.
@@ -4178,6 +4180,7 @@ GoogleString RewriteOptions::OptionsToString() const {
     case kEnabledOff:       StrAppend(&output, "off\n\n"); break;
     case kEnabledOn:        StrAppend(&output, "on\n\n"); break;
     case kEnabledUnplugged: StrAppend(&output, "unplugged\n\n"); break;
+    case kEnabledStandby:   StrAppend(&output, "standby\n\n"); break;
   }
   output += "Filters\n";
   for (int i = kFirstFilter; i != kEndOfFilters; ++i) {

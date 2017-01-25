@@ -254,6 +254,9 @@ TEST_F(RewriteOptionsTest, EnabledStates) {
   options_.set_enabled(RewriteOptions::kEnabledOn);
   ASSERT_TRUE(options_.enabled());
   ASSERT_FALSE(options_.unplugged());
+  options_.set_enabled(RewriteOptions::kEnabledStandby);
+  ASSERT_FALSE(options_.enabled());
+  ASSERT_FALSE(options_.unplugged());
 }
 
 TEST_F(RewriteOptionsTest, DefaultEnabledFilters) {
@@ -2664,7 +2667,7 @@ TEST_F(RewriteOptionsTest, AccessAcrossThreads) {
   null_thread_system.set_current_thread(5);
 
   // Now make a modification.  We can continue to modify in the same thread.
-  options.set_enabled(RewriteOptions::kEnabledOff);
+  options.set_enabled(RewriteOptions::kEnabledStandby);
   EXPECT_TRUE(options.ModificationOK());
 
   // But from a different thread we must not modify.
