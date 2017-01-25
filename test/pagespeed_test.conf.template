@@ -132,6 +132,42 @@ http {
       "@@SERVER_ROOT@@/mod_pagespeed_example/styles/";
   }
 
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name pagespeed-off.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed off;
+    pagespeed EnableFilters collapse_whitespace;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name pagespeed-on.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed on;
+    pagespeed EnableFilters collapse_whitespace;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name pagespeed-standby.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed standby;
+    pagespeed EnableFilters collapse_whitespace;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name pagespeed-unplugged.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed unplugged;
+    pagespeed EnableFilters collapse_whitespace;
+  }
+
   pagespeed UseNativeFetcher "@@NATIVE_FETCHER@@";
   @@RESOLVER@@
 
