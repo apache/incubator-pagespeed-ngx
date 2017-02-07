@@ -239,6 +239,9 @@ ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 ngx_int_t ps_base_fetch_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
+  if (r->header_only) {
+    return NGX_OK;
+  }
   if (ctx == NULL || ctx->base_fetch == NULL) {
     return ngx_http_next_body_filter(r, in);
   }
