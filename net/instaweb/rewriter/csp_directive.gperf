@@ -1,0 +1,44 @@
+%{
+// csp_directive.gp.cc is automatically generated from csp_directive.gperf
+// Author: morlovich@google.com
+
+#include "base/basictypes.h"
+#include "net/instaweb/rewriter/public/csp_directive.h"
+#include "pagespeed/kernel/base/string_util.h"
+
+namespace net_instaweb {
+%}
+%compare-strncmp
+%define class-name CspDirectiveMapper
+%define lookup-function-name Lookup
+%define word-array-name CspDirectiveNameTable
+%global-table
+%ignore-case
+%includes
+%language=C++
+%readonly-tables
+%struct-type
+
+struct CspDirectiveInfo {
+  const char* name;
+  CspDirective directive;
+
+};
+%%
+"child-src", CspDirective::kChildSrc
+"connect-src", CspDirective::kConnectSrc
+"default-src", CspDirective::kDefaultSrc
+"frame-src", CspDirective::kFrameSrc
+"img-src", CspDirective::kImgSrc
+"script-src", CspDirective::kScriptSrc
+"style-src", CspDirective::kStyleSrc
+"base-uri", CspDirective::kBaseUri
+%%
+
+CspDirective LookupCspDirective(StringPiece name) {
+  const CspDirectiveInfo* info =
+      CspDirectiveMapper::Lookup(name.data(), name.size());
+  return info ? info->directive : CspDirective::kNumSourceListDirectives;
+}
+
+}  // namespace net_instaweb
