@@ -51,7 +51,6 @@
         'src/re2/tostring.cc',
         'src/re2/unicode_casefold.cc',
         'src/re2/unicode_groups.cc',
-        'src/util/logging.cc',
         'src/util/pcre.cc',
         'src/util/rune.cc',
         'src/util/strutil.cc',
