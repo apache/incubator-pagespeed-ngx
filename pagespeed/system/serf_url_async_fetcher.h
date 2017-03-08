@@ -74,6 +74,24 @@ struct SerfStats {
   static const char kSerfFetchFailureCount[];
   static const char kSerfFetchCertErrors[];
   static const char kSerfFetchReadCalls[];
+
+  // A fetch that finished with a 2xx or a 3xx code --- and not just a
+  // mechanically successful one that's a 4xx or such.
+  static const char kSerfFetchUltimateSuccess[];
+
+  // A failure or an error status. Doesn't include fetches dropped due to
+  // process exit and the like.
+  static const char kSerfFetchUltimateFailure[];
+
+  // When we last checked the ultimate failure/success numbers for a
+  // possible concern.
+  static const char kSerfFetchLastCheckTimestampMs[];
+};
+
+enum class SerfCompletionResult {
+  kClientCancel,
+  kSuccess,
+  kFailure
 };
 
 // Identifies the set of HTML keywords.  This is used in error messages emitted
@@ -128,7 +146,13 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   void FetchComplete(SerfFetch* fetch);
 
   // Update the statistics object with results of the (completed) fetch.
-  void ReportCompletedFetchStats(SerfFetch* fetch);
+  void ReportCompletedFetchStats(const SerfFetch* fetch);
+
+  // Updates states used for success/failure monitoring.
+  void ReportFetchSuccessStats(SerfCompletionResult result,
+                               const ResponseHeaders* headers,
+                               const SerfFetch* fetch);
+
 
   apr_pool_t* pool() const { return pool_; }
 
@@ -261,6 +285,9 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
   Variable* failure_count_;
   Variable* cert_errors_;
   Variable* read_calls_count_;  // Non-NULL only on debug builds.
+  Variable* ultimate_success_;
+  Variable* ultimate_failure_;
+  UpDownCounter* last_check_timestamp_ms_;
   const int64 timeout_ms_;
   bool shutdown_ GUARDED_BY(mutex_);
   bool list_outstanding_urls_on_error_;
@@ -276,6 +303,12 @@ class SerfUrlAsyncFetcher : public UrlAsyncFetcher {
 // TODO(lsong): Move this to a separate file. Necessary?
 class SerfFetch : public PoolElement<SerfFetch> {
  public:
+  enum class CancelCause {
+    kClientDecision,
+    kSerfError,
+    kFetchTimeout,
+  };
+
   // TODO(lsong): make use of request_headers.
   SerfFetch(const GoogleString& url,
             AsyncFetch* async_fetch,
@@ -290,7 +323,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
   GoogleString DebugInfo();
 
   // This must be called while holding SerfUrlAsyncFetcher's mutex_.
-  void Cancel();
+  void Cancel(CancelCause cause);
 
   // Calls the callback supplied by the user.  This needs to happen
   // exactly once.  In some error cases it appears that Serf calls
@@ -300,8 +333,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
   //
   // Note that when there are SSL error messages, we immediately call
   // CallCallback, which is robust against duplicate calls in that case.
-  void CallCallback(bool success);
-  void CallbackDone(bool success);
+  void CallCallback(SerfCompletionResult result);
+  void CallbackDone(SerfCompletionResult result);
 
   // If last poll of this fetch's connection resulted in an error, clean it up.
   // Must be called after serf_context_run, with fetcher's mutex_ held.

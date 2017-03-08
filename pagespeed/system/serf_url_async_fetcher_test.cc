@@ -213,6 +213,10 @@ class SerfUrlAsyncFetcherTest : public ::testing::Test {
       serf_url_async_fetcher_->SetSslCertificatesFile(ssl_cert_file);
     }
 #endif
+    // Set initial timestamp so we don't roll-over monitoring stats right after
+    // start.
+    statistics_->GetUpDownCounter(SerfStats::kSerfFetchLastCheckTimestampMs)
+        ->Set(timer_->NowMs());
   }
 
   virtual void TearDown() {
@@ -220,7 +224,10 @@ class SerfUrlAsyncFetcherTest : public ::testing::Test {
     serf_url_async_fetcher_.reset(NULL);
     timer_.reset(NULL);
     STLDeleteElements(&fetches_);
-    apr_pool_destroy(pool_);
+    if (pool_ != nullptr) {
+      apr_pool_destroy(pool_);
+      pool_ = nullptr;
+    }
   }
 
   // Adds a new URL & expected response to the url/response structure, returning
@@ -301,6 +308,13 @@ class SerfUrlAsyncFetcherTest : public ::testing::Test {
     }
   }
 
+  void ValidateMonitoringStats(int64 expect_success, int64 expect_failure) {
+    EXPECT_EQ(expect_success, statistics_->GetVariable(
+        SerfStats::kSerfFetchUltimateSuccess)->Get());
+    EXPECT_EQ(expect_failure, statistics_->GetVariable(
+        SerfStats::kSerfFetchUltimateFailure)->Get());
+  }
+
   // Valgrind will not allow the async-fetcher thread to run without a sleep.
   void YieldToThread() {
     usleep(1);
@@ -340,6 +354,7 @@ class SerfUrlAsyncFetcherTest : public ::testing::Test {
     ASSERT_TRUE(fetches_[kConnectionRefused]->IsDone());
     EXPECT_EQ(HttpStatus::kNotFound,
               response_headers(kConnectionRefused)->status_code());
+    ValidateMonitoringStats(0, 1);
   }
 
   // Tests that a range of URLs (established with AddTestUrl) all fail
@@ -438,6 +453,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
   // We don't care about the exact size, which can change, just that response
   // is non-trivial.
   EXPECT_LT(7500, bytes_count);
+  ValidateMonitoringStats(1, 0);
 }
 
 // Tests that when the fetcher requests using a different request method,
@@ -454,6 +470,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchUsingDifferentRequestMethod) {
       contents(kModpagespeedSite).find(
           "PURGE to /mod_pagespeed_example/index.html not supported.") !=
       GoogleString::npos);
+  ValidateMonitoringStats(0, 1);
 }
 
 // Tests that when the fetcher requests gzipped data it gets it.  Note
@@ -467,6 +484,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
   EXPECT_LT(static_cast<size_t>(0), contents(kModpagespeedSite).size());
   EXPECT_EQ(200, response_headers(kModpagespeedSite)->status_code());
   ASSERT_TRUE(response_headers(kModpagespeedSite)->IsGzipped());
+  ValidateMonitoringStats(1, 0);
 
   GzipInflater inflater(GzipInflater::kGzip);
   ASSERT_TRUE(inflater.Init());
@@ -503,6 +521,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLWithGzip) {
   //   wget -q -O - http://www.modpagespeed.com/|wc -c     --> 2232
   EXPECT_LT(2000, bytes_count);
   EXPECT_GT(5000, bytes_count);
+  ValidateMonitoringStats(1, 0);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
@@ -519,10 +538,22 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
   // modpagespeed.com so we are not sensitive to favicon changes.
   EXPECT_EQ(13988, bytes_count);
   EXPECT_EQ(0, ActiveFetches());
+  ValidateMonitoringStats(2, 0);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestCancelThreeThreaded) {
   StartFetches(kModpagespeedSite, kGoogleLogo);
+  // Explicit shutdown, it's OK to call this twice.
+  TearDown();
+
+  // Some of the fetches may succeed in the tiny window above, but none should
+  // be considered failed due to the quick shutdown cancelling them.
+  EXPECT_LE(statistics_->GetVariable(
+                SerfStats::kSerfFetchUltimateSuccess)->Get(),
+            3);
+  EXPECT_EQ(0,
+            statistics_->GetVariable(
+                SerfStats::kSerfFetchUltimateFailure)->Get());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
@@ -534,6 +565,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
       fetcher_timeout_ms_, &message_handler_,
       SerfUrlAsyncFetcher::kThreadedOnly);
   EXPECT_EQ(0, ActiveFetches());
+  ValidateMonitoringStats(3, 0);
 }
 
 #if SERF_FLAKY_SLOW_THREADING_TESTS
@@ -586,6 +618,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
   ASSERT_EQ(3, completed) << "Async fetches times out before completing";
   ValidateFetches(kModpagespeedSite, kGoogleLogo);
   EXPECT_EQ(0, ActiveFetches());
+  ValidateMonitoringStats(3, 0);
 }
 #endif  // SERF_FLAKY_SLOW_THREADING_TESTS
 
@@ -594,6 +627,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreaded) {
   int done = WaitTillDone(kModpagespeedSite, kGoogleLogo);
   EXPECT_EQ(3, done);
   ValidateFetches(kModpagespeedSite, kGoogleLogo);
+  ValidateMonitoringStats(3, 0);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
@@ -626,10 +660,12 @@ TEST_F(SerfUrlAsyncFetcherTest, Test204) {
   TestFetch(kNoContent, kNoContent);
   EXPECT_EQ(HttpStatus::kNoContent,
             response_headers(kNoContent)->status_code());
+  ValidateMonitoringStats(1, 0);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsByDefault) {
   TestHttpsFails(https_favicon_url_);
+  ValidateMonitoringStats(0, 1);
 }
 
 #if SERF_HTTPS_FETCHING
@@ -638,12 +674,14 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForSelfSignedCert) {
   serf_url_async_fetcher_->SetHttpsOptions("enable");
   EXPECT_TRUE(serf_url_async_fetcher_->SupportsHttps());
   TestHttpsFails(https_favicon_url_);
+  ValidateMonitoringStats(0, 1);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsSucceedsForGoogleCom) {
   serf_url_async_fetcher_->SetHttpsOptions("enable");
   EXPECT_TRUE(serf_url_async_fetcher_->SupportsHttps());
   TestHttpsSucceeds("https://www.google.com/intl/en/about/", "<!DOCTYPE html>");
+  ValidateMonitoringStats(1, 0);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsWithExplicitHost) {
@@ -660,6 +698,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsWithExplicitHost) {
   request_headers(index)->Add(HttpAttributes::kHost, original_url.Host());
   StartFetches(index, index);
   ExpectHttpsSucceeds(index);
+  ValidateMonitoringStats(1, 0);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsWithIncorrectHost) {
@@ -667,6 +706,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsWithIncorrectHost) {
   int index = AddTestUrl("https://www.google.com", "");
   request_headers(index)->Add(HttpAttributes::kHost, "www.example.com");
   TestHttpsFails(index, index);
+  ValidateMonitoringStats(0, 1);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsWithExplicitHostPort) {
@@ -682,6 +722,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsWithExplicitHostPort) {
                               StrCat(original_url.Host(), ":443"));
   StartFetches(index, index);
   ExpectHttpsSucceeds(index);
+  ValidateMonitoringStats(1, 0);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForGoogleComWithBogusCertDir) {
@@ -689,12 +730,14 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForGoogleComWithBogusCertDir) {
   serf_url_async_fetcher_->SetSslCertificatesDir(GTestTempDir());
   serf_url_async_fetcher_->SetSslCertificatesFile("");
   TestHttpsFails("https://www.google.com/intl/en/about/");
+  ValidateMonitoringStats(0, 1);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsSucceedsWhenEnabled) {
   serf_url_async_fetcher_->SetHttpsOptions("enable,allow_self_signed");
   EXPECT_TRUE(serf_url_async_fetcher_->SupportsHttps());
   TestHttpsSucceeds(https_favicon_url_, favicon_head_);
+  ValidateMonitoringStats(1, 0);
 }
 #else
 
@@ -702,6 +745,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsEvenWhenEnabled) {
   serf_url_async_fetcher_->SetHttpsOptions("enable");  // ignored
   EXPECT_FALSE(serf_url_async_fetcher_->SupportsHttps());
   TestHttpsFails(https_favicon_url_);
+  ValidateMonitoringStats(0, 1);
 }
 
 #endif
@@ -766,6 +810,7 @@ TEST_F(SerfUrlAsyncFetcherTest,
   GoogleString msg = StrCat(urls_[kConnectionRefused],
                             " (connecting to:127.0.0.1:1023)");
   EXPECT_TRUE(text.find(msg) != GoogleString::npos) << text;
+  ValidateMonitoringStats(0, 1);
 }
 
 // Test that the X-Original-Content-Length header is properly set
@@ -847,7 +892,7 @@ class SerfFetchTest : public SerfUrlAsyncFetcherTest {
 
   virtual void TearDown() {
     async_fetch_->response_headers()->set_status_code(200);
-    serf_fetch_->CallbackDone(true /* success */);
+    serf_fetch_->CallbackDone(SerfCompletionResult::kSuccess);
     // Fetch must be deleted before fetcher because it has a child pool.
     serf_fetch_.reset(NULL);
     SerfUrlAsyncFetcherTest::TearDown();
@@ -968,6 +1013,7 @@ TEST_F(SerfUrlAsyncFetcherTestWithProxy, TestBlankUrl) {
   ASSERT_EQ(WaitTillDone(index, index), 1);
   ASSERT_TRUE(fetches_[index]->IsDone());
   EXPECT_EQ(HttpStatus::kNotFound, response_headers(index)->status_code());
+  ValidateMonitoringStats(0, 1);
 }
 
 class SerfUrlAsyncFetcherTestFakeWebServer : public SerfUrlAsyncFetcherTest {

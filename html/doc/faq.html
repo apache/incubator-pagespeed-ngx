@@ -698,7 +698,36 @@ elements are <code>display:&nbsp;block</code> while the other pair
 are <code>display:&nbsp;inline</code>.
 </p>
 
+<h2 id="warning-fetch-rate">I've got a warning saying
+"Serf fetch failure rate extremely high". What does this mean?</h2>
 
+<p>The warning means that, when PageSpeed tried to fetch resources inside your
+web page for optimization, over 50% of attempts inside a 30-minute period
+failed. This may just mean you have some broken resource includes in your
+pages (in which case, it may be a good idea to fix them for better performance),
+but might indicate that PageSpeed's fetching is not working properly. If you
+have in-place resource optimization on, that can result in user requests for
+<code>.pagespeed.</code> URLs returning error 404 intermittently.</p>
+
+<p>First of all, check to see if the log mentions anything else about fetch
+trouble. If what's there is not helpful, the root cause may be more obvious
+if you follow these steps:</p>
+<ol>
+<li>Disable <a href="system#ipro">in-place resource optimization temporarily.
+    </li>
+<li>Clear PageSpeed cache.</li>
+<li>Open a test page with a <code>?PagespeedFilters=+debug</code> query
+   parameter, reload it a few times, and see if resources are getting optimized,
+   and if not if there is an error message.
+<li>Revert the config changes.</li>
+</ol>
+
+<p>Most likely you may need to configure an <a href="domains#mapping_origin">
+origin domain, to specify the host or IP to talk to fetch resources.</p>
+
+<p>You may also want to consider using <a href="domains#ModPagespeedLoadFromFile">
+<code>LoadFromFile</code></a> functionality, as that performs much better if
+your resources are static.</p>
   </div>
   <!--#include virtual="_footer.html" -->
   </body>
