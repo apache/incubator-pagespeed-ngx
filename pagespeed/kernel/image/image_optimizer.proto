@@ -35,6 +35,10 @@ message ImageOptions {
   optional int32 max_webp_quality = 9 [ default = 85 ];
   optional int32 max_webp_animated_quality = 10 [ default = 85 ];
   optional int32 max_timeout_ms = 11 [ default = -1 ];
+  // When |try_best_compression_for_png| is set to true, the optimizer uses
+  // multiple methods, including the expensive ones, for encoding PNG images.
+  // The smallest output from all methods will be returned.
+  optional bool try_best_compression_for_png = 12 [ default = true ];
 }
 
 message ImageDimensions {

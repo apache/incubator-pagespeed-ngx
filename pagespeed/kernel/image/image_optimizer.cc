@@ -230,7 +230,7 @@ bool ImageOptimizer::ConfigureWriter() {
     case IMAGE_PNG:
       png_config.reset(
           new PngCompressParams(
-              true /* try best compression */,
+              options_.try_best_compression_for_png(),
               false /* never use progressive format */));
       writer_config_.reset(png_config.release());
       result = true;
