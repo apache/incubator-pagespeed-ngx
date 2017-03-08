@@ -156,6 +156,8 @@ class CssInlineFilterTest : public RewriteTestBase {
     server_context()->ComputeSignature(options());
   }
 
+  bool AddHtmlTags() const override { return false; }
+
  private:
   bool filters_added_;
 };
@@ -708,6 +710,25 @@ TEST_F(CssInlineFilterTest, NoInliningOfCloseStyleTagWithCapitalization) {
 
 TEST_F(CssInlineFilterTest, NoInliningOfCloseStyleTagWithSpaces) {
   VerifyNoInliningForClosingStyleTag("</style abc>");
+}
+
+TEST_F(CssInlineFilterTest, DisabledForAmp) {
+  AddFilter(RewriteOptions::kInlineCss);
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss,
+                                "/* pretend there is a @font-face here */",
+                                100);
+  TurnOnDebug();
+  ValidateExpected(
+      "no_inlining_in_amp",
+      "<html amp><link rel='stylesheet' href='foo.css'>",
+      "<html amp><link rel='stylesheet' href='foo.css'>"
+      "<!--CSS inlining not supported by PageSpeed for AMP documents-->");
+
+  // Make sure same stylesheet gets inlined elsewhere.
+  ValidateExpected(
+      "same_url_in_non_amp",
+      "<link rel='stylesheet' href='foo.css'>",
+      "<style>/* pretend there is a @font-face here */</style>");
 }
 
 }  // namespace

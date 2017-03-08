@@ -28,9 +28,8 @@ if [ -z ${DISABLE_FONT_API_TESTS:-} ]; then
 user_agent =Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.36 Safari/537.36
 EOF
 
-  fetch_until $URL 'grep -c @font-face' 7
-
-  OUT=$($WGET_DUMP $URL)
+  fetch_until -save $URL 'grep -c @font-face' 7 "" -ge
+  OUT=$(cat $FETCH_UNTIL_OUTFILE)
   check_from "$OUT" fgrep -qi "format('woff2')"
   check_not_from "$OUT" fgrep -qi "format('truetype')"
   check_not_from "$OUT" fgrep -qi "format('embedded-opentype')"
@@ -44,10 +43,10 @@ EOF
 user_agent = Mozilla/4.0 (compatible; MSIE 6.01; Windows NT 6.0)
 EOF
 
-  fetch_until $URL 'grep -c @font-face' 1
+  fetch_until -save $URL 'grep -c @font-face' 1
   # This should get an eot font. (It might also ship a woff, so we don't
   # check_not_from for that)
-  OUT=$($WGET_DUMP $URL)
+  OUT=$(cat $FETCH_UNTIL_OUTFILE)
   check_from "$OUT" fgrep -qi ".eot"
   check_not_from "$OUT" fgrep -qi ".ttf"
 

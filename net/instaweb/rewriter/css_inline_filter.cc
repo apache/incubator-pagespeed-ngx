@@ -117,6 +117,16 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
   const char* media = NULL;
   if (CssTagScanner::ParseCssElement(element, &href, &media) &&
       !driver()->HasChildrenInFlushWindow(element)) {
+    if (driver()->is_amp_document()) {
+      // Don't inline into AMP documents. Those do permit font loading CSS,
+      // which we could in principle inline, but they also restrict the document
+      // to a single <style> tag, and we don't really have a good way of
+      // coordinating everything into that.
+      driver()->InsertDebugComment(
+          "CSS inlining not supported by PageSpeed for AMP documents", element);
+      return;
+    }
+
     // Only inline if the media type affects "screen".  We don't inline other
     // types since they're very unlikely to change the initial page view, and
     // inlining them would actually slow down the 99% case of "screen".
