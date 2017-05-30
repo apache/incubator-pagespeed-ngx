@@ -85,6 +85,8 @@ http {
   pagespeed StatisticsLogging on;
   pagespeed LogDir "@@TEST_TMP@@/logdir";
 
+  pagespeed MaxFetchRedirects 3;
+
   # Expanded to CentralControllerPort directive when RUN_CONTROLLER_TEST=on
   @@CONTROLLER@@
 
@@ -1672,6 +1674,50 @@ http {
     pagespeed MessagesDomains Disallow *;
     pagespeed FileCachePath "@@FILE_CACHE@@";
   }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name redirecting-fetch.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed Domain redirecting-fetch.example.com:@@SECONDARY_PORT@@;
+    pagespeed MapOriginDomain 127.0.0.1:@@SECONDARY_PORT@@
+    	      redirecting-fetch.example.com:@@SECONDARY_PORT@@;
+    pagespeed Disallow *styles/disallowed.css;
+    pagespeed InPlaceResourceOptimization off;
+
+    location /redir_to_test/styles/blue.css {
+      return 301 /mod_pagespeed_example/styles/yellow.css;
+    }
+    location /redir_to_test/styles/1.css {
+      return 301 /redir_to_test/styles/2.css;
+    }
+    location /redir_to_test/styles/2.css {
+      return 301 /mod_pagespeed_example/styles/yellow.css;
+    }
+    location /redir_to_test/styles/redirtodisallowed.css {
+      return 301 /redir_to_test/styles/disallowed.css;
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name redirecting-fetch-single-only.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed MaxFetchRedirects 1;
+    pagespeed Domain redirecting-fetch.example.com:@@SECONDARY_PORT@@;
+    pagespeed MapOriginDomain 127.0.0.1:@@SECONDARY_PORT@@ 
+       redirecting-fetch-single-only.example.com:@@SECONDARY_PORT@@;
+
+    location /redir_to_test/styles/1.css {
+      return 301 /redir_to_test/styles/2.css;
+    }
+    location /redir_to_test/styles/2.css {
+      return 301 /mod_pagespeed_example/styles/yellow.css;
+    }
+  }
+
   server {
     server_name nothing-explicitly-allowed.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
