@@ -27,9 +27,9 @@
 # Author: vid@zippykid.com (Vid Luther)
 #         jefftk@google.com (Jeff Kaufman)
 
-URL="https://github.com/pagespeed/mod_pagespeed/raw/master/"
-URL+="net/instaweb/genfiles/conf/pagespeed_libraries.conf"
-curl -L -s -S "$URL" \
+URL="https://raw.githubusercontent.com/pagespeed/mod_pagespeed/master/"
+URL2="net/instaweb/genfiles/conf/pagespeed_libraries.conf"
+curl -L -s -S "$URL""$URL2" \
     | grep ModPagespeedLibrary \
     | while read library size hash url ; do
   echo "  pagespeed Library $size $hash $url;"
