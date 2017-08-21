@@ -89,6 +89,16 @@ http {
   @@CONTROLLER@@
 
   server {
+    # This is the default vhost for @@SECONDARY_PORT@@
+    # Your request will land here when you pass in an unknown host.
+    listen @@SECONDARY_PORT@@;
+    listen [::]:@@SECONDARY_PORT@@;
+    server_name default.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+    pagespeed RewriteLevel CoreFilters;
+  }
+
+  server {
     # Sets up a logical home-page server on
     # max-cacheable-content-length.example.com.  This server is only used to
     # test ModPagespeedMaxCacheableContentLength, i.e.,
@@ -101,6 +111,7 @@ http {
 
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_javascript;
+    pagespeed EnableFilters rewrite_css,collapse_whitespace;
     pagespeed MaxCacheableContentLength 85;
   }
 
