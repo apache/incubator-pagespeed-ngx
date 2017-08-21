@@ -111,7 +111,6 @@ http {
 
     pagespeed RewriteLevel PassThrough;
     pagespeed EnableFilters rewrite_javascript;
-    pagespeed EnableFilters rewrite_css,collapse_whitespace;
     pagespeed MaxCacheableContentLength 85;
   }
 
