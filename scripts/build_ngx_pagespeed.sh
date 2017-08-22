@@ -634,7 +634,13 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       run make apache_debug_psol
       PSOL_BINARY="$MOD_PAGESPEED_DIR/out/$BUILD_TYPE/pagespeed_automatic.a"
     else
-      run install/build_psol.sh --skip_tests --skip_packaging
+      if "$DO_DEPS_CHECK"; then
+        skip_deps_arg = ""
+      else
+        skip_deps_arg = "--skip_deps"
+      fi
+
+      run install/build_psol.sh --skip_tests --skip_packaging "$skip_deps_arg"
       PSOL_BINARY="$MOD_PAGESPEED_DIR/pagespeed/automatic/pagespeed_automatic.a"
     fi
     run popd
