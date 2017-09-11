@@ -2704,8 +2704,7 @@ ngx_int_t ps_simple_handler(ngx_http_request_t* r,
     }
   }
 
-  send_out_headers_and_body(r, response_headers, output);
-  return NGX_OK;
+  return send_out_headers_and_body(r, response_headers, output);
 }
 
 void ps_beacon_handler_helper(ngx_http_request_t* r,
