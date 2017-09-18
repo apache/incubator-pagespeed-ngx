@@ -3085,11 +3085,12 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
     ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
         ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module));
 
-    int phase = NGX_HTTP_PRECONTENT_PHASE;
+    int phase = NGX_HTTP_PREACCESS_PHASE;
 
     // As of nginx 1.13.4, try_files has changed.
-#if (nginx_version < kNginx1_13_4)
-    phase = NGX_HTTP_PREACCESS_PHASE;
+    // https://github.com/nginx/nginx/commit/129b06dc5dfab7b4513a4f274b3778cd9b8a6a22
+#if (nginx_version >= kNginx1_13_4)
+    phase = NGX_HTTP_PRECONTENT_PHASE;
 #endif
 
     ngx_http_handler_pt* h = static_cast<ngx_http_handler_pt*>(
