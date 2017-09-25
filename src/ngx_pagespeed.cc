@@ -84,13 +84,13 @@ extern ngx_module_t ngx_pagespeed;
 
 // Needed for SystemRewriteDriverFactory to use shared memory.
 #define PAGESPEED_SUPPORT_POSIX_SHARED_MEM
+#define NGINX_1_13_4 1013004
 
 net_instaweb::NgxRewriteDriverFactory* active_driver_factory = NULL;
 
 namespace net_instaweb {
 
 const char* kInternalEtagName = "@psol-etag";
-const int kNginx1_13_4 = 1013004;
 // The process context takes care of proactively initialising
 // a few libraries for us, some of which are not thread-safe
 // when they are initialized lazily.
@@ -3022,7 +3022,7 @@ ngx_int_t ps_preaccess_handler(ngx_http_request_t* r) {
 
   // move handlers before try_files && content phase
   // As of nginx 1.13.4 we will be right before the try_files module
-  #if (nginx_version < kNginx1_13_4)
+  #if (nginx_version < NGINX_1_13_4)
   while (ph[i + 1].checker != ngx_http_core_try_files_phase &&
          ph[i + 1].checker != ngx_http_core_content_phase) {
     ph[i] = ph[i + 1];
@@ -3089,7 +3089,7 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
 
     // As of nginx 1.13.4, try_files has changed.
     // https://github.com/nginx/nginx/commit/129b06dc5dfab7b4513a4f274b3778cd9b8a6a22
-#if (nginx_version >= kNginx1_13_4)
+#if (nginx_version >= NGINX_1_13_4)
     phase = NGX_HTTP_PRECONTENT_PHASE;
 #endif
 
