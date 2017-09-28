@@ -87,6 +87,10 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(
       shut_down_(false) {
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
+  // Put in the version of the ngx-pagespeed release. We don't release mod_pagespeed
+  // so we cannot rely on PSOL to hand us to right version. Note that if we perform
+  // another release, this must be either updated or removed.
+  default_options()->set_x_header_value("1.12.34.3-0");
   SystemRewriteOptions* system_options = dynamic_cast<SystemRewriteOptions*>(
       default_options());
   system_options->set_file_cache_clean_inode_limit(500000);
