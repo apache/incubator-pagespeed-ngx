@@ -165,6 +165,8 @@ Use the available Release binaries?"
     psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
     psol_binary="$psol_library_dir/pagespeed_automatic.a"
   fi
+else
+  buildtype=Release
 fi
 
 echo "mod_pagespeed_dir=$mod_pagespeed_dir"
