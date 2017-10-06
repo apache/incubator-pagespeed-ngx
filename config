@@ -19,6 +19,7 @@
 
 mod_pagespeed_dir="${MOD_PAGESPEED_DIR:-unset}"
 position_aux="${POSITION_AUX:-unset}"
+psol_buildtype="${PSOL_BUILDTYPE:-unset}"
 
 if [ "$mod_pagespeed_dir" = "unset" ] ; then
   mod_pagespeed_dir="$ngx_addon_dir/psol/include"
@@ -76,7 +77,6 @@ else
   exit 1
 fi
 
-psol_buildtype="${PSOL_BUILDTYPE:-unset}"
 if [ "$psol_buildtype" = "unset" ] ; then
   if [ "$NGX_DEBUG" = "YES" ]; then
     buildtype=Debug
