@@ -15,9 +15,11 @@
 # Environment Variables (Optional):
 #   MOD_PAGESPEED_DIR: absolute path to the mod_pagespeed/src directory
 #   PSOL_BINARY: absolute path to pagespeed_automatic.a
+#   PSOL_BUILDTYPE: Release or Debug
 
 mod_pagespeed_dir="${MOD_PAGESPEED_DIR:-unset}"
 position_aux="${POSITION_AUX:-unset}"
+psol_buildtype="${PSOL_BUILDTYPE:-unset}"
 
 if [ "$mod_pagespeed_dir" = "unset" ] ; then
   mod_pagespeed_dir="$ngx_addon_dir/psol/include"
@@ -75,12 +77,16 @@ else
   exit 1
 fi
 
-if [ "$NGX_DEBUG" = "YES" ]; then
-  buildtype=Debug
-  # If we're using a psol tarball that doesn't contain Debug/ (which is the case
-  # from 1.12 onward) then this will be overriden to buildtype=Release below.
+if [ "$psol_buildtype" = "unset" ] ; then
+  if [ "$NGX_DEBUG" = "YES" ]; then
+    buildtype=Debug
+    # If we're using a psol tarball that doesn't contain Debug/ (which is the case
+    # from 1.12 onward) then this will be overriden to buildtype=Release below.
+  else
+    buildtype=Release
+  fi
 else
-  buildtype=Release
+  buildtype=$psol_buildtype
 fi
 
 # If the compiler is gcc, we want to use g++ to link, if at all possible,
