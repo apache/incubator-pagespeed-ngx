@@ -486,7 +486,7 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
       status "Detected debian-based distro."
 
       install_dependencies "apt-get install" debian_is_installed \
-        "build-essential zlib1g-dev libpcre3 libpcre3-dev unzip uuid-dev"
+        build-essential zlib1g-dev libpcre3 libpcre3-dev unzip uuid-dev
 
       if gcc_too_old; then
         if [ ! -e /usr/lib/gcc-mozilla/bin/gcc ]; then
@@ -504,7 +504,7 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
       status "Detected redhat-based distro."
 
       install_dependencies "yum install" redhat_is_installed \
-        "gcc-c++ pcre-devel zlib-devel make unzip wget"
+        gcc-c++ pcre-devel zlib-devel make unzip wget libuuid-devel
       if gcc_too_old; then
         if [ ! -e /opt/rh/devtoolset-2/root/usr/bin/gcc ]; then
           redhat_major_version=$(
