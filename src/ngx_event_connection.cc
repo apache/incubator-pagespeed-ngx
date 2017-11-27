@@ -57,7 +57,9 @@ bool NgxEventConnection::Init(ngx_cycle_t* cycle) {
     // See https://github.com/pagespeed/ngx_pagespeed/issues/1380
     // TODO(oschaaf): Consider implementing a queueing mechanism for retrying
     // failed writes.
+#ifdef F_SETPIPE_SZ
     fcntl(pipe_write_fd_, F_SETPIPE_SZ, 200*1024 /* minimal amount of bytes */);
+#endif
     return true;
   }
   close(file_descriptors[0]);
