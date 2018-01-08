@@ -612,6 +612,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     nps_downloaded="$TEMPDIR/$nps_downloaded_fname.zip"
     status "Downloading ngx_pagespeed..."
     run wget "$nps_baseurl/$tag_name.zip" -O "$nps_downloaded"
+    # Read the directory name from the zip, the first line is expected to have it.
     nps_module_dir=$(unzip -qql "$nps_downloaded" | head -n1 | tr -s ' ' | cut -d' ' -f5-)
     nps_module_dir="$BUILDDIR/${nps_module_dir::-1}"
     delete_if_already_exists "$nps_module_dir"
