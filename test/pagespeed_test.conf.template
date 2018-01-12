@@ -2067,7 +2067,7 @@ http {
       # or made equivalent to ModPagespeedInPlaceRewriteDeadlineMs -1, which waits
       # forever.  Otherwise ModPagespeedInPlaceRewriteDeadlineMs should just have
       # the specified deadline.
-      # # See https://github.com/pagespeed/mod_pagespeed/issues/1171 for more
+      # # See https://github.com/apache/incubator-pagespeed-mod/issues/1171 for more
       # detailed discussion.
       pagespeed InPlaceWaitForOptimized on;
     }

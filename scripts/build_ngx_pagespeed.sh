@@ -608,7 +608,7 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
       fi
     fi
   else
-    nps_baseurl="https://github.com/pagespeed/ngx_pagespeed/archive"
+    nps_baseurl="https://github.com/apache/incubator-pagespeed-ngx/archive"
     nps_downloaded="$TEMPDIR/$nps_downloaded_fname.zip"
     status "Downloading ngx_pagespeed..."
     run wget "$nps_baseurl/$tag_name.zip" -O "$nps_downloaded"

@@ -152,7 +152,7 @@ void NgxBaseFetch::ReadCallback(const ps_event_data& data) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
   // If our request context was zeroed, skip this event.
-  // See https://github.com/pagespeed/ngx_pagespeed/issues/1081
+  // See https://github.com/apache/incubator-pagespeed-ngx/issues/1081
   if (ctx == NULL) {
     // Should not happen normally, when it does this message will cause our
     // system tests to fail.

@@ -718,7 +718,7 @@ char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
 // We want NGX_CONF_MULTI for some very old versions:
-//   https://github.com/pagespeed/ngx_pagespeed/commit/66f1b9aa
+//   https://github.com/apache/incubator-pagespeed-ngx/commit/66f1b9aa
 // but it's gone in recent revisions, so provide a compat #define if needed
 #ifndef NGX_CONF_MULTI
 #define NGX_CONF_MULTI 0
@@ -2363,7 +2363,7 @@ ngx_int_t ps_html_rewrite_header_filter(ngx_http_request_t* r) {
   }
 
   ps_strip_html_headers(r);
-  // See https://github.com/pagespeed/ngx_pagespeed/issues/819
+  // See https://github.com/apache/incubator-pagespeed-ngx/issues/819
   ctx->location_field_set = r->headers_out.location != NULL;
 
   // TODO(jefftk): is this thread safe?
@@ -3135,7 +3135,7 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
 
-  // See https://github.com/pagespeed/ngx_pagespeed/issues/1220
+  // See https://github.com/apache/incubator-pagespeed-ngx/issues/1220
   if (cfg_m == NULL) {
     return NGX_OK;
   }

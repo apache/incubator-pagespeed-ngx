@@ -151,7 +151,7 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   // mod_pagespeed does in mod_instaweb.cc:create_dir_config() isn't enough here
   // -- if you use that instead then ngx_pagespeed doesn't actually end up
   // defaulting CoreFilters.
-  // See: https://github.com/pagespeed/ngx_pagespeed/issues/1190
+  // See: https://github.com/apache/incubator-pagespeed-ngx/issues/1190
   options->SetRewriteLevel(RewriteOptions::kCoreFilters);
   return options;
 }

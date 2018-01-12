@@ -54,7 +54,7 @@ bool NgxEventConnection::Init(ngx_cycle_t* cycle) {
     pipe_write_fd_ = file_descriptors[1];
     // Attempt to bump the pipe capacity, because running out of buffer space
     // can potentially lead up to writes spinning on EAGAIN.
-    // See https://github.com/pagespeed/ngx_pagespeed/issues/1380
+    // See https://github.com/apache/incubator-pagespeed-ngx/issues/1380
     // TODO(oschaaf): Consider implementing a queueing mechanism for retrying
     // failed writes.
 #ifdef F_SETPIPE_SZ
