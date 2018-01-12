@@ -30,7 +30,7 @@
 // TODO(oschaaf): style: reindent namespace according to google C++ style guide
 // TODO(oschaaf): Retry mechanism for failures on a re-used k-a connection.
 // Currently we don't think it's going to be an issue, see the comments at
-// https://github.com/pagespeed/ngx_pagespeed/pull/781.
+// https://github.com/apache/incubator-pagespeed-ngx/pull/781.
 
 extern "C" {
 #include <nginx.h>

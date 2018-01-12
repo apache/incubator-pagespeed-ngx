@@ -16,7 +16,7 @@
 #
 # Converts pagespeed_libraries.conf from Apache-format to Nginx-format,
 # supporting the canonicalize_javascript_libraries filter.
-# Inspired by https://github.com/pagespeed/ngx_pagespeed/issues/532
+# Inspired by https://github.com/apache/incubator-pagespeed-ngx/issues/532
 #
 # Usage:
 #   scripts/pagespeed_libraries_generator.sh > pagespeed_libraries.conf
@@ -27,7 +27,7 @@
 # Author: vid@zippykid.com (Vid Luther)
 #         jefftk@google.com (Jeff Kaufman)
 
-URL="https://github.com/pagespeed/mod_pagespeed/raw/master/"
+URL="https://github.com/apache/incubator-pagespeed-mod/raw/master/"
 URL+="net/instaweb/genfiles/conf/pagespeed_libraries.conf"
 curl -L -s -S "$URL" \
     | grep ModPagespeedLibrary \

@@ -101,7 +101,7 @@
    fun:ngx_process_events_and_timers
    fun:ngx_worker_process_cycle
 }
-# Mentioned in https://github.com/pagespeed/ngx_pagespeed/issues/103
+# Mentioned in https://github.com/apache/incubator-pagespeed-ngx/issues/103
 # Assuming a false postives as the issue is closed.
 {
    <nginx false positive>

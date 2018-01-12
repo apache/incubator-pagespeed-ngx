@@ -35,7 +35,7 @@ if [ "$mod_pagespeed_dir" = "unset" ] ; then
   This is a development branch of ngx_pagespeed, which means there is no
   precompiled PSOL library available to link against.  Either build from a
   release tag, like latest-beta, or build PSOL from source:
-    https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source"
+    https://github.com/apache/incubator-pagespeed-ngx/wiki/Building-PSOL-From-Source"
       exit 1
     fi
 
