@@ -18,6 +18,7 @@
  */
 
 
+
 #ifndef LOG_MESSAGE_HANDLER_H_
 #define LOG_MESSAGE_HANDLER_H_
 

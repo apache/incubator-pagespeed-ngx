@@ -18,7 +18,7 @@
  */
 
 
-// Author: oschaaf@gmail.com (Otto van der Schaaf)
+
 
 #include "ngx_message_handler.h"
 

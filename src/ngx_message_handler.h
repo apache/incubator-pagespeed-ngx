@@ -18,7 +18,7 @@
  */
 
 
-// Author: oschaaf@gmail.com (Otto van der Schaaf)
+
 
 #ifndef NGX_MESSAGE_HANDLER_H_
 #define NGX_MESSAGE_HANDLER_H_
