@@ -16,6 +16,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Converts pagespeed_libraries.conf from Apache-format to Nginx-format,
+# supporting the canonicalize_javascript_libraries filter.
+# Inspired by https://github.com/apache/incubator-pagespeed-ngx/issues/532
+#
+# Usage:
+#   scripts/pagespeed_libraries_generator.sh > pagespeed_libraries.conf
+#
+# Then have nginx include that configuration file and enable the filter
+# canonicalize_javascript_libraries.
+
 URL="https://github.com/apache/incubator-pagespeed-mod/raw/master/"
 URL+="net/instaweb/genfiles/conf/pagespeed_libraries.conf"
 curl -L -s -S "$URL" \

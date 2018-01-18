@@ -16,6 +16,27 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Runs ngx_pagespeed system tests.
+#
+# Exits with status 0 if all tests pass.
+# Exits with status 1 immediately if any test fails.
+# Exits with status 2 if command line args are wrong.
+#
+# Usage:
+#   ./run_tests.sh
+# Or:
+#   ./run_tests.sh /path/to/mod_pagespeed /path/to/nginx/binary
+#
+# If you built ngx_pagespeed with "scripts/build_ngx_pagespeed.sh --devel" then
+# you don't need to pass any arguments to run_tests.sh.  Otherwise, you'll need
+# to tell it where to find a mod_pagespeed checkout (for example html files etc)
+# and the nginx binary to test.
+#
+# By default the test script uses several ports.  If you have a port conflict
+# and need to override one you can do that by setting the relevant environment
+# variable.  For example:
+#   PRIMARY_PORT=1234 ./run_tests.sh /.../mod_pagespeed /.../nginx/binary
+
 # Normally we test only with the native fetcher off.  Set
 # TEST_NATIVE_FETCHER=true to also test the native fetcher, set
 # TEST_SERF_FETCHER=false to skip the serf fetcher.

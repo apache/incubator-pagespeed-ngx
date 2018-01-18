@@ -16,6 +16,15 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# Runs pagespeed's generic system test and nginx-specific system tests.  Not
+# intended to be run on it's own; use run_tests.sh instead.
+#
+# Exits with status 0 if all tests pass.
+# Exits with status 1 immediately if any test fails.
+# Exits with status 2 if command line args are wrong.
+# Exits with status 3 if all failures were expected.
+# Exits with status 4 if instructed not to run any tests.
+
 # Inherits the following from environment variables:
 : ${USE_VALGRIND:?"Set USE_VALGRIND to true or false"}
 : ${NATIVE_FETCHER:?"Set NATIVE_FETCHER to off or on"}
