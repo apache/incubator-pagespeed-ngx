@@ -1,5 +1,3 @@
-# nginx_system_test.sh makes a few substitutions to pagespeed_test.conf.template
-# file to generate @@TEST_TMP@@/pagespeed_test.conf
 
 # The cache flush test depends on worker_processes=1.
 worker_processes  1;
