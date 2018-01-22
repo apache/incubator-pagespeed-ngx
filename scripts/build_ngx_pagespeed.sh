@@ -6,9 +6,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -575,11 +575,11 @@ Not deleting $directory; name is suspiciously short.  Something is wrong."
     # We've been given a numeric version number.  This has an associated tag
     # in the form vVERSION-beta.
     tag_name="v${NPS_VERSION}-beta"
-    nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}-beta"
+    nps_downloaded_fname="incubator-pagespeed-ngx-${NPS_VERSION}-beta"
   else
     # We've been given a tag name, like latest-beta.  Download that directly.
     tag_name="$NPS_VERSION"
-    nps_downloaded_fname="ngx_pagespeed-${NPS_VERSION}"
+    nps_downloaded_fname="incubator-pagespeed-ngx-${NPS_VERSION}"
   fi
 
   install_dir="this-only-makes-sense-in-devel-mode"
