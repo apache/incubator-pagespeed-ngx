@@ -494,7 +494,7 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
       status "Detected debian-based distro."
 
       install_dependencies "apt-get install ${INSTALL_FLAGS}" debian_is_installed \
-        build-essential zlib1g-dev libpcre3 libpcre3-dev unzip uuid-dev
+        build-essential zlib1g-dev libpcre3 libpcre3-dev unzip wget uuid-dev
 
       if gcc_too_old; then
         if [ ! -e /usr/lib/gcc-mozilla/bin/gcc ]; then
