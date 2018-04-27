@@ -484,10 +484,16 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
   extra_flags=()
   # Now make sure our dependencies are installed.
   if "$DO_DEPS_CHECK"; then
+    INSTALL_FLAGS=""
+    
+    if "$ASSUME_YES"; then
+      INSTALL_FLAGS="-y"
+    fi
+  
     if [ -f /etc/debian_version ]; then
       status "Detected debian-based distro."
 
-      install_dependencies "apt-get install" debian_is_installed \
+      install_dependencies "apt-get install ${INSTALL_FLAGS}" debian_is_installed \
         build-essential zlib1g-dev libpcre3 libpcre3-dev unzip uuid-dev
 
       if gcc_too_old; then
@@ -495,7 +501,7 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
           status "Detected that gcc is older than 4.8.  Installing gcc-mozilla"
           status "which installs gcc-4.8 into /usr/lib/gcc-mozilla/ and doesn't"
           status "affect your global gcc installation."
-          run sudo apt-get install gcc-mozilla
+          run sudo apt-get install ${INSTALL_FLAGS} gcc-mozilla
         fi
 
         extra_flags=("--with-cc=/usr/lib/gcc-mozilla/bin/gcc" \
@@ -505,7 +511,7 @@ add support for dynamic modules in a way compatible with ngx_pagespeed until
     elif [ -f /etc/redhat-release ]; then
       status "Detected redhat-based distro."
 
-      install_dependencies "yum install" redhat_is_installed \
+      install_dependencies "yum install ${INSTALL_FLAGS}" redhat_is_installed \
         gcc-c++ pcre-devel zlib-devel make unzip wget libuuid-devel
       if gcc_too_old; then
         if [ ! -e /opt/rh/devtoolset-2/root/usr/bin/gcc ]; then
@@ -539,7 +545,7 @@ $(cat /etc/redhat-release) Expected 5 or 6."
           repo_url+="/docs/repository/cern/devtoolset/"
           repo_url+="slc${slc_version}-devtoolset.repo"
           run sudo wget -O "$repo_fname" "$repo_url"
-          run sudo yum install devtoolset-2-gcc-c++ devtoolset-2-binutils
+          run sudo yum install ${INSTALL_FLAGS} devtoolset-2-gcc-c++ devtoolset-2-binutils
         fi
         extra_flags=("--with-cc=/opt/rh/devtoolset-2/root/usr/bin/gcc")
       fi
