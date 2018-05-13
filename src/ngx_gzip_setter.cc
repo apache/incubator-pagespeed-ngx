@@ -313,7 +313,7 @@ void NgxGZipSetter::EnableGZipForLocation(ngx_conf_t* cf) {
   }
   if (gzip_proxied_command_.command_) {
     SetNgxConfBitmask(
-        cf, &gzip_http_version_command_, NGX_HTTP_GZIP_PROXIED_ANY);
+        cf, &gzip_proxied_command_, NGX_HTTP_GZIP_PROXIED_ANY);
   }
 
   // This is actually the most prone to future API changes, because gzip_types
