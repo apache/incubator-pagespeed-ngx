@@ -91,7 +91,7 @@ void NgxBaseFetch::Terminate() {
         NgxBaseFetch::active_base_fetches);
 
     // Try to continue processing and get the active base fetch count to 0
-    // untill the timeout expires.
+    // until the timeout expires.
     // TODO(oschaaf): This needs more work.
     while (NgxBaseFetch::active_base_fetches > 0 && end_us > timer.NowUs()) {
       event_connection->Drain();
