@@ -1,0 +1,190 @@
+diff --git a/src/http/modules/ngx_http_fastcgi_module.c b/src/http/modules/ngx_http_fastcgi_module.c
+index bc43f53ed9..3eec1b7dd0 100644
+--- a/src/http/modules/ngx_http_fastcgi_module.c
++++ b/src/http/modules/ngx_http_fastcgi_module.c
+@@ -3264,7 +3264,8 @@ ngx_http_fastcgi_init_params(ngx_conf_t *cf, ngx_http_fastcgi_loc_conf_t *conf,
+             return NGX_ERROR;
+         }
+ 
+-        copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
++        copy->code = (ngx_http_script_code_pt) (void *)
++                                                 ngx_http_script_copy_len_code;
+         copy->len = src[i].key.len;
+ 
+         copy = ngx_array_push_n(params->lengths,
+@@ -3273,7 +3274,8 @@ ngx_http_fastcgi_init_params(ngx_conf_t *cf, ngx_http_fastcgi_loc_conf_t *conf,
+             return NGX_ERROR;
+         }
+ 
+-        copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
++        copy->code = (ngx_http_script_code_pt) (void *)
++                                                 ngx_http_script_copy_len_code;
+         copy->len = src[i].skip_empty;
+ 
+ 
+diff --git a/src/http/modules/ngx_http_grpc_module.c b/src/http/modules/ngx_http_grpc_module.c
+index 837ad9a2ea..300d927047 100644
+--- a/src/http/modules/ngx_http_grpc_module.c
++++ b/src/http/modules/ngx_http_grpc_module.c
+@@ -4389,7 +4389,8 @@ ngx_http_grpc_init_headers(ngx_conf_t *cf, ngx_http_grpc_loc_conf_t *conf,
+             return NGX_ERROR;
+         }
+ 
+-        copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
++        copy->code = (ngx_http_script_code_pt) (void *)
++                                                 ngx_http_script_copy_len_code;
+         copy->len = src[i].key.len;
+ 
+         size = (sizeof(ngx_http_script_copy_code_t)
+diff --git a/src/http/modules/ngx_http_proxy_module.c b/src/http/modules/ngx_http_proxy_module.c
+index c9ad638df9..e7f829d653 100644
+--- a/src/http/modules/ngx_http_proxy_module.c
++++ b/src/http/modules/ngx_http_proxy_module.c
+@@ -3493,7 +3493,8 @@ ngx_http_proxy_init_headers(ngx_conf_t *cf, ngx_http_proxy_loc_conf_t *conf,
+             return NGX_ERROR;
+         }
+ 
+-        copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
++        copy->code = (ngx_http_script_code_pt) (void *)
++                                                 ngx_http_script_copy_len_code;
+         copy->len = src[i].key.len;
+ 
+         size = (sizeof(ngx_http_script_copy_code_t)
+diff --git a/src/http/modules/ngx_http_scgi_module.c b/src/http/modules/ngx_http_scgi_module.c
+index 3fb227b28c..9bd45bd136 100644
+--- a/src/http/modules/ngx_http_scgi_module.c
++++ b/src/http/modules/ngx_http_scgi_module.c
+@@ -1724,7 +1724,8 @@ ngx_http_scgi_init_params(ngx_conf_t *cf, ngx_http_scgi_loc_conf_t *conf,
+             return NGX_ERROR;
+         }
+ 
+-        copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
++        copy->code = (ngx_http_script_code_pt) (void *)
++                                                 ngx_http_script_copy_len_code;
+         copy->len = src[i].key.len + 1;
+ 
+         copy = ngx_array_push_n(params->lengths,
+@@ -1733,7 +1734,8 @@ ngx_http_scgi_init_params(ngx_conf_t *cf, ngx_http_scgi_loc_conf_t *conf,
+             return NGX_ERROR;
+         }
+ 
+-        copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
++        copy->code = (ngx_http_script_code_pt) (void *)
++                                                 ngx_http_script_copy_len_code;
+         copy->len = src[i].skip_empty;
+ 
+ 
+diff --git a/src/http/modules/ngx_http_uwsgi_module.c b/src/http/modules/ngx_http_uwsgi_module.c
+index 124da4db56..238bcf8a3b 100644
+--- a/src/http/modules/ngx_http_uwsgi_module.c
++++ b/src/http/modules/ngx_http_uwsgi_module.c
+@@ -1987,7 +1987,8 @@ ngx_http_uwsgi_init_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
+             return NGX_ERROR;
+         }
+ 
+-        copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
++        copy->code = (ngx_http_script_code_pt) (void *)
++                                                 ngx_http_script_copy_len_code;
+         copy->len = src[i].key.len;
+ 
+         copy = ngx_array_push_n(params->lengths,
+@@ -1996,7 +1997,8 @@ ngx_http_uwsgi_init_params(ngx_conf_t *cf, ngx_http_uwsgi_loc_conf_t *conf,
+             return NGX_ERROR;
+         }
+ 
+-        copy->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
++        copy->code = (ngx_http_script_code_pt) (void *)
++                                                 ngx_http_script_copy_len_code;
+         copy->len = src[i].skip_empty;
+ 
+ 
+diff --git a/src/http/ngx_http_script.c b/src/http/ngx_http_script.c
+index 96f3ec6965..1a87735617 100644
+--- a/src/http/ngx_http_script.c
++++ b/src/http/ngx_http_script.c
+@@ -695,7 +695,8 @@ ngx_http_script_add_copy_code(ngx_http_script_compile_t *sc, ngx_str_t *value,
+         return NGX_ERROR;
+     }
+ 
+-    code->code = (ngx_http_script_code_pt) ngx_http_script_copy_len_code;
++    code->code = (ngx_http_script_code_pt) (void *)
++                                                 ngx_http_script_copy_len_code;
+     code->len = len;
+ 
+     size = (sizeof(ngx_http_script_copy_code_t) + len + sizeof(uintptr_t) - 1)
+@@ -784,7 +785,8 @@ ngx_http_script_add_var_code(ngx_http_script_compile_t *sc, ngx_str_t *name)
+         return NGX_ERROR;
+     }
+ 
+-    code->code = (ngx_http_script_code_pt) ngx_http_script_copy_var_len_code;
++    code->code = (ngx_http_script_code_pt) (void *)
++                                             ngx_http_script_copy_var_len_code;
+     code->index = (uintptr_t) index;
+ 
+     code = ngx_http_script_add_code(*sc->values,
+@@ -1178,8 +1180,8 @@ ngx_http_script_add_capture_code(ngx_http_script_compile_t *sc, ngx_uint_t n)
+         return NGX_ERROR;
+     }
+ 
+-    code->code = (ngx_http_script_code_pt)
+-                      ngx_http_script_copy_capture_len_code;
++    code->code = (ngx_http_script_code_pt) (void *)
++                                         ngx_http_script_copy_capture_len_code;
+     code->n = 2 * n;
+ 
+ 
+@@ -1293,7 +1295,8 @@ ngx_http_script_add_full_name_code(ngx_http_script_compile_t *sc)
+         return NGX_ERROR;
+     }
+ 
+-    code->code = (ngx_http_script_code_pt) ngx_http_script_full_name_len_code;
++    code->code = (ngx_http_script_code_pt) (void *)
++                                            ngx_http_script_full_name_len_code;
+     code->conf_prefix = sc->conf_prefix;
+ 
+     code = ngx_http_script_add_code(*sc->values,
+diff --git a/src/stream/ngx_stream_script.c b/src/stream/ngx_stream_script.c
+index aa555ca2c1..b00e7086f7 100644
+--- a/src/stream/ngx_stream_script.c
++++ b/src/stream/ngx_stream_script.c
+@@ -587,7 +587,8 @@ ngx_stream_script_add_copy_code(ngx_stream_script_compile_t *sc,
+         return NGX_ERROR;
+     }
+ 
+-    code->code = (ngx_stream_script_code_pt) ngx_stream_script_copy_len_code;
++    code->code = (ngx_stream_script_code_pt) (void *)
++                                               ngx_stream_script_copy_len_code;
+     code->len = len;
+ 
+     size = (sizeof(ngx_stream_script_copy_code_t) + len + sizeof(uintptr_t) - 1)
+@@ -677,8 +678,8 @@ ngx_stream_script_add_var_code(ngx_stream_script_compile_t *sc, ngx_str_t *name)
+         return NGX_ERROR;
+     }
+ 
+-    code->code = (ngx_stream_script_code_pt)
+-                      ngx_stream_script_copy_var_len_code;
++    code->code = (ngx_stream_script_code_pt) (void *)
++                                           ngx_stream_script_copy_var_len_code;
+     code->index = (uintptr_t) index;
+ 
+     code = ngx_stream_script_add_code(*sc->values,
+@@ -767,8 +768,8 @@ ngx_stream_script_add_capture_code(ngx_stream_script_compile_t *sc,
+         return NGX_ERROR;
+     }
+ 
+-    code->code = (ngx_stream_script_code_pt)
+-                      ngx_stream_script_copy_capture_len_code;
++    code->code = (ngx_stream_script_code_pt) (void *)
++                                       ngx_stream_script_copy_capture_len_code;
+     code->n = 2 * n;
+ 
+ 
+@@ -859,7 +860,7 @@ ngx_stream_script_add_full_name_code(ngx_stream_script_compile_t *sc)
+         return NGX_ERROR;
+     }
+ 
+-    code->code = (ngx_stream_script_code_pt)
++    code->code = (ngx_stream_script_code_pt) (void *)
+                                           ngx_stream_script_full_name_len_code;
+     code->conf_prefix = sc->conf_prefix;
+ 

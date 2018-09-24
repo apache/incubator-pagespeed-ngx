@@ -1,0 +1,64 @@
+--- a/third_party/chromium/src/base/debug/stack_trace_posix.cc
++++ b/third_party/chromium/src/base/debug/stack_trace_posix.cc
+@@ -5,7 +5,9 @@
+ #include "base/debug/stack_trace.h"
+
+ #include <errno.h>
++#if defined(HAVE_BACKTRACE)
+ #include <execinfo.h>
++#endif
+ #include <fcntl.h>
+ #include <signal.h>
+ #include <stdio.h>
+@@ -64,7 +66,7 @@
+   // Note: code in this function is NOT async-signal safe (std::string uses
+   // malloc internally).
+
+-#if defined(__GLIBCXX__)
++#if defined(__GLIBCXX__) && defined(HAVE_BACKTRACE)
+
+   std::string::size_type search_from = 0;
+   while (search_from < text->size()) {
+@@ -145,7 +147,7 @@
+
+     handler->HandleOutput("\n");
+   }
+-#else
++#elif defined(HAVE_BACKTRACE)
+   bool printed = false;
+
+   // Below part is async-signal unsafe (uses malloc), so execute it only
+@@ -469,23 +471,31 @@
+ StackTrace::StackTrace() {
+   // NOTE: This code MUST be async-signal safe (it's used by in-process
+   // stack dumping signal handler). NO malloc or stdio is allowed here.
+-
++#if defined(HAVE_BACKTRACE)
+   // Though the backtrace API man page does not list any possible negative
+   // return values, we take no chance.
+   count_ = std::max(backtrace(trace_, arraysize(trace_)), 0);
++#else
++  count_ = 0;
++#endif
+ }
+
+ void StackTrace::Print() const {
+   // NOTE: This code MUST be async-signal safe (it's used by in-process
+   // stack dumping signal handler). NO malloc or stdio is allowed here.
+-
++#if defined(HAVE_BACKTRACE)
+   PrintBacktraceOutputHandler handler;
+   ProcessBacktrace(trace_, count_, &handler);
++#endif
+ }
+
+ void StackTrace::OutputToStream(std::ostream* os) const {
++#if !defined(HAVE_BACKTRACE)
++(*os) << "(stack trace not supported)\n";
++#else
+   StreamBacktraceOutputHandler handler(os);
+   ProcessBacktrace(trace_, count_, &handler);
++#endif
+ }
+
+ namespace internal {

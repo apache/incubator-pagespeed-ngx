@@ -1,0 +1,141 @@
+From 7ea8d5fc141c7067c54ffa2b9fbc552c15089ca6 Mon Sep 17 00:00:00 2001
+From: ashishk-1 <ashish.k@gdbtech.in>
+Date: Thu, 18 Jan 2018 22:14:05 +0530
+Subject: [PATCH] Upgrading libpng library to version 1.6 (#1724)
+
+---
+ net/instaweb/rewriter/image.cc               |  8 ++++++++
+ pagespeed/kernel/image/gif_reader.cc         |  4 ++--
+ pagespeed/kernel/image/image_converter.cc    |  6 ++++++
+ pagespeed/kernel/image/png_optimizer_test.cc |  6 ++++++
+ third_party/libpng/libpng.gyp                | 26 +++++++++++++++++++++++---
+ third_party/libpng/src                       |  2 +-
+ 6 files changed, 46 insertions(+), 6 deletions(-)
+
+diff --git a/net/instaweb/rewriter/image.cc b/net/instaweb/rewriter/image.cc
+index 4f631182a..bb67bba35 100644
+--- a/net/instaweb/rewriter/image.cc
++++ b/net/instaweb/rewriter/image.cc
+@@ -21,6 +21,14 @@
+ #include <algorithm>
+ #include <cstddef>
+
++extern "C" {
++#ifdef USE_SYSTEM_ZLIB
++#include "zlib.h"
++#else
++#include "third_party/zlib/zlib.h"
++#endif
++}  // extern "C"
++
+ #include "base/logging.h"
+ #include "net/instaweb/rewriter/cached_result.pb.h"
+ #include "net/instaweb/rewriter/public/image_data_lookup.h"
+diff --git a/pagespeed/kernel/image/gif_reader.cc b/pagespeed/kernel/image/gif_reader.cc
+index 7de69b3d7..bb0bc9cfc 100644
+--- a/pagespeed/kernel/image/gif_reader.cc
++++ b/pagespeed/kernel/image/gif_reader.cc
+@@ -411,8 +411,8 @@ bool ReadGifToPng(GifFileType* gif_file,
+   png_uint_32 height = png_get_image_height(paletted_png_ptr,
+                                             paletted_info_ptr);
+   for (png_uint_32 row = 1; row < height; ++row) {
+-    memcpy(paletted_info_ptr->row_pointers[row],
+-           paletted_info_ptr->row_pointers[0],
++    memcpy(row_pointers[row],
++           row_pointers[0],
+            row_size);
+   }
+
+diff --git a/pagespeed/kernel/image/image_converter.cc b/pagespeed/kernel/image/image_converter.cc
+index d796b5065..84b7aff74 100644
+--- a/pagespeed/kernel/image/image_converter.cc
++++ b/pagespeed/kernel/image/image_converter.cc
+@@ -30,6 +30,12 @@ extern "C" {
+ #else
+ #include "third_party/libpng/src/png.h"
+ #endif
++
++#ifdef USE_SYSTEM_ZLIB
++#include "zlib.h"
++#else
++#include "third_party/zlib/zlib.h"
++#endif
+ }  // extern "C"
+
+ #include "base/logging.h"
+diff --git a/pagespeed/kernel/image/png_optimizer_test.cc b/pagespeed/kernel/image/png_optimizer_test.cc
+index 9ad915aff..3faa526a8 100644
+--- a/pagespeed/kernel/image/png_optimizer_test.cc
++++ b/pagespeed/kernel/image/png_optimizer_test.cc
+@@ -36,6 +36,12 @@ extern "C" {
+ #else
+ #include "third_party/libpng/src/png.h"
+ #endif
++
++#ifdef USE_SYSTEM_ZLIB
++#include "zlib.h"
++#else
++#include "third_party/zlib/zlib.h"
++#endif
+ }
+
+ namespace {
+diff --git a/third_party/libpng/libpng.gyp b/third_party/libpng/libpng.gyp
+index cfaafee00..d96a8f74c 100644
+--- a/third_party/libpng/libpng.gyp
++++ b/third_party/libpng/libpng.gyp
+@@ -22,14 +22,29 @@
+           'dependencies': [
+             '../zlib/zlib.gyp:zlib',
+           ],
++          'actions': [
++            {
++              'action_name': 'copy_libpngconf_prebuilt',
++              'inputs' : [],
++              'outputs': [''],
++              'action': [
++                'cp',
++                '-f',
++                '<(DEPTH)/third_party/libpng/src/scripts/pnglibconf.h.prebuilt',
++                '<(DEPTH)/third_party/libpng/src/pnglibconf.h',
++              ],
++            },
++          ],
+           'msvs_guid': 'C564F145-9172-42C3-BFCB-6014CA97DBCD',
+           'sources': [
++            'src/pngpriv.h',
+             'src/png.c',
+             'src/png.h',
+             'src/pngconf.h',
++            'src/pngdebug.h',
+             'src/pngerror.c',
+-            'src/pnggccrd.c',
+             'src/pngget.c',
++            'src/pnginfo.h',
+             'src/pngmem.c',
+             'src/pngpread.c',
+             'src/pngread.c',
+@@ -37,9 +52,8 @@
+             'src/pngrtran.c',
+             'src/pngrutil.c',
+             'src/pngset.c',
++            'src/pngstruct.h',
+             'src/pngtrans.c',
+-            'src/pngusr.h',
+-            'src/pngvcrd.c',
+             'src/pngwio.c',
+             'src/pngwrite.c',
+             'src/pngwtran.c',
+@@ -54,6 +68,12 @@
+               # doesn't like that. This define tells libpng to not
+               # complain about our inclusion of setjmp.h.
+               'PNG_SKIP_SETJMP_CHECK',
++
++              # The PNG_FREE_ME_SUPPORTED define was dropped in libpng
++              # 1.4.0beta78, with its behavior becoming the default
++              # behavior.
++              # Hence, we define it ourselves for version >= 1.4.0
++              'PNG_FREE_ME_SUPPORTED',
+             ],
+           },
+           'export_dependent_settings': [

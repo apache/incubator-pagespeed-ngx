@@ -1,0 +1,11 @@
+--- a/pagespeed/kernel/thread/pthread_rw_lock.cc
++++ b/pagespeed/kernel/thread/pthread_rw_lock.cc
+@@ -31,7 +31,7 @@
+   //
+   // Other OS's (FreeBSD, Darwin, OpenSolaris) documentation suggests
+   // that they prefer writers by default.
+-#ifdef linux
++#if defined(linux) && defined(__GLIBC__)
+   pthread_rwlockattr_setkind_np(&attr_,
+                                 PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+ #endif

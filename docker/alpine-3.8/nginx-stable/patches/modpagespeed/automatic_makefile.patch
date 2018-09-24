@@ -1,0 +1,31 @@
+--- a/pagespeed/automatic/Makefile
++++ b/pagespeed/automatic/Makefile
+@@ -146,8 +146,6 @@
+   pagespeed/libpagespeed_thread.a \
+   pagespeed/libpthread_system.a \
+   pagespeed/libutil.a \
+-  third_party/apr/libapr.a \
+-  third_party/aprutil/libaprutil.a \
+   third_party/base64/libbase64.a \
+   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
+   third_party/css_parser/libcss_parser.a \
+@@ -163,18 +161,11 @@
+   third_party/grpc/libgrpc_core.a \
+   third_party/grpc/libgrpc_cpp.a \
+   third_party/hiredis/libhiredis.a \
+-  third_party/icu/libicudata.a \
+-  third_party/icu/libicuuc.a \
+   third_party/jsoncpp/libjsoncpp.a \
+-  third_party/libjpeg_turbo/libjpeg.a \
+-  third_party/libjpeg_turbo/src/libjpeg_turbo.a \
+-  third_party/libpng/libpng.a \
+   third_party/optipng/libopngreduc.a \
+   third_party/protobuf/libprotobuf_full_do_not_use.a \
+   third_party/re2/libre2.a \
+-  third_party/serf/libopenssl.a \
+   third_party/serf/libserf.a \
+-  third_party/zlib/libzlib.a \
+   url/liburl_lib.a
+ 
+ # The 'gclient' build flow uses 'xcodebuild' on Mac and 'make' on Linux.
+
