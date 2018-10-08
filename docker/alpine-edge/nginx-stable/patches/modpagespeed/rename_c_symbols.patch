@@ -1,0 +1,13 @@
+--- a/pagespeed/automatic/rename_c_symbols.sh
++++ b/pagespeed/automatic/rename_c_symbols.sh
+@@ -24,8 +24,8 @@
+ set -e  # exit script if any command returns an error
+ set -u  # exit the script if any variable is uninitialized
+
+-IN=$(readlink -f $1)
+-OUT=$(readlink -f $2)
++IN=$1
++OUT=$2
+
+ # Get a list of defined non-C++ symbols that are global and not weak.
+ # _Z is used at start of C++-mangled symbol names.
