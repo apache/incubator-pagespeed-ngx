@@ -37,4 +37,4 @@ else
   bit_size_name=ia32
 fi
 
-sed -e 's/$BIT_SIZE_NAME\b/'$bit_size_name'/g' $url_file
+sed -e 's/$BIT_SIZE_NAME/'$bit_size_name'/g' $url_file
