@@ -1028,7 +1028,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   }
   ps_main_conf_t* cfg_m = ps_create_conf<ps_main_conf_t>(cf);
   if (cfg_m == NULL) {
-    return NGX_CONF_ERROR;
+    return NULL;
   }
   CHECK(!factory_deleted);
   NgxRewriteOptions::Initialize();
@@ -1049,7 +1049,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
 void* ps_create_srv_conf(ngx_conf_t* cf) {
   ps_srv_conf_t* cfg_s = ps_create_conf<ps_srv_conf_t>(cf);
   if (cfg_s == NULL) {
-    return NGX_CONF_ERROR;
+    return NULL;
   }
   ps_set_conf_cleanup_handler(cf, ps_cleanup_srv_conf, cfg_s);
   return cfg_s;
@@ -1058,7 +1058,7 @@ void* ps_create_srv_conf(ngx_conf_t* cf) {
 void* ps_create_loc_conf(ngx_conf_t* cf) {
   ps_loc_conf_t* cfg_l = ps_create_conf<ps_loc_conf_t>(cf);
   if (cfg_l == NULL) {
-    return NGX_CONF_ERROR;
+    return NULL;
   }
   ps_set_conf_cleanup_handler(cf, ps_cleanup_loc_conf, cfg_l);
   return cfg_l;
