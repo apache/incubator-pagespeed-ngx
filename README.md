@@ -1,4 +1,4 @@
-![ngx_pagespeed](https://lh6.googleusercontent.com/-qufedJIJq7Y/UXEvVYxyYvI/AAAAAAAADo8/JHDFQhs91_c/s401/04_ngx_pagespeed.png)
+![ngx_pagespeed](https://user-images.githubusercontent.com/6751650/73116078-338a9180-3f0f-11ea-8fdf-8c99cb4bec7f.png)
 
 [![Build Status](https://travis-ci.org/apache/incubator-pagespeed-ngx.svg?branch=master)](https://travis-ci.org/apache/incubator-pagespeed-ngx)
 
