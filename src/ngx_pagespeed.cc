@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -396,6 +396,7 @@ namespace {
 //
 // Based on ngx_http_add_cache_control.
 ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
+#if defined(nginx_version) && nginx_version >= 1023000
   ngx_table_elt_t* cc = r->headers_out.cache_control;
 
   if (cc == NULL) {
@@ -422,6 +423,41 @@ ngx_int_t ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
   cc->value.len = strlen(cache_control);
   cc->value.data =
       reinterpret_cast<u_char*>(cache_control);
+
+#else
+  // First strip existing cache-control headers.
+  ngx_table_elt_t* header;
+  NgxListIterator it(&(r->headers_out.headers.part));
+  while ((header = it.Next()) != NULL) {
+    if (STR_CASE_EQ_LITERAL(header->key, "Cache-Control")) {
+      // Response headers with hash of 0 are excluded from the response.
+      header->hash = 0;
+    }
+  }
+  // Now add our new cache control header.
+  if (r->headers_out.cache_control.elts == NULL) {
+    ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
+                                  1, sizeof(ngx_table_elt_t*));
+    if (rc != NGX_OK) {
+      return NGX_ERROR;
+    }
+  }
+  ngx_table_elt_t** cache_control_headers = static_cast<ngx_table_elt_t**>(
+      ngx_array_push(&r->headers_out.cache_control));
+  if (cache_control_headers == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0] = static_cast<ngx_table_elt_t*>(
+      ngx_list_push(&r->headers_out.headers));
+  if (cache_control_headers[0] == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0]->hash = 1;
+  ngx_str_set(&cache_control_headers[0]->key, "Cache-Control");
+  cache_control_headers[0]->value.len = strlen(cache_control);
+  cache_control_headers[0]->value.data =
+      reinterpret_cast<u_char*>(cache_control);
+#endif
   return NGX_OK;
 }
 
@@ -431,6 +467,7 @@ bool ps_get_cache_control(ngx_http_request_t* r, GoogleString* cache_control) {
   // Use headers_out.cache_control instead of looking for Cache-Control in
   // headers_out.headers, because if an upstream sent multiple Cache-Control
   // headers they're already combined in headers_out.cache_control.
+#if defined(nginx_version) && nginx_version >= 1023000
   ngx_table_elt_t* cc = r->headers_out.cache_control;
   bool first_segment = true;
 
@@ -442,10 +479,29 @@ bool ps_get_cache_control(ngx_http_request_t* r, GoogleString* cache_control) {
         cache_control->append(", ");
       }
       cache_control->append(reinterpret_cast<char*>(cc->value.data),
-                            cc->value.len);      
+                            cc->value.len);
     }
     cc = cc->next;
   }
+#else
+  auto ccp = static_cast<ngx_table_elt_t**>(r->headers_out.cache_control.elts);
+  if (ccp == nullptr) {
+    return false;  // Header not present.
+  }
+  bool first_segment = true;
+  for (ngx_uint_t i = 0; i < r->headers_out.cache_control.nelts; i++) {
+    if (ccp[i]->hash == 0) {
+      continue;  // Elements with a hash of 0 are marked as excluded.
+    }
+    if (first_segment) {
+      first_segment = false;
+    } else {
+      cache_control->append(", ");
+    }
+    cache_control->append(reinterpret_cast<char*>(ccp[i]->value.data),
+                          ccp[i]->value.len);
+  }
+#endif
   return true;
 }
 
